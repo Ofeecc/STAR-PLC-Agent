@@ -33,3 +33,21 @@ class ProcessContractTests(unittest.TestCase):
         i=dict(self.defaults('PUB015'),estop=True,opeMode=True,autoStart=True)
         result=check_contract_trace('PUB015',[dict(inputs=i,outputs=dict(valveARun=False,valveBRun=False,valveCRun=False,valveDRun=True,mixMotorRun=False))])
         self.assertEqual(result['status'],'VIOLATED')
+
+    def test_mechanical_arm_mode_change_and_safety(self):
+        m = ScanContract('PUB019')
+        base = dict(self.defaults('PUB019'), EmergencyStop=True, UpLimitSwitch=True, LeftLimitSwitch=True)
+        # Manual mode opposing commands both suppressed
+        res = m.step(dict(base, ManualMode=True, DownButton=True, UpButton=True))
+        self.assertFalse(res['MoveDown'])
+        self.assertFalse(res['MoveUp'])
+
+        # Emergency stop clears all outputs
+        res = m.step(dict(base, ManualMode=True, DownButton=True, EmergencyStop=False))
+        self.assertFalse(res['MoveDown'])
+
+        # Mode change suppresses commands on transition scan
+        m = ScanContract('PUB019')
+        m.step(dict(base, ManualMode=True))
+        res = m.step(dict(base, SingleCycleMode=True, Start=True))
+        self.assertFalse(any(res.values()))

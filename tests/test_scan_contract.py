@@ -38,7 +38,7 @@ class ScanContractTests(unittest.TestCase):
         self.assertTrue(any(v['missing'] for v in check_contract_trace('SELF007',rows)['violations']))
 
     def test_no_observations_and_unsupported_are_not_pass(self):
-        self.assertEqual(check_contract_trace('PUB017',[])['status'],'UNSUPPORTED')
+        self.assertEqual(check_contract_trace('PUB999',[])['status'],'UNSUPPORTED')
         self.assertEqual(check_contract_trace('PUB001',[])['status'],'INCOMPLETE')
 
     def test_timer_does_not_silently_assume_zero(self):

@@ -1,13 +1,14 @@
 """Complete input-driven reference transitions for three public process tasks."""
 from .data_contracts import real32
 
-SUPPORTED_PROCESS={'PUB015','PUB016','PUB020'}
+SUPPORTED_PROCESS={'PUB015','PUB016','PUB019','PUB020'}
 
 class ProcessContract:
     def __init__(self,task_id):
         self.task_id=task_id;self.phase=0;self.mode=None;self.previous={}
         self.latches=[False]*5;self.batch_mode=None;self.route=None
         self.index=0;self.station=1;self.target=1;self.temperature=0.0
+        self.arm_mode=None;self.arm_step=0;self.step_index=1;self.step_busy=False;self.prev_start=False
 
     def edges(self,i,names):
         result={n:i[n] and not self.previous.get(n,False) for n in names}
@@ -17,6 +18,7 @@ class ProcessContract:
     def step(self,i):
         if self.task_id=='PUB015':return self.mixing(i)
         if self.task_id=='PUB016':return self.routing(i)
+        if self.task_id=='PUB019':return self.mechanical_arm(i)
         if self.task_id=='PUB020':return self.production(i)
         raise ValueError('Unsupported process contract')
 
@@ -89,3 +91,100 @@ class ProcessContract:
         elif self.phase==9 and not i['SensorOutput']:self.phase=0
         return dict(MotorForward=self.phase in (1,3,6,8),MotorReverse=False,
                     kick=self.phase==5,CompletionLight=self.phase==9,firingTemp=self.temperature)
+
+    def mechanical_arm(self, i):
+        actions = [
+            ('MoveDown', 'DownLimitSwitch'),
+            ('ActivateGrip', 'GripLimitSwitch'),
+            ('MoveUp', 'UpLimitSwitch'),
+            ('MoveRight', 'RightLimitSwitch'),
+            ('MoveDown', 'DownLimitSwitch'),
+            ('ActivateRelease', 'ReleaseLimitSwitch'),
+            ('MoveUp', 'UpLimitSwitch'),
+            ('MoveLeft', 'LeftLimitSwitch'),
+        ]
+        all_outputs = ['MoveDown', 'MoveUp', 'MoveLeft', 'MoveRight', 'ActivateGrip', 'ActivateRelease']
+
+        if i.get('ManualMode'):
+            cur_mode = 'manual'
+        elif i.get('SingleStepMode'):
+            cur_mode = 'single_step'
+        elif i.get('SingleCycleMode'):
+            cur_mode = 'single_cycle'
+        elif i.get('ContinuousMode'):
+            cur_mode = 'continuous'
+        else:
+            cur_mode = None
+
+        safe = bool(i.get('EmergencyStop'))
+        start = bool(i.get('Start'))
+        start_edge = start and not self.prev_start
+        self.prev_start = start
+
+        if not safe or cur_mode is None:
+            self.arm_step = 0
+            self.step_index = 1
+            self.step_busy = False
+            self.arm_mode = cur_mode
+            return dict.fromkeys(all_outputs, False)
+
+        mode_changed = self.arm_mode is not None and self.arm_mode != cur_mode
+        self.arm_mode = cur_mode
+        if mode_changed:
+            self.arm_step = 0
+            self.step_index = 1
+            self.step_busy = False
+            return dict.fromkeys(all_outputs, False)
+
+        if cur_mode == 'manual':
+            return dict(
+                MoveDown=bool(i.get('DownButton') and not i.get('UpButton') and not i.get('DownLimitSwitch')),
+                MoveUp=bool(i.get('UpButton') and not i.get('DownButton') and not i.get('UpLimitSwitch')),
+                MoveLeft=bool(i.get('LeftButton') and not i.get('RightButton') and not i.get('LeftLimitSwitch')),
+                MoveRight=bool(i.get('RightButton') and not i.get('LeftButton') and not i.get('RightLimitSwitch')),
+                ActivateGrip=bool(i.get('GripButton') and not i.get('ReleaseButton') and not i.get('GripLimitSwitch')),
+                ActivateRelease=bool(i.get('ReleaseButton') and not i.get('GripButton') and not i.get('ReleaseLimitSwitch')),
+            )
+
+        if cur_mode == 'single_step':
+            if self.step_busy:
+                cmd, limit = actions[self.step_index - 1]
+                if i.get(limit):
+                    self.step_busy = False
+                    self.step_index = (self.step_index % 8) + 1
+                    return dict.fromkeys(all_outputs, False)
+                else:
+                    return {k: (k == cmd) for k in all_outputs}
+            else:
+                if start_edge:
+                    can_start = bool(i.get('UpLimitSwitch') and i.get('LeftLimitSwitch')) if self.step_index == 1 else True
+                    if can_start:
+                        cmd, limit = actions[self.step_index - 1]
+                        if i.get(limit):
+                            self.step_busy = False
+                            self.step_index = (self.step_index % 8) + 1
+                            return dict.fromkeys(all_outputs, False)
+                        else:
+                            self.step_busy = True
+                            return {k: (k == cmd) for k in all_outputs}
+                return dict.fromkeys(all_outputs, False)
+
+        # single_cycle or continuous
+        if self.arm_step == 0:
+            if start_edge and i.get('UpLimitSwitch') and i.get('LeftLimitSwitch'):
+                self.arm_step = 1
+        else:
+            cmd, limit = actions[self.arm_step - 1]
+            if i.get(limit):
+                if self.arm_step < 8:
+                    self.arm_step += 1
+                elif cur_mode == 'continuous':
+                    self.arm_step = 1
+                else:
+                    self.arm_step = 0
+
+        if self.arm_step == 0:
+            return dict.fromkeys(all_outputs, False)
+        cmd, limit = actions[self.arm_step - 1]
+        active = not i.get(limit)
+        return {k: (k == cmd and active) for k in all_outputs}
