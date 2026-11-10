@@ -20,6 +20,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 from plc_agent.simulation import eligibility
+from plc_agent.metrics import mcnemar_exact, bootstrap_ci, BASELINE_MAP
 
 
 def read(path):
@@ -49,6 +50,20 @@ def ratio(a, b):
 
 def percentage(value):
     return "not evaluated" if value is None else f"{100 * value:.2f}%"
+
+
+def format_ci(ci):
+    if ci is None:
+        return "--"
+    return f"[{100 * ci[0]:.2f}%, {100 * ci[1]:.2f}%]"
+
+
+def format_p(p):
+    if p is None:
+        return "--"
+    if p < 0.001:
+        return "< 0.001"
+    return f"{p:.4f}"
 
 
 def write_csv(path, rows):
@@ -132,6 +147,10 @@ def summarize(rows, tasks, planned_tasks):
         resource["missing_" + key + "_calls"] = len(observations) - len(observed)
         resource["complete_" + key] = sum(observed) if observations and len(observed) == len(observations) else None
     elapsed = [row["elapsed_seconds"] for row in attempted if valid_number(row.get("elapsed_seconds"))]
+    comp_vals = [1.0 if row["final_compiled"] is True else 0.0 for row in rows]
+    compilation_ci = bootstrap_ci(comp_vals) if comp_vals else None
+    task_pass_vals = [1.0 if (f["status"] == "PASS" and f["passed_cases"] == f["evaluated_cases"] == f["planned_cases"] > 0) else 0.0 for f in functional]
+    task_pass_ci = bootstrap_ci(task_pass_vals) if task_pass_vals else None
     return {"planned_tasks": planned_tasks, "recorded_tasks": len(rows), "agent_attempted_tasks": len(attempted),
         "agent_campaign_complete": len(rows) == planned_tasks and len(attempted) == planned_tasks,
         "status_counts": dict(Counter(row["status"] for row in rows)),
@@ -140,6 +159,7 @@ def summarize(rows, tasks, planned_tasks):
         "first_pass_compiled_tasks": first_count, "final_compiled_tasks": final_count,
         "first_pass_compilation_rate": ratio(first_count, planned_tasks),
         "final_compilation_rate": ratio(final_count, planned_tasks),
+        "compilation_ci": compilation_ci,
         "compiler_coverage": ratio(compiler_evaluated, planned_tasks),
         "first_pass_rate_among_compiler_evaluated": ratio(first_count, compiler_evaluated),
         "final_rate_among_compiler_evaluated": ratio(final_count, compiler_evaluated),
@@ -154,6 +174,7 @@ def summarize(rows, tasks, planned_tasks):
         "scan_pass_rate": ratio(passed_steps, evaluated_steps),
         "fully_evaluated_tasks": evaluated_tasks, "passed_tasks": passed_tasks,
         "task_pass_rate": ratio(passed_tasks, evaluated_tasks),
+        "task_pass_ci": task_pass_ci,
         "functional_task_coverage": ratio(evaluated_tasks, planned_tasks),
         "eligible_tasks": sum(not eligibility(tasks[row["task_id"]]) for row in rows),
         "mean_agent_elapsed_seconds": statistics.mean(elapsed) if elapsed else None,
@@ -186,6 +207,16 @@ def render_markdown(data):
     for c in data["conditions"]:
         average = f"{c['mean_agent_elapsed_seconds']:.1f}/{c['median_agent_elapsed_seconds']:.1f}" if c['mean_agent_elapsed_seconds'] is not None else "unknown"
         text.append(f"| {c['condition']} | {c['compiler_calls']} | {c['repair_successes']}/{c['initial_compile_failures']} | {c['attempted_llm_requests_from_files']} | {c['total_tokens_reporting_calls']} | {c['observed_input_tokens']}/{c['observed_output_tokens']} | {average} |")
+    text += ["", "## Statistical significance and 95% bootstrap confidence intervals", "",
+        "| Condition | Final pass (95% CI) | Task pass rate (95% CI) | Baseline | McNemar p (compilation) | McNemar p (task pass) |",
+        "|---|---|---|---|---:|---:|"]
+    for c in data["conditions"]:
+        comp_ci = format_ci(c.get("compilation_ci"))
+        task_ci = format_ci(c.get("task_pass_ci"))
+        base = c.get("baseline_condition") or "--"
+        p_comp = format_p(c.get("mcnemar_compilation_p_value"))
+        p_task = format_p(c.get("mcnemar_task_pass_p_value"))
+        text.append(f"| {c['condition']} | {c['final_compiled_tasks']}/32 ({percentage(c['final_compilation_rate'])}) {comp_ci} | {c['passed_tasks']}/{c['fully_evaluated_tasks']} ({percentage(c['task_pass_rate'])}) {task_ci} | {base} | {p_comp} | {p_task} |")
     text += ["", "## Interpretation and limits", "",
         "- `agent_campaign_complete` means every planned task was attempted. It differs from `metrics.json`'s conservative `campaign_complete`, which requires a real compiler observation for every task; provider failures lower compiler coverage.",
         "- Attempt counts come from each active run's `llm_*/request.json`. The self harness's stored `llm_calls` increments after a successful response, whereas the baseline counts attempts. The request-file derivation makes the count comparable without editing historical rows.",
@@ -220,6 +251,19 @@ def render_latex(data):
         "\\midrule"]
     for c in data["conditions"]:
         text.append(f"{c['condition']} & {c['passed_cases']}/{c['evaluated_cases']} & {pct(c['case_pass_rate'])} & {c['evaluated_cases']}/81 & {c['passed_tasks']}/{c['fully_evaluated_tasks']} & {pct(c['task_pass_rate'])} & {c['fully_evaluated_tasks']}/32 " + row_end)
+    text += ["\\bottomrule", "\\end{tabular}", "\\end{table}", "",
+        "\\begin{table}[htbp]", "\\centering\\small", "\\setlength{\\tabcolsep}{4pt}",
+        "\\caption{Statistical significance and 95\\% percentile bootstrap confidence intervals against baseline.}",
+        "\\label{tab:significance}", "\\begin{tabular}{lrrrrr}", "\\toprule",
+        "Condition & Final pass (95\\% CI) & Task pass (95\\% CI) & Base & \\shortstack{McNemar $p$\\\\(compile)} & \\shortstack{McNemar $p$\\\\(task)} " + row_end,
+        "\\midrule"]
+    for c in data["conditions"]:
+        comp_ci = format_ci(c.get("compilation_ci")).replace("%", "\\%")
+        task_ci = format_ci(c.get("task_pass_ci")).replace("%", "\\%")
+        base = c.get("baseline_condition") or "--"
+        p_comp = format_p(c.get("mcnemar_compilation_p_value"))
+        p_task = format_p(c.get("mcnemar_task_pass_p_value"))
+        text.append(f"{c['condition']} & {pct(c['final_compilation_rate'])} {comp_ci} & {pct(c['task_pass_rate'])} {task_ci} & {base} & {p_comp} & {p_task} " + row_end)
     text += ["\\bottomrule", "\\end{tabular}", "\\end{table}", ""]
     return "\n".join(text)
 
@@ -329,6 +373,35 @@ def main():
                 s = summarize(subset, tasks, len(group_tasks))
                 group_rows.append({"condition": condition["id"], "dimension": dimension, "group": group,
                     **{key: s[key] for key in ("planned_tasks", "agent_attempted_tasks", "first_pass_compiled_tasks", "final_compiled_tasks", "actual_first_compilations", "first_pass_compilation_rate", "final_compilation_rate", "evaluated_cases", "passed_cases", "case_pass_rate", "fully_evaluated_tasks", "passed_tasks", "task_pass_rate")}})
+
+    by_cond_rows = {}
+    for row in rows:
+        by_cond_rows.setdefault(row["condition"], {})[row["task_id"]] = row
+
+    for c in conditions:
+        cid = c["condition"]
+        base_id = BASELINE_MAP.get(cid)
+        mcnemar_compile_p = None
+        mcnemar_task_p = None
+        if base_id and base_id in by_cond_rows and cid in by_cond_rows:
+            c_task_dict = by_cond_rows[cid]
+            b_task_dict = by_cond_rows[base_id]
+            shared_tids = set(c_task_dict.keys()) & set(b_task_dict.keys())
+            if shared_tids:
+                b_comp = sum(bool(c_task_dict[t]["final_compiled"]) and not bool(b_task_dict[t]["final_compiled"]) for t in shared_tids)
+                c_comp = sum(not bool(c_task_dict[t]["final_compiled"]) and bool(b_task_dict[t]["final_compiled"]) for t in shared_tids)
+                mcnemar_compile_p = mcnemar_exact(b_comp, c_comp)
+
+                def is_task_pass(r):
+                    f = r["functional"]
+                    return f["status"] == "PASS" and f["passed_cases"] == f["evaluated_cases"] == f["planned_cases"] > 0
+                b_pass = sum(is_task_pass(c_task_dict[t]) and not is_task_pass(b_task_dict[t]) for t in shared_tids)
+                c_pass = sum(not is_task_pass(c_task_dict[t]) and is_task_pass(b_task_dict[t]) for t in shared_tids)
+                mcnemar_task_p = mcnemar_exact(b_pass, c_pass)
+
+        c["baseline_condition"] = base_id
+        c["mcnemar_compilation_p_value"] = mcnemar_compile_p
+        c["mcnemar_task_pass_p_value"] = mcnemar_task_p
     issues = []
     task_rows, failures, diagnostic_rows, functional_failures = [], [], [], []
     for row in rows:

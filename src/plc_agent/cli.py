@@ -147,11 +147,40 @@ def main():
     for cmd in ("doctor", "validate-dataset", "compiler-smoke", "prepare", "aggregate"):
         sub.add_parser(cmd)
     probe = sub.add_parser("probe-models"); probe.add_argument("--tool-smoke", action="store_true")
-    run = sub.add_parser("run"); run.add_argument("--condition", choices=["E1", "E2", "E3", "E4", "all"], required=True)
-    run.add_argument("--task"); run.add_argument("--rerun", action="store_true")
-    test = sub.add_parser("test"); test.add_argument("--condition", choices=["E1", "E2", "E3", "E4", "all"], required=True)
-    test.add_argument("--task"); test.add_argument("--rerun", action="store_true")
-    imp = sub.add_parser("import-trace"); imp.add_argument("--condition", required=True); imp.add_argument("--task", required=True); imp.add_argument("--trace", required=True)
+    run = sub.add_parser("run")
+    run.add_argument("--condition", default="all", help="Condition ID or 'all'")
+    run.add_argument("--task", help="Optional single task ID")
+    run.add_argument("--rerun", action="store_true", help="Force rerun")
+    run.add_argument("--driver", default=None, help="Baseline driver (e.g. codex_cli, deepseek_harness, claude_code)")
+    run.add_argument("--spec-visible", dest="spec_visible", action="store_true", default=None, help="Make specifications visible")
+    run.add_argument("--spec-hidden", dest="spec_visible", action="store_false", help="Hide specifications")
+    run.add_argument("--ablation", default=None, help="Ablation type (no_planner, no_dialect, no_selftest)")
+
+    test = sub.add_parser("test")
+    test.add_argument("--condition", default="all", help="Condition ID or 'all'")
+    test.add_argument("--task", help="Optional single task ID")
+    test.add_argument("--rerun", action="store_true")
+
+    imp = sub.add_parser("import-trace")
+    imp.add_argument("--condition", required=True)
+    imp.add_argument("--task", required=True)
+    imp.add_argument("--trace", required=True)
+
+    exp_verify = sub.add_parser("export-verify")
+    exp_verify.add_argument("--task", required=True, help="Task ID (e.g. PUB001)")
+    exp_verify.add_argument("--candidate", required=True, help="Candidate source path (.json or .st)")
+    exp_verify.add_argument("--out-dir", required=True, help="Output directory for verification bundle")
+
+    imp_verify = sub.add_parser("import-verify")
+    imp_verify.add_argument("--bundle-dir", required=True, help="Verification bundle directory")
+    imp_verify.add_argument("--evidence", required=True, help="Verification evidence file")
+
+    rand_test = sub.add_parser("random-test")
+    rand_test.add_argument("--task", required=True, help="Task ID (e.g. PUB001)")
+    rand_test.add_argument("--seed", type=int, default=20261110, help="Random seed")
+    rand_test.add_argument("--num-cases", type=int, default=None, help="Number of random test cases")
+    rand_test.add_argument("--steps-per-case", type=int, default=None, help="Steps per random test case")
+    rand_test.add_argument("--out", default=None, help="Optional output JSON file")
     args = parser.parse_args()
     cfg = Settings.load(args.config, load_api=args.command in ("run", "probe-models"))
     tasks = load_tasks()
@@ -238,6 +267,29 @@ def main():
                     print(json.dumps(item), flush=True)
             summarize()
             result = {"functional_runs": len(outcomes)}
+        elif args.command == "export-verify":
+            from .formal_verify import export_verification_bundle
+            task = next((t for t in tasks if t["id"] == args.task), None)
+            if not task:
+                raise ValueError(f"Task {args.task} not found")
+            cand_path = Path(args.candidate)
+            if cand_path.suffix == ".json":
+                candidate_data = read_json(cand_path)
+            else:
+                candidate_data = cand_path.read_text(encoding="utf-8")
+            result = export_verification_bundle(task, candidate_data, Path(args.out_dir))
+        elif args.command == "import-verify":
+            from .formal_verify import import_verification_evidence
+            result = import_verification_evidence(Path(args.bundle_dir), Path(args.evidence))
+        elif args.command == "random-test":
+            from .random_testing import generate_random_cases
+            task = next((t for t in tasks if t["id"] == args.task), None)
+            if not task:
+                raise ValueError(f"Task {args.task} not found")
+            cases = generate_random_cases(task, seed=args.seed, num_cases=args.num_cases, steps_per_case=args.steps_per_case)
+            if args.out:
+                write_json(Path(args.out), cases)
+            result = {"task": task["id"], "cases_generated": len(cases), "seed": args.seed}
         else:
             require_compiler_preflight(cfg)
             if not cfg.api_key:
@@ -258,14 +310,14 @@ def main():
                     if old["status"] != "NOT_RUN" and not args.rerun:
                         continue
                     work = ROOT / "experiments" / condition["id"] / manifest["id"] / task["id"] / ("run_" + now().replace(":", "").replace(".", ""))
+                    spec_vis = args.spec_visible if args.spec_visible is not None else condition.get("spec_visible", True)
+                    ablation = args.ablation or condition.get("ablation")
                     if condition["framework"] == "self_harness":
-                        row = run_harness(task, condition["model"], work, ResponsesClient(cfg), cfg, condition["id"])
-                    elif condition["framework"] == "smolagents":
-                        from .smol_baseline import run_smolagents
-                        row = run_smolagents(task, condition["model"], work, cfg, condition["id"], client=ResponsesClient(cfg))
+                        row = run_harness(task, condition["model"], work, ResponsesClient(cfg), cfg, condition["id"], spec_visible=spec_vis, ablation=ablation)
                     else:
-                        from .baseline import run_codex
-                        row = run_codex(task, condition["model"], work, cfg, condition["id"], args.config)
+                        from .baseline import run_baseline
+                        driver = args.driver or condition.get("driver", "deepseek_harness")
+                        row = run_baseline(task, condition["model"], work, cfg, condition=condition["id"], driver=driver, client=ResponsesClient(cfg), spec_visible=spec_vis, config_path=args.config)
                     # Merge only the completed run pointer so concurrent condition workers
                     # never overwrite unrelated results from a stale manifest snapshot.
                     manifest = read_json(ROOT / "results/summary/campaign.json")
