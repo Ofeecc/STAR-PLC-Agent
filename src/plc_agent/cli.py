@@ -149,7 +149,7 @@ def main():
     probe = sub.add_parser("probe-models"); probe.add_argument("--tool-smoke", action="store_true")
     run = sub.add_parser("run")
     run.add_argument("--condition", default="all", help="Condition ID or 'all'")
-    run.add_argument("--task", help="Optional single task ID")
+    run.add_argument("--task", "--task-id", dest="task", help="Optional single task ID")
     run.add_argument("--rerun", action="store_true", help="Force rerun")
     run.add_argument("--driver", default=None, help="Baseline driver (e.g. codex_cli, deepseek_harness, claude_code)")
     run.add_argument("--spec-visible", dest="spec_visible", action="store_true", default=None, help="Make specifications visible")
@@ -158,25 +158,25 @@ def main():
 
     test = sub.add_parser("test")
     test.add_argument("--condition", default="all", help="Condition ID or 'all'")
-    test.add_argument("--task", help="Optional single task ID")
+    test.add_argument("--task", "--task-id", dest="task", help="Optional single task ID")
     test.add_argument("--rerun", action="store_true")
 
     imp = sub.add_parser("import-trace")
     imp.add_argument("--condition", required=True)
-    imp.add_argument("--task", required=True)
+    imp.add_argument("--task", "--task-id", dest="task", required=True)
     imp.add_argument("--trace", required=True)
 
     exp_verify = sub.add_parser("export-verify")
-    exp_verify.add_argument("--task", required=True, help="Task ID (e.g. PUB001)")
-    exp_verify.add_argument("--candidate", required=True, help="Candidate source path (.json or .st)")
-    exp_verify.add_argument("--out-dir", required=True, help="Output directory for verification bundle")
+    exp_verify.add_argument("--task", "--task-id", dest="task", required=True, help="Task ID (e.g. PUB001)")
+    exp_verify.add_argument("--candidate", default=None, help="Candidate source path (.json or .st)")
+    exp_verify.add_argument("--out-dir", default=None, help="Output directory for verification bundle")
 
     imp_verify = sub.add_parser("import-verify")
     imp_verify.add_argument("--bundle-dir", required=True, help="Verification bundle directory")
     imp_verify.add_argument("--evidence", required=True, help="Verification evidence file")
 
     rand_test = sub.add_parser("random-test")
-    rand_test.add_argument("--task", required=True, help="Task ID (e.g. PUB001)")
+    rand_test.add_argument("--task", "--task-id", dest="task", required=True, help="Task ID (e.g. PUB001)")
     rand_test.add_argument("--seed", type=int, default=20261110, help="Random seed")
     rand_test.add_argument("--num-cases", type=int, default=None, help="Number of random test cases")
     rand_test.add_argument("--steps-per-case", type=int, default=None, help="Steps per random test case")
@@ -277,12 +277,15 @@ def main():
             task = next((t for t in tasks if t["id"] == args.task), None)
             if not task:
                 raise ValueError(f"Task {args.task} not found")
-            cand_path = Path(args.candidate)
+            cand_path = Path(args.candidate) if args.candidate else (ROOT / f"codesys/examples/{args.task}.json")
+            if not cand_path.is_file():
+                cand_path = ROOT / f"codesys/examples/{args.task}.json"
             if cand_path.suffix == ".json":
                 candidate_data = read_json(cand_path)
             else:
                 candidate_data = cand_path.read_text(encoding="utf-8")
-            result = export_verification_bundle(task, candidate_data, Path(args.out_dir))
+            out_dir = Path(args.out_dir) if args.out_dir else (ROOT / "results/verification" / args.task)
+            result = export_verification_bundle(task, candidate_data, out_dir)
         elif args.command == "import-verify":
             from .formal_verify import import_verification_evidence
             result = import_verification_evidence(Path(args.bundle_dir), Path(args.evidence))

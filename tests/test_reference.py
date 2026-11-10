@@ -1,8 +1,14 @@
 """Manually fixed expected traces versus independent Python state machines."""
 import json
 from pathlib import Path
+import tempfile
 import unittest
+
+from plc_agent.backend import FakeBackend
+from plc_agent.compiler import normalize_candidate
+from plc_agent.dataset import load_tasks
 from plc_agent.reference import ReferenceController, evaluate_reference
+from plc_agent.simulation import build_program
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -17,6 +23,38 @@ class ReferenceTests(unittest.TestCase):
                 result = evaluate_reference(json.loads(path.read_text(encoding="utf-8")))
                 self.assertTrue(result["passed"], result)
                 self.assertEqual(result["evidence"], "PYTHON_REFERENCE_ONLY")
+
+    def test_all_sixteen_codesys_examples_normalize_and_pass_scan_contract_simulation(self):
+        example_files = sorted((ROOT / "codesys/examples").glob("*.json"))
+        self.assertEqual(len(example_files), 16)
+        expected_ids = {f"SELF{i:03d}" for i in range(1, 13)} | {"PUB006", "PUB007", "PUB017", "PUB018"}
+        self.assertEqual({f.stem for f in example_files}, expected_ids)
+
+        tasks = {t["id"]: t for t in load_tasks()}
+        backend = FakeBackend()
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            for path in example_files:
+                task_id = path.stem
+                with self.subTest(example=task_id):
+                    self.assertIn(task_id, tasks)
+                    task = tasks[task_id]
+                    raw_example = json.loads(path.read_text(encoding="utf-8"))
+
+                    normalized = normalize_candidate(raw_example)
+                    self.assertIn("declaration", normalized)
+                    self.assertIn("implementation", normalized)
+                    self.assertIsInstance(normalized["supporting_objects"], list)
+
+                    program = build_program(task)
+                    self.assertGreater(program["step_count"], 0)
+                    self.assertIn("PROGRAM PLC_PRG", program["declaration"])
+
+                    sim_res = backend.simulate(task, normalized, task["tests"], tmp_path)
+                    self.assertEqual(sim_res.status, "PASS", f"{task_id} failed: {sim_res}")
+                    self.assertEqual(sim_res.passed_cases, len(task["tests"]))
+                    self.assertEqual(len(sim_res.failures), 0)
 
     def test_rejects_unknown_tasks(self):
         with self.assertRaises(ValueError):
@@ -52,3 +90,4 @@ class ReferenceTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
