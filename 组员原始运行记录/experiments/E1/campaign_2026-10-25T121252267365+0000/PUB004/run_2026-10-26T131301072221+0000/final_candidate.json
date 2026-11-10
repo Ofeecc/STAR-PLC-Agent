@@ -1,5 +1,0 @@
-{
-  "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n  VISCOSITY_OK : BOOL;\n  PASTE_E_STOP_NC : BOOL;\n  DebounceTime : TIME;\n  CycleTime : TIME;\nEND_VAR\nVAR_OUTPUT\n  VFD_RUN : BOOL;\n  PUMP_MAINT_DUE : BOOL;\n  PUMP_RUNTIME_ACC : LTIME;\nEND_VAR\nVAR\n  debounceElapsed : LTIME;\n  prevPermit : BOOL;\n  permit : BOOL;\n  qualified : BOOL;\nEND_VAR",
-  "implementation": "permit := VISCOSITY_OK AND PASTE_E_STOP_NC;\n\nIF NOT permit THEN\n  debounceElapsed := LTIME#0ns;\n  prevPermit := FALSE;\nELSE\n  IF NOT prevPermit THEN\n    debounceElapsed := LTIME#0ns;\n    prevPermit := TRUE;\n  ELSE\n    debounceElapsed := debounceElapsed + TIME_TO_LTIME(CycleTime);\n  END_IF\nEND_IF\n\nqualified := permit AND (debounceElapsed >= TIME_TO_LTIME(DebounceTime));\n\nVFD_RUN := permit AND qualified;\n\nIF VFD_RUN THEN\n  PUMP_RUNTIME_ACC := PUMP_RUNTIME_ACC + TIME_TO_LTIME(CycleTime);\nEND_IF\n\nPUMP_MAINT_DUE := PUMP_RUNTIME_ACC >= LTIME#500h;",
-  "supporting_objects": []
-}
