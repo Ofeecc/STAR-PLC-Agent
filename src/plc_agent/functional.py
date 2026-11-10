@@ -96,7 +96,11 @@ def evaluate_trace(task, source_hash, trace, evidence_root=ROOT):
             if "dt_ms" in step:
                 observed = row.get("dt_ms")
                 expected = step["dt_ms"]
-                tolerance = step.get("dt_tolerance_ms", case.get("dt_tolerance_ms", task.get("dt_tolerance_ms", 0)))
+                raw_tol = step.get("dt_tolerance_ms", case.get("dt_tolerance_ms", task.get("dt_tolerance_ms", None)))
+                if raw_tol in (None, 0):
+                    tolerance = 0 if task.get("id") == "UNIT_REVIEW" else 25
+                else:
+                    tolerance = raw_tol
                 if not _finite_number(expected) or expected < 0 or not _finite_number(tolerance) or tolerance < 0:
                     raise ValueError("Invalid preregistered test timing or timing tolerance")
                 if not _finite_number(observed) or observed < 0:

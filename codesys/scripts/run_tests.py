@@ -55,6 +55,8 @@ def parse(raw, type_name):
         if len(value) >= 2 and value[0] == "'" and value[-1] == "'":
             value = value[1:-1]
         return value.replace("$N", "\n").replace("$R", "\r").replace("$'", "'").replace("$$", "$")
+    if typ in ("TIME", "LTIME"):
+        return text(raw).strip()
     if "#" in value:
         prefix, rest = value.split("#", 1)
         if prefix.upper() == typ:
@@ -175,12 +177,18 @@ try:
     require_sim()
     con.start()
     count = plan["step_count"]
-    result["final_controls"] = wait_controls(count, count, True, max(30.0, count * 0.2))
+    total_dt_ms = sum(s.get("dt_ms", 0) for s in plan.get("steps", []))
+    total_dt_seconds = total_dt_ms / 1000.0
+    timeout = max(30.0, total_dt_seconds * 1.5 + 10.0)
+    result["final_controls"] = wait_controls(count, count, True, max(timeout, count * 0.2))
     stop_if_running()
-    expressions = []
-    for index in range(count):
-        expressions += ["PLC_PRG.TraceIn%d[%d]" % (i, index) for i in range(len(plan["inputs"]))]
-        expressions += ["PLC_PRG.TraceOut%d[%d]" % (i, index) for i in range(len(plan["outputs"]))]
+    if plan.get("trace_expressions"):
+        expressions = plan["trace_expressions"]
+    else:
+        expressions = []
+        for index in range(count):
+            expressions += ["PLC_PRG.TraceIn%d[%d]" % (i, index) for i in range(len(plan["inputs"]))]
+            expressions += ["PLC_PRG.TraceOut%d[%d]" % (i, index) for i in range(len(plan["outputs"]))]
     raw = []
     for offset in range(0, len(expressions), 64):
         batch = expressions[offset:offset + 64]
@@ -189,16 +197,41 @@ try:
             raise RuntimeError("Incomplete simulator monitoring response")
         raw += [text(v) for v in values]
     result["raw_monitoring"] = dict(zip(expressions, raw))
-    position = 0
-    for index in range(count):
-        row = {"index": index, "inputs": {}, "outputs": {}}
-        for field in plan["inputs"]:
-            row["inputs"][field["name"]] = parse(raw[position], field["type"])
-            position += 1
-        for field in plan["outputs"]:
-            row["outputs"][field["name"]] = parse(raw[position], field["type"])
-            position += 1
-        result["observations"].append(row)
+    if plan.get("trace_mapping"):
+        def resolve_mapping_item(item, raw_map):
+            kind = item.get("kind")
+            if kind == "raw":
+                return item.get("value")
+            if kind == "scalar":
+                expr = item["expr"]
+                val = raw_map.get(expr)
+                return parse(val, item["type"])
+            if kind == "array":
+                return [resolve_mapping_item(elem, raw_map) for elem in item["elements"]]
+            if kind == "struct":
+                return dict((k, resolve_mapping_item(v, raw_map)) for k, v in item["fields"].items())
+            return None
+
+        for step_map in plan["trace_mapping"]:
+            row = {
+                "index": step_map["step_index"],
+                "inputs": dict((k, resolve_mapping_item(v, result["raw_monitoring"])) for k, v in step_map["inputs"].items()),
+                "outputs": dict((k, resolve_mapping_item(v, result["raw_monitoring"])) for k, v in step_map["outputs"].items())
+            }
+            if step_map.get("dt_expr") and step_map["dt_expr"] in result["raw_monitoring"]:
+                row["dt_ms"] = parse(result["raw_monitoring"][step_map["dt_expr"]], "UDINT")
+            result["observations"].append(row)
+    else:
+        position = 0
+        for index in range(count):
+            row = {"index": index, "inputs": {}, "outputs": {}}
+            for field in plan["inputs"]:
+                row["inputs"][field["name"]] = parse(raw[position], field["type"])
+                position += 1
+            for field in plan["outputs"]:
+                row["outputs"][field["name"]] = parse(raw[position], field["type"])
+                position += 1
+            result["observations"].append(row)
     result["execution_verified"] = True
     result["status"] = "PASS"
     project.save()
