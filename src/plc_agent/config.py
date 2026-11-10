@@ -9,6 +9,47 @@ from pathlib import Path
 from .common import ROOT, read_json
 
 
+def detect_codesys() -> tuple[str, str]:
+    """Scan standard Windows installation paths for CODESYS.exe and matching profiles."""
+    if os.name != "nt":
+        return "", ""
+    candidates = [
+        Path(r"C:\Program Files\CODESYS\CODESYS\Common\CODESYS.exe"),
+        Path(r"C:\Program Files (x86)\CODESYS\CODESYS\Common\CODESYS.exe"),
+        Path(r"D:\Codesys\CODESYS\Common\CODESYS.exe"),
+        Path(r"C:\Codesys\CODESYS\Common\CODESYS.exe"),
+    ]
+    for prog_dir in (Path(r"C:\Program Files"), Path(r"C:\Program Files (x86)"), Path(r"D:\Program Files")):
+        if prog_dir.is_dir():
+            try:
+                for d in prog_dir.glob("CODESYS*"):
+                    exe = d / "CODESYS" / "Common" / "CODESYS.exe"
+                    if exe.is_file() and exe not in candidates:
+                        candidates.append(exe)
+            except OSError:
+                pass
+
+    found_exe = ""
+    for c in candidates:
+        if c.is_file():
+            found_exe = str(c)
+            break
+
+    found_profile = ""
+    if found_exe:
+        common_dir = Path(found_exe).parent
+        for prof_dir in (common_dir.parent / "Profiles", common_dir.parent.parent / "Profiles"):
+            if prof_dir.is_dir():
+                try:
+                    profiles = sorted(prof_dir.glob("*.profile"), key=lambda p: p.stat().st_mtime, reverse=True)
+                    if profiles:
+                        found_profile = profiles[0].stem
+                        break
+                except OSError:
+                    pass
+    return found_exe, found_profile
+
+
 @dataclass
 class Settings:
     base_url: str = ""
@@ -37,18 +78,47 @@ class Settings:
 
     @classmethod
     def load(cls, config_path=None, load_api=True):
-        data = read_json(config_path) if config_path else {}
+        data = {}
+        target_path = None
+        if config_path:
+            p = Path(config_path)
+            if p.is_file():
+                target_path = p
+        if not target_path:
+            local_cfg = ROOT / "configs/runtime.local.json"
+            default_cfg = ROOT / "configs/runtime.json"
+            if local_cfg.is_file():
+                target_path = local_cfg
+            elif default_cfg.is_file():
+                target_path = default_cfg
+        if target_path and target_path.is_file():
+            data = read_json(target_path)
+
         values = {
             k: v
             for k, v in data.items()
             if k in cls.__dataclass_fields__ and k != "api_key"
         }
+
+        # Load environment variables from .env if present
+        env_file = ROOT / ".env"
+        if env_file.is_file():
+            for line in env_file.read_text(encoding="utf-8-sig").splitlines():
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    ek, ev = line.split("=", 1)
+                    ek = ek.strip()
+                    ev = ev.strip().strip("'\"")
+                    if ek and ek not in os.environ:
+                        os.environ[ek] = ev
+
         # Read only a private key and base URL. Never execute TOML/MCP snippets.
         key_path = os.environ.get("PLC_API_CONFIG", "")
         if not key_path:
-            candidate = ROOT.parent / "APIKEY相关.txt"
-            if candidate.is_file():
-                key_path = str(candidate)
+            for candidate in (ROOT / "APIKEY相关.txt", ROOT.parent / "APIKEY相关.txt"):
+                if candidate.is_file():
+                    key_path = str(candidate)
+                    break
         if key_path and load_api:
             content = Path(key_path).read_text(encoding="utf-8-sig")
             first = content.splitlines()[0].strip()
@@ -74,6 +144,29 @@ class Settings:
                 continue
             if os.environ.get(env):
                 values[field_name] = os.environ[env]
+
+        # Resolve template path: relative -> absolute, or fallback to repo bundled template
+        template = values.get("codesys_template", "")
+        bundled_template = ROOT / "codesys/templates/benchmark.project"
+        if template:
+            tp = Path(template)
+            if not tp.is_absolute():
+                values["codesys_template"] = str((ROOT / tp).resolve())
+            elif not tp.is_file() and bundled_template.is_file():
+                values["codesys_template"] = str(bundled_template.resolve())
+        elif bundled_template.is_file():
+            values["codesys_template"] = str(bundled_template.resolve())
+
+        # Auto-detect CODESYS on Windows if not configured or not found
+        if os.name == "nt":
+            exe_val = values.get("codesys_exe", "")
+            if not exe_val or not Path(exe_val).is_file():
+                detected_exe, detected_prof = detect_codesys()
+                if detected_exe:
+                    values["codesys_exe"] = detected_exe
+                if detected_prof and not values.get("codesys_profile"):
+                    values["codesys_profile"] = detected_prof
+
         return cls(**values)
 
     def compiler_ready(self):

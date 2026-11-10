@@ -5,6 +5,7 @@ import csv
 import hashlib
 import importlib.metadata
 import json
+import os
 import platform
 import shutil
 import subprocess
@@ -189,6 +190,19 @@ def main():
     web.add_argument("--host", default="127.0.0.1", help="Host interface to bind")
     web.add_argument("--port", type=int, default=8765, help="Port to listen on")
     web.add_argument("--config", default=str(ROOT / "configs/runtime.json"), help="Config file path")
+
+    cfg_p = sub.add_parser("configure", help="Configure local CODESYS paths and API credentials")
+    cfg_p.add_argument("--codesys-exe", default=None, help="Path to CODESYS.exe")
+    cfg_p.add_argument("--profile", default=None, help="CODESYS profile string (e.g. 'CODESYS V3.5 SP19')")
+    cfg_p.add_argument("--template", default=None, help="CODESYS template project path")
+    cfg_p.add_argument("--base-url", default=None, help="LLM API Base URL")
+    cfg_p.add_argument("--api-key", default=None, help="LLM API Key")
+    cfg_p.add_argument("--save-global", action="store_true", help="Save to runtime.json instead of runtime.local.json")
+
+    ref_p = sub.add_parser("test-reference", help="Compile and simulate reference ST solution offline (0 API tokens)")
+    ref_p.add_argument("--task", "--task-id", dest="task", default="SELF001", help="Task ID (default: SELF001)")
+    ref_p.add_argument("--backend", choices=["auto", "codesys", "fake"], default="auto", help="Execution backend")
+    ref_p.add_argument("--out-dir", default=None, help="Output directory for test evidence")
     args = parser.parse_args()
     cfg = Settings.load(args.config, load_api=args.command in ("run", "probe-models"))
     tasks = load_tasks()
@@ -305,6 +319,94 @@ def main():
             from .webui import serve_webui
             serve_webui(args.host, args.port, cfg)
             return 0
+        elif args.command == "configure":
+            from .config import detect_codesys
+            if args.config and args.config != str(ROOT / "configs/runtime.json"):
+                target = Path(args.config)
+            else:
+                target = ROOT / ("configs/runtime.json" if args.save_global else "configs/runtime.local.json")
+            default_path = ROOT / "configs/runtime.json"
+            current = (
+                read_json(target)
+                if target.is_file()
+                else (read_json(default_path) if default_path.is_file() else {})
+            )
+            if args.codesys_exe:
+                current["codesys_exe"] = args.codesys_exe
+            elif os.name == "nt" and (not current.get("codesys_exe") or not Path(current["codesys_exe"]).is_file()):
+                found_exe, found_prof = detect_codesys()
+                if found_exe:
+                    current["codesys_exe"] = found_exe
+                    if found_prof and not args.profile and not current.get("codesys_profile"):
+                        current["codesys_profile"] = found_prof
+            if args.profile:
+                current["codesys_profile"] = args.profile
+            if args.template:
+                current["codesys_template"] = args.template
+            elif "codesys_template" not in current or not Path(current.get("codesys_template", "")).is_file():
+                current["codesys_template"] = "codesys/templates/benchmark.project"
+            if args.base_url:
+                current["base_url"] = args.base_url
+            write_json(target, current)
+            updated_cfg = Settings.load(target)
+            saved_str = str(target.relative_to(ROOT)) if target.is_relative_to(ROOT) else str(target)
+            result = {
+                "saved_to": saved_str,
+                "codesys_exe": updated_cfg.codesys_exe,
+                "codesys_profile": updated_cfg.codesys_profile,
+                "codesys_template": updated_cfg.codesys_template,
+                "compiler_ready": len(updated_cfg.compiler_ready()) == 0,
+                "compiler_missing": updated_cfg.compiler_ready(),
+            }
+        elif args.command == "test-reference":
+            from .backend import CodesysBackend, FakeBackend
+            task = next((t for t in tasks if t["id"] == args.task), None)
+            if not task:
+                raise ValueError(f"Task {args.task} not found")
+            example_file = ROOT / "codesys/examples" / f"{args.task}.json"
+            if not example_file.is_file():
+                avail = [p.stem for p in sorted((ROOT / "codesys/examples").glob("*.json"))]
+                raise ValueError(f"No reference ST found for {args.task}. Available: {', '.join(avail)}")
+            candidate = read_json(example_file)
+            use_codesys = (args.backend == "codesys") or (args.backend == "auto" and not cfg.compiler_ready())
+            b_name = "CodesysBackend" if use_codesys else "FakeBackend"
+            backend = CodesysBackend(cfg) if use_codesys else FakeBackend()
+            ws = Path(args.out_dir) if args.out_dir else (ROOT / "results/raw/test_reference" / args.task)
+            ws.mkdir(parents=True, exist_ok=True)
+            print(f"[{b_name}] Step 1: Compiling reference candidate for {args.task} ...", flush=True)
+            comp_res = backend.compile(task, candidate, ws / "compile")
+            compile_ok = comp_res.status == "PASS"
+            print(f"[{b_name}] Compile Status: {comp_res.status}", flush=True)
+            sim_status = "NOT_RUN"
+            passed_cases, total_cases = 0, len(task.get("tests", []))
+            failures_summary = []
+            if compile_ok:
+                print(f"[{b_name}] Step 2: Simulating candidate against {total_cases} test cases ...", flush=True)
+                sim_res = backend.simulate(task, candidate, task.get("tests", []), ws / "simulate")
+                sim_status = sim_res.status
+                passed_cases = sim_res.passed_cases
+                total_cases = sim_res.evaluated_cases
+                for f in sim_res.failures[:3]:
+                    failures_summary.append({
+                        "case_id": f.case_id,
+                        "bad_step": f.first_bad_step,
+                        "field": f.field,
+                        "expected": f.expected,
+                        "observed": f.observed,
+                    })
+                print(f"[{b_name}] Simulation Status: {sim_status} ({passed_cases}/{total_cases} cases passed)", flush=True)
+            ws_str = str(ws.relative_to(ROOT)) if ws.is_relative_to(ROOT) else str(ws)
+            result = {
+                "task": args.task,
+                "backend": b_name,
+                "compile_status": comp_res.status,
+                "simulation_status": sim_status,
+                "passed_cases": passed_cases,
+                "total_cases": total_cases,
+                "failures": failures_summary,
+                "passed": compile_ok and sim_status == "PASS",
+                "workspace": ws_str,
+            }
         else:
             require_compiler_preflight(cfg)
             if not cfg.api_key:

@@ -36,6 +36,16 @@ Run test suite:
 uv run --no-sync python -m unittest discover -s tests -v
 ```
 
+## Windows + CODESYS Field Testing Guide
+
+For teammates conducting physical machine tests on Windows with CODESYS installed:
+- 📖 **Comprehensive Step-by-Step Guide**: [docs/windows_field_test_guide.md](docs/windows_field_test_guide.md)
+- 🚀 **One-Click Preflight & Offline Verification**:
+  ```powershell
+  powershell -ExecutionPolicy Bypass -File scripts\windows_verify.ps1
+  ```
+  Automatically detects CODESYS paths, runs compiler smoke tests, and executes offline simulation verification with **0 API token cost**.
+
 ## Quick Start CLI Workflows
 
 All operational tasks are unified under the `plc-agent` CLI:
