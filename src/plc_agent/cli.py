@@ -181,6 +181,11 @@ def main():
     rand_test.add_argument("--num-cases", type=int, default=None, help="Number of random test cases")
     rand_test.add_argument("--steps-per-case", type=int, default=None, help="Steps per random test case")
     rand_test.add_argument("--out", default=None, help="Optional output JSON file")
+
+    web = sub.add_parser("web", help="Launch interactive Auto-Test & Trace Inspector WebUI")
+    web.add_argument("--host", default="127.0.0.1", help="Host interface to bind")
+    web.add_argument("--port", type=int, default=8765, help="Port to listen on")
+    web.add_argument("--config", default=str(ROOT / "configs/runtime.json"), help="Config file path")
     args = parser.parse_args()
     cfg = Settings.load(args.config, load_api=args.command in ("run", "probe-models"))
     tasks = load_tasks()
@@ -290,6 +295,10 @@ def main():
             if args.out:
                 write_json(Path(args.out), cases)
             result = {"task": task["id"], "cases_generated": len(cases), "seed": args.seed}
+        elif args.command == "web":
+            from .webui import serve_webui
+            serve_webui(args.host, args.port, cfg)
+            return 0
         else:
             require_compiler_preflight(cfg)
             if not cfg.api_key:
