@@ -1,16 +1,19 @@
 from __future__ import annotations
 
-import copy
-from dataclasses import asdict
 import json
-from pathlib import Path
 import re
 import time
+from dataclasses import asdict
+from pathlib import Path
 from typing import Any
 
-from .backend import Backend, CodesysBackend, FakeBackend, SimCaseFailure, SimResult
+from .backend import Backend, CodesysBackend
 from .common import digest, now, write_json
-from .compiler import CompileResult, actionable_diagnostics, compile_st, normalize_candidate
+from .compiler import (
+    CompileResult,
+    compile_st,
+    normalize_candidate,
+)
 from .config import Settings
 from .dialect_cards import select_dialect_cards
 from .llm import ProviderError, parse_candidate
@@ -48,7 +51,9 @@ def task_prompt(task: dict) -> str:
     return json.dumps(task, ensure_ascii=False, indent=2)
 
 
-def empty_result(task: dict, condition: str, model: str, framework: str, reason: str | None = None) -> dict:
+def empty_result(
+    task: dict, condition: str, model: str, framework: str, reason: str | None = None
+) -> dict:
     return {
         "schema_version": 1,
         "task_id": task["id"],
@@ -161,7 +166,9 @@ def compact_diagnostics(
                     line_num = None
 
         if col_num is None and pos_str:
-            col_match = re.search(r"\bCol(?:umn)?\s*[:#]?\s*(-?\d+)", pos_str, re.IGNORECASE)
+            col_match = re.search(
+                r"\bCol(?:umn)?\s*[:#]?\s*(-?\d+)", pos_str, re.IGNORECASE
+            )
             if col_match:
                 try:
                     col_num = int(col_match.group(1))
@@ -189,7 +196,13 @@ def compact_diagnostics(
             is_decl = (
                 "declaration" in text.lower()
                 or "declaration" in str(diag.get("category", "")).lower()
-                or bool(re.search(r"\b(var_input|var_output|var_in_out|var_temp|var_stat)\b", text, re.I))
+                or bool(
+                    re.search(
+                        r"\b(var_input|var_output|var_in_out|var_temp|var_stat)\b",
+                        text,
+                        re.IGNORECASE,
+                    )
+                )
             )
 
             if is_decl and 1 <= line_num <= len(decl_lines):
@@ -227,7 +240,9 @@ def compact_diagnostics(
 
 
 class _HarnessCodesysBackend(CodesysBackend):
-    def compile(self, task: dict, candidate: dict | str, workspace: Path) -> CompileResult:
+    def compile(
+        self, task: dict, candidate: dict | str, workspace: Path
+    ) -> CompileResult:
         ws = Path(workspace)
         return compile_st(task, candidate, ws, self.settings)
 
@@ -305,7 +320,10 @@ def run_harness(
         plan: dict = {}
         if ablation != "no_planner":
             if is_timed_out():
-                result["status"], result["reason"] = "TIMEOUT", "Task deadline exhausted before planner"
+                result["status"], result["reason"] = (
+                    "TIMEOUT",
+                    "Task deadline exhausted before planner",
+                )
                 return result
             if result["llm_calls"] < settings.max_llm_calls:
                 planner_prompt = (
@@ -317,7 +335,10 @@ def run_harness(
                     f"SPECIFICATIONS:\n{json.dumps(view, indent=2)}"
                 )
                 planner_messages = [
-                    {"role": "developer", "content": "You are a senior PLC control systems architect. Return ONLY valid JSON."},
+                    {
+                        "role": "developer",
+                        "content": "You are a senior PLC control systems architect. Return ONLY valid JSON.",
+                    },
                     {"role": "user", "content": planner_prompt},
                 ]
                 reply = client.respond(
@@ -357,11 +378,17 @@ def run_harness(
         )
 
         if is_timed_out():
-            result["status"], result["reason"] = "TIMEOUT", "Task deadline exhausted before coding"
+            result["status"], result["reason"] = (
+                "TIMEOUT",
+                "Task deadline exhausted before coding",
+            )
             return result
 
         if result["llm_calls"] >= settings.max_llm_calls:
-            result["status"], result["reason"] = "BUDGET_EXHAUSTED", "LLM call limit reached"
+            result["status"], result["reason"] = (
+                "BUDGET_EXHAUSTED",
+                "LLM call limit reached",
+            )
             return result
 
         messages = [
@@ -382,7 +409,10 @@ def run_harness(
         write_json(workspace / "version_00.json", candidate)
 
         if is_timed_out():
-            result["status"], result["reason"] = "TIMEOUT", "Task deadline exhausted after generation"
+            result["status"], result["reason"] = (
+                "TIMEOUT",
+                "Task deadline exhausted after generation",
+            )
             return result
 
         compiled = backend.compile(task, candidate, workspace / "compile_00")
@@ -401,7 +431,10 @@ def run_harness(
         attempt = 0
         while not compiled.success and attempt < settings.max_repairs:
             if is_timed_out():
-                result["status"], result["reason"] = "TIMEOUT", "Task deadline exhausted during compile repair"
+                result["status"], result["reason"] = (
+                    "TIMEOUT",
+                    "Task deadline exhausted during compile repair",
+                )
                 break
             if result["llm_calls"] >= settings.max_llm_calls:
                 break
@@ -454,16 +487,21 @@ def run_harness(
                 new_hash = digest(normalize_candidate(candidate))
             except Exception:
                 new_hash = digest(str(candidate))
-            stagnation_detected = (new_hash in previous_hashes)
+            stagnation_detected = new_hash in previous_hashes
             previous_hashes.append(new_hash)
 
-            compiled = backend.compile(task, candidate, workspace / f"compile_{attempt:02d}")
+            compiled = backend.compile(
+                task, candidate, workspace / f"compile_{attempt:02d}"
+            )
             result["tool_call_count"] += 1
             result["compiler_call_count"] += 1
             result["compilation_attempts"].append(asdict(compiled))
 
             if compiled.status in ("TOOL_ERROR", "TIMEOUT"):
-                result["status"], result["reason"] = compiled.status, compiled.infrastructure_error
+                result["status"], result["reason"] = (
+                    compiled.status,
+                    compiled.infrastructure_error,
+                )
                 break
 
         result["final_compiled"] = compiled.success
@@ -478,7 +516,9 @@ def run_harness(
             return result
 
         result["status"] = "UNVERIFIED"
-        result["reason"] = "CODESYS compiled; PLC functional execution remains to be evaluated"
+        result["reason"] = (
+            "CODESYS compiled; PLC functional execution remains to be evaluated"
+        )
 
         # Step 4: Independent Tester (Self-Tests)
         valid_cases: list[dict] = []
@@ -495,7 +535,10 @@ def run_harness(
                     f"TASK SPECIFICATIONS:\n{json.dumps(view, indent=2)}"
                 )
                 tester_messages = [
-                    {"role": "developer", "content": "You are an independent PLC verification engineer. Return ONLY a JSON list of test cases."},
+                    {
+                        "role": "developer",
+                        "content": "You are an independent PLC verification engineer. Return ONLY a JSON list of test cases.",
+                    },
                     {"role": "user", "content": tester_prompt},
                 ]
                 reply = client.respond(
@@ -528,12 +571,17 @@ def run_harness(
             sim_attempt = 0
             while sim_attempt < settings.max_simulations:
                 if is_timed_out():
-                    result["status"], result["reason"] = "TIMEOUT", "Task deadline exhausted during simulation"
+                    result["status"], result["reason"] = (
+                        "TIMEOUT",
+                        "Task deadline exhausted during simulation",
+                    )
                     break
                 if result["simulation_call_count"] >= settings.max_simulations:
                     break
 
-                sim = backend.simulate(task, candidate, active_cases, workspace / f"sim_{sim_attempt:02d}")
+                sim = backend.simulate(
+                    task, candidate, active_cases, workspace / f"sim_{sim_attempt:02d}"
+                )
                 result["tool_call_count"] += 1
                 result["simulation_call_count"] += 1
                 sim_attempt += 1
@@ -548,20 +596,26 @@ def run_harness(
                     result["reason"] = "All active self-tests passed"
                     break
 
-                if sim_attempt >= settings.max_simulations or result["llm_calls"] >= settings.max_llm_calls or is_timed_out():
+                if (
+                    sim_attempt >= settings.max_simulations
+                    or result["llm_calls"] >= settings.max_llm_calls
+                    or is_timed_out()
+                ):
                     break
 
                 # Format failures for model
                 failures_summary = []
                 for f in sim.failures:
-                    failures_summary.append({
-                        "case_id": f.case_id,
-                        "first_bad_step": f.first_bad_step,
-                        "field": f.field,
-                        "expected": f.expected,
-                        "observed": f.observed,
-                        "inputs_prefix": f.inputs_prefix,
-                    })
+                    failures_summary.append(
+                        {
+                            "case_id": f.case_id,
+                            "first_bad_step": f.first_bad_step,
+                            "field": f.field,
+                            "expected": f.expected,
+                            "observed": f.observed,
+                            "inputs_prefix": f.inputs_prefix,
+                        }
+                    )
 
                 remaining_rejections = max_rejections - len(rejected_case_ids)
                 sim_repair_prompt = (
@@ -596,18 +650,25 @@ def run_harness(
                 # Check for reject_cases
                 try:
                     parsed_reply = safe_extract_json(reply_text)
-                    if isinstance(parsed_reply, dict) and "reject_cases" in parsed_reply:
+                    if (
+                        isinstance(parsed_reply, dict)
+                        and "reject_cases" in parsed_reply
+                    ):
                         for rej in parsed_reply["reject_cases"]:
                             if isinstance(rej, dict) and "id" in rej:
                                 rej_id = rej["id"]
-                                if rej_id not in rejected_case_ids and rej_id in {c["id"] for c in valid_cases}:
+                                if rej_id not in rejected_case_ids and rej_id in {
+                                    c["id"] for c in valid_cases
+                                }:
                                     if len(rejected_case_ids) < max_rejections:
                                         rejected_case_ids.add(rej_id)
                                         result["selftest_rejected"].append(rej)
                 except Exception:
                     pass
 
-                active_cases = [c for c in valid_cases if c["id"] not in rejected_case_ids]
+                active_cases = [
+                    c for c in valid_cases if c["id"] not in rejected_case_ids
+                ]
 
                 # Parse new candidate
                 try:
@@ -644,22 +705,32 @@ def run_harness(
                     result["reason"] = "All active self-tests passed"
                 else:
                     result["status"] = "TEST_FAIL"
-                    result["reason"] = f"Passed {best_score[1]} of {len(active_cases)} active self-tests"
+                    result["reason"] = (
+                        f"Passed {best_score[1]} of {len(active_cases)} active self-tests"
+                    )
         else:
             result["final_candidate"] = best_candidate
 
     except ProviderError as exc:
         result["status"], result["reason"] = "TOOL_ERROR", str(exc)
     except OSError as exc:
-        result["status"], result["reason"] = "TOOL_ERROR", "Local infrastructure: " + str(exc)
+        result["status"], result["reason"] = (
+            "TOOL_ERROR",
+            "Local infrastructure: " + str(exc),
+        )
     except (ValueError, TypeError, KeyError) as exc:
-        result["status"], result["reason"] = "UNVERIFIED", "Invalid model output: " + str(exc)
+        result["status"], result["reason"] = (
+            "UNVERIFIED",
+            "Invalid model output: " + str(exc),
+        )
     finally:
         result["elapsed_seconds"] = time.monotonic() - started
         result["finished_utc"] = now()
         if result.get("final_candidate") is not None:
             try:
-                write_json(workspace / "final_candidate.json", result["final_candidate"])
+                write_json(
+                    workspace / "final_candidate.json", result["final_candidate"]
+                )
             except Exception:
                 pass
         try:

@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import argparse
 import csv
 import hashlib
@@ -10,13 +11,15 @@ import subprocess
 import sys
 from dataclasses import asdict
 from pathlib import Path
-from .common import ROOT, digest, now, read_json, write_json, artifact_path
+
+from .common import ROOT, artifact_path, digest, now, read_json, write_json
+from .compiler import compile_st, verify_evidence
 from .config import Settings
 from .dataset import load_tasks, public_coverage, validate
 from .harness import empty_result, run_harness
-from .llm import ResponsesClient, ProviderError
-from .compiler import compile_st, verify_evidence
+from .llm import ProviderError, ResponsesClient
 from .metrics import aggregate, audit_records
+
 
 def doctor(cfg):
     packages = {}

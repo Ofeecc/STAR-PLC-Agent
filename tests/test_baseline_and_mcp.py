@@ -3,16 +3,14 @@ from __future__ import annotations
 
 import copy
 import json
-from pathlib import Path
 import tempfile
 import unittest
+from pathlib import Path
 
-from plc_agent.backend import FakeBackend, SimCaseFailure, SimResult
+from plc_agent.backend import FakeBackend
 from plc_agent.baseline import run_baseline
-from plc_agent.compiler import CompileResult
 from plc_agent.config import Settings
 from plc_agent.mcp_server import dispatch
-
 
 SAMPLE_TASK = {
     "id": "TASK_TEST",

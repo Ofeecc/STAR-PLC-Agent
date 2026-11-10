@@ -4,6 +4,7 @@ Synthetic artifacts in this module are not CODESYS execution evidence and are
 never written under the benchmark results directory.
 """
 from __future__ import annotations
+
 import tempfile
 import unittest
 from pathlib import Path

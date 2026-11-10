@@ -1,10 +1,10 @@
 import json
-from pathlib import Path
 import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
-from plc_agent.backend import Backend, CodesysBackend, FakeBackend, SimCaseFailure, SimResult
+from plc_agent.backend import Backend, CodesysBackend, FakeBackend
 from plc_agent.compiler import CompileResult
 from plc_agent.config import Settings
 from plc_agent.dataset import load_tasks

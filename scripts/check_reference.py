@@ -6,14 +6,15 @@ the Python reference model and selected properties; it does not implement an
 LTL model checker and does not prove that any generated ST obeys the properties.
 """
 from __future__ import annotations
-from collections import deque
-from copy import deepcopy
+
 import itertools
 import json
-from pathlib import Path
 import platform
 import sys
+from collections import deque
+from copy import deepcopy
 from datetime import datetime, timezone
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))

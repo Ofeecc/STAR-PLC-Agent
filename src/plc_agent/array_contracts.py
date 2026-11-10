@@ -1,6 +1,7 @@
 """Ordinal-array scan contracts. Physical bounds remain runtime-adapter metadata."""
-from copy import deepcopy
 import math
+from copy import deepcopy
+
 from .data_contracts import finite
 
 SUPPORTED_ARRAY={'PUB007','PUB008'}

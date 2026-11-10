@@ -1,6 +1,9 @@
 from __future__ import annotations
+
 from collections import Counter
-from .common import ROOT, read_json, digest
+
+from .common import ROOT, digest, read_json
+
 
 def load_tasks(root=ROOT):
     files = sorted((root / "dataset/public").glob("PUB*.json")) + sorted((root / "dataset/self_built").glob("SELF*.json"))

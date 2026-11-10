@@ -8,19 +8,19 @@ requested with --allow-incomplete. A snapshot always records completeness.
 from __future__ import annotations
 
 import argparse
-from collections import Counter
 import csv
-from datetime import datetime, timezone
 import hashlib
 import json
-from pathlib import Path
 import statistics
 import sys
+from collections import Counter
+from datetime import datetime, timezone
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
+from plc_agent.metrics import BASELINE_MAP, bootstrap_ci, mcnemar_exact
 from plc_agent.simulation import eligibility
-from plc_agent.metrics import mcnemar_exact, bootstrap_ci, BASELINE_MAP
 
 
 def read(path):
@@ -196,7 +196,7 @@ def render_markdown(data):
     text = ["# Recalculated experiment results", "", f"Snapshot: {data['generated_utc']}. Campaign `{data['campaign']}`.", "",
         "Agent-run coverage: " + ("all 128 planned runs were attempted." if complete else "INCOMPLETE; this is a provisional snapshot."), "",
         "All compilation rates use the fixed denominator of 32 tasks per condition, including transport failures. Functional rates use only actually evaluated CODESYS cases or tasks; their coverage is shown separately. Compilation is a syntax/type/build measurement, not proof of task correctness.", "",
-        "| Condition | Framework | Relay model ID | Agent attempted | First compile | Final compile | Compiler evaluated |", 
+        "| Condition | Framework | Relay model ID | Agent attempted | First compile | Final compile | Compiler evaluated |",
         "|---|---|---|---:|---:|---:|---:|"]
     for c in data["conditions"]:
         text.append(f"| {c['condition']} | {c['framework']} | `{c['model']}` | {c['agent_attempted_tasks']}/32 | {c['first_pass_compiled_tasks']}/32 ({percentage(c['first_pass_compilation_rate'])}) | {c['final_compiled_tasks']}/32 ({percentage(c['final_compilation_rate'])}) | {c['actual_first_compilations']}/32 |")
@@ -289,8 +289,8 @@ def make_plots(data, rows, output):
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
-    from matplotlib.ticker import PercentFormatter, MaxNLocator
     import numpy as np
+    from matplotlib.ticker import MaxNLocator, PercentFormatter
     output.mkdir(parents=True, exist_ok=True)
     plt.rcParams.update({"font.family": "DejaVu Sans", "font.size": 10,
         "axes.spines.top": False, "axes.spines.right": False, "axes.titleweight": "bold",

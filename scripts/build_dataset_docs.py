@@ -1,5 +1,6 @@
 """Render deterministic human-readable dataset documentation, not experiment results."""
 from __future__ import annotations
+
 import json
 from pathlib import Path
 

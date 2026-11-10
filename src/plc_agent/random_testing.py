@@ -1,7 +1,9 @@
 """Seed-deterministic random differential test generator for all 32 tasks."""
 from __future__ import annotations
+
 import random
 from typing import Any
+
 from .scan_contract import ScanContract, check_contract_trace
 
 TIMED_TASKS = {'PUB004', 'PUB005', 'PUB006', 'PUB010', 'PUB012', 'PUB013'}

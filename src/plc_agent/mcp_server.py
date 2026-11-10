@@ -5,10 +5,10 @@ Stdout is exclusively JSON-RPC. No API key is needed by this process.
 from __future__ import annotations
 
 import argparse
-from dataclasses import asdict, is_dataclass
 import json
-from pathlib import Path
 import sys
+from dataclasses import asdict, is_dataclass
+from pathlib import Path
 
 from .common import read_json, write_json
 from .compiler import compile_st

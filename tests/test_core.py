@@ -1,19 +1,21 @@
 """Offline boundary tests. Synthetic evidence here is never benchmark evidence."""
 from __future__ import annotations
-import copy
+
 import json
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
+
 from plc_agent.common import digest, redact
-from plc_agent.compiler import normalize_candidate, verify_evidence, compile_st
+from plc_agent.compiler import compile_st, normalize_candidate, verify_evidence
 from plc_agent.config import Settings
 from plc_agent.dataset import load_tasks, validate
 from plc_agent.functional import equal, evaluate_trace
 from plc_agent.harness import empty_result, run_harness
-from plc_agent.metrics import aggregate, audit_records
 from plc_agent.mcp_server import dispatch
+from plc_agent.metrics import aggregate, audit_records
+
 
 class CoreTests(unittest.TestCase):
     def test_complete_dataset(self):

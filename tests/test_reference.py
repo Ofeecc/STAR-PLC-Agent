@@ -1,15 +1,14 @@
 """Manually fixed expected traces versus independent Python state machines."""
 import json
-from pathlib import Path
 import tempfile
 import unittest
+from pathlib import Path
 
 from plc_agent.backend import FakeBackend
 from plc_agent.compiler import normalize_candidate
 from plc_agent.dataset import load_tasks
 from plc_agent.reference import ReferenceController, evaluate_reference
 from plc_agent.simulation import build_program
-
 
 ROOT = Path(__file__).resolve().parents[1]
 

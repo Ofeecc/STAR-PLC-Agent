@@ -1,6 +1,8 @@
 import unittest
+
 from plc_agent.dataset import load_tasks
-from plc_agent.scan_contract import ScanContract,check_contract_trace
+from plc_agent.scan_contract import ScanContract, check_contract_trace
+
 
 class ProcessContractTests(unittest.TestCase):
     def defaults(self,tid):

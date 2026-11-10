@@ -10,14 +10,14 @@ import hashlib
 import io
 import json
 import os
-from pathlib import Path
 import re
 import shutil
 import struct
 import subprocess
 import sys
-from typing import Any
 import zipfile
+from pathlib import Path
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))

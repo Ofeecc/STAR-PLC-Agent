@@ -1,7 +1,9 @@
 import unittest
-from plc_agent.scan_contract import ScanContract,check_contract_trace
-from plc_agent.timed_contracts import duration_ns
+
 from plc_agent.functional import outputs_equal
+from plc_agent.scan_contract import ScanContract, check_contract_trace
+from plc_agent.timed_contracts import duration_ns
+
 
 class TimedContractTests(unittest.TestCase):
     def test_startup_must_not_credit_gap_during_inhibition(self):

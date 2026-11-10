@@ -1,8 +1,9 @@
 """Record a transparent pre-benchmark baseline substitution, preserving setup runs."""
-from pathlib import Path
 import sys
+from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from plc_agent.common import ROOT, read_json, write_json, now
+from plc_agent.common import ROOT, now, read_json, write_json
 from plc_agent.dataset import load_tasks
 from plc_agent.harness import empty_result
 

@@ -2,9 +2,7 @@ import json
 import threading
 import time
 import unittest
-from pathlib import Path
-from urllib.error import HTTPError
-from urllib.request import Request, urlopen
+from urllib.request import urlopen
 
 from plc_agent.backend import CompileResult, FakeBackend
 from plc_agent.config import Settings
@@ -219,8 +217,8 @@ class WebUITests(unittest.TestCase):
         server_thread.join(timeout=2)
 
     def test_cli_web_subcommand_parser(self):
-        import argparse
         from unittest.mock import patch
+
         from plc_agent import cli
 
         test_argv = ["plc-agent", "web", "--host", "0.0.0.0", "--port", "9999"]

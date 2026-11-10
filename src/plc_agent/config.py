@@ -1,10 +1,13 @@
 from __future__ import annotations
+
 import os
 import re
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
+
 from .common import ROOT, read_json
+
 
 @dataclass
 class Settings:
@@ -35,7 +38,11 @@ class Settings:
     @classmethod
     def load(cls, config_path=None, load_api=True):
         data = read_json(config_path) if config_path else {}
-        values = {k: v for k, v in data.items() if k in cls.__dataclass_fields__ and k != "api_key"}
+        values = {
+            k: v
+            for k, v in data.items()
+            if k in cls.__dataclass_fields__ and k != "api_key"
+        }
         # Read only a private key and base URL. Never execute TOML/MCP snippets.
         key_path = os.environ.get("PLC_API_CONFIG", "")
         if not key_path:
@@ -53,11 +60,15 @@ class Settings:
             url = re.search(r'base_url\s*=\s*["\x27](https://[^"\x27]+)', content)
             if url:
                 values.setdefault("base_url", url.group(1).rstrip("/"))
-        mapping = {"PLC_API_BASE_URL": "base_url", "PLC_LLM_API_KEY": "api_key",
-                   "PLC_CODESYS_EXE": "codesys_exe", "PLC_CODESYS_PROFILE": "codesys_profile",
-                   "PLC_CODESYS_TEMPLATE": "codesys_template",
-                   "PLC_CODESYS_ADDITIONAL_FOLDER": "additional_folder",
-                   "PLC_ASCII_WORK_ROOT": "ascii_work_root"}
+        mapping = {
+            "PLC_API_BASE_URL": "base_url",
+            "PLC_LLM_API_KEY": "api_key",
+            "PLC_CODESYS_EXE": "codesys_exe",
+            "PLC_CODESYS_PROFILE": "codesys_profile",
+            "PLC_CODESYS_TEMPLATE": "codesys_template",
+            "PLC_CODESYS_ADDITIONAL_FOLDER": "additional_folder",
+            "PLC_ASCII_WORK_ROOT": "ascii_work_root",
+        }
         for env, field_name in mapping.items():
             if not load_api and field_name in ("api_key", "base_url"):
                 continue

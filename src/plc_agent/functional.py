@@ -1,8 +1,11 @@
 from __future__ import annotations
-import math
+
 import hashlib
+import math
 from pathlib import Path
+
 from .common import ROOT, digest, safe_child
+
 
 def equal(actual, expected, tolerance=1e-5):
     if isinstance(expected, bool):

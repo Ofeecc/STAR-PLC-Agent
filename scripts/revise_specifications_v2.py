@@ -1,11 +1,16 @@
 """Versioned corrections from the per-task semantic review. No model calls."""
+import inspect
+import json
+import shutil
+import sys
 from pathlib import Path
-import json, shutil, sys, inspect, hashlib
+
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'src'))
-from plc_agent.reference import ReferenceController
-from plc_agent.dataset import validate
 from plc_agent.common import digest
+from plc_agent.dataset import validate
+from plc_agent.reference import ReferenceController
+
 
 def main():
     review=json.loads((ROOT/'docs/规约逐题审查_20261106/review_manifest.json').read_text(encoding='utf-8'))

@@ -1,10 +1,11 @@
 """Independent finite-trace contracts. Never executes ST or proves infinite LTL."""
 import math
+
+from .array_contracts import SUPPORTED_ARRAY, ArrayContract, analog_field_matches
+from .data_contracts import SUPPORTED_DATA, DataContract
+from .process_contracts import SUPPORTED_PROCESS, ProcessContract
 from .reference import ReferenceController
-from .data_contracts import DataContract, SUPPORTED_DATA
-from .timed_contracts import TimedContract, SUPPORTED_TIMED, duration_ns
-from .process_contracts import ProcessContract, SUPPORTED_PROCESS
-from .array_contracts import ArrayContract, SUPPORTED_ARRAY, analog_field_matches
+from .timed_contracts import SUPPORTED_TIMED, TimedContract, duration_ns
 
 SUPPORTED = {f'SELF{i:03d}' for i in range(1, 13)} | {'PUB001', 'PUB010', 'PUB011'} | SUPPORTED_DATA | SUPPORTED_TIMED | SUPPORTED_PROCESS | SUPPORTED_ARRAY
 

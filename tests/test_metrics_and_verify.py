@@ -1,15 +1,14 @@
 from __future__ import annotations
+
 import json
-import math
-import shutil
 import tempfile
 import unittest
 from pathlib import Path
 
 from plc_agent.common import ROOT, read_json
 from plc_agent.dataset import load_tasks
-from plc_agent.metrics import mcnemar_exact, bootstrap_ci, aggregate
 from plc_agent.formal_verify import export_verification_bundle, import_verification_evidence
+from plc_agent.metrics import aggregate, bootstrap_ci, mcnemar_exact
 
 
 class MetricsAndVerificationTests(unittest.TestCase):

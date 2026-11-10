@@ -1,8 +1,9 @@
 import unittest
+
 from plc_agent.dataset import load_tasks
-from plc_agent.scan_contract import ScanContract, SUPPORTED, check_contract_trace
 from plc_agent.functional import equal
 from plc_agent.random_testing import generate_random_cases
+from plc_agent.scan_contract import SUPPORTED, ScanContract, check_contract_trace
 
 
 class RandomTestingTests(unittest.TestCase):

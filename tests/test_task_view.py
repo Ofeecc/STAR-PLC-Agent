@@ -2,9 +2,11 @@ import copy
 import tempfile
 import unittest
 from pathlib import Path
-from plc_agent.dataset import load_tasks
-from plc_agent.task_view import ALLOWED_KEYS, SPEC_KEYS, FORBIDDEN_KEYS, agent_view
+
 from plc_agent.compiler import stage_ascii_workspace, sync_ascii_artifacts
+from plc_agent.dataset import load_tasks
+from plc_agent.task_view import ALLOWED_KEYS, FORBIDDEN_KEYS, SPEC_KEYS, agent_view
+
 
 class TaskViewTests(unittest.TestCase):
     def test_agent_view_whitelist_and_immutability(self):

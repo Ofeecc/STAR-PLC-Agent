@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import hashlib
 import json
 import os
@@ -9,8 +10,10 @@ import uuid
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
+
 from .common import ROOT, digest, now, read_json, write_json
 from .config import Settings
+
 
 @dataclass
 class CompileResult:

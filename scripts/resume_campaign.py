@@ -5,10 +5,10 @@ It can run in a hidden Windows process while artifacts are prepared separately.
 """
 import json
 import os
-from pathlib import Path
 import subprocess
 import sys
 from datetime import datetime, timezone
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 os.chdir(ROOT)

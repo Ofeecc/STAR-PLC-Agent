@@ -6,18 +6,19 @@ and copies actual sampled inputs and outputs to typed trace arrays. Expected
 outputs never appear in the generated test program.
 """
 from __future__ import annotations
+
 import hashlib
-import json
 import math
 import os
-from pathlib import Path
 import re
 import shutil
 import subprocess
 import time
 import uuid
+from pathlib import Path
+
 from .common import ROOT, digest, now, read_json, write_json
-from .compiler import codesys_command, _kill_tree, normalize_candidate, stage_ascii_workspace, sync_ascii_artifacts
+from .compiler import _kill_tree, codesys_command, normalize_candidate, stage_ascii_workspace, sync_ascii_artifacts
 
 SCALAR_TYPES = {"BOOL", "BYTE", "WORD", "DWORD", "LWORD", "SINT", "INT", "DINT", "LINT",
                 "USINT", "UINT", "UDINT", "ULINT", "REAL", "LREAL"}
@@ -421,7 +422,7 @@ def build_program(task: dict, cases: list[dict] | None = None) -> dict:
                 step_dt = step.get("dt_ms", 0)
                 body.append(f"  IF BenchStep = 0 OR (TIME() - BenchLastTime >= UDINT_TO_TIME({step_dt})) THEN")
                 if step_index == 0:
-                    body.append(f"   TraceDt[0] := 0;")
+                    body.append("   TraceDt[0] := 0;")
                 else:
                     body.append(f"   TraceDt[{step_index}] := TIME_TO_UDINT(TIME() - BenchLastTime);")
                 body.append("   BenchLastTime := TIME();")

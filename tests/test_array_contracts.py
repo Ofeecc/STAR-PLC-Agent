@@ -1,8 +1,10 @@
 import unittest
 from copy import deepcopy
-from plc_agent.scan_contract import ScanContract,check_contract_trace
+
 from plc_agent.array_contracts import analog_field_matches
 from plc_agent.data_contracts import real32
+from plc_agent.scan_contract import ScanContract, check_contract_trace
+
 
 def channel(**changes):
     return dict(dict(enable=True,hiLIM=100.,loLIM=0.,bipolar=False,measuringMode=0,retVal=7,outputValue=-999.),**changes)

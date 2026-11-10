@@ -7,15 +7,15 @@ that a human presented the slides or that static slide images are live footage.
 from __future__ import annotations
 
 import argparse
-from datetime import datetime, timezone
 import hashlib
 import json
-from pathlib import Path
 import re
 import struct
 import subprocess
 import sys
 import wave
+from datetime import datetime, timezone
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 

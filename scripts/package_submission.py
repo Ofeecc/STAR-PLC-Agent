@@ -6,19 +6,23 @@ are excluded from the archive; credentials, environments and caches are omitted.
 from __future__ import annotations
 
 import argparse
-import os
 import hashlib
 import json
-from pathlib import Path
-import re
+import os
 import shutil
 import sys
 import uuid
 import zipfile
+from pathlib import Path
 
 from audit_submission import (
-    ROOT, audit, exclusion_reason, known_secrets, relative, scan_file,
-    sha256_file, submission_inventory,
+    ROOT,
+    audit,
+    exclusion_reason,
+    known_secrets,
+    scan_file,
+    sha256_file,
+    submission_inventory,
 )
 from plc_agent.common import now, write_json
 

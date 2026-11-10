@@ -4,16 +4,18 @@ No LLM calls and no physical PLC connection. Does not modify the compiler
 template. This must only be run after the real compiler backend preflight.
 """
 from __future__ import annotations
+
 import argparse
 import hashlib
 import os
-from pathlib import Path
 import shutil
 import subprocess
 import time
 import uuid
+from pathlib import Path
+
 from plc_agent.common import ROOT, now, read_json, write_json
-from plc_agent.compiler import codesys_command, _kill_tree
+from plc_agent.compiler import _kill_tree, codesys_command
 from plc_agent.config import Settings
 
 

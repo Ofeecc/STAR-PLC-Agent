@@ -1,7 +1,8 @@
 from __future__ import annotations
-from collections import Counter
+
 import math
 import random
+from collections import Counter
 from statistics import mean
 
 BASELINE_MAP = {
@@ -20,7 +21,7 @@ def rate(numerator, denominator):
 
 def mcnemar_exact(b: int, c: int) -> float:
     """Exact two-sided McNemar binomial test for paired comparison between methods.
-    
+
     Formula:
         If b + c == 0: return 1.0
         Else: k = min(b, c); n = b + c; p = 2 * sum(comb(n, i) * (0.5 ** n) for i in range(k + 1))

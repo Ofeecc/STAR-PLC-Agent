@@ -1,10 +1,12 @@
 """Offline tests of the real simulation adapter, with no runtime claims."""
 import copy
-from pathlib import Path
 import unittest
+from pathlib import Path
+
 from plc_agent.dataset import load_tasks
-from plc_agent.simulation import build_program, eligibility, st_literal, unflatten_observations
 from plc_agent.functional import evaluate_trace
+from plc_agent.simulation import build_program, eligibility, st_literal, unflatten_observations
+
 
 class SimulationAdapterTests(unittest.TestCase):
     def test_all_twelve_self_tasks_have_untimed_scalar_adapter(self):

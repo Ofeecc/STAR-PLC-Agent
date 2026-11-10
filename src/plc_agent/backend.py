@@ -5,14 +5,12 @@ testing via FakeBackend with failure truncation to the first diverging scan step
 """
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
 import copy
-from dataclasses import dataclass, field
-import json
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Protocol, runtime_checkable
 
-from .common import digest, read_json, write_json
+from .common import digest, read_json
 from .compiler import CompileResult, compile_st, normalize_candidate
 from .config import Settings
 from .functional import equal, outputs_equal

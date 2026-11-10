@@ -1,9 +1,9 @@
-import math
 import unittest
+
 from plc_agent.dataset import load_tasks
-from plc_agent.task_view import agent_view
 from plc_agent.dialect_cards import DIALECT_CARDS, select_dialect_cards
 from plc_agent.selftest import validate_self_tests
+from plc_agent.task_view import agent_view
 
 
 class DialectAndSelfTestTests(unittest.TestCase):

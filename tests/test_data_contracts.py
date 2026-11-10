@@ -1,5 +1,7 @@
 import unittest
+
 from plc_agent.scan_contract import ScanContract, check_contract_trace
+
 
 class DataContractTests(unittest.TestCase):
     def test_all_bit_positions_and_history(self):

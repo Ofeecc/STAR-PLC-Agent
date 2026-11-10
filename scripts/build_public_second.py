@@ -1,6 +1,7 @@
 """Rebuild PUB011..PUB020 from unmodified instructor source plus explicit annotations."""
+import hashlib
+import json
 from pathlib import Path
-import json, hashlib
 
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / 'PLC_Agent_Final'

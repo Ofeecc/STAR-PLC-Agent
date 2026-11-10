@@ -9,15 +9,14 @@ from __future__ import annotations
 import dataclasses
 import http.server
 import json
-from pathlib import Path
 import tempfile
 import threading
-from typing import Any
 import urllib.parse
+from pathlib import Path
+from typing import Any
 
-from .backend import Backend, CodesysBackend, FakeBackend, SimCaseFailure, SimResult
-from .common import ROOT, digest, now, read_json, write_json
-from .compiler import CompileResult, normalize_candidate
+from .backend import Backend, CodesysBackend, FakeBackend, SimResult
+from .common import ROOT, read_json
 from .config import Settings
 from .dataset import load_tasks
 from .formal_verify import export_verification_bundle

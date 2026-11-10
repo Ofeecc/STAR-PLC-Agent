@@ -1,7 +1,7 @@
 """Sampled-time contracts; supplied timestamps are observations, not a PLC clock."""
-from decimal import Decimal
 import math
 import re
+from decimal import Decimal
 
 SUPPORTED_TIMED = {'PUB004','PUB005','PUB006','PUB012','PUB013'}
 UNITS = {'d':86400000000000,'h':3600000000000,'m':60000000000,

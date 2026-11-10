@@ -3,15 +3,14 @@ from __future__ import annotations
 
 import copy
 import json
-from pathlib import Path
 import tempfile
 import unittest
+from pathlib import Path
 
 from plc_agent.backend import FakeBackend, SimCaseFailure, SimResult
 from plc_agent.compiler import CompileResult
 from plc_agent.config import Settings
 from plc_agent.harness import compact_diagnostics, run_harness
-
 
 SAMPLE_TASK = {
     "id": "TASK_TEST",
@@ -119,6 +118,7 @@ class StarHarnessTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             ws = Path(tmp) / "run"
             res = run_harness(SAMPLE_TASK, "mock-model", ws, client, settings, backend=backend)
+            self.assertIsNotNone(res)
 
             # Check all prompts sent to LLM across planner, coder, tester, etc.
             self.assertGreater(len(client.recorded_calls), 0)

@@ -4,13 +4,14 @@ Run with the bundled artifact Python (pypdf available). The confirmation flag is
 an operator assertion; the script itself does not visually inspect a page.
 """
 from __future__ import annotations
+
 import argparse
 import hashlib
 import json
-from datetime import datetime, timezone
-from pathlib import Path
 import xml.etree.ElementTree as ET
 import zipfile
+from datetime import datetime, timezone
+from pathlib import Path
 
 from pypdf import PdfReader
 

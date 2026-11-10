@@ -1,8 +1,12 @@
 from __future__ import annotations
+
 import json
 import time
+
 import requests
+
 from .common import redact, write_json
+
 
 class ProviderError(RuntimeError):
     pass

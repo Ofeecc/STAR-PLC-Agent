@@ -1,9 +1,11 @@
+import json
+import sys
 from pathlib import Path
-import json,sys
+
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'src'))
 from plc_agent.common import digest
-from plc_agent.dataset import load_tasks,validate
+from plc_agent.dataset import load_tasks, validate
 from plc_agent.reference import evaluate_reference
 
 cases=json.loads((ROOT/'docs/规约逐题审查_20261106/counterexamples.json').read_text(encoding='utf-8'))['cases']

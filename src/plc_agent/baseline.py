@@ -1,20 +1,18 @@
 from __future__ import annotations
 
-import copy
 import json
 import os
-from pathlib import Path
 import shutil
 import subprocess
 import sys
 import time
+from pathlib import Path
 
-from .backend import CodesysBackend, FakeBackend, SimResult
 from .common import ROOT, now, read_json, redact, write_json
-from .compiler import _kill_tree, CompileResult, normalize_candidate
+from .compiler import _kill_tree
 from .config import Settings
 from .harness import CODE_CONTRACT, empty_result, task_prompt
-from .llm import parse_candidate, ProviderError, ResponsesClient
+from .llm import ResponsesClient, parse_candidate
 from .mcp_server import CANDIDATE_SCHEMA, dispatch
 from .task_view import agent_view
 
