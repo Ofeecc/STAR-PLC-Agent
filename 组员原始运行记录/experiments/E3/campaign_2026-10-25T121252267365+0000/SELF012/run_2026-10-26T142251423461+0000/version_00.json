@@ -1,0 +1,12 @@
+{
+  "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    Start : BOOL;\n    Stop : BOOL;\n    Fault : BOOL;\n    Reset : BOOL;\nEND_VAR\nVAR_OUTPUT\n    Run : BOOL := FALSE;\n    Locked : BOOL := FALSE;\n    Attempts : USINT := 0;\nEND_VAR\nVAR\n    State : E_TaskState := E_TaskState.IDLE;\n    RecoveryFreeScans : USINT := 0;\nEND_VAR",
+  "implementation": "IF Reset AND NOT Fault AND NOT Start THEN\n    State := E_TaskState.IDLE;\n    Attempts := 0;\n    RecoveryFreeScans := 0;\nELSIF State = E_TaskState.LOCKED THEN\n    RecoveryFreeScans := 0;\nELSIF Stop THEN\n    State := E_TaskState.IDLE;\n    RecoveryFreeScans := 0;\nELSIF (State = E_TaskState.RUNNING) AND Fault THEN\n    IF Attempts < 2 THEN\n        State := E_TaskState.WAIT;\n        RecoveryFreeScans := 0;\n    ELSE\n        State := E_TaskState.LOCKED;\n        RecoveryFreeScans := 0;\n    END_IF\nELSIF State = E_TaskState.WAIT THEN\n    IF Fault THEN\n        RecoveryFreeScans := 0;\n    ELSIF RecoveryFreeScans >= 1 THEN\n        Attempts := Attempts + 1;\n        State := E_TaskState.RUNNING;\n        RecoveryFreeScans := 0;\n    ELSE\n        RecoveryFreeScans := RecoveryFreeScans + 1;\n    END_IF\nELSIF State = E_TaskState.IDLE THEN\n    IF Start AND NOT Fault THEN\n        State := E_TaskState.RUNNING;\n        RecoveryFreeScans := 0;\n    END_IF\nEND_IF\n\nRun := (State = E_TaskState.RUNNING) AND NOT Fault;\nLocked := (State = E_TaskState.LOCKED);",
+  "supporting_objects": [
+    {
+      "name": "E_TaskState",
+      "kind": "DUT",
+      "declaration": "TYPE E_TaskState :\n(\n    IDLE,\n    RUNNING,\n    WAIT,\n    LOCKED\n);\nEND_TYPE",
+      "implementation": ""
+    }
+  ]
+}

@@ -1,0 +1,520 @@
+{
+  "schema_version": 1,
+  "id": "PUB008",
+  "kind": "public",
+  "title": "Analog Batch Processing",
+  "difficulty": "medium",
+  "provenance": {
+    "source_type": "official_course_question_bank",
+    "source_file": "大作业题库json/大作业题库json/大作业题库.json",
+    "source_index": {
+      "group": "medium",
+      "index_1based": 2
+    },
+    "adaptation": "Original English question is preserved verbatim in requirements. Only explicit evaluation assumptions, LTL, and tests are added.",
+    "rationale": "Teacher-supplied PLC task; retains the specified interface and control scenario.",
+    "review": "Reviewed against original prose and interface; ambiguities are listed explicitly. Expected traces have not been executed on a PLC."
+  },
+  "requirements": "# Analog Batch Processing\n\n- **Difficulty:** Medium (medium)\n\n## Requirements\n\nWrite a PLC function block that processes analog inputs in batches and converts them into engineering values.\n\n1. analogValues supplies the raw-value array. channels supplies per-channel settings and receives conversion results. count specifies how many channels to process from the beginning of the arrays. The caller must provide count from zero through the smaller of the two array lengths. Match channels by ordinal position starting at each array's own lower bound. Read analogValues without modifying it.\n2. Each channel is enabled by its enable field and converted according to measuringMode. Read configuration fields without modifying them; write only retVal and outputValue.\n3. For measuringMode 0, perform non-temperature linear scaling: when bipolar is FALSE, map raw values 0..27648 to loLIM..hiLIM; when TRUE, map -27648..27648 to loLIM..hiLIM.\n4. For measuringMode 1, perform standard-temperature conversion: outputValue is one tenth of the raw analog value.\n5. For measuringMode 2, perform climatic-temperature conversion: outputValue is one hundredth of the raw analog value.\n6. If measuringMode is not 0, 1 or 2, set that channel's retVal to 16#8001 and skip its conversion.\n7. If hiLIM is less than or equal to loLIM, set that channel's retVal to 16#8002 and skip its conversion.\n\n## Interface Definition\n\n| Direction | Variable/Field | Data Type | Description |\n| --- | --- | --- | --- |\n| Input | `count` | `DINT` | Number of channels to be converted |\n| Input/Output | `analogValues` | `ARRAY[*] OF INT` | Variable-length analog array passed by reference to preserve its bounds. Read-only to the function block; no element may be modified. |\n| Input/Output | `channels` | `ARRAY[*] OF ST_AnalogChannel` | Channel records passed by reference. Configuration fields are read-only; write only retVal and outputValue. |\n| Input field | `channels[].enable` | `BOOL` | Channel conversion enable. Read-only to the function block. |\n| Input field | `channels[].hiLIM` | `REAL` | Upper engineering-unit limit. Read-only to the function block. |\n| Input field | `channels[].loLIM` | `REAL` | Lower engineering-unit limit. Read-only to the function block. |\n| Input field | `channels[].bipolar` | `BOOL` | FALSE selects unipolar and TRUE selects bipolar operation. Read-only to the function block. |\n| Input field | `channels[].measuringMode` | `INT` | 0 non-temperature, 1 standard temperature, 2 climatic temperature. Read-only to the function block. |\n| Output field | `channels[].retVal` | `WORD` | Per-channel status code written by the function block. |\n| Output field | `channels[].outputValue` | `REAL` | Converted value written by the function block. |\n\nRows named `channels[].fieldName` describe the element fields of ST_AnalogChannel, rather than additional function-block parameters.",
+  "scenario": "Write a PLC function block that processes analog inputs in batches and converts them into engineering values.",
+  "interface": [
+    {
+      "direction": "INPUT",
+      "name": "count",
+      "type": "DINT",
+      "description": "Number of channels to be converted"
+    },
+    {
+      "direction": "IN_OUT",
+      "name": "analogValues",
+      "type": "ARRAY[*] OF INT",
+      "description": "Variable-length analog array passed by reference to preserve its bounds. Read-only to the function block; no element may be modified."
+    },
+    {
+      "direction": "IN_OUT",
+      "name": "channels",
+      "type": "ARRAY[*] OF ST_AnalogChannel",
+      "description": "Channel records passed by reference. Configuration fields are read-only; write only retVal and outputValue."
+    }
+  ],
+  "initial_conditions": {
+    "state": "No internal history required. IN_OUT output fields retain caller-provided values when skipped."
+  },
+  "scan_semantics": "At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, outputs O[k] are observed after execution, and q[k+1] is the updated state. Each test creates a fresh FB instance before step 0. An initialized instance has not yet executed a scan. Timer elapsed time is zero on the first eligible sampled invocation; dt_ms is elapsed wall time since the previous invocation, not automatically a synthetic input to the FB. No unobserved past input stability is assumed. All sequences here are expected values.",
+  "safety_priority": [
+    "Process only the first count ordinal entries, pairing arrays at their independent lower bounds.",
+    "Do not modify raw analog values or any channel configuration."
+  ],
+  "assumptions": [
+    "Disabled and out-of-count channels retain both retVal and outputValue.",
+    "Successful enabled conversion sets retVal=0. Invalid channels preserve outputValue while returning the error code.",
+    "Invalid measuringMode has priority over invalid hiLIM/loLIM. Limit validation applies to enabled channels in every mode.",
+    "Scaling extrapolates outside nominal raw range; no saturation is specified.",
+    "Test metadata array_lower_bounds defines the physical array indices used by the caller. JSON arrays are ordered storage values, not IEC index literals. The caller satisfies count bounds."
+  ],
+  "ltl": [
+    {
+      "id": "P1",
+      "formula": "G(readonlyPreserved)",
+      "explanation": "Input arrays and configuration are never modified."
+    },
+    {
+      "id": "P2",
+      "formula": "G(forall j: !enabled(j) -> preserved(j))",
+      "explanation": "Disabled and unprocessed channels are unchanged."
+    },
+    {
+      "id": "P3",
+      "formula": "G(forall j: (enabled(j) & !modeOK(j)) -> (retVal(j)=16#8001 & outputValue(j)=sampledOutputValue(j)))",
+      "explanation": "Unsupported modes return the defined status without conversion."
+    },
+    {
+      "id": "P4",
+      "formula": "G(forall j: (enabled(j) & modeOK(j) & !limitsOK(j)) -> (retVal(j)=16#8002 & outputValue(j)=sampledOutputValue(j)))",
+      "explanation": "Invalid limits return their status without conversion."
+    },
+    {
+      "id": "P5",
+      "formula": "G(forall j: (enabled(j) & modeOK(j) & limitsOK(j)) -> retVal(j)=0)",
+      "explanation": "Successful enabled channels clear their status."
+    },
+    {
+      "id": "P6",
+      "formula": "G(forall j: (enabled(j) & limitsOK(j) & measuringMode(j)=0) -> outputValue(j)=scaled(j))",
+      "explanation": "Linear scale uses the correct unipolar or bipolar range."
+    },
+    {
+      "id": "P7",
+      "formula": "G(forall j: (enabled(j) & limitsOK(j) & measuringMode(j)=1) -> outputValue(j)=raw(j)/10)",
+      "explanation": "Standard-temperature resolution is one tenth."
+    },
+    {
+      "id": "P8",
+      "formula": "G(forall j: (enabled(j) & limitsOK(j) & measuringMode(j)=2) -> outputValue(j)=raw(j)/100)",
+      "explanation": "Climatic-temperature resolution is one hundredth."
+    }
+  ],
+  "atomic_propositions": {
+    "j": "An ordinal position starting at zero.",
+    "enabled(j)": "j<count and sampled channels[j].enable.",
+    "modeOK(j)": "Sampled measuringMode is 0,1,2.",
+    "limitsOK(j)": "Sampled hiLIM>loLIM.",
+    "raw(j)": "Sampled analogValues at its lower bound+j.",
+    "scaled(j)": "loLIM+(raw/27648)*(hiLIM-loLIM) for unipolar; loLIM+((raw+27648)/55296)*(hiLIM-loLIM) for bipolar.",
+    "preserved(j)": "The channel retVal/outputValue equal sampled values.",
+    "readonlyPreserved": "analogValues and channel configuration equal all their sampled values.",
+    "channel output names": "Post-scan fields of the channel at the indicated ordinal position.",
+    "sampledOutputValue(j)": "The caller-provided outputValue before this scan.",
+    "measuringMode(j)": "The sampled measuringMode configuration for ordinal j."
+  },
+  "tests": [
+    {
+      "id": "T1",
+      "purpose": "Unipolar and bipolar endpoints, midpoint and temperature modes",
+      "steps": [
+        {
+          "inputs": {
+            "count": 7,
+            "analogValues": [
+              0,
+              27648,
+              -27648,
+              0,
+              27648,
+              1234,
+              -1234
+            ],
+            "channels": [
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": false,
+                "measuringMode": 0,
+                "retVal": 7,
+                "outputValue": -999.0
+              },
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": false,
+                "measuringMode": 0,
+                "retVal": 7,
+                "outputValue": -999.0
+              },
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": true,
+                "measuringMode": 0,
+                "retVal": 7,
+                "outputValue": -999.0
+              },
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": true,
+                "measuringMode": 0,
+                "retVal": 7,
+                "outputValue": -999.0
+              },
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": true,
+                "measuringMode": 0,
+                "retVal": 7,
+                "outputValue": -999.0
+              },
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": false,
+                "measuringMode": 1,
+                "retVal": 7,
+                "outputValue": -999.0
+              },
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": false,
+                "measuringMode": 2,
+                "retVal": 7,
+                "outputValue": -999.0
+              }
+            ]
+          },
+          "expected": {
+            "analogValues": [
+              0,
+              27648,
+              -27648,
+              0,
+              27648,
+              1234,
+              -1234
+            ],
+            "channels": [
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": false,
+                "measuringMode": 0,
+                "retVal": 0,
+                "outputValue": 0.0
+              },
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": false,
+                "measuringMode": 0,
+                "retVal": 0,
+                "outputValue": 100.0
+              },
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": true,
+                "measuringMode": 0,
+                "retVal": 0,
+                "outputValue": 0.0
+              },
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": true,
+                "measuringMode": 0,
+                "retVal": 0,
+                "outputValue": 50.0
+              },
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": true,
+                "measuringMode": 0,
+                "retVal": 0,
+                "outputValue": 100.0
+              },
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": false,
+                "measuringMode": 1,
+                "retVal": 0,
+                "outputValue": 123.4
+              },
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": false,
+                "measuringMode": 2,
+                "retVal": 0,
+                "outputValue": -12.34
+              }
+            ]
+          }
+        }
+      ],
+      "array_lower_bounds": {
+        "analogValues": -2,
+        "channels": 7
+      },
+      "tolerance": {
+        "absolute": 0.0001,
+        "relative": 1e-05
+      }
+    },
+    {
+      "id": "T2",
+      "purpose": "Disabled channel, invalid mode priority, invalid limits and count truncation",
+      "steps": [
+        {
+          "inputs": {
+            "count": 4,
+            "analogValues": [
+              1,
+              2,
+              3,
+              4,
+              5
+            ],
+            "channels": [
+              {
+                "enable": false,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": false,
+                "measuringMode": 0,
+                "retVal": 7,
+                "outputValue": -999.0
+              },
+              {
+                "enable": true,
+                "hiLIM": 0,
+                "loLIM": 10,
+                "bipolar": false,
+                "measuringMode": 9,
+                "retVal": 7,
+                "outputValue": -999.0
+              },
+              {
+                "enable": true,
+                "hiLIM": 10,
+                "loLIM": 10,
+                "bipolar": false,
+                "measuringMode": 0,
+                "retVal": 7,
+                "outputValue": -999.0
+              },
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": false,
+                "measuringMode": 2,
+                "retVal": 7,
+                "outputValue": -999.0
+              },
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": false,
+                "measuringMode": 0,
+                "retVal": 7,
+                "outputValue": -999.0
+              }
+            ]
+          },
+          "expected": {
+            "analogValues": [
+              1,
+              2,
+              3,
+              4,
+              5
+            ],
+            "channels": [
+              {
+                "enable": false,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": false,
+                "measuringMode": 0,
+                "retVal": 7,
+                "outputValue": -999.0
+              },
+              {
+                "enable": true,
+                "hiLIM": 0,
+                "loLIM": 10,
+                "bipolar": false,
+                "measuringMode": 9,
+                "retVal": 32769,
+                "outputValue": -999.0
+              },
+              {
+                "enable": true,
+                "hiLIM": 10,
+                "loLIM": 10,
+                "bipolar": false,
+                "measuringMode": 0,
+                "retVal": 32770,
+                "outputValue": -999.0
+              },
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": false,
+                "measuringMode": 2,
+                "retVal": 0,
+                "outputValue": 0.04
+              },
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": false,
+                "measuringMode": 0,
+                "retVal": 7,
+                "outputValue": -999.0
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "T3",
+      "purpose": "count zero preserves every value and negative raw extrapolates",
+      "steps": [
+        {
+          "inputs": {
+            "count": 0,
+            "analogValues": [
+              -27648
+            ],
+            "channels": [
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": false,
+                "measuringMode": 0,
+                "retVal": 7,
+                "outputValue": -999.0
+              }
+            ]
+          },
+          "expected": {
+            "analogValues": [
+              -27648
+            ],
+            "channels": [
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": false,
+                "measuringMode": 0,
+                "retVal": 7,
+                "outputValue": -999.0
+              }
+            ]
+          }
+        },
+        {
+          "inputs": {
+            "count": 1,
+            "analogValues": [
+              -27648
+            ],
+            "channels": [
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": false,
+                "measuringMode": 0,
+                "retVal": 7,
+                "outputValue": -999.0
+              }
+            ]
+          },
+          "expected": {
+            "analogValues": [
+              -27648
+            ],
+            "channels": [
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": false,
+                "measuringMode": 0,
+                "retVal": 0,
+                "outputValue": -100.0
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "data_types": {
+    "ST_AnalogChannel": {
+      "kind": "STRUCT",
+      "fields": [
+        {
+          "name": "enable",
+          "type": "BOOL",
+          "access": "read_only"
+        },
+        {
+          "name": "hiLIM",
+          "type": "REAL",
+          "access": "read_only"
+        },
+        {
+          "name": "loLIM",
+          "type": "REAL",
+          "access": "read_only"
+        },
+        {
+          "name": "bipolar",
+          "type": "BOOL",
+          "access": "read_only"
+        },
+        {
+          "name": "measuringMode",
+          "type": "INT",
+          "access": "read_only"
+        },
+        {
+          "name": "retVal",
+          "type": "WORD",
+          "access": "written"
+        },
+        {
+          "name": "outputValue",
+          "type": "REAL",
+          "access": "written"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    count : DINT;\nEND_VAR\nVAR_IN_OUT\n    analogValues : ARRAY[*] OF INT;\n    channels : ARRAY[*] OF ST_AnalogChannel;\nEND_VAR\nVAR\n    i : DINT;\n    rawIndex : DINT;\n    chIndex : DINT;\n    rawValue : INT;\n    mode : INT;\n    lo : REAL;\n    hi : REAL;\n    isBipolar : BOOL;\nEND_VAR",
+  "implementation": "IF count > 0 THEN\n    FOR i := 0 TO count - 1 DO\n        chIndex := LOWER_BOUND(channels, 1) + i;\n        IF channels[chIndex].enable THEN\n            mode := channels[chIndex].measuringMode;\n            IF (mode <> 0) AND (mode <> 1) AND (mode <> 2) THEN\n                channels[chIndex].retVal := WORD#16#8001;\n            ELSE\n                lo := channels[chIndex].loLIM;\n                hi := channels[chIndex].hiLIM;\n                IF hi <= lo THEN\n                    channels[chIndex].retVal := WORD#16#8002;\n                ELSE\n                    rawIndex := LOWER_BOUND(analogValues, 1) + i;\n                    rawValue := analogValues[rawIndex];\n                    isBipolar := channels[chIndex].bipolar;\n                    CASE mode OF\n                        0:\n                            IF isBipolar THEN\n                                channels[chIndex].outputValue := lo + ((INT_TO_REAL(rawValue) + 27648.0) / 55296.0) * (hi - lo);\n                            ELSE\n                                channels[chIndex].outputValue := lo + (INT_TO_REAL(rawValue) / 27648.0) * (hi - lo);\n                            END_IF\n                        1:\n                            channels[chIndex].outputValue := INT_TO_REAL(rawValue) / 10.0;\n                        2:\n                            channels[chIndex].outputValue := INT_TO_REAL(rawValue) / 100.0;\n                    END_CASE\n                    channels[chIndex].retVal := 0;\n                END_IF\n            END_IF\n        END_IF\n    END_FOR\nEND_IF",
+  "supporting_objects": [
+    {
+      "name": "ST_AnalogChannel",
+      "kind": "DUT",
+      "declaration": "TYPE ST_AnalogChannel :\nSTRUCT\n    enable : BOOL;\n    hiLIM : REAL;\n    loLIM : REAL;\n    bipolar : BOOL;\n    measuringMode : INT;\n    retVal : WORD;\n    outputValue : REAL;\nEND_STRUCT\nEND_TYPE",
+      "implementation": ""
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "request_id": "c6f1aaa8895143f49f26cfdacda65fac",
+  "source_sha256": "24f64b4f652f87918614e593e0080ac321f0705e1117ccd501270361532dfbe9",
+  "task_id": "PUB010",
+  "project": "D:\\Learning\\大四秋冬\\genai\\finale\\PLC_Agent_Final\\experiments\\E2\\campaign_2026-10-25T121252267365+0000\\PUB010\\run_2026-10-26T134044516359+0000\\compile_00\\task.project",
+  "candidate": {
+    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    TemperatureSensorInput : REAL;\n    SetTemperature : REAL;\nEND_VAR\nVAR_OUTPUT\n    CurrentTemperature : REAL;\n    SetTempDisplay : REAL;\n    HeaterStatus : BOOL;\n    OverheatProtection : BOOL;\n    HeaterOutput : BOOL;\nEND_VAR\nVAR\n    heatDemand : BOOL;\n    sensorFault : BOOL;\n    wasProtected : BOOL;\n    heatTimer : TON;\n    cooldownTimer : TON;\nEND_VAR",
+    "implementation": "CurrentTemperature := TemperatureSensorInput;\nSetTempDisplay := SetTemperature;\n\nsensorFault := (TemperatureSensorInput < 0.0) OR (TemperatureSensorInput > 100.0);\n\nIF TemperatureSensorInput < SetTemperature THEN\n    heatDemand := TRUE;\nELSIF TemperatureSensorInput > SetTemperature THEN\n    heatDemand := FALSE;\nEND_IF;\n\nwasProtected := OverheatProtection;\n\nIF wasProtected THEN\n    cooldownTimer(IN := TRUE, PT := T#3S);\n    IF cooldownTimer.Q THEN\n        OverheatProtection := FALSE;\n    END_IF;\nELSE\n    cooldownTimer(IN := FALSE, PT := T#3S);\nEND_IF;\n\nheatTimer(IN := heatDemand AND NOT sensorFault AND NOT OverheatProtection,\n          PT := T#5S);\n\nIF heatTimer.Q THEN\n    OverheatProtection := TRUE;\nEND_IF;\n\nIF OverheatProtection AND NOT wasProtected THEN\n    cooldownTimer(IN := TRUE, PT := T#3S);\nEND_IF;\n\nHeaterOutput := heatDemand AND NOT sensorFault AND NOT OverheatProtection;\nHeaterStatus := HeaterOutput;",
+    "supporting_objects": []
+  },
+  "result_path": "D:\\Learning\\大四秋冬\\genai\\finale\\PLC_Agent_Final\\experiments\\E2\\campaign_2026-10-25T121252267365+0000\\PUB010\\run_2026-10-26T134044516359+0000\\compile_00\\codesys_evidence.json",
+  "started_utc": "2026-10-26T13:42:13.617509+00:00"
+}

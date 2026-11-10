@@ -1,0 +1,4271 @@
+[
+  {
+    "type": "response.created",
+    "sequence_number": 1,
+    "response": {
+      "id": "b4f31a4ec95242d1aa62acf48f6ede55",
+      "object": "response",
+      "created_at": 1793019824,
+      "status": "in_progress",
+      "background": false,
+      "error": null,
+      "output": [],
+      "model": "deepseek-v4.1-flash"
+    }
+  },
+  {
+    "type": "response.in_progress",
+    "sequence_number": 2,
+    "response": {
+      "id": "b4f31a4ec95242d1aa62acf48f6ede55",
+      "object": "response",
+      "created_at": 1793019824,
+      "status": "in_progress",
+      "output": [],
+      "model": "deepseek-v4.1-flash"
+    }
+  },
+  {
+    "type": "response.output_item.added",
+    "sequence_number": 3,
+    "output_index": 0,
+    "item": {
+      "id": "rs_b4f31a4ec95242d1aa62acf48f6ede55_0",
+      "type": "reasoning",
+      "status": "in_progress",
+      "summary": []
+    }
+  },
+  {
+    "type": "response.output_item.done",
+    "item": {
+      "id": "rs_b4f31a4ec95242d1aa62acf48f6ede55_0",
+      "type": "reasoning",
+      "encrypted_content": "",
+      "summary": [
+        {
+          "type": "summary_text",
+          "text": "We need answer JSON only. Need construct FB_Task declaration + implementation + supporting_objects. Need implement behavior matching tests/LTL. No markdown. Need exact interface names/types. We can use internal phase variable. Need declaration includes VAR_INPUT, VAR_OUTPUT, VAR maybe phase. Need supporting objects maybe none? But schema says supporting_objects list helper DUT/POU; can be empty. Need ensure JSON valid. Need decide implementation logic.\n\nWe need return only JSON object with declaration, implementation, supporting_objects. declaration is \"CODESYS FUNCTION_BLOCK FB_Task followed by all VAR sections; omit END_FUNCTION_BLOCK.\" So declaration string should be:\nFUNCTION_BLOCK FB_Task\nVAR_INPUT\n bottleSensor : BOOL;\n ...\nEND_VAR\nVAR_OUTPUT\n ...\nEND_VAR\nVAR\n phase : INT := 0;\nEND_VAR\nPossibly no END_FUNCTION_BLOCK. Implementation body.\n\nNeed implement such that outputs based on phase and inputs, one transition per scan, confirmations outside active ignored. Need determine output semantics: At phase=0 if bottleSensor true, start cleaning same scan: Pump_Motor true, phase becomes 1 for next scan. In tests step 1: idle bottle false -> outputs off. step2 bottle true -> Pump true. step3 bottle false, phase now 1 -> Pump true. step4 cleaningConfirm true -> Filling true, phase=2 next. etc. At phase=1 and cleaningConfirmButton true -> output Filling_Valve true and phase=2. At phase=2 fillingConfirm -> Capping true. phase=3 cappingConfirm -> Packing true. phase=4 packingConfirm -> Completion_Light true phase=5. phase=5 if !finished -> Completion_Light true stays. If finished true -> all off phase=0. Need if bottleSensor still true and phase=0 after finished? Assumption: \"finishedButton resets only the completed phase. A bottle still present can start a new cleaning cycle on the following idle scan.\" LTL P9 says phase=5 & finished -> !Completion_Light & X(phase=0). That implies same scan with phase=5 finished output off, next phase 0, not immediately start cleaning even if bottleSensor true? It says following idle scan can start; transition at most one per scan. So implementation: compute based on current phase and inputs; if phase 5 and finished true, set outputs off and phase := 0; do not evaluate bottleSensor in same scan. Next scan phase 0 can start if sensor.\n\nNeed also if phase 0 and bottleSensor false remain idle. If phase 0 and bottleSensor true start cleaning even if other confirms true? T2 step 1: phase0, fillingConfirm true, packingConfirm true, bottleSensor false -> outputs off. step2 bottle true, cleaningConfirm true, fillingConfirm true, phase0 -> Pump true phase=1. Good. If phase0 and bottleSensor true with cleaningConfirm true, pump true not filling. So prioritize phase transitions based on phase.\n\nNeed outputs set false each scan then set based on transition. But if phase 1 no confirm, Pump should remain true. So output default based on state? Need set outputs according to action:\n- phase 0: if bottleSensor then Pump true and phase=1 else all off.\n- phase 1: if cleaningConfirm then Filling true and phase=2 else Pump true.\n- phase 2: if fillingConfirm then Capping true and phase=3 else Filling true.\n- phase 3: if cappingConfirm then Packing true and phase=4 else Capping true.\n- phase 4: if packingConfirm then Completion_Light true and phase=5 else Packing true.\n- phase 5: if finishedButton then all off phase=0 else Completion_Light true.\nThis yields one output active while waiting. Need note in tests: T2 after step2 phase becomes 1 and Pump true. Step3 phase=1 fillingConfirm true; cleaningConfirm false -> Pum true. Step4 finished true -> Pump true. Step5 cleaningConfirm true -> Filling true phase=2. Step6 fillingConfirm true -> Capping true phase=3. Good.\n\nNeed implement in ST. Need be careful CODESYS INT vs maybe UINT. Use CASE phase OF. Initialize outputs false at top. Then CASE. For phase 0: IF bottleSensor THEN Pump_Motor := TRUE; phase := 1; END_IF. For phase1: IF cleaningConfirmButton THEN Filling_Valve := TRUE; phase := 2; ELSE Pump_Motor := TRUE; END_IF. etc. At phase5: IF finishedButton THEN phase := 0; ELSE Completion_Light := TRUE; END_IF. At top set all outputs FALSE. Need phase variable in VAR. Could name internal phase. If phase value invalid? default phase:=0 maybe. But no need.\n\nNeed check LTL P8: G((phase=5 & !finishedButton) -> (Completion_Light & X(phase=5))). If at phase5 and finished false, set Completion true and phase stays 5 (do not assign). Good. P9 phase5 & finished -> !Completion_Light & X(phase=0). We set outputs false top, phase=0. Good.\n\nNeed consider \"phase is ghost pre-scan state\". Implementation variable phase will be updated end. Good.\n\nNeed support objects list empty. JSON object:\n{\n \"declaration\": \"...\",\n \"implementation\": \"...\",\n \"supporting_objects\": []\n}\n\nNeed ensure only JSON no Markdown. Need escape newlines in strings. We can output actual JSON with string containing \\n. Need not include comments. Use double quotes. Need declaration string include semicolons. Could include VAR sections. No END_FUNCTION_BLOCK. Implementation string ST body. Need ensure no newline issues. JSON valid. Could write compact with \\n escaped. Need include all input/output types. Let's craft.\n\nDeclaration:\nFUNCTION_BLOCK FB_Task\nVAR_INPUT\n    bottleSensor : BOOL;\n    cleaningConfirmButton : BOOL;\n    fillingConfirmButton : BOOL;\n    cappingConfirmButton : BOOL;\n    packingConfirmButton : BOOL;\n    finishedButton : BOOL;\nEND_VAR\nVAR_OUTPUT\n    Pump_Motor : BOOL;\n    Filling_Valve : BOOL;\n    Capping_Machine : BOOL;\n    Packing_Machine : BOOL;\n    Completion_Light : BOOL;\nEND_VAR\nVAR\n    phase : INT := 0;\nEND_VAR\n\nImplementation:\nPump_Motor := FALSE;\nFilling_Valve := FALSE;\nCapping_Machine := FALSE;\nPacking_Machine := FALSE;\nCompletion_Light := FALSE;\n\nCASE phase OF\n0:\n    IF bottleSensor THEN\n        Pump_Motor := TRUE;\n        phase := 1;\n    END_IF;\n1:\n    IF cleaningConfirmButton THEN\n        Filling_Valve := TRUE;\n        phase := 2;\n    ELSE\n        Pump_Motor := TRUE;\n    END_IF;\n2:\n    IF fillingConfirmButton THEN\n        Capping_Machine := TRUE;\n        phase := 3;\n    ELSE\n        Filling_Valve := TRUE;\n    END_IF;\n3:\n    IF cappingConfirmButton THEN\n        Packing_Machine := TRUE;\n        phase := 4;\n    ELSE\n        Capping_Machine := TRUE;\n    END_IF;\n4:\n    IF packingConfirmButton THEN\n        Completion_Light := TRUE;\n        phase := 5;\n    ELSE\n        Packing_Machine := TRUE;\n    END_IF;\n5:\n    IF finishedButton THEN\n        phase := 0;\n    ELSE\n        Completion_Light := TRUE;\n    END_IF;\nELSE\n    phase := 0;\nEND_CASE;\n\nThis should compile. Note CODESYS CASE with integer labels and ELSE. Semicolons after END_IF maybe okay. Need maybe \"END_CASE;\" yes.\n\nSupporting empty.\n\nBut need think if \"all VAR sections\" means include VAR_INPUT, VAR_OUTPUT, VAR. Fine.\n\nPotential issue: At phase 0 with bottleSensor true and maybe finishedButton true? It starts cleaning. Assumption okay. At phase5 finished true and bottleSensor true, we set phase=0, all off. Next scan if still bottleSensor true, start cleaning. Good.\n\nPotential issue: One-hot outputs: At phase transition, we set top false then set only new output. If no transition, only current output true. Good.\n\nPotential issue: \"Active phase restricts which confirmation can be accepted.\" We ignore other confirms. Good.\n\nPotential issue: \"Confirmation inputs are level sampled. A held confirmation can complete its relevant phase on a later scan, but cannot skip several phases in one scan.\" Suppose phase1 cleaningConfirm held true. At scan, phase1 -> filling, phase=2. Next scan if cleaningConfirm still true and fillingConfirm false, phase2 no fillingConfirm => Filling_Valve true; cleaning ignored. Good. If fillingConfirm also true next scan, can advance to capping because now active. This could happen in next scan, not same scan. Good.\n\nNeed final answer only JSON. Ensure not markdown. Use actual JSON with \\n escaped. Could provide pretty JSON with strings containing \\n escapes. Need no trailing commas. Let's craft final. Must be only JSON. We'll include declaration and implementation strings with escaped newlines. Supporting_objects empty. Ensure quotes escaped? None internal. Let's produce."
+        }
+      ]
+    },
+    "output_index": 0,
+    "sequence_number": 2009
+  },
+  {
+    "type": "response.output_item.added",
+    "sequence_number": 2010,
+    "output_index": 1,
+    "item": {
+      "id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+      "type": "message",
+      "status": "in_progress",
+      "content": [],
+      "role": "assistant"
+    }
+  },
+  {
+    "type": "response.content_part.added",
+    "sequence_number": 2011,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "part": {
+      "type": "output_text",
+      "annotations": [],
+      "logprobs": [],
+      "text": ""
+    }
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2012,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "{\"",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2013,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "decl",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2014,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "aration",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2015,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\":\"",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2016,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "F",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2017,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "UNCTION",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2018,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_B",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2019,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "LOCK",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2020,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " FB",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2021,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_T",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2022,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ask",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2023,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2024,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "VAR",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2025,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_IN",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2026,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "PUT",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2027,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2028,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2029,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " bottle",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2030,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Sensor",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2031,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2032,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " BO",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2033,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "OL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2034,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2035,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2036,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2037,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " cleaning",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2038,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Confirm",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2039,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Button",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2040,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2041,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " BO",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2042,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "OL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2043,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2044,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2045,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2046,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " filling",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2047,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Confirm",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2048,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Button",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2049,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2050,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " BO",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2051,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "OL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2052,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2053,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2054,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2055,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " c",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2056,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "apping",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2057,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Confirm",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2058,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Button",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2059,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2060,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " BO",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2061,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "OL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2062,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2063,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2064,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2065,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " packing",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2066,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Confirm",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2067,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Button",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2068,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2069,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " BO",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2070,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "OL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2071,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2072,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2073,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2074,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " finished",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2075,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Button",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2076,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2077,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " BO",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2078,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "OL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2079,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2080,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2081,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "END",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2082,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_V",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2083,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "AR",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2084,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2085,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "VAR",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2086,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_OUT",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2087,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "PUT",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2088,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2089,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2090,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " Pump",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2091,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_M",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2092,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "otor",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2093,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2094,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " BO",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2095,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "OL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2096,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2097,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2098,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2099,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " F",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2100,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "illing",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2101,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2102,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Val",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2103,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ve",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2104,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2105,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " BO",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2106,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "OL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2107,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2108,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2109,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2110,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " C",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2111,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "apping",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2112,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_M",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2113,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "achine",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2114,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2115,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " BO",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2116,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "OL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2117,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2118,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2119,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2120,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " Pack",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2121,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ing",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2122,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_M",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2123,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "achine",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2124,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2125,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " BO",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2126,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "OL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2127,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2128,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2129,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2130,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " Completion",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2131,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_L",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2132,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ight",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2133,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2134,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " BO",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2135,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "OL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2136,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2137,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2138,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "END",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2139,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_V",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2140,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "AR",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2141,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2142,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "VAR",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2143,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2144,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2145,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " phase",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2146,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2147,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " INT",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2148,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2149,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2150,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "0",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2151,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2152,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2153,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "END",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2154,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_V",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2155,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "AR",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2156,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\",\"",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2157,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "implementation",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2158,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\":\"",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2159,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "P",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2160,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ump",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2161,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_M",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2162,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "otor",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2163,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2164,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " FALSE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2165,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2166,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2167,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "F",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2168,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "illing",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2169,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2170,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Val",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2171,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ve",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2172,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2173,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " FALSE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2174,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2175,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2176,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "C",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2177,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "apping",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2178,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_M",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2179,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "achine",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2180,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2181,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " FALSE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2182,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2183,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2184,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "P",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2185,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "acking",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2186,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_M",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2187,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "achine",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2188,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2189,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " FALSE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2190,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2191,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2192,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Completion",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2193,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_L",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2194,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ight",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2195,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2196,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " FALSE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2197,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2198,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2199,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2200,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "C",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2201,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ASE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2202,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " phase",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2203,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " OF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2204,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2205,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "0",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2206,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ":\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2207,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2208,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2209,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2210,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " bottle",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2211,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Sensor",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2212,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " THEN",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2213,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2214,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "       ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2215,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " Pump",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2216,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_M",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2217,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "otor",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2218,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2219,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " TRUE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2220,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2221,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2222,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "       ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2223,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " phase",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2224,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2225,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2226,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "1",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2227,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2228,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2229,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2230,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " END",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2231,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2232,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2233,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2234,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2235,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "1",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2236,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ":\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2237,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2238,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2239,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2240,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " cleaning",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2241,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Confirm",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2242,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Button",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2243,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " THEN",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2244,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2245,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "       ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2246,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " F",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2247,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "illing",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2248,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2249,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Val",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2250,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ve",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2251,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2252,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " TRUE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2253,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2254,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2255,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "       ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2256,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " phase",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2257,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2258,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2259,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "2",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2260,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2261,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2262,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2263,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ELSE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2264,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2265,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "       ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2266,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " Pump",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2267,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_M",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2268,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "otor",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2269,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2270,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " TRUE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2271,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2272,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2273,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2274,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " END",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2275,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2276,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2277,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2278,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2279,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "2",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2280,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ":\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2281,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2282,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2283,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2284,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " filling",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2285,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Confirm",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2286,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Button",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2287,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " THEN",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2288,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2289,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "       ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2290,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " C",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2291,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "apping",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2292,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_M",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2293,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "achine",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2294,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2295,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " TRUE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2296,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2297,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2298,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "       ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2299,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " phase",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2300,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2301,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2302,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "3",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2303,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2304,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2305,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2306,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ELSE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2307,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2308,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "       ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2309,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " F",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2310,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "illing",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2311,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2312,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Val",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2313,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ve",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2314,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2315,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " TRUE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2316,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2317,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2318,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2319,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " END",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2320,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2321,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2322,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2323,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2324,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "3",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2325,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ":\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2326,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2327,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2328,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2329,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " c",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2330,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "apping",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2331,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Confirm",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2332,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Button",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2333,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " THEN",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2334,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2335,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "       ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2336,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " Pack",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2337,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ing",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2338,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_M",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2339,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "achine",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2340,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2341,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " TRUE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2342,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2343,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2344,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "       ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2345,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " phase",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2346,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2347,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2348,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "4",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2349,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2350,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2351,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2352,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ELSE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2353,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2354,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "       ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2355,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " C",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2356,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "apping",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2357,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_M",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2358,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "achine",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2359,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2360,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " TRUE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2361,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2362,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2363,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2364,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " END",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2365,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2366,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2367,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2368,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2369,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "4",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2370,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ":\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2371,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2372,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2373,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2374,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " packing",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2375,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Confirm",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2376,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Button",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2377,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " THEN",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2378,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2379,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "       ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2380,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " Completion",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2381,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_L",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2382,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ight",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2383,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2384,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " TRUE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2385,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2386,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2387,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "       ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2388,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " phase",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2389,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2390,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2391,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "5",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2392,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2393,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2394,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2395,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ELSE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2396,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2397,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "       ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2398,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " Pack",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2399,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ing",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2400,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_M",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2401,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "achine",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2402,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2403,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " TRUE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2404,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2405,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2406,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2407,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " END",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2408,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2409,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2410,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2411,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2412,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "5",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2413,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ":\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2414,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2415,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2416,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2417,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " finished",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2418,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Button",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2419,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " THEN",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2420,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2421,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "       ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2422,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " phase",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2423,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2424,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2425,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "0",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2426,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2427,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2428,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2429,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ELSE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2430,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2431,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "       ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2432,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " Completion",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2433,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_L",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2434,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ight",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2435,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2436,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " TRUE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2437,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2438,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2439,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2440,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " END",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2441,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2442,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2443,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2444,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2445,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "EL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2446,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "SE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2447,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2448,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2449,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " phase",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2450,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2451,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2452,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "0",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2453,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2454,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2455,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "END",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2456,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_C",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2457,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ASE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2458,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2459,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\",\"",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2460,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "support",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2461,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ing",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2462,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2463,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "objects",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2464,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\":",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2465,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "[]",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2466,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "}",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.done",
+    "sequence_number": 2467,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "text": "{\"declaration\":\"FUNCTION_BLOCK FB_Task\\nVAR_INPUT\\n    bottleSensor : BOOL;\\n    cleaningConfirmButton : BOOL;\\n    fillingConfirmButton : BOOL;\\n    cappingConfirmButton : BOOL;\\n    packingConfirmButton : BOOL;\\n    finishedButton : BOOL;\\nEND_VAR\\nVAR_OUTPUT\\n    Pump_Motor : BOOL;\\n    Filling_Valve : BOOL;\\n    Capping_Machine : BOOL;\\n    Packing_Machine : BOOL;\\n    Completion_Light : BOOL;\\nEND_VAR\\nVAR\\n    phase : INT := 0;\\nEND_VAR\",\"implementation\":\"Pump_Motor := FALSE;\\nFilling_Valve := FALSE;\\nCapping_Machine := FALSE;\\nPacking_Machine := FALSE;\\nCompletion_Light := FALSE;\\n\\nCASE phase OF\\n0:\\n    IF bottleSensor THEN\\n        Pump_Motor := TRUE;\\n        phase := 1;\\n    END_IF;\\n1:\\n    IF cleaningConfirmButton THEN\\n        Filling_Valve := TRUE;\\n        phase := 2;\\n    ELSE\\n        Pump_Motor := TRUE;\\n    END_IF;\\n2:\\n    IF fillingConfirmButton THEN\\n        Capping_Machine := TRUE;\\n        phase := 3;\\n    ELSE\\n        Filling_Valve := TRUE;\\n    END_IF;\\n3:\\n    IF cappingConfirmButton THEN\\n        Packing_Machine := TRUE;\\n        phase := 4;\\n    ELSE\\n        Capping_Machine := TRUE;\\n    END_IF;\\n4:\\n    IF packingConfirmButton THEN\\n        Completion_Light := TRUE;\\n        phase := 5;\\n    ELSE\\n        Packing_Machine := TRUE;\\n    END_IF;\\n5:\\n    IF finishedButton THEN\\n        phase := 0;\\n    ELSE\\n        Completion_Light := TRUE;\\n    END_IF;\\nELSE\\n    phase := 0;\\nEND_CASE;\",\"supporting_objects\":[]}",
+    "logprobs": []
+  },
+  {
+    "type": "response.content_part.done",
+    "sequence_number": 2468,
+    "item_id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+    "output_index": 1,
+    "content_index": 0,
+    "part": {
+      "type": "output_text",
+      "annotations": [],
+      "logprobs": [],
+      "text": "{\"declaration\":\"FUNCTION_BLOCK FB_Task\\nVAR_INPUT\\n    bottleSensor : BOOL;\\n    cleaningConfirmButton : BOOL;\\n    fillingConfirmButton : BOOL;\\n    cappingConfirmButton : BOOL;\\n    packingConfirmButton : BOOL;\\n    finishedButton : BOOL;\\nEND_VAR\\nVAR_OUTPUT\\n    Pump_Motor : BOOL;\\n    Filling_Valve : BOOL;\\n    Capping_Machine : BOOL;\\n    Packing_Machine : BOOL;\\n    Completion_Light : BOOL;\\nEND_VAR\\nVAR\\n    phase : INT := 0;\\nEND_VAR\",\"implementation\":\"Pump_Motor := FALSE;\\nFilling_Valve := FALSE;\\nCapping_Machine := FALSE;\\nPacking_Machine := FALSE;\\nCompletion_Light := FALSE;\\n\\nCASE phase OF\\n0:\\n    IF bottleSensor THEN\\n        Pump_Motor := TRUE;\\n        phase := 1;\\n    END_IF;\\n1:\\n    IF cleaningConfirmButton THEN\\n        Filling_Valve := TRUE;\\n        phase := 2;\\n    ELSE\\n        Pump_Motor := TRUE;\\n    END_IF;\\n2:\\n    IF fillingConfirmButton THEN\\n        Capping_Machine := TRUE;\\n        phase := 3;\\n    ELSE\\n        Filling_Valve := TRUE;\\n    END_IF;\\n3:\\n    IF cappingConfirmButton THEN\\n        Packing_Machine := TRUE;\\n        phase := 4;\\n    ELSE\\n        Capping_Machine := TRUE;\\n    END_IF;\\n4:\\n    IF packingConfirmButton THEN\\n        Completion_Light := TRUE;\\n        phase := 5;\\n    ELSE\\n        Packing_Machine := TRUE;\\n    END_IF;\\n5:\\n    IF finishedButton THEN\\n        phase := 0;\\n    ELSE\\n        Completion_Light := TRUE;\\n    END_IF;\\nELSE\\n    phase := 0;\\nEND_CASE;\",\"supporting_objects\":[]}"
+    }
+  },
+  {
+    "type": "response.output_item.done",
+    "sequence_number": 2469,
+    "output_index": 1,
+    "item": {
+      "id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+      "type": "message",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "annotations": [],
+          "logprobs": [],
+          "text": "{\"declaration\":\"FUNCTION_BLOCK FB_Task\\nVAR_INPUT\\n    bottleSensor : BOOL;\\n    cleaningConfirmButton : BOOL;\\n    fillingConfirmButton : BOOL;\\n    cappingConfirmButton : BOOL;\\n    packingConfirmButton : BOOL;\\n    finishedButton : BOOL;\\nEND_VAR\\nVAR_OUTPUT\\n    Pump_Motor : BOOL;\\n    Filling_Valve : BOOL;\\n    Capping_Machine : BOOL;\\n    Packing_Machine : BOOL;\\n    Completion_Light : BOOL;\\nEND_VAR\\nVAR\\n    phase : INT := 0;\\nEND_VAR\",\"implementation\":\"Pump_Motor := FALSE;\\nFilling_Valve := FALSE;\\nCapping_Machine := FALSE;\\nPacking_Machine := FALSE;\\nCompletion_Light := FALSE;\\n\\nCASE phase OF\\n0:\\n    IF bottleSensor THEN\\n        Pump_Motor := TRUE;\\n        phase := 1;\\n    END_IF;\\n1:\\n    IF cleaningConfirmButton THEN\\n        Filling_Valve := TRUE;\\n        phase := 2;\\n    ELSE\\n        Pump_Motor := TRUE;\\n    END_IF;\\n2:\\n    IF fillingConfirmButton THEN\\n        Capping_Machine := TRUE;\\n        phase := 3;\\n    ELSE\\n        Filling_Valve := TRUE;\\n    END_IF;\\n3:\\n    IF cappingConfirmButton THEN\\n        Packing_Machine := TRUE;\\n        phase := 4;\\n    ELSE\\n        Capping_Machine := TRUE;\\n    END_IF;\\n4:\\n    IF packingConfirmButton THEN\\n        Completion_Light := TRUE;\\n        phase := 5;\\n    ELSE\\n        Packing_Machine := TRUE;\\n    END_IF;\\n5:\\n    IF finishedButton THEN\\n        phase := 0;\\n    ELSE\\n        Completion_Light := TRUE;\\n    END_IF;\\nELSE\\n    phase := 0;\\nEND_CASE;\",\"supporting_objects\":[]}"
+        }
+      ],
+      "role": "assistant"
+    }
+  },
+  {
+    "type": "response.completed",
+    "sequence_number": 2470,
+    "response": {
+      "id": "b4f31a4ec95242d1aa62acf48f6ede55",
+      "object": "response",
+      "created_at": 1793019824,
+      "status": "completed",
+      "background": false,
+      "error": null,
+      "max_output_tokens": 8192,
+      "model": "deepseek-v4.1-flash",
+      "reasoning": {
+        "effort": "medium"
+      },
+      "store": false,
+      "output": [
+        {
+          "id": "rs_b4f31a4ec95242d1aa62acf48f6ede55_0",
+          "type": "reasoning",
+          "summary": [
+            {
+              "type": "summary_text",
+              "text": "We need answer JSON only. Need construct FB_Task declaration + implementation + supporting_objects. Need implement behavior matching tests/LTL. No markdown. Need exact interface names/types. We can use internal phase variable. Need declaration includes VAR_INPUT, VAR_OUTPUT, VAR maybe phase. Need supporting objects maybe none? But schema says supporting_objects list helper DUT/POU; can be empty. Need ensure JSON valid. Need decide implementation logic.\n\nWe need return only JSON object with declaration, implementation, supporting_objects. declaration is \"CODESYS FUNCTION_BLOCK FB_Task followed by all VAR sections; omit END_FUNCTION_BLOCK.\" So declaration string should be:\nFUNCTION_BLOCK FB_Task\nVAR_INPUT\n bottleSensor : BOOL;\n ...\nEND_VAR\nVAR_OUTPUT\n ...\nEND_VAR\nVAR\n phase : INT := 0;\nEND_VAR\nPossibly no END_FUNCTION_BLOCK. Implementation body.\n\nNeed implement such that outputs based on phase and inputs, one transition per scan, confirmations outside active ignored. Need determine output semantics: At phase=0 if bottleSensor true, start cleaning same scan: Pump_Motor true, phase becomes 1 for next scan. In tests step 1: idle bottle false -> outputs off. step2 bottle true -> Pump true. step3 bottle false, phase now 1 -> Pump true. step4 cleaningConfirm true -> Filling true, phase=2 next. etc. At phase=1 and cleaningConfirmButton true -> output Filling_Valve true and phase=2. At phase=2 fillingConfirm -> Capping true. phase=3 cappingConfirm -> Packing true. phase=4 packingConfirm -> Completion_Light true phase=5. phase=5 if !finished -> Completion_Light true stays. If finished true -> all off phase=0. Need if bottleSensor still true and phase=0 after finished? Assumption: \"finishedButton resets only the completed phase. A bottle still present can start a new cleaning cycle on the following idle scan.\" LTL P9 says phase=5 & finished -> !Completion_Light & X(phase=0). That implies same scan with phase=5 finished output off, next phase 0, not immediately start cleaning even if bottleSensor true? It says following idle scan can start; transition at most one per scan. So implementation: compute based on current phase and inputs; if phase 5 and finished true, set outputs off and phase := 0; do not evaluate bottleSensor in same scan. Next scan phase 0 can start if sensor.\n\nNeed also if phase 0 and bottleSensor false remain idle. If phase 0 and bottleSensor true start cleaning even if other confirms true? T2 step 1: phase0, fillingConfirm true, packingConfirm true, bottleSensor false -> outputs off. step2 bottle true, cleaningConfirm true, fillingConfirm true, phase0 -> Pump true phase=1. Good. If phase0 and bottleSensor true with cleaningConfirm true, pump true not filling. So prioritize phase transitions based on phase.\n\nNeed outputs set false each scan then set based on transition. But if phase 1 no confirm, Pump should remain true. So output default based on state? Need set outputs according to action:\n- phase 0: if bottleSensor then Pump true and phase=1 else all off.\n- phase 1: if cleaningConfirm then Filling true and phase=2 else Pump true.\n- phase 2: if fillingConfirm then Capping true and phase=3 else Filling true.\n- phase 3: if cappingConfirm then Packing true and phase=4 else Capping true.\n- phase 4: if packingConfirm then Completion_Light true and phase=5 else Packing true.\n- phase 5: if finishedButton then all off phase=0 else Completion_Light true.\nThis yields one output active while waiting. Need note in tests: T2 after step2 phase becomes 1 and Pump true. Step3 phase=1 fillingConfirm true; cleaningConfirm false -> Pum true. Step4 finished true -> Pump true. Step5 cleaningConfirm true -> Filling true phase=2. Step6 fillingConfirm true -> Capping true phase=3. Good.\n\nNeed implement in ST. Need be careful CODESYS INT vs maybe UINT. Use CASE phase OF. Initialize outputs false at top. Then CASE. For phase 0: IF bottleSensor THEN Pump_Motor := TRUE; phase := 1; END_IF. For phase1: IF cleaningConfirmButton THEN Filling_Valve := TRUE; phase := 2; ELSE Pump_Motor := TRUE; END_IF. etc. At phase5: IF finishedButton THEN phase := 0; ELSE Completion_Light := TRUE; END_IF. At top set all outputs FALSE. Need phase variable in VAR. Could name internal phase. If phase value invalid? default phase:=0 maybe. But no need.\n\nNeed check LTL P8: G((phase=5 & !finishedButton) -> (Completion_Light & X(phase=5))). If at phase5 and finished false, set Completion true and phase stays 5 (do not assign). Good. P9 phase5 & finished -> !Completion_Light & X(phase=0). We set outputs false top, phase=0. Good.\n\nNeed consider \"phase is ghost pre-scan state\". Implementation variable phase will be updated end. Good.\n\nNeed support objects list empty. JSON object:\n{\n \"declaration\": \"...\",\n \"implementation\": \"...\",\n \"supporting_objects\": []\n}\n\nNeed ensure only JSON no Markdown. Need escape newlines in strings. We can output actual JSON with string containing \\n. Need not include comments. Use double quotes. Need declaration string include semicolons. Could include VAR sections. No END_FUNCTION_BLOCK. Implementation string ST body. Need ensure no newline issues. JSON valid. Could write compact with \\n escaped. Need include all input/output types. Let's craft.\n\nDeclaration:\nFUNCTION_BLOCK FB_Task\nVAR_INPUT\n    bottleSensor : BOOL;\n    cleaningConfirmButton : BOOL;\n    fillingConfirmButton : BOOL;\n    cappingConfirmButton : BOOL;\n    packingConfirmButton : BOOL;\n    finishedButton : BOOL;\nEND_VAR\nVAR_OUTPUT\n    Pump_Motor : BOOL;\n    Filling_Valve : BOOL;\n    Capping_Machine : BOOL;\n    Packing_Machine : BOOL;\n    Completion_Light : BOOL;\nEND_VAR\nVAR\n    phase : INT := 0;\nEND_VAR\n\nImplementation:\nPump_Motor := FALSE;\nFilling_Valve := FALSE;\nCapping_Machine := FALSE;\nPacking_Machine := FALSE;\nCompletion_Light := FALSE;\n\nCASE phase OF\n0:\n    IF bottleSensor THEN\n        Pump_Motor := TRUE;\n        phase := 1;\n    END_IF;\n1:\n    IF cleaningConfirmButton THEN\n        Filling_Valve := TRUE;\n        phase := 2;\n    ELSE\n        Pump_Motor := TRUE;\n    END_IF;\n2:\n    IF fillingConfirmButton THEN\n        Capping_Machine := TRUE;\n        phase := 3;\n    ELSE\n        Filling_Valve := TRUE;\n    END_IF;\n3:\n    IF cappingConfirmButton THEN\n        Packing_Machine := TRUE;\n        phase := 4;\n    ELSE\n        Capping_Machine := TRUE;\n    END_IF;\n4:\n    IF packingConfirmButton THEN\n        Completion_Light := TRUE;\n        phase := 5;\n    ELSE\n        Packing_Machine := TRUE;\n    END_IF;\n5:\n    IF finishedButton THEN\n        phase := 0;\n    ELSE\n        Completion_Light := TRUE;\n    END_IF;\nELSE\n    phase := 0;\nEND_CASE;\n\nThis should compile. Note CODESYS CASE with integer labels and ELSE. Semicolons after END_IF maybe okay. Need maybe \"END_CASE;\" yes.\n\nSupporting empty.\n\nBut need think if \"all VAR sections\" means include VAR_INPUT, VAR_OUTPUT, VAR. Fine.\n\nPotential issue: At phase 0 with bottleSensor true and maybe finishedButton true? It starts cleaning. Assumption okay. At phase5 finished true and bottleSensor true, we set phase=0, all off. Next scan if still bottleSensor true, start cleaning. Good.\n\nPotential issue: One-hot outputs: At phase transition, we set top false then set only new output. If no transition, only current output true. Good.\n\nPotential issue: \"Active phase restricts which confirmation can be accepted.\" We ignore other confirms. Good.\n\nPotential issue: \"Confirmation inputs are level sampled. A held confirmation can complete its relevant phase on a later scan, but cannot skip several phases in one scan.\" Suppose phase1 cleaningConfirm held true. At scan, phase1 -> filling, phase=2. Next scan if cleaningConfirm still true and fillingConfirm false, phase2 no fillingConfirm => Filling_Valve true; cleaning ignored. Good. If fillingConfirm also true next scan, can advance to capping because now active. This could happen in next scan, not same scan. Good.\n\nNeed final answer only JSON. Ensure not markdown. Use actual JSON with \\n escaped. Could provide pretty JSON with strings containing \\n escapes. Need no trailing commas. Let's craft final. Must be only JSON. We'll include declaration and implementation strings with escaped newlines. Supporting_objects empty. Ensure quotes escaped? None internal. Let's produce."
+            }
+          ]
+        },
+        {
+          "id": "msg_b4f31a4ec95242d1aa62acf48f6ede55_0",
+          "type": "message",
+          "status": "completed",
+          "content": [
+            {
+              "type": "output_text",
+              "annotations": [],
+              "logprobs": [],
+              "text": "{\"declaration\":\"FUNCTION_BLOCK FB_Task\\nVAR_INPUT\\n    bottleSensor : BOOL;\\n    cleaningConfirmButton : BOOL;\\n    fillingConfirmButton : BOOL;\\n    cappingConfirmButton : BOOL;\\n    packingConfirmButton : BOOL;\\n    finishedButton : BOOL;\\nEND_VAR\\nVAR_OUTPUT\\n    Pump_Motor : BOOL;\\n    Filling_Valve : BOOL;\\n    Capping_Machine : BOOL;\\n    Packing_Machine : BOOL;\\n    Completion_Light : BOOL;\\nEND_VAR\\nVAR\\n    phase : INT := 0;\\nEND_VAR\",\"implementation\":\"Pump_Motor := FALSE;\\nFilling_Valve := FALSE;\\nCapping_Machine := FALSE;\\nPacking_Machine := FALSE;\\nCompletion_Light := FALSE;\\n\\nCASE phase OF\\n0:\\n    IF bottleSensor THEN\\n        Pump_Motor := TRUE;\\n        phase := 1;\\n    END_IF;\\n1:\\n    IF cleaningConfirmButton THEN\\n        Filling_Valve := TRUE;\\n        phase := 2;\\n    ELSE\\n        Pump_Motor := TRUE;\\n    END_IF;\\n2:\\n    IF fillingConfirmButton THEN\\n        Capping_Machine := TRUE;\\n        phase := 3;\\n    ELSE\\n        Filling_Valve := TRUE;\\n    END_IF;\\n3:\\n    IF cappingConfirmButton THEN\\n        Packing_Machine := TRUE;\\n        phase := 4;\\n    ELSE\\n        Capping_Machine := TRUE;\\n    END_IF;\\n4:\\n    IF packingConfirmButton THEN\\n        Completion_Light := TRUE;\\n        phase := 5;\\n    ELSE\\n        Packing_Machine := TRUE;\\n    END_IF;\\n5:\\n    IF finishedButton THEN\\n        phase := 0;\\n    ELSE\\n        Completion_Light := TRUE;\\n    END_IF;\\nELSE\\n    phase := 0;\\nEND_CASE;\",\"supporting_objects\":[]}"
+            }
+          ],
+          "role": "assistant"
+        }
+      ],
+      "usage": {
+        "input_tokens": 4483,
+        "input_tokens_details": {
+          "cached_tokens": 0
+        },
+        "output_tokens": 2458,
+        "output_tokens_details": {
+          "reasoning_tokens": 2002
+        },
+        "total_tokens": 6941
+      }
+    }
+  }
+]

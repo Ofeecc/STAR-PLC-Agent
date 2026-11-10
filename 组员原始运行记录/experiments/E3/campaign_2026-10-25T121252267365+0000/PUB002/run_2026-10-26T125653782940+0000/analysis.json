@@ -1,0 +1,112 @@
+{
+  "pou_type": "FUNCTION_BLOCK",
+  "pou_name": "FB_Task",
+  "interface": [
+    {
+      "direction": "INPUT",
+      "name": "value",
+      "type": "DWORD",
+      "description": "The input value to be checked for changes and edge triggering"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "hasChanged",
+      "type": "BOOL",
+      "description": "True indicates that the input value has changed"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "hasRisingEdges",
+      "type": "BOOL",
+      "description": "True indicates that rising edges have occurred in the input value"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "risingBits",
+      "type": "DWORD",
+      "description": "The bit stream of rising edges, where each bit indicates whether the corresponding input bit has experienced a rising edge (1 for a rising edge, 0 for no rising edge)"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "noOfRisingBits",
+      "type": "USINT",
+      "description": "The number of rising edges in the input value"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "hasFallingEdges",
+      "type": "BOOL",
+      "description": "True indicates that falling edges have occurred in the input value"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "fallingBits",
+      "type": "DWORD",
+      "description": "The bit stream of falling edges, where each bit indicates whether the corresponding input bit has experienced a falling edge (1 for a falling edge, 0 for no falling edge)"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "noOfFallingBits",
+      "type": "USINT",
+      "description": "The number of falling edges in the input value"
+    }
+  ],
+  "initial_conditions": {
+    "previousValue": 0,
+    "risingBits": 0,
+    "fallingBits": 0,
+    "noOfRisingBits": 0,
+    "noOfFallingBits": 0,
+    "hasChanged": false,
+    "hasRisingEdges": false,
+    "hasFallingEdges": false
+  },
+  "scan_semantics": "At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, outputs O[k] are observed after execution, and q[k+1] is the updated state. Each test creates a fresh FB instance before step 0. An initialized instance has not yet executed a scan. Timer elapsed time is zero on the first eligible sampled invocation; dt_ms is elapsed wall time since the previous invocation, not automatically a synthetic input to the FB. No unobserved past input stability is assumed. All sequences here are expected values.",
+  "safety_priority": [
+    "Previous value is updated after calculating both edge masks."
+  ],
+  "assumptions": [
+    "The previous DWORD is initialized to DWORD#0. Therefore nonzero bits on the first scan count as rising edges.",
+    "Bitwise complement is restricted to 32 bits; counts range from 0 through 32."
+  ],
+  "formal_properties": [
+    {
+      "id": "P1",
+      "formula": "G(risingBits = (value AND NOT prev))",
+      "explanation": "The rising mask identifies only 0-to-1 bits."
+    },
+    {
+      "id": "P2",
+      "formula": "G(fallingBits = (prev AND NOT value))",
+      "explanation": "The falling mask identifies only 1-to-0 bits."
+    },
+    {
+      "id": "P3",
+      "formula": "G((risingBits AND fallingBits)=0)",
+      "explanation": "A bit cannot rise and fall in one scan."
+    },
+    {
+      "id": "P4",
+      "formula": "G((noOfRisingBits=popcount(risingBits)) & (noOfFallingBits=popcount(fallingBits)))",
+      "explanation": "Both counts equal their mask population."
+    },
+    {
+      "id": "P5",
+      "formula": "G((hasRisingEdges <-> risingBits<>0) & (hasFallingEdges <-> fallingBits<>0) & (hasChanged <-> value<>prev))",
+      "explanation": "Flags match masks and value changes."
+    },
+    {
+      "id": "P6",
+      "formula": "G(X(prev)=value)",
+      "explanation": "The current value is the next scan history."
+    }
+  ],
+  "atomic_propositions": {
+    "prev": "Ghost pre-scan previous DWORD; initialized to zero.",
+    "risingBits": "End-of-scan mask value & NOT prev, restricted to DWORD width.",
+    "fallingBits": "End-of-scan mask prev & NOT value, restricted to DWORD width.",
+    "popcount": "Number of set bits in the unsigned 32-bit argument.",
+    "other interface names": "Identically named sampled inputs or observed outputs."
+  },
+  "supporting_types": []
+}

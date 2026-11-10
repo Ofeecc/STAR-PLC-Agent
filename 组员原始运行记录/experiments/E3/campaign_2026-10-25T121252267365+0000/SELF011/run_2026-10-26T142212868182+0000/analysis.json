@@ -1,0 +1,169 @@
+{
+  "pou_type": "FUNCTION_BLOCK",
+  "pou_name": "FB_Task",
+  "interface": [
+    {
+      "direction": "INPUT",
+      "name": "Start",
+      "type": "BOOL",
+      "description": "Begin one fixture cycle"
+    },
+    {
+      "direction": "INPUT",
+      "name": "Stop",
+      "type": "BOOL",
+      "description": "Abort fixture cycle"
+    },
+    {
+      "direction": "INPUT",
+      "name": "Reset",
+      "type": "BOOL",
+      "description": "Clear cycle state"
+    },
+    {
+      "direction": "INPUT",
+      "name": "ExtendDone",
+      "type": "BOOL",
+      "description": "Extension completion handshake"
+    },
+    {
+      "direction": "INPUT",
+      "name": "ClampDone",
+      "type": "BOOL",
+      "description": "Clamp completion handshake"
+    },
+    {
+      "direction": "INPUT",
+      "name": "ReleaseDone",
+      "type": "BOOL",
+      "description": "Release completion handshake"
+    },
+    {
+      "direction": "INPUT",
+      "name": "RetractDone",
+      "type": "BOOL",
+      "description": "Retracted home handshake"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Extend",
+      "type": "BOOL",
+      "description": "Slide extend command"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Clamp",
+      "type": "BOOL",
+      "description": "Clamp command"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Release",
+      "type": "BOOL",
+      "description": "Release command"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Retract",
+      "type": "BOOL",
+      "description": "Slide retract command"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Busy",
+      "type": "BOOL",
+      "description": "An action state is active"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Done",
+      "type": "BOOL",
+      "description": "Cycle completed"
+    }
+  ],
+  "initial_conditions": {
+    "state": "IDLE",
+    "all_commands": false
+  },
+  "scan_semantics": "At scan k, sample every input once, read retained pre-state q[k], execute one transition, and observe outputs O[k] at the end of that same scan. Updated state becomes q[k+1]. Reset the instance before each test. Step 0 executes normally; initial conditions describe pre-state, not an extra delayed scan. All timing in this task is explicitly counted in invocations, not wall time.",
+  "safety_priority": [
+    "Stop or Reset overrides all transitions",
+    "At most one state transition per invocation"
+  ],
+  "assumptions": [
+    "Completion inputs are handshake states; no mechanical safety certification is implied.",
+    "No timeout is included; an absent handshake intentionally stalls the current action."
+  ],
+  "formal_properties": [
+    {
+      "id": "P1",
+      "formula": "G(oneAction)",
+      "explanation": "Action commands never overlap."
+    },
+    {
+      "id": "P2",
+      "formula": "G((Stop | Reset) -> (!Busy & !Done & !Extend & !Clamp & !Release & !Retract))",
+      "explanation": "Abort clears every command immediately."
+    },
+    {
+      "id": "P3",
+      "formula": "G((normal & qIdle & Start & RetractDone) -> Extend)",
+      "explanation": "Home-qualified Start enters only the first action."
+    },
+    {
+      "id": "P4",
+      "formula": "G((normal & qExtend & ExtendDone) -> Clamp)",
+      "explanation": "Extension completion enters clamp."
+    },
+    {
+      "id": "P5",
+      "formula": "G((normal & qClamp & ClampDone) -> Release)",
+      "explanation": "Clamp completion enters release."
+    },
+    {
+      "id": "P6",
+      "formula": "G((normal & qRelease & ReleaseDone) -> Retract)",
+      "explanation": "Release completion enters retract."
+    },
+    {
+      "id": "P7",
+      "formula": "G((normal & qRetract & RetractDone) -> Done)",
+      "explanation": "Home arrival completes the cycle."
+    },
+    {
+      "id": "P8",
+      "formula": "G((normal & qDone) -> Done)",
+      "explanation": "A completed cycle cannot restart without an explicit clear."
+    },
+    {
+      "id": "P9",
+      "formula": "G((normal & qExtend & !ExtendDone) -> Extend)",
+      "explanation": "The fixture waits for an extension handshake rather than assuming completion."
+    }
+  ],
+  "atomic_propositions": {
+    "Start": "Begin one fixture cycle Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "Stop": "Abort fixture cycle Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "Reset": "Clear cycle state Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "ExtendDone": "Extension completion handshake Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "ClampDone": "Clamp completion handshake Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "ReleaseDone": "Release completion handshake Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "RetractDone": "Retracted home handshake Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "Extend": "Slide extend command Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "Clamp": "Clamp command Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "Release": "Release command Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "Retract": "Slide retract command Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "Busy": "An action state is active Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "Done": "Cycle completed Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "first": "True only on the first invocation after resetting the FB instance.",
+    "qIdle": "Pre-state IDLE.",
+    "qExtend": "Pre-state EXTEND.",
+    "qClamp": "Pre-state CLAMP.",
+    "qRelease": "Pre-state RELEASE.",
+    "qRetract": "Pre-state RETRACT.",
+    "qDone": "Pre-state DONE.",
+    "normal": "!Stop & !Reset.",
+    "oneAction": "At most one of Extend, Clamp, Release, Retract is TRUE."
+  },
+  "supporting_types": []
+}

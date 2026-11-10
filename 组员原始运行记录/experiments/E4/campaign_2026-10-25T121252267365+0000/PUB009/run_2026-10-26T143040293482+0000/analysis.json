@@ -1,0 +1,132 @@
+{
+  "pou_type": "FUNCTION_BLOCK",
+  "pou_name": "FB_Task",
+  "interface": [
+    {
+      "direction": "INPUT",
+      "name": "cyclicExecution",
+      "type": "BOOL",
+      "description": "When TRUE, periodic reading is performed, and trigger has no effect"
+    },
+    {
+      "direction": "INPUT",
+      "name": "trigger",
+      "type": "BOOL",
+      "description": "External trigger signal, reads value upon each rising edge"
+    },
+    {
+      "direction": "INPUT",
+      "name": "value",
+      "type": "LREAL",
+      "description": "Newly read data value"
+    },
+    {
+      "direction": "INPUT",
+      "name": "windowSize",
+      "type": "INT",
+      "description": "The window size for the moving average, which must be between 1 and 100"
+    },
+    {
+      "direction": "INPUT",
+      "name": "reset",
+      "type": "BOOL",
+      "description": "Reset signal, resets the moving average calculation when TRUE"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "average",
+      "type": "LREAL",
+      "description": "The moving average"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "windowSizeReached",
+      "type": "BOOL",
+      "description": "FALSE: Maximum window width not yet reached TRUE: Maximum window width has been reached"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "error",
+      "type": "BOOL",
+      "description": "FALSE: No error occurred TRUE: An error occurred during the execution of FB"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "status",
+      "type": "WORD",
+      "description": "Status code"
+    }
+  ],
+  "initial_conditions": {
+    "average": 0.0,
+    "windowSizeReached": false,
+    "error": false,
+    "status": 0,
+    "sampleCount": 0,
+    "previousTrigger": false
+  },
+  "scan_semantics": "At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, outputs O[k] are observed after execution, and q[k+1] is the updated state. Each test creates a fresh FB instance before step 0. An initialized instance has not yet executed a scan. Timer elapsed time is zero on the first eligible sampled invocation; dt_ms is elapsed wall time since the previous invocation, not automatically a synthetic input to the FB. No unobserved past input stability is assumed. All sequences here are expected values.",
+  "safety_priority": [
+    "Invalid window returns an error before sampling.",
+    "Reset overrides sample acceptance.",
+    "Cyclic and trigger conditions cannot cause double insertion."
+  ],
+  "assumptions": [
+    "During warm-up, average is the mean of the actual accepted samples; zero-filled unused capacity is excluded.",
+    "reset has priority over sampling for a valid window; it clears history and sets average=0 and windowSizeReached=FALSE.",
+    "Changing a valid windowSize clears history before any same-scan accepted sample. Invalid window sets error/status and does not accept or change history.",
+    "An invalid-window scan preserves average/windowSizeReached. Returning to a valid window clears error/status. Trigger edge history is updated on every invocation, including reset and invalid-window scans.",
+    "cyclicExecution accepts exactly one sample per scan and ignores the trigger. windowSizeReached becomes TRUE once the accepted sample count reaches windowSize."
+  ],
+  "formal_properties": [
+    {
+      "id": "P1",
+      "formula": "G(!valid -> (error & status=16#8200 & unchangedMean))",
+      "explanation": "Window bounds are checked without silently accepting data."
+    },
+    {
+      "id": "P2",
+      "formula": "G(valid -> (!error & status=0))",
+      "explanation": "A valid window clears configuration error."
+    },
+    {
+      "id": "P3",
+      "formula": "G((valid & reset) -> (average=0 & !windowSizeReached))",
+      "explanation": "Reset produces an empty history."
+    },
+    {
+      "id": "P4",
+      "formula": "G((valid & !reset) -> average=meanOrZero(historyAfter))",
+      "explanation": "The result is the arithmetic mean of the active window or zero when empty."
+    },
+    {
+      "id": "P5",
+      "formula": "G(valid -> (windowSizeReached <-> length(historyAfter)=windowSize))",
+      "explanation": "Full-window indication follows history population."
+    },
+    {
+      "id": "P6",
+      "formula": "G(X(previousTrigger)=trigger)",
+      "explanation": "Rising-edge memory updates even if sampling is inhibited."
+    },
+    {
+      "id": "P7",
+      "formula": "G((valid & !reset & !cyclicExecution & !triggerRise & !windowChanged) -> unchangedMean)",
+      "explanation": "No event means no sample update."
+    }
+  ],
+  "atomic_propositions": {
+    "valid": "1<=windowSize<=100",
+    "triggerRise": "trigger & !previousTrigger",
+    "accept": "valid & !reset & (cyclicExecution | triggerRise)",
+    "history": "Ghost ordered list of at most windowSize accepted samples, newest last.",
+    "historyAfter": "history after clearing on reset/window change and adding one accepted sample, discarding oldest if full.",
+    "unchangedMean": "average and windowSizeReached equal their pre-scan values.",
+    "interface names": "Identically named sampled input or observed output.",
+    "meanOrZero": "Arithmetic mean for a nonempty list, otherwise zero.",
+    "length": "Number of samples in the history list.",
+    "windowChanged": "Current valid windowSize differs from the last valid configured size.",
+    "previousTrigger": "Pre-scan retained trigger, initialized FALSE."
+  },
+  "supporting_types": []
+}

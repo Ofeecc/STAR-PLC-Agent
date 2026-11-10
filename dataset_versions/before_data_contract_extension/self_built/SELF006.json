@@ -1,0 +1,242 @@
+{
+  "schema_version": 1,
+  "id": "SELF006",
+  "kind": "self_built",
+  "title": "Tank filling with hysteresis and sensor inconsistency",
+  "difficulty": "easy",
+  "provenance": {
+    "source_type": "independent_synthesis",
+    "source_file": "scripts/build_self_dataset.py",
+    "source_index": 6,
+    "adaptation": "Independently specified for this project; no public task was copied. The coding assistant chose the state variables, priority order and fixed scan traces, then reviewed the traces against a separate Python transition implementation.",
+    "rationale": "A refill tank avoids contactor chatter between low and high level switches and detects physically inconsistent switch combinations.",
+    "review": "Assistant consistency review of initialization, simultaneous commands, retained state and recovery boundaries; independent Python oracle checked against manual expected traces. Not an industrial safety certification or external expert review."
+  },
+  "requirements": "LowWet and HighWet indicate water covering the respective lower and upper switches. HighWet TRUE with LowWet FALSE is inconsistent: SensorFault TRUE and Fill FALSE. SensorFault is combinational and clears when inputs become consistent. Inhibit or HighWet also forces Fill FALSE. Otherwise LowWet FALSE starts Fill; LowWet TRUE and HighWet FALSE retains Fill. Fill initializes FALSE. Clearing Inhibit at a middle level retains the resulting stopped state until water falls below the low switch.",
+  "scenario": "A refill tank avoids contactor chatter between low and high level switches and detects physically inconsistent switch combinations.",
+  "interface": [
+    {
+      "direction": "INPUT",
+      "name": "LowWet",
+      "type": "BOOL",
+      "description": "Water reaches lower switch"
+    },
+    {
+      "direction": "INPUT",
+      "name": "HighWet",
+      "type": "BOOL",
+      "description": "Water reaches upper switch"
+    },
+    {
+      "direction": "INPUT",
+      "name": "Inhibit",
+      "type": "BOOL",
+      "description": "External fill inhibit"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Fill",
+      "type": "BOOL",
+      "description": "Inlet valve command"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "SensorFault",
+      "type": "BOOL",
+      "description": "Inconsistent level switches"
+    }
+  ],
+  "initial_conditions": {
+    "Fill": false
+  },
+  "scan_semantics": "At scan k, sample every input once, read retained pre-state q[k], execute one transition, and observe outputs O[k] at the end of that same scan. Updated state becomes q[k+1]. Reset the instance before each test. Step 0 executes normally; initial conditions describe pre-state, not an extra delayed scan. All timing in this task is explicitly counted in invocations, not wall time.",
+  "safety_priority": [
+    "Inconsistent sensors or Inhibit stop filling",
+    "High switch stops",
+    "Low switch starts",
+    "Middle level retains"
+  ],
+  "assumptions": [
+    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+  ],
+  "atomic_propositions": {
+    "LowWet": "Water reaches lower switch Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "HighWet": "Water reaches upper switch Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "Inhibit": "External fill inhibit Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "Fill": "Inlet valve command Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "SensorFault": "Inconsistent level switches Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "first": "True only on the first invocation after resetting the FB instance.",
+    "qFill": "Pre-scan retained Fill, initially FALSE.",
+    "middle": "LowWet & !HighWet.",
+    "CompleteBehaviorV2": "Every observed OUTPUT equals the output of the independent deterministic transition in specification_contract, initialized and advanced exactly as transition_binding specifies."
+  },
+  "ltl": [
+    {
+      "id": "P1",
+      "formula": "G(SensorFault <-> (HighWet & !LowWet))",
+      "explanation": "Fault exactly identifies inconsistent switches."
+    },
+    {
+      "id": "P2",
+      "formula": "G((SensorFault | Inhibit | HighWet) -> !Fill)",
+      "explanation": "Inhibit, fault and full tank force shutoff."
+    },
+    {
+      "id": "P3",
+      "formula": "G((!LowWet & !HighWet & !Inhibit) -> Fill)",
+      "explanation": "A low tank starts filling."
+    },
+    {
+      "id": "P4",
+      "formula": "G((middle & !Inhibit) -> (Fill <-> qFill))",
+      "explanation": "The middle band retains the prior command."
+    },
+    {
+      "id": "P5",
+      "formula": "G(first -> !qFill)",
+      "explanation": "No retained filling command exists on reset."
+    },
+    {
+      "id": "SELF006.V2.COMPLETE",
+      "formula": "G(CompleteBehaviorV2)",
+      "explanation": "The complete per-invocation relation defined in specification_contract.normative_completion; requires explicit encoding before model checking."
+    }
+  ],
+  "tests": [
+    {
+      "id": "hysteresis",
+      "purpose": "Fill cycle across both switching thresholds",
+      "steps": [
+        {
+          "inputs": {
+            "LowWet": false,
+            "HighWet": false,
+            "Inhibit": false
+          },
+          "expected": {
+            "Fill": true,
+            "SensorFault": false
+          }
+        },
+        {
+          "inputs": {
+            "LowWet": true,
+            "HighWet": false,
+            "Inhibit": false
+          },
+          "expected": {
+            "Fill": true,
+            "SensorFault": false
+          }
+        },
+        {
+          "inputs": {
+            "LowWet": true,
+            "HighWet": true,
+            "Inhibit": false
+          },
+          "expected": {
+            "Fill": false,
+            "SensorFault": false
+          }
+        },
+        {
+          "inputs": {
+            "LowWet": true,
+            "HighWet": false,
+            "Inhibit": false
+          },
+          "expected": {
+            "Fill": false,
+            "SensorFault": false
+          }
+        },
+        {
+          "inputs": {
+            "LowWet": false,
+            "HighWet": false,
+            "Inhibit": false
+          },
+          "expected": {
+            "Fill": true,
+            "SensorFault": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "fault_inhibit",
+      "purpose": "Invalid switch pair and inhibit recovery",
+      "steps": [
+        {
+          "inputs": {
+            "LowWet": true,
+            "HighWet": false,
+            "Inhibit": false
+          },
+          "expected": {
+            "Fill": false,
+            "SensorFault": false
+          }
+        },
+        {
+          "inputs": {
+            "LowWet": false,
+            "HighWet": true,
+            "Inhibit": false
+          },
+          "expected": {
+            "Fill": false,
+            "SensorFault": true
+          }
+        },
+        {
+          "inputs": {
+            "LowWet": false,
+            "HighWet": false,
+            "Inhibit": false
+          },
+          "expected": {
+            "Fill": true,
+            "SensorFault": false
+          }
+        },
+        {
+          "inputs": {
+            "LowWet": true,
+            "HighWet": false,
+            "Inhibit": true
+          },
+          "expected": {
+            "Fill": false,
+            "SensorFault": false
+          }
+        },
+        {
+          "inputs": {
+            "LowWet": true,
+            "HighWet": false,
+            "Inhibit": false
+          },
+          "expected": {
+            "Fill": false,
+            "SensorFault": false
+          }
+        }
+      ]
+    }
+  ],
+  "specification_version": "2.0-review-corrections-20261106",
+  "specification_contract": {
+    "observation": "I[k] is sampled before execution; O[k] is observed after execution. Initial conditions apply before invocation zero.",
+    "normative_completion": "明确qFill[0]=FALSE、qFill[k+1]=Fill[k]，SensorFault每拍由HighWet & !LowWet重新计算；无需另加错误保持。可保留原公式作为完整一步规约。",
+    "history_binding": "Every previous-output name refers to the preceding observed output with the declared initial value. Previous-input memories update on EVERY invocation, including reset, invalid input, stop and mode change. Reference phase/history is independently advanced from sampled inputs by the stated transition rules, never supplied by the candidate.",
+    "evaluation_scope": "Properties include interpreted data predicates. No claim of export to a model checker or completed formal proof.",
+    "review_source": "docs/规约逐题审查_20261106/SELF006.md",
+    "reference_state_initial": {
+      "fill": false
+    },
+    "deterministic_transition_python": "    def _SELF006(self, i):\n        fault = i[\"HighWet\"] and not i[\"LowWet\"]\n        fill = self.state.get(\"fill\", False)\n        if fault or i[\"Inhibit\"] or i[\"HighWet\"]:\n            fill = False\n        elif not i[\"LowWet\"]:\n            fill = True\n        self.state[\"fill\"] = fill\n        return {\"Fill\": fill, \"SensorFault\": fault}\n",
+    "transition_binding": "Initialize an independent reference state with reference_state_initial. For every sampled input execute the listed deterministic transition once; require EVERY actual OUTPUT to equal its returned value. Do not update this reference state from candidate outputs. This defines the complete scan relation; it is not evidence of ST execution."
+  }
+}

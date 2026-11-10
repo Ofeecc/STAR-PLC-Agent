@@ -1,0 +1,119 @@
+{
+  "pou_type": "FUNCTION_BLOCK",
+  "pou_name": "FB_Task",
+  "interface": [
+    {
+      "direction": "INPUT",
+      "name": "TemperatureSensorInput",
+      "type": "REAL",
+      "description": "The input value of the temperature sensor, i.e., the actual temperature"
+    },
+    {
+      "direction": "INPUT",
+      "name": "SetTemperature",
+      "type": "REAL",
+      "description": "The set temperature value"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "CurrentTemperature",
+      "type": "REAL",
+      "description": "Display of the current temperature"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "SetTempDisplay",
+      "type": "REAL",
+      "description": "Display of the set temperature"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "HeaterStatus",
+      "type": "BOOL",
+      "description": "Display of the heater status"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "OverheatProtection",
+      "type": "BOOL",
+      "description": "Display of the overheating protection status"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "HeaterOutput",
+      "type": "BOOL",
+      "description": "The control output of the heater"
+    }
+  ],
+  "initial_conditions": {
+    "HeaterOutput": false,
+    "HeaterStatus": false,
+    "OverheatProtection": false,
+    "heatDemand": false,
+    "heatElapsed_ms": 0,
+    "cooldownElapsed_ms": 0
+  },
+  "scan_semantics": "At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, outputs O[k] are observed after execution, and q[k+1] is the updated state. Each test creates a fresh FB instance before step 0. An initialized instance has not yet executed a scan. Timer elapsed time is zero on the first eligible sampled invocation; dt_ms is elapsed wall time since the previous invocation, not automatically a synthetic input to the FB. No unobserved past input stability is assumed. All sequences here are expected values.",
+  "safety_priority": [
+    "Sensor fault or active overheat protection overrides the heat demand.",
+    "Protection shutdown is evaluated before the output is finalized."
+  ],
+  "assumptions": [
+    "At equality TemperatureSensorInput=SetTemperature, retain the last heat-demand state. On a fresh instance the retained demand is FALSE.",
+    "The prose says \"more than\" a period and gives 5s. The evaluation resolves this to a 5-second threshold: protection trips at continuous heating elapsed>=5s, beginning with elapsed zero at the first energized sample.",
+    "Protection is latched for at least 3s from its trip. At elapsed>=3s it may clear and heat can restart in the same scan if the sensor is valid and demand remains.",
+    "A sensor fault immediately turns heat off and resets continuous-heating time. It does not clear or restart an already active cooldown.",
+    "The display outputs mirror their corresponding sampled temperature and setpoint even during a fault. HeaterStatus equals HeaterOutput. Inputs are held stable between timed samples."
+  ],
+  "formal_properties": [
+    {
+      "id": "P1",
+      "formula": "G(sensorFault -> !HeaterOutput)",
+      "explanation": "Invalid sensor data must never energize the heater."
+    },
+    {
+      "id": "P2",
+      "formula": "G(OverheatProtection -> !HeaterOutput)",
+      "explanation": "The heater remains off during cooldown."
+    },
+    {
+      "id": "P3",
+      "formula": "G(HeaterStatus=HeaterOutput)",
+      "explanation": "The status output reports actual commanded heat."
+    },
+    {
+      "id": "P4",
+      "formula": "G((CurrentTemperature=TemperatureSensorInput) & (SetTempDisplay=SetTemperature))",
+      "explanation": "The displays mirror sampled values."
+    },
+    {
+      "id": "P5",
+      "formula": "G((!sensorFault & !OverheatProtection & demand & !heatLimitReached) -> HeaterOutput)",
+      "explanation": "A permitted heat demand energizes the heater."
+    },
+    {
+      "id": "P6",
+      "formula": "G(heatLimitReached -> (OverheatProtection & !HeaterOutput))",
+      "explanation": "The continuous-heating threshold trips protection in the same scan."
+    },
+    {
+      "id": "P7",
+      "formula": "G((protectPrev & !cooldownDone) -> OverheatProtection)",
+      "explanation": "Protection cannot clear before its cooldown expires."
+    },
+    {
+      "id": "P8",
+      "formula": "G((OverheatProtection & G(!sensorFault & demand)) -> F(HeaterOutput))",
+      "explanation": "With advancing time and persistent valid demand, heating resumes after finite cooldown."
+    }
+  ],
+  "atomic_propositions": {
+    "sensorFault": "TemperatureSensorInput<0 OR TemperatureSensorInput>100",
+    "demand": "Ghost retained demand; set below setpoint, clear above, retain at equality.",
+    "heatLimitReached": "Continuous energized time has reached 5s, with first energized scan at elapsed zero.",
+    "cooldownDone": "At least 3s has elapsed since protection trip.",
+    "protectPrev": "Pre-scan retained OverheatProtection.",
+    "interface names": "Identically named sampled input or observed output."
+  },
+  "supporting_types": []
+}

@@ -1,0 +1,100 @@
+{
+  "pou_type": "FUNCTION_BLOCK",
+  "pou_name": "FB_Task",
+  "interface": [
+    {
+      "direction": "INPUT",
+      "name": "Fault",
+      "type": "BOOL",
+      "description": "Current fault condition"
+    },
+    {
+      "direction": "INPUT",
+      "name": "Ack",
+      "type": "BOOL",
+      "description": "Acknowledge horn"
+    },
+    {
+      "direction": "INPUT",
+      "name": "Reset",
+      "type": "BOOL",
+      "description": "Clear a removed fault"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Alarm",
+      "type": "BOOL",
+      "description": "Latched visible alarm"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Acknowledged",
+      "type": "BOOL",
+      "description": "Alarm acknowledged"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Horn",
+      "type": "BOOL",
+      "description": "Unacknowledged alarm horn"
+    }
+  ],
+  "initial_conditions": {
+    "Alarm": false,
+    "Acknowledged": false,
+    "previous_fault": false
+  },
+  "scan_semantics": "At scan k, sample every input once, read retained pre-state q[k], execute one transition, and observe outputs O[k] at the end of that same scan. Updated state becomes q[k+1]. Reset the instance before each test. Step 0 executes normally; initial conditions describe pre-state, not an extra delayed scan. All timing in this task is explicitly counted in invocations, not wall time.",
+  "safety_priority": [
+    "New fault edge reannunciates before Ack",
+    "Reset only clears when Fault is absent",
+    "Reset then precedes Ack"
+  ],
+  "assumptions": [],
+  "formal_properties": [
+    {
+      "id": "P1",
+      "formula": "G(Horn <-> (Alarm & !Acknowledged))",
+      "explanation": "Horn follows the latched acknowledgment state."
+    },
+    {
+      "id": "P2",
+      "formula": "G(Fault -> Alarm)",
+      "explanation": "A present fault cannot be reset away."
+    },
+    {
+      "id": "P3",
+      "formula": "G(rise -> (Alarm & !Acknowledged & Horn))",
+      "explanation": "Every new event annunciates despite simultaneous Ack."
+    },
+    {
+      "id": "P4",
+      "formula": "G((Reset & !Fault) -> (!Alarm & !Acknowledged & !Horn))",
+      "explanation": "Reset clears a removed fault."
+    },
+    {
+      "id": "P5",
+      "formula": "G((!Fault & !Reset & qAlarm) -> Alarm)",
+      "explanation": "Fault disappearance does not clear the visible alarm."
+    },
+    {
+      "id": "P6",
+      "formula": "G((!rise & !Reset & Ack & qAlarm) -> Acknowledged)",
+      "explanation": "Acknowledgment silences a retained event."
+    }
+  ],
+  "atomic_propositions": {
+    "Fault": "Current fault condition Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "Ack": "Acknowledge horn Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "Reset": "Clear a removed fault Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "Alarm": "Latched visible alarm Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "Acknowledged": "Alarm acknowledged Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "Horn": "Unacknowledged alarm horn Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "first": "True only on the first invocation after resetting the FB instance.",
+    "rise": "Fault & !qFault.",
+    "qFault": "Previous Fault sample, initially FALSE.",
+    "qAlarm": "Pre-scan Alarm.",
+    "qAck": "Pre-scan Acknowledged."
+  },
+  "supporting_types": []
+}

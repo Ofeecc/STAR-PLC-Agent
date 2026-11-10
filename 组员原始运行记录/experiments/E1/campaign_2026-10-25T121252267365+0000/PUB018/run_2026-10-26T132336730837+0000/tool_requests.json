@@ -1,0 +1,29 @@
+[
+  {
+    "index": 0,
+    "source": {
+      "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    enqueue : BOOL;\n    dequeue : BOOL;\n    reset : BOOL;\nEND_VAR\nVAR_OUTPUT\n    elementCount : DINT;\n    status : WORD;\nEND_VAR\nVAR_IN_OUT\n    item : VARIANT;\n    buffer : VARIANT;\nEND_VAR\nVAR\n    enqueuePrev : BOOL;\n    dequeuePrev : BOOL;\n    head : DINT;\n    tail : DINT;\n    capacity : DINT;\n    itemInfo : VAR_INFO;\n    bufferInfo : VAR_INFO;\n    elementSize : UDINT;\n    pItem : POINTER TO BYTE;\n    pBuffer : POINTER TO BYTE;\n    pSrc : POINTER TO BYTE;\n    pDst : POINTER TO BYTE;\n    enqEdge : BOOL;\n    deqEdge : BOOL;\n    i : UDINT;\nEND_VAR",
+      "implementation": "status := 0;\n\nIF reset THEN\n    elementCount := 0;\n    head := 0;\n    tail := 0;\n    enqueuePrev := enqueue;\n    dequeuePrev := dequeue;\nELSE\n    enqEdge := enqueue AND NOT enqueuePrev;\n    deqEdge := dequeue AND NOT dequeuePrev;\n    enqueuePrev := enqueue;\n    dequeuePrev := dequeue;\n\n    itemInfo := __VARINFO(item);\n    bufferInfo := __VARINFO(buffer);\n    elementSize := itemInfo.Size;\n    IF elementSize > 0 THEN\n        capacity := DINT(bufferInfo.Size / elementSize);\n    ELSE\n        capacity := 0;\n    END_IF;\n    pItem := itemInfo.pData;\n    pBuffer := bufferInfo.pData;\n\n    IF enqEdge THEN\n        IF (capacity <= 0) OR (elementCount >= capacity) THEN\n            status := 16#8002;\n        ELSE\n            pSrc := pItem;\n            pDst := pBuffer + (DINT_TO_UDINT(tail) * elementSize);\n            FOR i := 0 TO elementSize - 1 DO\n                (pDst + i)^ := (pSrc + i)^;\n            END_FOR;\n            tail := (tail + 1) MOD capacity;\n            elementCount := elementCount + 1;\n        END_IF;\n    ELSIF deqEdge THEN\n        IF (capacity <= 0) OR (elementCount <= 0) THEN\n            status := 16#8001;\n        ELSE\n            pSrc := pBuffer + (DINT_TO_UDINT(head) * elementSize);\n            pDst := pItem;\n            FOR i := 0 TO elementSize - 1 DO\n                (pDst + i)^ := (pSrc + i)^;\n            END_FOR;\n            head := (head + 1) MOD capacity;\n            elementCount := elementCount - 1;\n        END_IF;\n    END_IF;\nEND_IF;",
+      "supporting_objects": []
+    },
+    "requested_utc": "2026-10-26T13:24:32.524258+00:00",
+    "compile_attempt": 0
+  },
+  {
+    "index": 1,
+    "source": {
+      "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    enqueue : BOOL;\n    dequeue : BOOL;\n    reset : BOOL;\nEND_VAR\nVAR_OUTPUT\n    elementCount : DINT;\n    status : WORD;\nEND_VAR\nVAR_IN_OUT\n    item : VARIANT;\n    buffer : VARIANT;\nEND_VAR\nVAR\n    enqueuePrev : BOOL;\n    dequeuePrev : BOOL;\n    head : DINT;\n    tail : DINT;\n    capacity : DINT;\n    elemSize : UDINT;\n    pSrc : POINTER TO BYTE;\n    pDst : POINTER TO BYTE;\n    udiCount : UDINT;\n    udiOffset : UDINT;\n    bEnqEdge : BOOL;\n    bDeqEdge : BOOL;\nEND_VAR",
+      "implementation": "status := 16#0000;\n\nIF reset THEN\n    elementCount := 0;\n    head := 0;\n    tail := 0;\n    enqueuePrev := enqueue;\n    dequeuePrev := dequeue;\nELSE\n    bEnqEdge := enqueue AND NOT enqueuePrev;\n    bDeqEdge := dequeue AND NOT dequeuePrev;\n    enqueuePrev := enqueue;\n    dequeuePrev := dequeue;\n\n    elemSize := item.udiSize;\n    IF elemSize = 0 THEN\n        elemSize := buffer.udiSize;\n    END_IF\n    IF elemSize > 0 THEN\n        capacity := UDINT_TO_DINT(buffer.udiSize / elemSize);\n    ELSE\n        capacity := 0;\n    END_IF\n    IF capacity < 0 THEN\n        capacity := 0;\n    END_IF\n\n    IF bEnqEdge THEN\n        IF (capacity <= 0) OR (elementCount >= capacity) THEN\n            status := 16#8002;\n        ELSE\n            IF elementCount <= 0 THEN\n                head := 0;\n                tail := 0;\n            END_IF\n            udiOffset := DINT_TO_UDINT(tail) * elemSize;\n            pDst := buffer.pData + udiOffset;\n            pSrc := item.pData;\n            FOR udiCount := 1 TO elemSize DO\n                pDst^ := pSrc^;\n                pDst := pDst + 1;\n                pSrc := pSrc + 1;\n            END_FOR\n            tail := tail + 1;\n            IF tail >= capacity THEN\n                tail := 0;\n            END_IF\n            elementCount := elementCount + 1;\n        END_IF\n    ELSIF bDeqEdge THEN\n        IF (capacity <= 0) OR (elementCount <= 0) THEN\n            status := 16#8001;\n        ELSE\n            udiOffset := DINT_TO_UDINT(head) * elemSize;\n            pSrc := buffer.pData + udiOffset;\n            pDst := item.pData;\n            FOR udiCount := 1 TO elemSize DO\n                pDst^ := pSrc^;\n                pDst := pDst + 1;\n                pSrc := pSrc + 1;\n            END_FOR\n            head := head + 1;\n            IF head >= capacity THEN\n                head := 0;\n            END_IF\n            elementCount := elementCount - 1;\n            IF elementCount <= 0 THEN\n                elementCount := 0;\n            END_IF\n        END_IF\n    END_IF\nEND_IF",
+      "supporting_objects": [
+        {
+          "name": "VARIANT",
+          "kind": "DUT",
+          "declaration": "TYPE VARIANT :\nSTRUCT\n    pData : POINTER TO BYTE;\n    udiSize : UDINT;\nEND_STRUCT\nEND_TYPE",
+          "implementation": ""
+        }
+      ]
+    },
+    "requested_utc": "2026-10-26T13:25:23.529966+00:00",
+    "compile_attempt": 1
+  }
+]

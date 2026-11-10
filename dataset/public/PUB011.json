@@ -1,0 +1,519 @@
+{
+  "schema_version": 1,
+  "id": "PUB011",
+  "kind": "public",
+  "title": "Automated Production Line Control",
+  "difficulty": "medium",
+  "provenance": {
+    "source_type": "instructor_public_question_bank",
+    "source_file": "大作业题库json/大作业题库json/大作业题库.json",
+    "source_index": "medium[4] (zero based), flattened task 11",
+    "source_sha256": "05170ae18c1ec7c316d8334a84b6ecd48de322c8236735d519b50f72f2d8d362",
+    "adaptation": "Official en text and interface preserved verbatim; interpretations are separate assumptions.",
+    "rationale": "A conveyor shares manual interlocking and an automatic three-station route.",
+    "review": "Reviewed against full source, scan convention, boundary cases and state-dependent expectations; instructor validation pending."
+  },
+  "requirements": "# Automated Production Line Control\n\n- **Difficulty:** Medium (medium)\n\n## Requirements\n\nA simple automated production line consists of three workstations: Workstation A, Workstation B, and Workstation C. The product needs to go through these three stations in sequence to be considered fully completed. There is a motor in the production line that is responsible for moving the product from one workstation to the next. The sequence of the line is from Workstation A to Workstation B, and then to Workstation C. Each workstation has a sensor (used to detect if the product has arrived) and a button (used to trigger the signal that the station's processing is complete).\nControl requirements:\n1. Mode Switching: The mode switch (Mode) is used to switch between manual and automatic modes of the production line.\n2. Manual Mode: In manual mode, the forward rotation button (ForwardButton) controls the forward rotation of the motor, and the reverse rotation button (ReverseButton) controls the reverse rotation of the motor. Forward and reverse rotation operations need to be interlocked and cannot be performed simultaneously.\n3. Automatic Mode:\n   - When the product arrives at Workstation A, SensorA detects the product, and after the operator triggers the processing complete signal via ButtonA, the motor starts forward rotation to move the product to Workstation B.\n   - When the product arrives at Workstation B, SensorB detects the product, the motor stops, and after the operator triggers the processing complete signal via ButtonB, the motor starts forward rotation to move the product to Workstation C.\n   - When the product arrives at Workstation C, SensorC detects the product, the motor stops, and after the operator triggers the processing complete signal via ButtonC, the completion indicator light (CompletionLight) turns on, indicating that the product processing is complete. When the product is taken away, i.e., SensorC no longer detects the product, the completion indicator light (CompletionLight) turns off.\n\n## Interface Definition\n\n| Direction | Variable/Field | Data Type | Description |\n| --- | --- | --- | --- |\n| Input | `Mode` | `BOOL` | Used to switch the production line between manual and automatic modes, 0=manual mode, 1=automatic mode |\n| Input | `ForwardButton` | `BOOL` | Forward rotation button |\n| Input | `ReverseButton` | `BOOL` | Reverse rotation button |\n| Input | `SensorA` | `BOOL` | Sensor A |\n| Input | `SensorB` | `BOOL` | Sensor B |\n| Input | `SensorC` | `BOOL` | Sensor C |\n| Input | `ButtonA` | `BOOL` | Button A |\n| Input | `ButtonB` | `BOOL` | Button B |\n| Input | `ButtonC` | `BOOL` | Button C |\n| Output | `MotorForward` | `BOOL` | Motor forward rotation output |\n| Output | `MotorReverse` | `BOOL` | Motor reverse rotation output |\n| Output | `CompletionLight` | `BOOL` | Indicator light for product processing completion |",
+  "scenario": "A conveyor shares manual interlocking and an automatic three-station route.",
+  "interface": [
+    {
+      "direction": "INPUT",
+      "name": "Mode",
+      "type": "BOOL",
+      "description": "Used to switch the production line between manual and automatic modes, 0=manual mode, 1=automatic mode"
+    },
+    {
+      "direction": "INPUT",
+      "name": "ForwardButton",
+      "type": "BOOL",
+      "description": "Forward rotation button"
+    },
+    {
+      "direction": "INPUT",
+      "name": "ReverseButton",
+      "type": "BOOL",
+      "description": "Reverse rotation button"
+    },
+    {
+      "direction": "INPUT",
+      "name": "SensorA",
+      "type": "BOOL",
+      "description": "Sensor A"
+    },
+    {
+      "direction": "INPUT",
+      "name": "SensorB",
+      "type": "BOOL",
+      "description": "Sensor B"
+    },
+    {
+      "direction": "INPUT",
+      "name": "SensorC",
+      "type": "BOOL",
+      "description": "Sensor C"
+    },
+    {
+      "direction": "INPUT",
+      "name": "ButtonA",
+      "type": "BOOL",
+      "description": "Button A"
+    },
+    {
+      "direction": "INPUT",
+      "name": "ButtonB",
+      "type": "BOOL",
+      "description": "Button B"
+    },
+    {
+      "direction": "INPUT",
+      "name": "ButtonC",
+      "type": "BOOL",
+      "description": "Button C"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "MotorForward",
+      "type": "BOOL",
+      "description": "Motor forward rotation output"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "MotorReverse",
+      "type": "BOOL",
+      "description": "Motor reverse rotation output"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "CompletionLight",
+      "type": "BOOL",
+      "description": "Indicator light for product processing completion"
+    }
+  ],
+  "initial_conditions": {
+    "MotorForward": false,
+    "MotorReverse": false,
+    "CompletionLight": false,
+    "phase": "WAIT_A"
+  },
+  "scan_semantics": "Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call. Retained pre-state q[k] becomes q[k+1]. Each test resets the instance. A transition affects the same observed scan. dt_ms is elapsed time since the preceding invocation; the first invocation starts IEC timers at elapsed zero. CycleTime inputs, where supplied, are attributed to the current invocation rather than inferred from dt_ms.",
+  "safety_priority": [
+    "Forward and reverse are mutually exclusive.",
+    "Destination arrival stops movement before processing resumes."
+  ],
+  "assumptions": [
+    "Opposing manual buttons produce neither direction.",
+    "Buttons are level signals accepted only in their corresponding station wait. One phase transition is accepted per call.",
+    "Entering manual mode clears automatic state and completion; return to automatic waits for A.",
+    "Only one product is presented; station sensors are not contradictory.",
+    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+  ],
+  "atomic_propositions": {
+    "auto": "Mode",
+    "fwd": "MotorForward after scan",
+    "rev": "MotorReverse after scan",
+    "mf": "ForwardButton AND NOT ReverseButton",
+    "mr": "ReverseButton AND NOT ForwardButton",
+    "arrive": "pre-phase MOVE_AB AND SensorB OR pre-phase MOVE_BC AND SensorC",
+    "finish": "pre-phase WAIT_C AND SensorC AND ButtonC",
+    "light": "CompletionLight",
+    "removed": "NOT SensorC",
+    "CompleteBehaviorV2": "明确WAIT_A→MOVE_AB→WAIT_B→MOVE_BC→WAIT_C→DONE→WAIT_A的输入条件、无触发保持及模式复位。输出按转移后的阶段：仅MOVE_AB/MOVE_BC正转，自动反转恒假；仅DONE且产品未取走灯亮。手动灯灭，正反向按按钮互斥方程。"
+  },
+  "ltl": [
+    {
+      "id": "PUB011.P1",
+      "name": "Interlock",
+      "formula": "G(!(fwd & rev))",
+      "explanation": "Motor directions are mutually exclusive."
+    },
+    {
+      "id": "PUB011.P2",
+      "name": "Manual",
+      "formula": "G(!auto -> ((fwd <-> mf) & (rev <-> mr)))",
+      "explanation": "Manual level requests obey neutral conflict resolution."
+    },
+    {
+      "id": "PUB011.P3",
+      "name": "Auto direction",
+      "formula": "G(auto -> !rev)",
+      "explanation": "Automatic routing only moves forward."
+    },
+    {
+      "id": "PUB011.P4",
+      "name": "Arrival",
+      "formula": "G(auto & arrive -> !fwd)",
+      "explanation": "Arrival stops the motor in the observed scan."
+    },
+    {
+      "id": "PUB011.P5",
+      "name": "Completion",
+      "formula": "G(auto & finish -> light)",
+      "explanation": "C completion asserts the light."
+    },
+    {
+      "id": "PUB011.P6",
+      "name": "Removal",
+      "formula": "G(auto & removed -> !light)",
+      "explanation": "Removal clears completion."
+    },
+    {
+      "id": "PUB011.V2.COMPLETE",
+      "formula": "G(CompleteBehaviorV2)",
+      "explanation": "The complete per-invocation relation defined in specification_contract.normative_completion; requires explicit encoding before model checking."
+    }
+  ],
+  "tests": [
+    {
+      "id": "PUB011.T1",
+      "name": "manual",
+      "purpose": "Neutral, forward, reverse, conflicting commands.",
+      "steps": [
+        {
+          "inputs": {
+            "Mode": false,
+            "ForwardButton": false,
+            "ReverseButton": false,
+            "SensorA": false,
+            "SensorB": false,
+            "SensorC": false,
+            "ButtonA": false,
+            "ButtonB": false,
+            "ButtonC": false
+          },
+          "expected": {
+            "MotorForward": false,
+            "MotorReverse": false
+          }
+        },
+        {
+          "inputs": {
+            "Mode": false,
+            "ForwardButton": true,
+            "ReverseButton": false,
+            "SensorA": false,
+            "SensorB": false,
+            "SensorC": false,
+            "ButtonA": false,
+            "ButtonB": false,
+            "ButtonC": false
+          },
+          "expected": {
+            "MotorForward": true,
+            "MotorReverse": false
+          }
+        },
+        {
+          "inputs": {
+            "Mode": false,
+            "ForwardButton": false,
+            "ReverseButton": true,
+            "SensorA": false,
+            "SensorB": false,
+            "SensorC": false,
+            "ButtonA": false,
+            "ButtonB": false,
+            "ButtonC": false
+          },
+          "expected": {
+            "MotorForward": false,
+            "MotorReverse": true
+          }
+        },
+        {
+          "inputs": {
+            "Mode": false,
+            "ForwardButton": true,
+            "ReverseButton": true,
+            "SensorA": false,
+            "SensorB": false,
+            "SensorC": false,
+            "ButtonA": false,
+            "ButtonB": false,
+            "ButtonC": false
+          },
+          "expected": {
+            "MotorForward": false,
+            "MotorReverse": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "PUB011.T2",
+      "name": "cycle",
+      "purpose": "Station waits, retained movement, completion and removal.",
+      "steps": [
+        {
+          "inputs": {
+            "Mode": true,
+            "ForwardButton": false,
+            "ReverseButton": false,
+            "SensorA": false,
+            "SensorB": false,
+            "SensorC": false,
+            "ButtonA": false,
+            "ButtonB": false,
+            "ButtonC": false
+          },
+          "expected": {
+            "MotorForward": false,
+            "CompletionLight": false
+          }
+        },
+        {
+          "inputs": {
+            "Mode": true,
+            "ForwardButton": false,
+            "ReverseButton": false,
+            "SensorA": true,
+            "SensorB": false,
+            "SensorC": false,
+            "ButtonA": false,
+            "ButtonB": false,
+            "ButtonC": false
+          },
+          "expected": {
+            "MotorForward": false
+          }
+        },
+        {
+          "inputs": {
+            "Mode": true,
+            "ForwardButton": false,
+            "ReverseButton": false,
+            "SensorA": true,
+            "SensorB": false,
+            "SensorC": false,
+            "ButtonA": true,
+            "ButtonB": false,
+            "ButtonC": false
+          },
+          "expected": {
+            "MotorForward": true
+          }
+        },
+        {
+          "inputs": {
+            "Mode": true,
+            "ForwardButton": false,
+            "ReverseButton": false,
+            "SensorA": false,
+            "SensorB": false,
+            "SensorC": false,
+            "ButtonA": false,
+            "ButtonB": false,
+            "ButtonC": false
+          },
+          "expected": {
+            "MotorForward": true
+          }
+        },
+        {
+          "inputs": {
+            "Mode": true,
+            "ForwardButton": false,
+            "ReverseButton": false,
+            "SensorA": false,
+            "SensorB": true,
+            "SensorC": false,
+            "ButtonA": false,
+            "ButtonB": false,
+            "ButtonC": false
+          },
+          "expected": {
+            "MotorForward": false
+          }
+        },
+        {
+          "inputs": {
+            "Mode": true,
+            "ForwardButton": false,
+            "ReverseButton": false,
+            "SensorA": false,
+            "SensorB": true,
+            "SensorC": false,
+            "ButtonA": false,
+            "ButtonB": true,
+            "ButtonC": false
+          },
+          "expected": {
+            "MotorForward": true
+          }
+        },
+        {
+          "inputs": {
+            "Mode": true,
+            "ForwardButton": false,
+            "ReverseButton": false,
+            "SensorA": false,
+            "SensorB": false,
+            "SensorC": true,
+            "ButtonA": false,
+            "ButtonB": false,
+            "ButtonC": false
+          },
+          "expected": {
+            "MotorForward": false,
+            "CompletionLight": false
+          }
+        },
+        {
+          "inputs": {
+            "Mode": true,
+            "ForwardButton": false,
+            "ReverseButton": false,
+            "SensorA": false,
+            "SensorB": false,
+            "SensorC": true,
+            "ButtonA": false,
+            "ButtonB": false,
+            "ButtonC": true
+          },
+          "expected": {
+            "CompletionLight": true
+          }
+        },
+        {
+          "inputs": {
+            "Mode": true,
+            "ForwardButton": false,
+            "ReverseButton": false,
+            "SensorA": false,
+            "SensorB": false,
+            "SensorC": true,
+            "ButtonA": false,
+            "ButtonB": false,
+            "ButtonC": false
+          },
+          "expected": {
+            "CompletionLight": true
+          }
+        },
+        {
+          "inputs": {
+            "Mode": true,
+            "ForwardButton": false,
+            "ReverseButton": false,
+            "SensorA": false,
+            "SensorB": false,
+            "SensorC": false,
+            "ButtonA": false,
+            "ButtonB": false,
+            "ButtonC": false
+          },
+          "expected": {
+            "CompletionLight": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "PUB011.T3",
+      "name": "wrong_button",
+      "purpose": "Out-of-order confirmations cannot start the route.",
+      "steps": [
+        {
+          "inputs": {
+            "Mode": true,
+            "ForwardButton": false,
+            "ReverseButton": false,
+            "SensorA": false,
+            "SensorB": false,
+            "SensorC": false,
+            "ButtonA": false,
+            "ButtonB": true,
+            "ButtonC": true
+          },
+          "expected": {
+            "MotorForward": false,
+            "CompletionLight": false
+          }
+        },
+        {
+          "inputs": {
+            "Mode": true,
+            "ForwardButton": false,
+            "ReverseButton": false,
+            "SensorA": true,
+            "SensorB": false,
+            "SensorC": false,
+            "ButtonA": false,
+            "ButtonB": true,
+            "ButtonC": false
+          },
+          "expected": {
+            "MotorForward": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "V2_omission_regression",
+      "purpose": "Reject the concrete wrong behavior documented in the 2026-11-06 specification review.",
+      "steps": [
+        {
+          "inputs": {
+            "Mode": true,
+            "ForwardButton": false,
+            "ReverseButton": false,
+            "SensorA": true,
+            "SensorB": false,
+            "SensorC": false,
+            "ButtonA": true,
+            "ButtonB": false,
+            "ButtonC": false
+          },
+          "expected": {
+            "MotorForward": true,
+            "MotorReverse": false,
+            "CompletionLight": false
+          }
+        },
+        {
+          "inputs": {
+            "Mode": true,
+            "ForwardButton": false,
+            "ReverseButton": false,
+            "SensorA": true,
+            "SensorB": false,
+            "SensorC": false,
+            "ButtonA": true,
+            "ButtonB": false,
+            "ButtonC": false
+          },
+          "expected": {
+            "MotorForward": true,
+            "MotorReverse": false,
+            "CompletionLight": false
+          }
+        },
+        {
+          "inputs": {
+            "Mode": true,
+            "ForwardButton": false,
+            "ReverseButton": false,
+            "SensorA": true,
+            "SensorB": false,
+            "SensorC": false,
+            "ButtonA": true,
+            "ButtonB": false,
+            "ButtonC": false
+          },
+          "expected": {
+            "MotorForward": true,
+            "MotorReverse": false,
+            "CompletionLight": false
+          }
+        }
+      ]
+    }
+  ],
+  "specification_version": "2.0-review-corrections-20261106",
+  "specification_contract": {
+    "observation": "I[k] is sampled before execution; O[k] is observed after execution. Initial conditions apply before invocation zero.",
+    "normative_completion": "明确WAIT_A→MOVE_AB→WAIT_B→MOVE_BC→WAIT_C→DONE→WAIT_A的输入条件、无触发保持及模式复位。输出按转移后的阶段：仅MOVE_AB/MOVE_BC正转，自动反转恒假；仅DONE且产品未取走灯亮。手动灯灭，正反向按按钮互斥方程。",
+    "history_binding": "Every previous-output name refers to the preceding observed output with the declared initial value. Previous-input memories update on EVERY invocation, including reset, invalid input, stop and mode change. Reference phase/history is independently advanced from sampled inputs by the stated transition rules, never supplied by the candidate.",
+    "evaluation_scope": "Properties include interpreted data predicates. No claim of export to a model checker or completed formal proof.",
+    "review_source": "docs/规约逐题审查_20261106/PUB011.md"
+  }
+}

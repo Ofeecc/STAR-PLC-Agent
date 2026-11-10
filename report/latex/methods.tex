@@ -1,0 +1,137 @@
+\section{Problem and engineering objective}
+
+Structured Text (ST) is used to express retained state, sequencing and arithmetic in programmable controllers. A plausible code response is not enough: the source must fit a real project, compile under the installed toolchain, and behave correctly when called across scans. Our objective is an explainable generation--compilation--repair pipeline with evidence that can be independently inspected.
+
+The submission includes the agent implementation, official and self-built task definitions, LTL specifications, fixed tests, isolated CODESYS projects, raw model and compiler records, analysis scripts, this report, an editable presentation and a short narrated explanation. The comparison does not assume that our harness should win. It measures the two complete agent workflows under shared controls and preserves their unsuccessful runs.
+
+\section{Environment and reproducible execution}
+
+The host is Windows 11, build 26200. Application code runs in the existing Conda environment \pathcode{Project1}, using Python 3.12.7 and Requests 2.32.5. NumPy 1.26.4, pandas 2.3.3 and Matplotlib 3.10.6 support analysis. Existing PyTorch 2.2.2 was retained; the experiment requires no local GPU inference or model weights. Lightweight baseline dependencies were added without replacing the ML environment.
+
+CODESYS Development System 3.5.22.40 is installed on drive D. The exact profile is \texttt{CODESYS V3.5 SP22 Patch 4}, with ScriptEngine 4.2.0. Its embedded scripting interpreter is separate from Project1. The benchmark template targets the installed Control Win V3 x64 device. The original vendor template required an explicit target/library upgrade; the resulting working template was frozen before the formal campaign and its hash is recorded in compiler evidence. IDE simulation is used for runtime testing; no physical PLC is involved.
+
+The common configuration permits an initial build and at most two repairs, a 180-second compiler limit, a 180-second model-request limit, a 900-second task deadline, medium reasoning effort and \pathcode{max_output_tokens=8192}. Request and compiler limits are clipped to remaining task time where implemented. Actual elapsed time remains the measurement, rather than an assumption of identical framework overhead. All CODESYS operations share a bounded file lock.
+
+API credentials are loaded at runtime from environment variables or a private local configuration outside the project. Request headers are not serialized; local key files, environments, caches and installers are excluded from the release ZIP. Reproduction instructions are in \pathcode{docs/reproducibility.md}; executable settings are in \pathcode{configs/runtime.json}. On another installation, these machine-specific paths must be updated.
+
+\section{Dataset and formal specifications}
+\subsection{Sources, coverage and construction}
+
+All 20 instructor-provided questions are included as PUB001--PUB020. The original JSON requirements are preserved verbatim, and their titles, difficulty and interface tokens were cross-checked with the supplied 25-page question-bank PDF. Source binaries, extracted text, hashes and the alignment audit remain under \pathcode{requirements/source/}. Recorded interpretations supplement the official statements rather than silently replacing them.
+
+Twelve self-built tasks, SELF001--SELF012, cover guarded motor retention, reversal interlocks, restart inhibition, pallet indexing, traffic phases, tank hysteresis, alternating pumps, consecutive-scan qualification, edge counting, alarm acknowledgment, actuator handshakes and bounded fault retries. Each records independent synthesis/adaptation provenance and practical motivation. They were constructed and reviewed by the coding assistant, without external expert validation. They represent different state and priority problems rather than variations of a single latch.
+
+\begin{table}[ht]
+\centering
+\caption{Frozen dataset. Case and scan counts are planned tests, not observed passes.}
+\begin{tabular}{lr}\toprule
+Quantity & Count\\\midrule
+Official public tasks & 20\\
+Self-built tasks & 12\\
+Easy / medium / hard tasks & 10 / 14 / 8\\
+LTL properties & 207\\
+Fixed functional cases & 81\\
+Planned scan observations & 576\\\bottomrule
+\end{tabular}
+\end{table}
+
+Each task defines natural-language requirements, scenario, typed interface, retained initial state, scan semantics, safety/priority rules, assumptions, atomic propositions, LTL formulas, fixed inputs and expected outputs. The dataset digest is frozen in the campaign manifest and each selected result includes a task hash. Models receive the full tests, so this is specification-following evaluation, not a hidden-test generalization study.
+
+\subsection{Scan convention and meaningful LTL}
+
+For invocation $k$, the caller samples $I[k]$, executes the FB from retained pre-state $q[k]$, and observes $O[k]$ at the end of that same invocation. The updated state is $q[k+1]$. Step zero executes normally. Each case starts with a fresh FB instance, and initial conditions refer to its pre-state.
+
+For the guarded motor SELF001, two safety and startup properties are
+\begin{align*}
+ &\mathbf G\big((Stop\lor\neg GuardClosed)\rightarrow\neg Run\big),\\
+ &\mathbf G\big((Start\land\neg Stop\land GuardClosed)\rightarrow Run\big).
+\end{align*}
+They specify same-scan stop priority. Retention is separately stated against the pre-state proposition \pathcode{qRun}. The assignment's motor example uses $\mathbf X\neg Motor$ and $\mathbf X Motor$, with a table showing the state in the following row. That pre-scan Moore convention is compatible with a delayed row label, but applying its $\mathbf X$ directly to our end-of-scan observations would introduce an incorrect delay. The mapping is documented explicitly in \pathcode{docs/ltl_semantics.md}.
+
+Properties also cover mutual exclusion, state transitions, faults and conditional liveness. Numeric predicates are defined in the atomic-proposition dictionary. Liveness is conditional on environmental assumptions such as continuing enable and recurring ticks. A fault may legitimately wait forever for reset, so a weak-until expansion is used instead of falsely requiring eventual reset. These formulas are specification artifacts; the project does not claim that all 207 have been model checked.
+
+The independent Python reference models passed 24 self-task cases with 142 scan observations. Selected finite exploration checked 44 safety predicates over 96 states and 5,152 transitions. These checks support expected-sequence consistency only. Their explicit \pathcode{PYTHON_REFERENCE_ONLY} evidence is excluded from generated-ST functional rates.
+
+\section{Self-developed agent harness}
+
+The harness is a small deterministic controller around remote model generation and an external compiler. Requirement analysis extracts the interface, initial state, scan convention, priorities, assumptions and temporal specifications into a retained analysis artifact. The generator returns structured JSON with an \pathcode{FB_Task} declaration, implementation, and optional helper types or POUs.
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[node distance=8mm,box/.style={draw=teal,fill=pale,align=center,text width=31mm,minimum height=12mm,font=\small},>=Latex]
+\node[box] (task) {Task and\\specification analysis};
+\node[box,right=of task] (gen) {Generate\\ST candidate};
+\node[box,right=of gen] (build) {Actual CODESYS\\clean/rebuild};
+\node[box,right=of build] (test) {Separate runtime\\test evaluation};
+\node[box,below=12mm of build] (repair) {Diagnostics and\\focused repair};
+\draw[->,teal] (task)--(gen);
+\draw[->,teal] (gen)--(build);
+\draw[->,teal] (build)--(test);
+\draw[->,teal] (build)--node[right,font=\scriptsize]{errors}(repair);
+\draw[->,teal] (repair)-|(gen);
+\end{tikzpicture}
+\caption{Harness control flow. The feedback loop has a maximum of two repairs.}
+\end{figure}
+
+After a failed build, the analyzer selects and deduplicates relevant diagnostics. A focused repair request includes the original task, current candidate, errors and compact history. The harness stops on compilation success, exhausted budget, timeout or infrastructure failure. Every version and request is retained. A successful build initially yields overall \pathcode{UNVERIFIED}; only actual functional evaluation can establish a finite-test pass.
+
+The implementation is more than a single prompt: it owns the source contract, project invocation, evidence validation, diagnostic feedback, bounded retries, termination and trace evaluation. It remains simple enough to explain without attributing the experiment to a complex internal multi-agent system.
+
+\section{Actual CODESYS compilation}
+
+The reusable \pathcode{compile_st(task, source, workspace)} backend creates a fresh template copy and launches CODESYS with \pathcode{--runscript}, \pathcode{--scriptargs} and \pathcode{--noUI}. The internal script inserts source through editor APIs, reads it back, forces the FB into the build, clears messages, cleans and rebuilds. Error and FatalError messages determine compiler rejection. Successful evidence also requires a compiled POU signature/CRC, matching request nonce and source digest, and normal process completion. The Windows launcher quotes option values in the form expected by the installed executable.
+
+\begin{table}[ht]
+\centering
+\caption{Actual backend preflight. All three processes returned exit code zero.}
+\begin{tabular}{lrl}\toprule
+Fixture & Errors & Backend result\\\midrule
+Known valid motor latch & 0 & PASS\\
+Undefined identifier deliberately inserted & 2 & COMPILE\_FAIL\\
+Corrected source & 0 & PASS\\\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{lstlisting}[caption={Actual invalid-fixture diagnostic excerpt (text evidence, not an IDE screenshot).}]
+Identifier 'ThisIdentifierDoesNotExist' not defined
+Compile complete -- 2 errors, 0 warnings
+Process exit code: 0
+\end{lstlisting}
+
+The preflight demonstrates why process exit status alone is insufficient. It validates the shared backend; its deliberately supplied correction is not counted as model-driven repair. Isolated projects, source, full logs and evidence for the three runs are linked from \pathcode{results/summary/compiler_preflight.json}. The official scripting interfaces document script startup, rebuilding and diagnostic access~\cite{codesys-cli,codesys-application,codesys-system}.
+
+\section{Baseline, models and experimental controls}
+
+The existing-agent baseline is the unmodified \pathcode{smolagents.ToolCallingAgent} version 1.26.0. A model subclass translates its messages/tool calls to the relay's Responses streaming API, and a compiler Tool exposes the same backend and enforces the common three-build budget. The framework owns its ReAct prompt, memory, tool selection, execution loop and final-answer action~\cite{smolagents}. It receives no shell or general filesystem tool and starts fresh for every task.
+
+Codex CLI was initially preferred. Actual setup conversations reached the relay, but its local noninteractive tool policy blocked shell/MCP execution. No policy was bypassed. The baseline was explicitly changed before the full campaign, and the old manifest, setup failures and revision explanation are retained. They are not formal smolagents rows.
+
+Both selected IDs, \pathcode{deepseek-v4.1-flash} and \pathcode{kimi-k3.1-pro}, appeared in the provider catalog and completed a real streamed function-call/result round trip at medium reasoning effort. Both then generated candidates that the baseline and harness actually compiled. This establishes tested protocol compatibility. The relay labels do not independently prove upstream vendor/model identity; prices and context limits remain unknown.
+
+\begin{table}[ht]
+\centering
+\caption{The four conditions, each with the same 32 tasks.}
+\begin{tabular}{lll}\toprule
+Condition & Agent framework & Exact relay model ID\\\midrule
+E1 & smolagents 1.26.0 & \pathcode{deepseek-v4.1-flash}\\
+E2 & smolagents 1.26.0 & \pathcode{kimi-k3.1-pro}\\
+E3 & Self-developed harness & \pathcode{deepseek-v4.1-flash}\\
+E4 & Self-developed harness & \pathcode{kimi-k3.1-pro}\\\bottomrule
+\end{tabular}
+\end{table}
+
+Task JSON, expected tests, compiler version/template, build budget and request settings are shared. Internal prompts and context policies intentionally differ. The baseline may make a fourth model call to produce its normal \pathcode{final_answer}, whereas the harness normally stops immediately after a successful build. Tool event counts therefore have framework-specific units. Each condition/task is run once; no statistical superiority or causal policy ablation is inferred.
+
+Runs are isolated in per-task directories. The runner resumes only \pathcode{NOT_RUN} entries and preserves earlier attempts when an explicit rerun changes a manifest pointer. One early E3/PUB001 TLS setup failure was rerun once and retained in history; other formal failures were not repeatedly retried to select the best answer. Generation interrupted between tasks was resumed without altering the dataset, prompts or budgets.
+
+\section{Functional evaluation and metric definitions}
+
+The automatic evaluator executes the generated ST in the actual CODESYS IDE simulator. It enables and verifies simulation mode before login. A native ST \pathcode{CASE} sequencer assigns fixed inputs, calls the candidate exactly once per real simulator task scan, and records actual sampled inputs and outputs in typed arrays. Each case uses a fresh instance. The host stops after the exact expected invocation count and obtains outputs through the CODESYS monitoring API. Expected outputs never appear in the executed caller.
+
+The current validated adapter covers 21 tasks: all twelve self-built tasks and PUB001, PUB002, PUB003, PUB009, PUB011, PUB014, PUB015, PUB019 and PUB020. They contain 52 cases and 359 scans. These are eligibility counts, not passing-test counts. Physical elapsed-time tests, TIME/LTIME, IN\_OUT storage, arrays, structures and VARIANT bindings remain unsupported. The project supplies fixed manual procedures for those cases and does not claim compressed wall time or unexecuted correctness.
+
+Trace evaluation requires task and source hashes, fixed input agreement, typed expected-output comparisons and hashed supporting evidence. Time-based imports require measured intervals within a registered tolerance. Missing or invalid evidence cannot establish a pass.
+
+First-pass and final compilation rates divide successful tasks by all 32 planned tasks in a condition. Compiler coverage is reported separately, so a transport failure is not described as a CODESYS code rejection. A case passes only if all its constrained outputs match. Case pass rate divides passed cases by evaluated cases; task pass rate requires all fixed cases to be evaluated and passing, with task coverage also shown. Missing observations remain unknown. There is a difference between all 128 end-to-end attempts being executed and all 128 candidates reaching the compiler.
+
+Token totals use reported provider usage only. Missing usage remains unknown, including failed streams. Because the harness's stored call counter increments after successful responses, independent analysis counts saved \pathcode{llm_*/request.json} files for both workflows to obtain attempted requests. No monetary cost is inferred from incomplete usage and unavailable prices.

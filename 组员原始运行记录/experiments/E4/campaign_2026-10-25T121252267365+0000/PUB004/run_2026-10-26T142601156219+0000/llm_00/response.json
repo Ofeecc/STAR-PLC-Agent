@@ -1,0 +1,51 @@
+{
+  "id": "4e426e3fd5c04613b42900066c877857",
+  "object": "response",
+  "created_at": 1793024764,
+  "status": "completed",
+  "background": false,
+  "error": null,
+  "max_output_tokens": 8192,
+  "model": "kimi-k3.1-pro",
+  "reasoning": {
+    "effort": "medium"
+  },
+  "store": false,
+  "output": [
+    {
+      "id": "rs_4e426e3fd5c04613b42900066c877857_0",
+      "type": "reasoning",
+      "summary": [
+        {
+          "type": "summary_text",
+          "text": "I need output JSON only. Should craft CODESYS FB declaration all VAR sections, implementation body, supporting objects list. Should understand timing with actual invocation interval dt_ms not provided except CycleTime. Debounce TON-style using actual invocation wall time. I have inputs only CycleTime and DebounceTime. Requirement \"Accept viscosity only after remained TRUE for DebounceTime\", timer elapsed zero first eligible invocation and dt_ms elapsed wall since previous invocation. Should implement via TON with system clock? Standard library available. Could use TON? Its timing based invocation actual wall, first sample ET zero and at subsequent calls matches. TON(IN:=permit, PT:=DebounceTime); Q. E-stop reset. Accum using CycleTime if run. This matches tests assuming virtual clock TON. But TON TIME 32 bit and DebounceTime TIME. Could declare fbDebounce : TON. Standard library available. At first TON call IN true ET 0 Q false if PT>0. Subsequent after 1 sec false, after 2 sec true. Good. Emergency stop IN false resets. Viscosity false resets. Should power-up init outputs defaults. Could use VAR output initial values VFD_RUN := FALSE etc; PUMP_RUNTIME_ACC : LTIME := LTIME#0ns. Is LTIME literal supported CODESYS 3.5? yes perhaps LTIME#0NS case irrelevant. Should have maintenance constant LTIME#500h? LTIME literals likely support LTIME#500h. CODESYS LTIME syntax e.g. LTIME#1000d15h23m12s34ms2us44ns. Fine.\n\nPotential subtlety: TON Q remains true on scan input false? Calling TON with false sets Q false. Good.\n\nImplementation:\nfbDebounce(IN := VISCOSITY_OK AND PASTE_E_STOP_NC, PT := DebounceTime);\nVFD_RUN := PASTE_E_STOP_NC AND VISCOSITY_OK AND fbDebounce.Q;\nIF VFD_RUN THEN\n PUMP_RUNTIME_ACC := PUMP_RUNTIME_ACC + TIME_TO_LTIME(CycleTime);\nEND_IF;\nPUMP_MAINT_DUE := PUMP_RUNTIME_ACC >= LTIME#500h;\n\nDoes TIME_TO_LTIME exist standard? CODESYS conversion likely TIME_TO_LTIME. Yes.\n\nAt initialization, VAR outputs initialized. Should timer helper object? TON standard not list. supporting_objects empty. User requests \"Define referenced DUTs.\" No custom DUT.\n\nCould avoid TON and manual debounce using CycleTime? Tests T1: first true scan no elapsed, second dt 1000 with CycleTime 1s: if adding CycleTime only after first would elapsed 1s second, 2s third => VFD true at third, but expected fourth. So manual using CycleTime could be adjusted by starting on second? I'll analyze: first true at t0 (dt0) elapsed 0. second true at t1 expected false, elapsed should 1000. third at t2 expected false? Requirement valid at elapsed>=2sec would true at t2, but expected false. Wait test T1 steps: initial false dt0; true dt1000 (t1) first true elapsed0; next true dt1000 (t2) expected false (elapsed1s); next true dt1000 (t3) expected true elapsed2s. So TON semantics. T3: first true dt0 elapsed0; second true dt=500h Q true. Fine. TON is apt.\n\nPotential issue standard TON with 500h PT 2s and TIME ET max ~49d? ET max 4.29e9 ms = 49.7 days; 500h 20.8 days fits. Good.\n\nQuestion power-up initial state. Retained internal not needed. Initialize outputs in declaration. TON starts default.\n\nDeclaration syntax:\nFUNCTION_BLOCK FB_Task\nVAR_INPUT\n    VISCOSITY_OK : BOOL;\n...\nEND_VAR\nVAR_OUTPUT\n...\nEND_VAR\nVAR\n    fbDebounce : TON;\nEND_VAR\n\n\"declaration is CODESYS FUNCTION_BLOCK FB_Task followed by all VAR sections; omit END_FUNCTION_BLOCK.\" So string exactly.\n\nImplementation ST body alone no BEGIN/END? CODESYS ST body just statements.\n\nCould use TON instance named tonViscosity. No supporting objects. JSON escaping newline. Only JSON. Should think if maintenance due threshold calculation after accumulation yes. E-stop immediate output off. Debounce validity resets via TON IN false. P1 exact.\n\nOne concern TON called with named input and then accessing Q, okay. In CODESYS, standard TON may be in namespace TON? available. Could avoid supporting object. Output init values syntax LTIME#0ns may compile. TIME positive assumption. CycleTime conversion fine.\n\nDoes TON Q possibly stays true in same invocation IN false until call? call first.\n\nCould set VFD_RUN := PASTE_E_STOP_NC AND tonViscosity.Q; VISCOSITY included in timer reset but Q false. Including both clearer.\n\nAccumulator LTIME + LTIME result. Maintenance LTIME literal 500h. PUMP_MAINT_DUE initial false and recomputed each scan.\n\nPower-up VFD off before first scan. Good.\n\nShould I use VAR CONSTANT for maintenance threshold? Not needed. \"followed by all VAR sections\" can just 3.\n\nOutput exact JSON."
+        }
+      ]
+    },
+    {
+      "id": "msg_4e426e3fd5c04613b42900066c877857_0",
+      "type": "message",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "annotations": [],
+          "logprobs": [],
+          "text": "{\n  \"declaration\": \"FUNCTION_BLOCK FB_Task\\nVAR_INPUT\\n    VISCOSITY_OK : BOOL;\\n    PASTE_E_STOP_NC : BOOL;\\n    DebounceTime : TIME;\\n    CycleTime : TIME;\\nEND_VAR\\nVAR_OUTPUT\\n    VFD_RUN : BOOL := FALSE;\\n    PUMP_MAINT_DUE : BOOL := FALSE;\\n    PUMP_RUNTIME_ACC : LTIME := LTIME#0ns;\\nEND_VAR\\nVAR\\n    tonViscosity : TON;\\nEND_VAR\",\n  \"implementation\": \"tonViscosity(IN := VISCOSITY_OK AND PASTE_E_STOP_NC, PT := DebounceTime);\\n\\nVFD_RUN := PASTE_E_STOP_NC AND VISCOSITY_OK AND tonViscosity.Q;\\n\\nIF VFD_RUN THEN\\n    PUMP_RUNTIME_ACC := PUMP_RUNTIME_ACC + TIME_TO_LTIME(CycleTime);\\nEND_IF;\\n\\nPUMP_MAINT_DUE := PUMP_RUNTIME_ACC >= LTIME#500h;\",\n  \"supporting_objects\": []\n}"
+        }
+      ],
+      "role": "assistant"
+    }
+  ],
+  "usage": {
+    "input_tokens": 4320,
+    "input_tokens_details": {
+      "cached_tokens": 0
+    },
+    "output_tokens": 1366,
+    "output_tokens_details": {
+      "reasoning_tokens": 1122
+    },
+    "total_tokens": 5686
+  }
+}

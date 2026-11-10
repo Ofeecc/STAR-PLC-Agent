@@ -1,0 +1,20 @@
+{
+  "request_id": "79161a29bbeb42ba99840adf0d19d649",
+  "source_sha256": "bd47e86711e02b27a3bf03822b6d9b526d82f9fe93bd9906b3ca4312224d440c",
+  "task_id": "SELF012",
+  "project": "D:\\Learning\\大四秋冬\\genai\\finale\\PLC_Agent_Final\\experiments\\E1\\campaign_2026-10-25T121252267365+0000\\SELF012\\run_2026-10-26T133304259535+0000\\compile_00\\task.project",
+  "candidate": {
+    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    Start : BOOL;\n    Stop : BOOL;\n    Fault : BOOL;\n    Reset : BOOL;\nEND_VAR\nVAR_OUTPUT\n    Run : BOOL;\n    Locked : BOOL;\n    Attempts : USINT;\nEND_VAR\nVAR\n    State : E_State := E_State.IDLE;\n    RecoveryFree : USINT := 0;\nEND_VAR",
+    "implementation": "IF Reset AND NOT Fault AND NOT Start THEN\n    State := E_State.IDLE;\n    Attempts := 0;\n    RecoveryFree := 0;\nELSIF State = E_State.LOCKED THEN\n    ;\nELSIF Stop THEN\n    State := E_State.IDLE;\n    RecoveryFree := 0;\nELSIF State = E_State.RUNNING AND Fault THEN\n    IF Attempts < 2 THEN\n        State := E_State.WAIT;\n        RecoveryFree := 0;\n    ELSE\n        State := E_State.LOCKED;\n    END_IF\nELSIF State = E_State.WAIT AND Fault THEN\n    RecoveryFree := 0;\nELSIF State = E_State.WAIT AND NOT Fault THEN\n    IF RecoveryFree >= 1 THEN\n        State := E_State.RUNNING;\n        Attempts := Attempts + 1;\n        RecoveryFree := 0;\n    ELSE\n        RecoveryFree := RecoveryFree + 1;\n    END_IF\nELSIF State = E_State.IDLE AND Start AND NOT Fault THEN\n    State := E_State.RUNNING;\n    RecoveryFree := 0;\nEND_IF\n\nRun := (State = E_State.RUNNING);\nLocked := (State = E_State.LOCKED);",
+    "supporting_objects": [
+      {
+        "name": "E_State",
+        "kind": "DUT",
+        "declaration": "TYPE E_State :\n( IDLE, RUNNING, WAIT, LOCKED );\nEND_TYPE",
+        "implementation": ""
+      }
+    ]
+  },
+  "result_path": "D:\\Learning\\大四秋冬\\genai\\finale\\PLC_Agent_Final\\experiments\\E1\\campaign_2026-10-25T121252267365+0000\\SELF012\\run_2026-10-26T133304259535+0000\\compile_00\\codesys_evidence.json",
+  "started_utc": "2026-10-26T13:33:21.971357+00:00"
+}

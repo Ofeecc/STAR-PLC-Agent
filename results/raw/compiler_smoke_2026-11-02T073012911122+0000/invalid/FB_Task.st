@@ -1,0 +1,11 @@
+FUNCTION_BLOCK FB_Task
+VAR_INPUT
+ Start : BOOL;
+ Stop : BOOL;
+END_VAR
+VAR_OUTPUT
+ Run : BOOL := FALSE;
+END_VAR
+
+Run := ThisIdentifierDoesNotExist;
+END_FUNCTION_BLOCK

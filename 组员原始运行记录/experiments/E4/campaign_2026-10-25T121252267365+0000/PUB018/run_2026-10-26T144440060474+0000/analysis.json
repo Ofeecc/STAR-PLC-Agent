@@ -1,0 +1,117 @@
+{
+  "pou_type": "FUNCTION_BLOCK",
+  "pou_name": "FB_Task",
+  "interface": [
+    {
+      "direction": "INPUT",
+      "name": "enqueue",
+      "type": "BOOL",
+      "description": "Enqueue request; one operation per rising edge."
+    },
+    {
+      "direction": "INPUT",
+      "name": "dequeue",
+      "type": "BOOL",
+      "description": "Dequeue request; one operation per rising edge."
+    },
+    {
+      "direction": "INPUT",
+      "name": "reset",
+      "type": "BOOL",
+      "description": "TRUE resets the queue to empty; takes priority over enqueue and dequeue."
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "elementCount",
+      "type": "DINT",
+      "description": "Current number of valid elements, from zero through the queue capacity."
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "status",
+      "type": "WORD",
+      "description": "Invocation status: 16#0000 no error, 16#8001 dequeue from an empty queue, 16#8002 enqueue into a full queue."
+    },
+    {
+      "direction": "IN_OUT",
+      "name": "item",
+      "type": "VARIANT",
+      "description": "Mutable scalar reference: read its value when enqueuing; write the removed front value on successful dequeue. Its concrete type must match the array element type."
+    },
+    {
+      "direction": "IN_OUT",
+      "name": "buffer",
+      "type": "VARIANT",
+      "description": "Reference to a nonempty one-dimensional array with a single concrete element type, used as queue storage. Capacity is the actual array length."
+    }
+  ],
+  "initial_conditions": {
+    "elementCount": 0,
+    "status": 0,
+    "head": 0,
+    "tail": 0
+  },
+  "scan_semantics": "Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call. Retained pre-state q[k] becomes q[k+1]. Each test resets the instance. A transition affects the same observed scan. dt_ms is elapsed time since the preceding invocation; the first invocation starts IEC timers at elapsed zero. CycleTime inputs, where supplied, are attributed to the current invocation rather than inferred from dt_ms.",
+  "safety_priority": [
+    "Reset empties the logical queue before handling requests.",
+    "Rejected requests preserve queue and item.",
+    "Only rising edges perform enqueue/dequeue."
+  ],
+  "assumptions": [
+    "The official VARIANT interface is preserved. Native CODESYS compatibility and runtime type/array metadata access remain unverified; never silently replace it by a DINT-only interface.",
+    "Binding A: item DINT, buffer ARRAY[0..1] OF DINT. Binding B: item BOOL, buffer ARRAY[1..3] OF BOOL. Both must run to substantiate genericity.",
+    "Buffer is initialized and bound once per test; its association and contents are not externally overwritten between calls. item is caller-writable every scan.",
+    "Enqueue and dequeue are never requested together. Reset may coincide with either and wins.",
+    "Edge memories update during reset; a request held afterward is not another edge.",
+    "Reset need not clear buffer values. Unused storage arrangement is unconstrained."
+  ],
+  "formal_properties": [
+    {
+      "id": "PUB018.P1",
+      "name": "Reset",
+      "formula": "G(reset -> (empty & ok))",
+      "explanation": "Reset overrides simultaneous requests."
+    },
+    {
+      "id": "PUB018.P2",
+      "name": "Rejections",
+      "formula": "G((pop_empty -> (e1 & same)) & (push_full -> (e2 & same)))",
+      "explanation": "Full and empty failures preserve data."
+    },
+    {
+      "id": "PUB018.P3",
+      "name": "FIFO order",
+      "formula": "G((push -> pushed) & (pop -> popped))",
+      "explanation": "Accepted edges update the ordered logical queue exactly once."
+    },
+    {
+      "id": "PUB018.P4",
+      "name": "Count",
+      "formula": "G(bounded)",
+      "explanation": "Count remains within the actual caller capacity."
+    },
+    {
+      "id": "PUB018.P5",
+      "name": "Held request",
+      "formula": "G(idle -> (ok & same))",
+      "explanation": "Held levels do not perform another operation."
+    }
+  ],
+  "atomic_propositions": {
+    "reset": "reset input",
+    "empty": "elementCount=0",
+    "ok": "status=0",
+    "pop_empty": "NOT reset AND rising(dequeue) AND pre-count=0",
+    "push_full": "NOT reset AND rising(enqueue) AND pre-count=capacity",
+    "e1": "status=16#8001",
+    "e2": "status=16#8002",
+    "same": "logical queue equals pre-queue AND item equals sampled item",
+    "push": "NOT reset AND rising(enqueue) AND pre-count<capacity",
+    "pushed": "post-queue=pre-queue appended with sampled item AND count=pre-count+1 AND status=0",
+    "pop": "NOT reset AND rising(dequeue) AND pre-count>0",
+    "popped": "item=pre-front AND post-queue=pre-queue without front AND count=pre-count-1 AND status=0",
+    "bounded": "0<=elementCount<=actual buffer length",
+    "idle": "NOT reset AND no request rising edge"
+  },
+  "supporting_types": []
+}

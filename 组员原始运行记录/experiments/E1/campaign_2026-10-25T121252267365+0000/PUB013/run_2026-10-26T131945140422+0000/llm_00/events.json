@@ -1,0 +1,3721 @@
+[
+  {
+    "type": "response.created",
+    "sequence_number": 1,
+    "response": {
+      "id": "d648ffd5380d498588f51e4eedfa46cf",
+      "object": "response",
+      "created_at": 1793020787,
+      "status": "in_progress",
+      "background": false,
+      "error": null,
+      "output": [],
+      "model": "deepseek-v4.1-flash"
+    }
+  },
+  {
+    "type": "response.in_progress",
+    "sequence_number": 2,
+    "response": {
+      "id": "d648ffd5380d498588f51e4eedfa46cf",
+      "object": "response",
+      "created_at": 1793020787,
+      "status": "in_progress",
+      "output": [],
+      "model": "deepseek-v4.1-flash"
+    }
+  },
+  {
+    "type": "response.output_item.added",
+    "sequence_number": 3,
+    "output_index": 0,
+    "item": {
+      "id": "rs_d648ffd5380d498588f51e4eedfa46cf_0",
+      "type": "reasoning",
+      "status": "in_progress",
+      "summary": []
+    }
+  },
+  {
+    "type": "response.output_item.done",
+    "item": {
+      "id": "rs_d648ffd5380d498588f51e4eedfa46cf_0",
+      "type": "reasoning",
+      "encrypted_content": "",
+      "summary": [
+        {
+          "type": "summary_text",
+          "text": "We need to write CODESYS ST FB_Task. Need timer semantics: dt_ms elapsed since preceding invocation; first invocation starts IEC timers at elapsed zero. Need start delay 30s using TON or manual accumulation? Using TON with PT:=T#30S and call each scan; TON's timing based on system clock? In simulation compile only, but tests likely run with a harness. The spec says dt_ms actual elapsed time. In CODESYS TON uses internal clock, not dt_ms input. But we have no dt_ms input in interface! Only OCCUPANCY_DETECTED, ENERGY_SAVING_MODE, HVAC_MODE_SELECTOR. So timer must use TON with real elapsed time. In CODESYS, TON instance called each cycle uses system time. Tests with dt_ms likely simulate actual time between calls. First invocation starts IEC timers at elapsed zero — TON behavior: on first call with IN TRUE, it starts and ET=0; at exactly 30s after, Q true. Let's design:\n\nVAR\n  tonDelay : TON;\n  ...\nEND_VAR\n\nTON(IN := permit, PT := T#30S);\nSUPPLY_FAN_RUN := tonDelay.Q;\n\nImmediately stop fan and reset timing if occupancy lost or Night: TON with IN FALSE resets ET to 0 immediately? CODESYS TON: when IN goes FALSE, ET resets to 0. Yes. When permit becomes true again, starts from 0.\n\nBut note T3 step: t=0 call, t=29.9s call, t=30.0 call expected fan true. TON Q true when ET >= PT at call; at 30s, yes.\n\nT1 first step dt 0, etc. No issue.\n\nSetpoint: if mode=3 -> 4. else if occupancy -> 0. else case mode: 0 -> if energy saving 3 else 2; 1 ->1; 2->4. Bound clamp. Selector valid 0..3 but could clamp anyway. Default 0? Maybe CASE.\n\nInitialize outputs OFF/zero at power-up; outputs declared no initial values? We can initialize variables? Outputs declared in VAR_OUTPUT with initial false/0 perhaps. Requirements: \"Initialize outputs to OFF and zero at power-up; update them from current inputs when normal calculation begins.\" Since FB outputs default FALSE/0 when instance created. We can just assign each call. But maybe initialization should only happen at first call? They mention first call calculates adjustment immediately. Fine.\n\nPotential issue: TON with PT T#30S, calling in every cycle. The wrapper may control time? In actual CODESYS simulation, time advances by real time, not dt_ms. However test harness likely uses a virtual clock or executes with waits. The task's compile-only environment. Just write standard.\n\nBut caution: \"dt_ms is elapsed time since the preceding invocation; the first invocation starts IEC timers at elapsed zero. CycleTime inputs, where supplied, are attributed to the current invocation rather than inferred from dt_ms.\" This suggests expected implementation uses standard IEC timers and tests run real-time-ish. But if harness calls rapidly in a loop with manipulated clock? CODESYS doesn't expose dt_ms. There is no input. So TON is right.\n\nNeed declaration: FUNCTION_BLOCK FB_Task followed by VAR sections; omit END_FUNCTION_BLOCK. Include VAR_INPUT, VAR_OUTPUT, VAR internal TON.\n\nLet's draft.\n\ndeclaration:\nFUNCTION_BLOCK FB_Task\nVAR_INPUT\n  OCCUPANCY_DETECTED : BOOL;\n  ENERGY_SAVING_MODE : BOOL;\n  HVAC_MODE_SELECTOR : INT;\nEND_VAR\nVAR_OUTPUT\n  SUPPLY_FAN_RUN : BOOL := FALSE;\n  TEMP_SETPOINT_ADJUST : INT := 0;\nEND_VAR\nVAR\n  fbRunDelay : TON;\n  xPermit : BOOL;\nEND_VAR\n\nimplementation:\nxPermit := OCCUPANCY_DETECTED AND (HVAC_MODE_SELECTOR <> 3);\n\nfbRunDelay(IN := xPermit, PT := T#30S);\nSUPPLY_FAN_RUN := fbRunDelay.Q;\n\nCASE HVAC_MODE_SELECTOR OF\n  3:\n    TEMP_SETPOINT_ADJUST := 4;\n  1:\n    IF OCCUPANCY_DETECTED THEN\n      TEMP_SETPOINT_ADJUST := 0;\n    ELSE\n      TEMP_SETPOINT_ADJUST := 1;\n    END_IF\n  2:\n    IF OCCUPANCY_DETECTED THEN\n      TEMP_SETPOINT_ADJUST := 0;\n    ELSE\n      TEMP_SETPOINT_ADJUST := 4;\n    END_IF\n  0:\n    IF OCCUPANCY_DETECTED THEN\n      TEMP_SETPOINT_ADJUST := 0;\n    ELSIF ENERGY_SAVING_MODE THEN\n      TEMP_SETPOINT_ADJUST := 3;\n    ELSE\n      TEMP_SETPOINT_ADJUST := 2;\n    END_IF\n  ELSE\n    TEMP_SETPOINT_ADJUST := 0;\nEND_CASE\n\nClamp:\nIF TEMP_SETPOINT_ADJUST > 4 THEN ... not necessary but P2. Could use LIMIT( -4, TEMP_SETPOINT_ADJUST, 4). CODESYS LIMIT function args (Mn, in, Mx). Use TEMP_SETPOINT_ADJUST := LIMIT(-4, TEMP_SETPOINT_ADJUST, 4); Might compile. Or manual. Keep robust manual IF.\n\nOrdering: night immediate stop. TON with IN false resets. In same scan, Q false. Good.\n\nPotential subtlety: If permit true continuously, at t=30s TON Q true. Good.\n\nBut requirement \"Start a 30-second delay only when occupancy is detected and Night mode is not selected.\" Yes.\n\n\"Initialize outputs to OFF and zero at power-up; update them from current inputs when normal calculation begins.\" declaration initialization satisfies.\n\nDo we need supporting_objects? None.\n\nLet's compile."
+        }
+      ]
+    },
+    "output_index": 0,
+    "sequence_number": 1344
+  },
+  {
+    "type": "response.output_item.added",
+    "sequence_number": 1345,
+    "output_index": 1,
+    "item": {
+      "id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+      "type": "function_call",
+      "status": "in_progress",
+      "arguments": "",
+      "call_id": "call_00_dIhyxrYTrthaWutjC0Nr3726",
+      "name": "compile_st"
+    }
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1346,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "{"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1347,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "\""
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1348,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "source"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1349,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "\""
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1350,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": ": "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1351,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "{\""
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1352,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "decl"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1353,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "aration"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1354,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "\":"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1355,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " \""
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1356,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "F"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1357,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "UNCTION"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1358,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_B"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1359,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "LOCK"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1360,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " FB"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1361,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_T"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1362,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "ask"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1363,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "\\n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1364,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "VAR"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1365,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_IN"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1366,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "PUT"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1367,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "\\n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1368,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1369,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " O"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1370,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "CC"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1371,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "UP"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1372,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "ANC"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1373,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "Y"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1374,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_D"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1375,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "ET"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1376,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "ECT"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1377,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "ED"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1378,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " :"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1379,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " BO"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1380,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "OL"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1381,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": ";\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1382,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1383,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1384,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " ENER"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1385,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "GY"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1386,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1387,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "SA"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1388,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "V"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1389,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "ING"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1390,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_M"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1391,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "ODE"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1392,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " :"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1393,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " BO"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1394,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "OL"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1395,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": ";\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1396,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1397,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1398,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " HVAC"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1399,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_M"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1400,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "ODE"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1401,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_S"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1402,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "ELECT"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1403,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "OR"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1404,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " :"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1405,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " INT"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1406,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": ";\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1407,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1408,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "END"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1409,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_V"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1410,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "AR"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1411,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "\\n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1412,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "VAR"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1413,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_OUT"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1414,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "PUT"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1415,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "\\n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1416,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1417,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " SUP"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1418,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "PL"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1419,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "Y"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1420,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_F"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1421,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "AN"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1422,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_R"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1423,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "UN"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1424,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " :"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1425,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " BO"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1426,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "OL"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1427,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " :="
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1428,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " FALSE"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1429,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": ";\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1430,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1431,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1432,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " TEM"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1433,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "P"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1434,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_SET"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1435,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "PO"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1436,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "INT"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1437,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_AD"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1438,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "J"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1439,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "UST"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1440,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " :"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1441,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " INT"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1442,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " :="
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1443,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1444,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "0"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1445,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": ";\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1446,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1447,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "END"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1448,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_V"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1449,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "AR"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1450,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "\\n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1451,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "VAR"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1452,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "\\n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1453,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1454,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " fb"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1455,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "Run"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1456,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "Delay"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1457,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " :"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1458,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " T"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1459,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "ON"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1460,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": ";\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1461,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1462,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1463,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " x"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1464,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "Perm"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1465,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "it"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1466,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " :"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1467,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " BO"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1468,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "OL"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1469,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": ";\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1470,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1471,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "END"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1472,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_V"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1473,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "AR"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1474,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "\","
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1475,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " \""
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1476,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "implementation"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1477,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "\":"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1478,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " \""
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1479,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "x"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1480,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "Perm"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1481,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "it"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1482,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " :="
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1483,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " O"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1484,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "CC"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1485,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "UP"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1486,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "ANC"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1487,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "Y"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1488,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_D"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1489,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "ET"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1490,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "ECT"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1491,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "ED"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1492,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " AND"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1493,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " ("
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1494,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "HV"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1495,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "AC"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1496,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_M"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1497,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "ODE"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1498,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_S"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1499,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "ELECT"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1500,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "OR"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1501,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " <>"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1502,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1503,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "3"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1504,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": ");"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1505,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1506,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1507,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "\\n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1508,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "fb"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1509,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "Run"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1510,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "Delay"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1511,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "("
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1512,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "IN"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1513,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " :="
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1514,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " x"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1515,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "Perm"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1516,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "it"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1517,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": ","
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1518,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " PT"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1519,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " :="
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1520,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " T"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1521,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "#"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1522,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "30"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1523,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "S"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1524,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": ");"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1525,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1526,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1527,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "SU"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1528,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "P"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1529,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "PL"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1530,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "Y"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1531,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_F"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1532,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "AN"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1533,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_R"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1534,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "UN"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1535,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " :="
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1536,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " fb"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1537,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "Run"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1538,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "Delay"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1539,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": ".Q"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1540,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": ";\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1541,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1542,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "\\n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1543,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "C"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1544,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "ASE"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1545,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " HVAC"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1546,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_M"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1547,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "ODE"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1548,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_S"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1549,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "ELECT"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1550,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "OR"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1551,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " OF"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1552,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "\\n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1553,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "  "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1554,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "3"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1555,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": ":\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1556,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1557,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "   "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1558,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " TEM"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1559,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "P"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1560,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_SET"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1561,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "PO"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1562,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "INT"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1563,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_AD"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1564,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "J"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1565,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "UST"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1566,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " :="
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1567,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1568,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "4"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1569,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": ";\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1570,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1571,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "  "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1572,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "1"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1573,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": ":\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1574,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1575,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "   "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1576,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " IF"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1577,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " O"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1578,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "CC"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1579,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "UP"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1580,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "ANC"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1581,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "Y"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1582,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_D"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1583,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "ET"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1584,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "ECT"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1585,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "ED"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1586,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " THEN"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1587,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "\\n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1588,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "     "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1589,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " TEM"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1590,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "P"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1591,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_SET"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1592,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "PO"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1593,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "INT"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1594,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_AD"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1595,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "J"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1596,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "UST"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1597,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " :="
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1598,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1599,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "0"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1600,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": ";\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1601,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1602,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "   "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1603,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " ELSE"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1604,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "\\n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1605,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "     "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1606,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " TEM"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1607,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "P"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1608,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_SET"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1609,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "PO"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1610,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "INT"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1611,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_AD"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1612,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "J"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1613,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "UST"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1614,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " :="
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1615,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1616,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "1"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1617,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": ";\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1618,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1619,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "   "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1620,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " END"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1621,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1622,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "IF"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1623,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "\\n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1624,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "  "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1625,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "2"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1626,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": ":\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1627,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1628,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "   "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1629,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " IF"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1630,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " O"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1631,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "CC"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1632,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "UP"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1633,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "ANC"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1634,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "Y"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1635,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_D"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1636,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "ET"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1637,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "ECT"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1638,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "ED"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1639,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " THEN"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1640,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "\\n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1641,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "     "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1642,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " TEM"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1643,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "P"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1644,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_SET"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1645,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "PO"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1646,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "INT"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1647,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_AD"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1648,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "J"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1649,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "UST"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1650,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " :="
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1651,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1652,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "0"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1653,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": ";\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1654,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1655,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "   "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1656,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " ELSE"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1657,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "\\n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1658,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "     "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1659,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " TEM"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1660,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "P"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1661,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_SET"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1662,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "PO"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1663,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "INT"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1664,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_AD"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1665,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "J"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1666,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "UST"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1667,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " :="
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1668,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1669,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "4"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1670,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": ";\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1671,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1672,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "   "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1673,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " END"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1674,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1675,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "IF"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1676,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "\\n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1677,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "  "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1678,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "0"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1679,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": ":\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1680,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1681,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "   "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1682,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " IF"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1683,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " O"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1684,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "CC"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1685,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "UP"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1686,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "ANC"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1687,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "Y"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1688,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_D"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1689,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "ET"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1690,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "ECT"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1691,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "ED"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1692,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " THEN"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1693,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "\\n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1694,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "     "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1695,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " TEM"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1696,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "P"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1697,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_SET"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1698,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "PO"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1699,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "INT"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1700,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_AD"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1701,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "J"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1702,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "UST"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1703,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " :="
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1704,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1705,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "0"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1706,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": ";\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1707,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1708,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "   "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1709,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " E"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1710,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "LS"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1711,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "IF"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1712,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " ENER"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1713,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "GY"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1714,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1715,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "SA"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1716,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "V"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1717,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "ING"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1718,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_M"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1719,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "ODE"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1720,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " THEN"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1721,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "\\n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1722,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "     "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1723,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " TEM"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1724,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "P"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1725,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_SET"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1726,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "PO"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1727,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "INT"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1728,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_AD"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1729,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "J"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1730,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "UST"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1731,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " :="
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1732,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1733,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "3"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1734,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": ";\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1735,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1736,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "   "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1737,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " ELSE"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1738,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "\\n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1739,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "     "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1740,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " TEM"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1741,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "P"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1742,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_SET"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1743,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "PO"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1744,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "INT"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1745,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_AD"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1746,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "J"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1747,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "UST"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1748,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " :="
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1749,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1750,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "2"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1751,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": ";\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1752,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1753,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "   "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1754,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " END"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1755,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1756,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "IF"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1757,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "\\n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1758,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1759,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " ELSE"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1760,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "\\n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1761,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "   "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1762,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " TEM"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1763,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "P"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1764,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_SET"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1765,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "PO"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1766,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "INT"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1767,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_AD"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1768,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "J"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1769,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "UST"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1770,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " :="
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1771,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1772,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "0"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1773,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": ";\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1774,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1775,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "END"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1776,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_C"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1777,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "ASE"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1778,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "\\n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1779,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "\\n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1780,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "IF"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1781,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " TEM"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1782,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "P"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1783,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_SET"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1784,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "PO"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1785,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "INT"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1786,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_AD"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1787,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "J"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1788,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "UST"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1789,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " >"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1790,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1791,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "4"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1792,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " THEN"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1793,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "\\n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1794,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1795,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " TEM"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1796,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "P"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1797,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_SET"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1798,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "PO"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1799,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "INT"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1800,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_AD"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1801,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "J"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1802,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "UST"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1803,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " :="
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1804,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1805,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "4"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1806,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": ";\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1807,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1808,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "ELS"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1809,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "IF"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1810,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " TEM"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1811,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "P"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1812,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_SET"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1813,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "PO"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1814,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "INT"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1815,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_AD"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1816,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "J"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1817,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "UST"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1818,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " <"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1819,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " -"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1820,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "4"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1821,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " THEN"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1822,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "\\n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1823,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1824,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " TEM"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1825,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "P"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1826,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_SET"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1827,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "PO"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1828,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "INT"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1829,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_AD"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1830,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "J"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1831,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "UST"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1832,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " :="
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1833,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " -"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1834,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "4"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1835,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": ";\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1836,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1837,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "END"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1838,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1839,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "IF"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1840,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "\","
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1841,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " \""
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1842,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "support"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1843,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "ing"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1844,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "_"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1845,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "objects"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1846,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "\":"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1847,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": " []"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1848,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "}"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 1849,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "delta": "}"
+  },
+  {
+    "type": "response.function_call_arguments.done",
+    "sequence_number": 1850,
+    "item_id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+    "output_index": 1,
+    "arguments": "{\"source\": {\"declaration\": \"FUNCTION_BLOCK FB_Task\\nVAR_INPUT\\n  OCCUPANCY_DETECTED : BOOL;\\n  ENERGY_SAVING_MODE : BOOL;\\n  HVAC_MODE_SELECTOR : INT;\\nEND_VAR\\nVAR_OUTPUT\\n  SUPPLY_FAN_RUN : BOOL := FALSE;\\n  TEMP_SETPOINT_ADJUST : INT := 0;\\nEND_VAR\\nVAR\\n  fbRunDelay : TON;\\n  xPermit : BOOL;\\nEND_VAR\", \"implementation\": \"xPermit := OCCUPANCY_DETECTED AND (HVAC_MODE_SELECTOR <> 3);\\n\\nfbRunDelay(IN := xPermit, PT := T#30S);\\nSUPPLY_FAN_RUN := fbRunDelay.Q;\\n\\nCASE HVAC_MODE_SELECTOR OF\\n  3:\\n    TEMP_SETPOINT_ADJUST := 4;\\n  1:\\n    IF OCCUPANCY_DETECTED THEN\\n      TEMP_SETPOINT_ADJUST := 0;\\n    ELSE\\n      TEMP_SETPOINT_ADJUST := 1;\\n    END_IF\\n  2:\\n    IF OCCUPANCY_DETECTED THEN\\n      TEMP_SETPOINT_ADJUST := 0;\\n    ELSE\\n      TEMP_SETPOINT_ADJUST := 4;\\n    END_IF\\n  0:\\n    IF OCCUPANCY_DETECTED THEN\\n      TEMP_SETPOINT_ADJUST := 0;\\n    ELSIF ENERGY_SAVING_MODE THEN\\n      TEMP_SETPOINT_ADJUST := 3;\\n    ELSE\\n      TEMP_SETPOINT_ADJUST := 2;\\n    END_IF\\n  ELSE\\n    TEMP_SETPOINT_ADJUST := 0;\\nEND_CASE\\n\\nIF TEMP_SETPOINT_ADJUST > 4 THEN\\n  TEMP_SETPOINT_ADJUST := 4;\\nELSIF TEMP_SETPOINT_ADJUST < -4 THEN\\n  TEMP_SETPOINT_ADJUST := -4;\\nEND_IF\", \"supporting_objects\": []}}"
+  },
+  {
+    "type": "response.output_item.done",
+    "sequence_number": 1851,
+    "output_index": 1,
+    "item": {
+      "id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+      "type": "function_call",
+      "status": "completed",
+      "arguments": "{\"source\": {\"declaration\": \"FUNCTION_BLOCK FB_Task\\nVAR_INPUT\\n  OCCUPANCY_DETECTED : BOOL;\\n  ENERGY_SAVING_MODE : BOOL;\\n  HVAC_MODE_SELECTOR : INT;\\nEND_VAR\\nVAR_OUTPUT\\n  SUPPLY_FAN_RUN : BOOL := FALSE;\\n  TEMP_SETPOINT_ADJUST : INT := 0;\\nEND_VAR\\nVAR\\n  fbRunDelay : TON;\\n  xPermit : BOOL;\\nEND_VAR\", \"implementation\": \"xPermit := OCCUPANCY_DETECTED AND (HVAC_MODE_SELECTOR <> 3);\\n\\nfbRunDelay(IN := xPermit, PT := T#30S);\\nSUPPLY_FAN_RUN := fbRunDelay.Q;\\n\\nCASE HVAC_MODE_SELECTOR OF\\n  3:\\n    TEMP_SETPOINT_ADJUST := 4;\\n  1:\\n    IF OCCUPANCY_DETECTED THEN\\n      TEMP_SETPOINT_ADJUST := 0;\\n    ELSE\\n      TEMP_SETPOINT_ADJUST := 1;\\n    END_IF\\n  2:\\n    IF OCCUPANCY_DETECTED THEN\\n      TEMP_SETPOINT_ADJUST := 0;\\n    ELSE\\n      TEMP_SETPOINT_ADJUST := 4;\\n    END_IF\\n  0:\\n    IF OCCUPANCY_DETECTED THEN\\n      TEMP_SETPOINT_ADJUST := 0;\\n    ELSIF ENERGY_SAVING_MODE THEN\\n      TEMP_SETPOINT_ADJUST := 3;\\n    ELSE\\n      TEMP_SETPOINT_ADJUST := 2;\\n    END_IF\\n  ELSE\\n    TEMP_SETPOINT_ADJUST := 0;\\nEND_CASE\\n\\nIF TEMP_SETPOINT_ADJUST > 4 THEN\\n  TEMP_SETPOINT_ADJUST := 4;\\nELSIF TEMP_SETPOINT_ADJUST < -4 THEN\\n  TEMP_SETPOINT_ADJUST := -4;\\nEND_IF\", \"supporting_objects\": []}}",
+      "call_id": "call_00_dIhyxrYTrthaWutjC0Nr3726",
+      "name": "compile_st"
+    }
+  },
+  {
+    "type": "response.completed",
+    "sequence_number": 1852,
+    "response": {
+      "id": "d648ffd5380d498588f51e4eedfa46cf",
+      "object": "response",
+      "created_at": 1793020787,
+      "status": "completed",
+      "background": false,
+      "error": null,
+      "max_output_tokens": 8192,
+      "model": "deepseek-v4.1-flash",
+      "reasoning": {
+        "effort": "medium"
+      },
+      "store": false,
+      "tool_choice": "required",
+      "tools": [
+        {
+          "description": "Compile the supplied CODESYS FB_Task source in an isolated project with the real compiler. Returns actual diagnostics. Repair only code errors; stop after success, infrastructure failure, or the configured total compiler-attempt limit.",
+          "name": "compile_st",
+          "parameters": {
+            "properties": {
+              "source": {
+                "additionalProperties": false,
+                "description": "Object containing string declaration, string implementation, and supporting_objects list.",
+                "properties": {
+                  "declaration": {
+                    "type": "string"
+                  },
+                  "implementation": {
+                    "type": "string"
+                  },
+                  "supporting_objects": {
+                    "items": {
+                      "type": "object"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "declaration",
+                  "implementation"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "source"
+            ],
+            "type": "object"
+          },
+          "type": "function"
+        },
+        {
+          "description": "Provides a final answer to the given problem.",
+          "name": "final_answer",
+          "parameters": {
+            "properties": {
+              "answer": {
+                "description": "The final answer to the problem",
+                "type": "string"
+              }
+            },
+            "required": [
+              "answer"
+            ],
+            "type": "object"
+          },
+          "type": "function"
+        }
+      ],
+      "output": [
+        {
+          "id": "rs_d648ffd5380d498588f51e4eedfa46cf_0",
+          "type": "reasoning",
+          "summary": [
+            {
+              "type": "summary_text",
+              "text": "We need to write CODESYS ST FB_Task. Need timer semantics: dt_ms elapsed since preceding invocation; first invocation starts IEC timers at elapsed zero. Need start delay 30s using TON or manual accumulation? Using TON with PT:=T#30S and call each scan; TON's timing based on system clock? In simulation compile only, but tests likely run with a harness. The spec says dt_ms actual elapsed time. In CODESYS TON uses internal clock, not dt_ms input. But we have no dt_ms input in interface! Only OCCUPANCY_DETECTED, ENERGY_SAVING_MODE, HVAC_MODE_SELECTOR. So timer must use TON with real elapsed time. In CODESYS, TON instance called each cycle uses system time. Tests with dt_ms likely simulate actual time between calls. First invocation starts IEC timers at elapsed zero — TON behavior: on first call with IN TRUE, it starts and ET=0; at exactly 30s after, Q true. Let's design:\n\nVAR\n  tonDelay : TON;\n  ...\nEND_VAR\n\nTON(IN := permit, PT := T#30S);\nSUPPLY_FAN_RUN := tonDelay.Q;\n\nImmediately stop fan and reset timing if occupancy lost or Night: TON with IN FALSE resets ET to 0 immediately? CODESYS TON: when IN goes FALSE, ET resets to 0. Yes. When permit becomes true again, starts from 0.\n\nBut note T3 step: t=0 call, t=29.9s call, t=30.0 call expected fan true. TON Q true when ET >= PT at call; at 30s, yes.\n\nT1 first step dt 0, etc. No issue.\n\nSetpoint: if mode=3 -> 4. else if occupancy -> 0. else case mode: 0 -> if energy saving 3 else 2; 1 ->1; 2->4. Bound clamp. Selector valid 0..3 but could clamp anyway. Default 0? Maybe CASE.\n\nInitialize outputs OFF/zero at power-up; outputs declared no initial values? We can initialize variables? Outputs declared in VAR_OUTPUT with initial false/0 perhaps. Requirements: \"Initialize outputs to OFF and zero at power-up; update them from current inputs when normal calculation begins.\" Since FB outputs default FALSE/0 when instance created. We can just assign each call. But maybe initialization should only happen at first call? They mention first call calculates adjustment immediately. Fine.\n\nPotential issue: TON with PT T#30S, calling in every cycle. The wrapper may control time? In actual CODESYS simulation, time advances by real time, not dt_ms. However test harness likely uses a virtual clock or executes with waits. The task's compile-only environment. Just write standard.\n\nBut caution: \"dt_ms is elapsed time since the preceding invocation; the first invocation starts IEC timers at elapsed zero. CycleTime inputs, where supplied, are attributed to the current invocation rather than inferred from dt_ms.\" This suggests expected implementation uses standard IEC timers and tests run real-time-ish. But if harness calls rapidly in a loop with manipulated clock? CODESYS doesn't expose dt_ms. There is no input. So TON is right.\n\nNeed declaration: FUNCTION_BLOCK FB_Task followed by VAR sections; omit END_FUNCTION_BLOCK. Include VAR_INPUT, VAR_OUTPUT, VAR internal TON.\n\nLet's draft.\n\ndeclaration:\nFUNCTION_BLOCK FB_Task\nVAR_INPUT\n  OCCUPANCY_DETECTED : BOOL;\n  ENERGY_SAVING_MODE : BOOL;\n  HVAC_MODE_SELECTOR : INT;\nEND_VAR\nVAR_OUTPUT\n  SUPPLY_FAN_RUN : BOOL := FALSE;\n  TEMP_SETPOINT_ADJUST : INT := 0;\nEND_VAR\nVAR\n  fbRunDelay : TON;\n  xPermit : BOOL;\nEND_VAR\n\nimplementation:\nxPermit := OCCUPANCY_DETECTED AND (HVAC_MODE_SELECTOR <> 3);\n\nfbRunDelay(IN := xPermit, PT := T#30S);\nSUPPLY_FAN_RUN := fbRunDelay.Q;\n\nCASE HVAC_MODE_SELECTOR OF\n  3:\n    TEMP_SETPOINT_ADJUST := 4;\n  1:\n    IF OCCUPANCY_DETECTED THEN\n      TEMP_SETPOINT_ADJUST := 0;\n    ELSE\n      TEMP_SETPOINT_ADJUST := 1;\n    END_IF\n  2:\n    IF OCCUPANCY_DETECTED THEN\n      TEMP_SETPOINT_ADJUST := 0;\n    ELSE\n      TEMP_SETPOINT_ADJUST := 4;\n    END_IF\n  0:\n    IF OCCUPANCY_DETECTED THEN\n      TEMP_SETPOINT_ADJUST := 0;\n    ELSIF ENERGY_SAVING_MODE THEN\n      TEMP_SETPOINT_ADJUST := 3;\n    ELSE\n      TEMP_SETPOINT_ADJUST := 2;\n    END_IF\n  ELSE\n    TEMP_SETPOINT_ADJUST := 0;\nEND_CASE\n\nClamp:\nIF TEMP_SETPOINT_ADJUST > 4 THEN ... not necessary but P2. Could use LIMIT( -4, TEMP_SETPOINT_ADJUST, 4). CODESYS LIMIT function args (Mn, in, Mx). Use TEMP_SETPOINT_ADJUST := LIMIT(-4, TEMP_SETPOINT_ADJUST, 4); Might compile. Or manual. Keep robust manual IF.\n\nOrdering: night immediate stop. TON with IN false resets. In same scan, Q false. Good.\n\nPotential subtlety: If permit true continuously, at t=30s TON Q true. Good.\n\nBut requirement \"Start a 30-second delay only when occupancy is detected and Night mode is not selected.\" Yes.\n\n\"Initialize outputs to OFF and zero at power-up; update them from current inputs when normal calculation begins.\" declaration initialization satisfies.\n\nDo we need supporting_objects? None.\n\nLet's compile."
+            }
+          ]
+        },
+        {
+          "id": "fc_call_00_dIhyxrYTrthaWutjC0Nr3726",
+          "type": "function_call",
+          "status": "completed",
+          "arguments": "{\"source\": {\"declaration\": \"FUNCTION_BLOCK FB_Task\\nVAR_INPUT\\n  OCCUPANCY_DETECTED : BOOL;\\n  ENERGY_SAVING_MODE : BOOL;\\n  HVAC_MODE_SELECTOR : INT;\\nEND_VAR\\nVAR_OUTPUT\\n  SUPPLY_FAN_RUN : BOOL := FALSE;\\n  TEMP_SETPOINT_ADJUST : INT := 0;\\nEND_VAR\\nVAR\\n  fbRunDelay : TON;\\n  xPermit : BOOL;\\nEND_VAR\", \"implementation\": \"xPermit := OCCUPANCY_DETECTED AND (HVAC_MODE_SELECTOR <> 3);\\n\\nfbRunDelay(IN := xPermit, PT := T#30S);\\nSUPPLY_FAN_RUN := fbRunDelay.Q;\\n\\nCASE HVAC_MODE_SELECTOR OF\\n  3:\\n    TEMP_SETPOINT_ADJUST := 4;\\n  1:\\n    IF OCCUPANCY_DETECTED THEN\\n      TEMP_SETPOINT_ADJUST := 0;\\n    ELSE\\n      TEMP_SETPOINT_ADJUST := 1;\\n    END_IF\\n  2:\\n    IF OCCUPANCY_DETECTED THEN\\n      TEMP_SETPOINT_ADJUST := 0;\\n    ELSE\\n      TEMP_SETPOINT_ADJUST := 4;\\n    END_IF\\n  0:\\n    IF OCCUPANCY_DETECTED THEN\\n      TEMP_SETPOINT_ADJUST := 0;\\n    ELSIF ENERGY_SAVING_MODE THEN\\n      TEMP_SETPOINT_ADJUST := 3;\\n    ELSE\\n      TEMP_SETPOINT_ADJUST := 2;\\n    END_IF\\n  ELSE\\n    TEMP_SETPOINT_ADJUST := 0;\\nEND_CASE\\n\\nIF TEMP_SETPOINT_ADJUST > 4 THEN\\n  TEMP_SETPOINT_ADJUST := 4;\\nELSIF TEMP_SETPOINT_ADJUST < -4 THEN\\n  TEMP_SETPOINT_ADJUST := -4;\\nEND_IF\", \"supporting_objects\": []}}",
+          "call_id": "call_00_dIhyxrYTrthaWutjC0Nr3726",
+          "name": "compile_st"
+        }
+      ],
+      "usage": {
+        "input_tokens": 4821,
+        "input_tokens_details": {
+          "cached_tokens": 0
+        },
+        "output_tokens": 1871,
+        "output_tokens_details": {
+          "reasoning_tokens": 1337
+        },
+        "total_tokens": 6692
+      }
+    }
+  }
+]

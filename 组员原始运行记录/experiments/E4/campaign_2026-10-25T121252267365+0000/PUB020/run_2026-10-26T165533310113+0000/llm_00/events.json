@@ -1,0 +1,6134 @@
+[
+  {
+    "type": "response.created",
+    "sequence_number": 1,
+    "response": {
+      "id": "0a8e865702964c108c4f3d971532633e",
+      "object": "response",
+      "created_at": 1793033737,
+      "status": "in_progress",
+      "background": false,
+      "error": null,
+      "output": [],
+      "model": "kimi-k3.1-pro"
+    }
+  },
+  {
+    "type": "response.in_progress",
+    "sequence_number": 2,
+    "response": {
+      "id": "0a8e865702964c108c4f3d971532633e",
+      "object": "response",
+      "created_at": 1793033737,
+      "status": "in_progress",
+      "output": [],
+      "model": "kimi-k3.1-pro"
+    }
+  },
+  {
+    "type": "response.output_item.added",
+    "sequence_number": 3,
+    "output_index": 0,
+    "item": {
+      "id": "rs_0a8e865702964c108c4f3d971532633e_0",
+      "type": "reasoning",
+      "status": "in_progress",
+      "summary": []
+    }
+  },
+  {
+    "type": "response.output_item.done",
+    "item": {
+      "id": "rs_0a8e865702964c108c4f3d971532633e_0",
+      "type": "reasoning",
+      "encrypted_content": "",
+      "summary": [
+        {
+          "type": "summary_text",
+          "text": "I need produce JSON only with declaration, implementation, supporting_objects. Should design CODESYS ST FB_Task exact interface. Should reason all behaviors incl assumptions, tests. Can implement enum phase perhaps internal INT constants or DUT enum. Should define referenced DUTs. Easier internal phase INT and constants? CODESYS allows VAR CONSTANT? In FB declaration include VAR sections all. Could use phase : INT := 0; with literal phases and no supporting objects. Should declaration \"FUNCTION_BLOCK FB_Task\\nVAR_INPUT... END_VAR...\" etc. Implementation robust mode transitions resetting route WAIT_FEED. Should consider first invocation auto vs previous mode; retained lastMode initialization? Entering manual clears sequence etc. Tests reset each instance. Mode switch semantics: \"Mode changes reset automatic route to WAIT_FEED.\" Entering manual clears sequence, kick completion but retains last firing setpoint. On auto->manual reset; manual->auto reset. Should have internal lastMode perhaps initialized FALSE. First automatic invocation would be mode change and reset WAIT_FEED (already) fine. But potential SensorFeed TRUE first auto call? \"Mode changes reset automatic route to WAIT_FEED\" and transition same scan? Should it then process feed? Could reset then still auto sequence in same scan; at most one phase transition. Could either return after mode change to avoid feed; tests first auto false then feed. likely okay. Should align scan semantics and safety. I should implement deterministic.\n\nPhases:\n0 WAIT_FEED\n1 MOVE_TO_WASH\n2 WAIT_WASH\n3 MOVE_TO_WEIGHT\n4 WAIT_WEIGHT\n5 MOVE_TO_FIRING\n6 WAIT_FIRING\n7 MOVE_TO_OUTPUT\n8 OUTPUT_DONE\n9 REJECTED\n\nOutputs default each scan:\nMotorForward FALSE, MotorReverse FALSE. kick perhaps retained based phase; CompletionLight retained except output done / mode change. In auto set kick := (phase=REJECTED) perhaps before case; completion should remain in OUTPUT_DONE while SensorOutput true. For other phases likely false. Set only on output arrival and clear on removal. Mode change clears. Could default kick FALSE each scan then in rejected set TRUE. CompletionLight not default false globally to retain. But in auto regular phases should be false from reset/previous? At output done then sensor false reset route and clear. Can't be elsewhere with true except weird sensor contradictory ignored. fine.\n\nMovement outputs based post-phase state to satisfy same scan transitions. Approach state machine update phase then output based new phase. Arrival stops because phase becomes wait. Confirmations accepted only in waits, sensor matching required. Arrival invocation with completion already true must not accepted until next invocation. If single case on pre-phase and only one transition per invocation, naturally arrival changes MOVE_TO_WASH->WAIT_WASH, no wash handling same scan. Next call in WAIT_WASH with SensorWash and washComplete starts. Good.\n\nWAIT_FEED: if SensorFeed then phase MOVE_TO_WASH. output forward post-phase. kick false. CompletionLight should be false perhaps set? fine.\n\nMOVE_TO_WASH: if SensorWash then phase WAIT_WASH. else remains. Outputs forward if still move.\nWAIT_WASH: if SensorWash AND washComplete then phase MOVE_TO_WEIGHT.\nMOVE_TO_WEIGHT: if SensorWeight then WAIT_WEIGHT.\nWAIT_WEIGHT: if SensorWeight AND weightComplete then if valid inclusive: firingTemp := 500.0+(weight-100.0)*0.5; phase MOVE_TO_FIRING. else phase REJECTED; kick true.\nMOVE_TO_FIRING: if SensorFiring then WAIT_FIRING.\nWAIT_FIRING: if SensorFiring AND firingComplete then MOVE_TO_OUTPUT.\nMOVE_TO_OUTPUT: if SensorOutput then OUTPUT_DONE; CompletionLight TRUE. Same scan output arrival. Post phase output done means motor false.\nOUTPUT_DONE: CompletionLight := SensorOutput? Requirement light turns off when product taken away. If SensorOutput TRUE keep true. If false clear and reset WAIT_FEED. At most one phase transition. Good. Could set CompletionLight := TRUE if sensor true, false and phase reset if false.\nREJECTED: kick true, motor stopped. if NOT SensorWeight then kick false; phase WAIT_FEED. Same scan can it process SensorFeed if also true? no at most one transition. tests next call feed. Good.\n\nMotorForward := Mode AND (phase IN movements). In ST no IN perhaps use OR. MotorReverse false. In manual: if Mode false, phase WAIT_FEED, kick false, CompletionLight false, MotorForward := ForwardButton AND NOT ReverseButton; MotorReverse := ReverseButton AND NOT ForwardButton. firingTemp retained. Mode changes: Need lastMode and manual behavior. Could simply if NOT Mode then always reset phase etc. Auto when lastMode != Mode reset phase, outputs and CompletionLight, kick. Then if Mode process state same scan or skip? Should have \"Mode changes reset the automatic route to WAIT_FEED.\" Entering manual clear. On manual->auto with SensorFeed perhaps should be able feed same scan? Not specified tests. Most conventional detect mode change, reset, then continue state logic. Since WAIT_FEED and SensorFeed then movement; does that violate reset? post phase MOVE_TO_WASH, but mode change reset route could be interpreted should stay WAIT_FEED on that scan. Better explicit IF Mode <> lastMode THEN reset and lastMode := Mode; ... perhaps then manual/auto logic continues. Tests not cover. I need adhere exact. \"Mode changes reset the automatic route to WAIT_FEED.\" Could mean on switching automatic route initialized and operation proceeds as normal. Either. Simplicity no lastMode needed: manual always phase wait feed, auto runs. When auto->manual reset. manual->auto phase already WAIT_FEED due manual every scan, so reset inherently. If mode switched directly each scan, okay. Completion and kick cleared manual. LastMode not necessary. But assumption says entering manual clears sequence etc; manual does every scan, okay. Mode changes reset automatic route to WAIT_FEED: since manual repeatedly resets, switching to auto starts wait feed. If instance starts auto phase initial wait. Good. No lastMode needed. Could include previous mode for formal, but no benefit.\n\nMake sure CompletionLight only relevant output done. In automatic if not output done perhaps remains? On mode auto after manual it was cleared. initial false. On new cycle after output removed clears. Fine.\n\nSetpoint retention on no_judgment: formula \"no_judgment = NOT judged OR NOT valid\", same temp. For invalid judged, I don't alter. valid accepted updates. Unrelated completion no updates. Good.\n\nAt most one phase transition per invocation. CASE does one. Outputs computed after case. Rejected removal one. output removal one. Fine.\n\nArrival priority: If pre-phase movement, case only arrival. Completion ignored. Good.\n\nSafety interlock manual both false. Auto reverse false. Could compute motor forward after phase; if auto. Should have completion kick values same scan.\n\nPotential issue if WAIT_WEIGHT and SensorWeight false with weightComplete true: ignored. Yes matching sensor required. Rejected remains until SensorWeight false. Good.\n\nWAIT_WASH if SensorWash false but washComplete true ignored and remains; confirmations levels accepted only with sensor. Fine.\n\nDeclaration exact names case. Could use phase INT with initial 0 and named constants in VAR CONSTANT to make readable:\nVAR\n    phase : INT := 0;\nEND_VAR\nVAR CONSTANT\n    WAIT_FEED : INT := 0; etc\nEND_VAR\nCODESYS allows VAR CONSTANT in function block? Yes VAR CONSTANT ... END_VAR. Could also use an enum DUT E_TaskPhase and supporting_objects. User wants define referenced DUTs, supporting objects okay. Simpler avoid helper object and use internal integer literals plus comments. declaration includes all VAR sections. Use phase : INT := 0; only. Use literal values with comments. No need constants. But clarity perhaps constants. CODESYS 3.5 ST syntax supports VAR CONSTANT at local FB. Should compile offline likely parser supports. Safest basic VAR and integer values. All outputs default initial values implicitly false/0. Could explicitly initialize outputs? Interface exact types and initial conditions. Outputs default values correct. phase initial 0. Could include `phase : INT := 0;` and perhaps `lastMode : BOOL;` not needed. No supporting DUTs.\n\nImplementation:\nIF NOT Mode THEN\n    phase := 0;\n    kick := FALSE;\n    CompletionLight := FALSE;\n    MotorForward := ForwardButton AND NOT ReverseButton;\n    MotorReverse := ReverseButton AND NOT ForwardButton;\nELSE\n    MotorReverse := FALSE;\n    MotorForward := FALSE;\n    kick := FALSE;\n\n    CASE phase OF\n       0: ...\n...\n    END_CASE;\n\n    IF (phase = 1) OR ... THEN MotorForward TRUE; END_IF;\n    IF phase = 9 THEN kick TRUE; END_IF;\nEND_IF;\n\nQuestion CompletionLight on automatic non-output phases if weird phase? Not clear. Fine. But in phase OUTPUT_DONE SensorOutput false set false and phase 0. On other phases should perhaps explicitly CompletionLight false? If SensorOutput goes false same scan as output arrival? contradictory no. Fine. On output arrival set true. On output done SensorOutput true set true. Could only set if true else clear. Good.\n\nAt REJECTED, if SensorWeight true, kick gets set at end. if false phase=0 then kick stays false. Good.\n\nWhen weight invalid, phase=9 and kick set end. Motor false. Valid: phase 5 then forward true. firingTemp exact formula.\n\nWhen feed sensor true at WAIT_FEED: phase 1, forward true same scan. If SensorFeed remains true next scans ignored in move. Destination sensors priority.\n\nMode manual outputs no auto case. `firingTemp` untouched always except accepted, retains on resets.\n\nWhat about mode change auto->manual while output completion true: clear. manual->auto kick/completion already false. Good.\n\nNo need timers.\n\nI must return valid JSON strings with \\n. Could include declaration no END_FUNCTION_BLOCK. Implementation ST body alone. supporting_objects [].\n\nShould consider tests T7 wrong feedback step 3: After feed, step2 moving to wash; step3 SensorWash true and washComplete true arrival. Expected stopped. My case pre phase1 -> wait wash, ignore completion same scan, yes. Step4 same completion true -> move weight and forward. Good.\n\nT2 first auto false: phase0 outputs false. good.\n\nOne nuance: manual test reset and initial auto? fine.\n\nI could add comments but no need.\n\nShould I define phase as INT with initial wait. The user initial_conditions says phase WAIT_FEED, internal name phase okay. Use phase exactly. Good.\n\nPerhaps implementation could set CompletionLight false when entering auto from manual? Already manual clears. No lastMode. \"Mode changes reset automatic route to WAIT_FEED.\" In auto no detection but manual resets. If Mode switches FALSE and TRUE between invocations? sampled only current, impossible detect unsampled. fine.\n\nAt most one phase transition. Good.\n\nPotential issue automatic CompletionLight stale if arbitrary initial? reset instance. fine.\n\nJSON only."
+        }
+      ]
+    },
+    "output_index": 0,
+    "sequence_number": 2283
+  },
+  {
+    "type": "response.output_item.added",
+    "sequence_number": 2284,
+    "output_index": 1,
+    "item": {
+      "id": "msg_0a8e865702964c108c4f3d971532633e_0",
+      "type": "message",
+      "status": "in_progress",
+      "content": [],
+      "role": "assistant"
+    }
+  },
+  {
+    "type": "response.content_part.added",
+    "sequence_number": 2285,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "part": {
+      "type": "output_text",
+      "annotations": [],
+      "logprobs": [],
+      "text": ""
+    }
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2286,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "{\"",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2287,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "declaration",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2288,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\":\"",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2289,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "FUNCTION",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2290,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_BLOCK",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2291,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " FB",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2292,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_T",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2293,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ask",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2294,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2295,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "VAR",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2296,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_INPUT",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2297,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2298,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2299,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " Mode",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2300,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2301,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " BOOL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2302,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2303,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2304,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2305,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " Forward",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2306,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Button",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2307,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2308,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " BOOL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2309,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2310,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2311,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2312,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " Reverse",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2313,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Button",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2314,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2315,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " BOOL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2316,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2317,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2318,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2319,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " Sensor",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2320,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Feed",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2321,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2322,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " BOOL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2323,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2324,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2325,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2326,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " Sensor",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2327,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Wash",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2328,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2329,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " BOOL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2330,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2331,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2332,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2333,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " Sensor",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2334,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Weight",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2335,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2336,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " BOOL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2337,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2338,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2339,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2340,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " Sensor",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2341,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "F",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2342,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "iring",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2343,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2344,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " BOOL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2345,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2346,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2347,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2348,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " Sensor",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2349,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Output",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2350,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2351,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " BOOL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2352,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2353,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2354,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2355,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " wash",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2356,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Complete",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2357,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2358,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " BOOL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2359,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2360,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2361,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2362,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " weight",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2363,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Complete",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2364,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2365,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " BOOL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2366,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2367,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2368,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2369,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " weight",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2370,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2371,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " REAL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2372,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2373,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2374,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2375,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " firing",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2376,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Complete",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2377,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2378,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " BOOL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2379,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2380,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2381,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "END",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2382,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_VAR",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2383,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2384,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "VAR",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2385,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_OUTPUT",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2386,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2387,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2388,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " Motor",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2389,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Forward",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2390,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2391,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " BOOL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2392,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2393,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2394,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2395,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " Motor",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2396,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Reverse",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2397,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2398,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " BOOL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2399,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2400,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2401,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2402,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " kick",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2403,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2404,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " BOOL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2405,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2406,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2407,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2408,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " Completion",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2409,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Light",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2410,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2411,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " BOOL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2412,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2413,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2414,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2415,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " firing",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2416,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Temp",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2417,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2418,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " REAL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2419,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2420,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2421,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "END",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2422,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_VAR",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2423,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2424,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "VAR",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2425,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2426,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2427,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " phase",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2428,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2429,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " INT",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2430,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2431,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2432,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "0",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2433,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2434,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2435,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "END",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2436,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_VAR",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2437,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\",\"",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2438,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "implementation",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2439,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\":\"",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2440,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2441,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " NOT",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2442,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " Mode",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2443,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " THEN",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2444,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2445,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2446,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " phase",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2447,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2448,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2449,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "0",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2450,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2451,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2452,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2453,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " kick",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2454,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2455,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " FALSE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2456,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2457,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2458,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2459,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " Completion",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2460,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Light",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2461,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2462,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " FALSE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2463,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2464,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2465,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2466,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " Motor",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2467,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Forward",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2468,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2469,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " Forward",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2470,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Button",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2471,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " AND",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2472,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " NOT",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2473,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " Reverse",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2474,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Button",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2475,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2476,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2477,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2478,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " Motor",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2479,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Reverse",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2480,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2481,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " Reverse",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2482,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Button",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2483,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " AND",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2484,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " NOT",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2485,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " Forward",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2486,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Button",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2487,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2488,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2489,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ELSE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2490,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2491,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2492,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " Motor",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2493,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Forward",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2494,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2495,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " FALSE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2496,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2497,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2498,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2499,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " Motor",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2500,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Reverse",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2501,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2502,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " FALSE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2503,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2504,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2505,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2506,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " kick",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2507,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2508,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " FALSE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2509,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2510,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2511,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2512,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2513,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " CASE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2514,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " phase",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2515,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " OF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2516,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2517,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "       ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2518,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2519,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "0",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2520,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ":\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2521,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2522,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "           ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2523,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2524,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " Sensor",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2525,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Feed",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2526,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " THEN",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2527,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2528,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "               ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2529,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " phase",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2530,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2531,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2532,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "1",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2533,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2534,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2535,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "           ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2536,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " END",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2537,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2538,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2539,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2540,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2541,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "       ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2542,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2543,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "1",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2544,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ":\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2545,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2546,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "           ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2547,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2548,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " Sensor",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2549,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Wash",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2550,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " THEN",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2551,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2552,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "               ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2553,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " phase",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2554,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2555,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2556,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "2",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2557,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2558,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2559,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "           ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2560,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " END",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2561,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2562,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2563,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2564,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2565,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "       ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2566,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2567,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "2",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2568,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ":\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2569,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2570,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "           ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2571,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2572,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " Sensor",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2573,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Wash",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2574,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " AND",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2575,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " wash",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2576,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Complete",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2577,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " THEN",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2578,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2579,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "               ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2580,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " phase",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2581,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2582,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2583,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "3",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2584,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2585,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2586,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "           ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2587,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " END",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2588,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2589,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2590,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2591,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2592,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "       ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2593,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2594,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "3",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2595,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ":\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2596,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2597,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "           ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2598,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2599,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " Sensor",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2600,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Weight",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2601,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " THEN",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2602,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2603,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "               ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2604,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " phase",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2605,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2606,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2607,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "4",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2608,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2609,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2610,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "           ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2611,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " END",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2612,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2613,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2614,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2615,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2616,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "       ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2617,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2618,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "4",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2619,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ":\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2620,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2621,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "           ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2622,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2623,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " Sensor",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2624,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Weight",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2625,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " AND",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2626,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " weight",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2627,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Complete",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2628,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " THEN",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2629,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2630,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "               ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2631,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2632,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " (",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2633,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "weight",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2634,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " >=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2635,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2636,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "100",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2637,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ".",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2638,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "0",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2639,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ")",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2640,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " AND",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2641,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " (",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2642,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "weight",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2643,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " <=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2644,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2645,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "200",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2646,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ".",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2647,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "0",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2648,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ")",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2649,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " THEN",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2650,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2651,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "                   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2652,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " firing",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2653,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Temp",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2654,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2655,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2656,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "500",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2657,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ".",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2658,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "0",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2659,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " +",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2660,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ((",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2661,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "weight",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2662,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " -",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2663,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2664,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "100",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2665,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ".",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2666,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "0",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2667,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ")",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2668,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " *",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2669,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2670,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "0",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2671,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ".",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2672,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "5",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2673,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ");\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2674,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2675,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "                   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2676,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " phase",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2677,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2678,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2679,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "5",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2680,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2681,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2682,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "               ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2683,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ELSE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2684,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2685,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "                   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2686,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " phase",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2687,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2688,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2689,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "9",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2690,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2691,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2692,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "               ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2693,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " END",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2694,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2695,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2696,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2697,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "           ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2698,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " END",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2699,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2700,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2701,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2702,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2703,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "       ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2704,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2705,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "5",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2706,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ":\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2707,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2708,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "           ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2709,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2710,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " Sensor",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2711,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "F",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2712,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "iring",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2713,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " THEN",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2714,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2715,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "               ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2716,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " phase",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2717,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2718,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2719,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "6",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2720,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2721,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2722,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "           ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2723,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " END",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2724,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2725,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2726,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2727,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2728,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "       ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2729,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2730,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "6",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2731,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ":\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2732,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2733,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "           ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2734,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2735,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " Sensor",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2736,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "F",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2737,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "iring",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2738,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " AND",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2739,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " firing",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2740,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Complete",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2741,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " THEN",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2742,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2743,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "               ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2744,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " phase",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2745,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2746,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2747,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "7",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2748,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2749,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2750,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "           ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2751,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " END",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2752,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2753,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2754,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2755,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2756,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "       ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2757,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2758,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "7",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2759,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ":\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2760,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2761,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "           ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2762,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2763,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " Sensor",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2764,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Output",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2765,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " THEN",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2766,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2767,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "               ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2768,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " phase",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2769,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2770,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2771,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "8",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2772,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2773,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2774,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "               ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2775,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " Completion",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2776,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Light",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2777,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2778,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " TRUE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2779,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2780,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2781,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "           ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2782,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " END",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2783,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2784,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2785,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2786,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2787,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "       ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2788,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2789,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "8",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2790,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ":\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2791,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2792,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "           ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2793,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2794,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " Sensor",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2795,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Output",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2796,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " THEN",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2797,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2798,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "               ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2799,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " Completion",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2800,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Light",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2801,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2802,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " TRUE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2803,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2804,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2805,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "           ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2806,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ELSE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2807,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2808,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "               ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2809,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " Completion",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2810,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Light",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2811,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2812,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " FALSE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2813,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2814,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2815,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "               ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2816,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " phase",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2817,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2818,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2819,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "0",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2820,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2821,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2822,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "           ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2823,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " END",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2824,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2825,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2826,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2827,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2828,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "       ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2829,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2830,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "9",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2831,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ":\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2832,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2833,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "           ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2834,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2835,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " NOT",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2836,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " Sensor",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2837,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Weight",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2838,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " THEN",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2839,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2840,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "               ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2841,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " phase",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2842,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2843,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2844,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "0",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2845,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2846,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2847,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "           ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2848,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " END",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2849,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2850,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2851,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2852,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2853,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "       ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2854,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ELSE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2855,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2856,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "           ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2857,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " phase",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2858,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2859,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2860,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "0",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2861,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2862,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2863,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "           ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2864,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " Completion",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2865,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Light",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2866,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2867,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " FALSE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2868,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2869,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2870,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2871,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " END",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2872,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_CASE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2873,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2874,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2875,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2876,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2877,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2878,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " (",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2879,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "phase",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2880,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " =",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2881,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2882,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "1",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2883,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ")",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2884,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " OR",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2885,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " (",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2886,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "phase",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2887,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " =",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2888,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2889,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "3",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2890,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ")",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2891,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " OR",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2892,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " (",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2893,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "phase",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2894,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " =",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2895,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2896,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "5",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2897,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ")",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2898,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " OR",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2899,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " (",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2900,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "phase",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2901,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " =",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2902,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2903,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "7",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2904,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ")",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2905,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " THEN",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2906,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2907,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "       ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2908,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " Motor",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2909,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Forward",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2910,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2911,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " TRUE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2912,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2913,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2914,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2915,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " END",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2916,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2917,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2918,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2919,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2920,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2921,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2922,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " phase",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2923,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " =",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2924,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2925,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "9",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2926,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " THEN",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2927,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2928,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "       ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2929,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " kick",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2930,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2931,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " TRUE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2932,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2933,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2934,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2935,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " END",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2936,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2937,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2938,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2939,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "END",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2940,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2941,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2942,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\",\"",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2943,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "support",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2944,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ing",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2945,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_objects",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2946,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\":",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 2947,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "[]}",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.done",
+    "sequence_number": 2948,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "text": "{\"declaration\":\"FUNCTION_BLOCK FB_Task\\nVAR_INPUT\\n    Mode : BOOL;\\n    ForwardButton : BOOL;\\n    ReverseButton : BOOL;\\n    SensorFeed : BOOL;\\n    SensorWash : BOOL;\\n    SensorWeight : BOOL;\\n    SensorFiring : BOOL;\\n    SensorOutput : BOOL;\\n    washComplete : BOOL;\\n    weightComplete : BOOL;\\n    weight : REAL;\\n    firingComplete : BOOL;\\nEND_VAR\\nVAR_OUTPUT\\n    MotorForward : BOOL;\\n    MotorReverse : BOOL;\\n    kick : BOOL;\\n    CompletionLight : BOOL;\\n    firingTemp : REAL;\\nEND_VAR\\nVAR\\n    phase : INT := 0;\\nEND_VAR\",\"implementation\":\"IF NOT Mode THEN\\n    phase := 0;\\n    kick := FALSE;\\n    CompletionLight := FALSE;\\n    MotorForward := ForwardButton AND NOT ReverseButton;\\n    MotorReverse := ReverseButton AND NOT ForwardButton;\\nELSE\\n    MotorForward := FALSE;\\n    MotorReverse := FALSE;\\n    kick := FALSE;\\n\\n    CASE phase OF\\n        0:\\n            IF SensorFeed THEN\\n                phase := 1;\\n            END_IF;\\n\\n        1:\\n            IF SensorWash THEN\\n                phase := 2;\\n            END_IF;\\n\\n        2:\\n            IF SensorWash AND washComplete THEN\\n                phase := 3;\\n            END_IF;\\n\\n        3:\\n            IF SensorWeight THEN\\n                phase := 4;\\n            END_IF;\\n\\n        4:\\n            IF SensorWeight AND weightComplete THEN\\n                IF (weight >= 100.0) AND (weight <= 200.0) THEN\\n                    firingTemp := 500.0 + ((weight - 100.0) * 0.5);\\n                    phase := 5;\\n                ELSE\\n                    phase := 9;\\n                END_IF;\\n            END_IF;\\n\\n        5:\\n            IF SensorFiring THEN\\n                phase := 6;\\n            END_IF;\\n\\n        6:\\n            IF SensorFiring AND firingComplete THEN\\n                phase := 7;\\n            END_IF;\\n\\n        7:\\n            IF SensorOutput THEN\\n                phase := 8;\\n                CompletionLight := TRUE;\\n            END_IF;\\n\\n        8:\\n            IF SensorOutput THEN\\n                CompletionLight := TRUE;\\n            ELSE\\n                CompletionLight := FALSE;\\n                phase := 0;\\n            END_IF;\\n\\n        9:\\n            IF NOT SensorWeight THEN\\n                phase := 0;\\n            END_IF;\\n\\n        ELSE\\n            phase := 0;\\n            CompletionLight := FALSE;\\n    END_CASE;\\n\\n    IF (phase = 1) OR (phase = 3) OR (phase = 5) OR (phase = 7) THEN\\n        MotorForward := TRUE;\\n    END_IF;\\n\\n    IF phase = 9 THEN\\n        kick := TRUE;\\n    END_IF;\\nEND_IF;\",\"supporting_objects\":[]}",
+    "logprobs": []
+  },
+  {
+    "type": "response.content_part.done",
+    "sequence_number": 2949,
+    "item_id": "msg_0a8e865702964c108c4f3d971532633e_0",
+    "output_index": 1,
+    "content_index": 0,
+    "part": {
+      "type": "output_text",
+      "annotations": [],
+      "logprobs": [],
+      "text": "{\"declaration\":\"FUNCTION_BLOCK FB_Task\\nVAR_INPUT\\n    Mode : BOOL;\\n    ForwardButton : BOOL;\\n    ReverseButton : BOOL;\\n    SensorFeed : BOOL;\\n    SensorWash : BOOL;\\n    SensorWeight : BOOL;\\n    SensorFiring : BOOL;\\n    SensorOutput : BOOL;\\n    washComplete : BOOL;\\n    weightComplete : BOOL;\\n    weight : REAL;\\n    firingComplete : BOOL;\\nEND_VAR\\nVAR_OUTPUT\\n    MotorForward : BOOL;\\n    MotorReverse : BOOL;\\n    kick : BOOL;\\n    CompletionLight : BOOL;\\n    firingTemp : REAL;\\nEND_VAR\\nVAR\\n    phase : INT := 0;\\nEND_VAR\",\"implementation\":\"IF NOT Mode THEN\\n    phase := 0;\\n    kick := FALSE;\\n    CompletionLight := FALSE;\\n    MotorForward := ForwardButton AND NOT ReverseButton;\\n    MotorReverse := ReverseButton AND NOT ForwardButton;\\nELSE\\n    MotorForward := FALSE;\\n    MotorReverse := FALSE;\\n    kick := FALSE;\\n\\n    CASE phase OF\\n        0:\\n            IF SensorFeed THEN\\n                phase := 1;\\n            END_IF;\\n\\n        1:\\n            IF SensorWash THEN\\n                phase := 2;\\n            END_IF;\\n\\n        2:\\n            IF SensorWash AND washComplete THEN\\n                phase := 3;\\n            END_IF;\\n\\n        3:\\n            IF SensorWeight THEN\\n                phase := 4;\\n            END_IF;\\n\\n        4:\\n            IF SensorWeight AND weightComplete THEN\\n                IF (weight >= 100.0) AND (weight <= 200.0) THEN\\n                    firingTemp := 500.0 + ((weight - 100.0) * 0.5);\\n                    phase := 5;\\n                ELSE\\n                    phase := 9;\\n                END_IF;\\n            END_IF;\\n\\n        5:\\n            IF SensorFiring THEN\\n                phase := 6;\\n            END_IF;\\n\\n        6:\\n            IF SensorFiring AND firingComplete THEN\\n                phase := 7;\\n            END_IF;\\n\\n        7:\\n            IF SensorOutput THEN\\n                phase := 8;\\n                CompletionLight := TRUE;\\n            END_IF;\\n\\n        8:\\n            IF SensorOutput THEN\\n                CompletionLight := TRUE;\\n            ELSE\\n                CompletionLight := FALSE;\\n                phase := 0;\\n            END_IF;\\n\\n        9:\\n            IF NOT SensorWeight THEN\\n                phase := 0;\\n            END_IF;\\n\\n        ELSE\\n            phase := 0;\\n            CompletionLight := FALSE;\\n    END_CASE;\\n\\n    IF (phase = 1) OR (phase = 3) OR (phase = 5) OR (phase = 7) THEN\\n        MotorForward := TRUE;\\n    END_IF;\\n\\n    IF phase = 9 THEN\\n        kick := TRUE;\\n    END_IF;\\nEND_IF;\",\"supporting_objects\":[]}"
+    }
+  },
+  {
+    "type": "response.output_item.done",
+    "sequence_number": 2950,
+    "output_index": 1,
+    "item": {
+      "id": "msg_0a8e865702964c108c4f3d971532633e_0",
+      "type": "message",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "annotations": [],
+          "logprobs": [],
+          "text": "{\"declaration\":\"FUNCTION_BLOCK FB_Task\\nVAR_INPUT\\n    Mode : BOOL;\\n    ForwardButton : BOOL;\\n    ReverseButton : BOOL;\\n    SensorFeed : BOOL;\\n    SensorWash : BOOL;\\n    SensorWeight : BOOL;\\n    SensorFiring : BOOL;\\n    SensorOutput : BOOL;\\n    washComplete : BOOL;\\n    weightComplete : BOOL;\\n    weight : REAL;\\n    firingComplete : BOOL;\\nEND_VAR\\nVAR_OUTPUT\\n    MotorForward : BOOL;\\n    MotorReverse : BOOL;\\n    kick : BOOL;\\n    CompletionLight : BOOL;\\n    firingTemp : REAL;\\nEND_VAR\\nVAR\\n    phase : INT := 0;\\nEND_VAR\",\"implementation\":\"IF NOT Mode THEN\\n    phase := 0;\\n    kick := FALSE;\\n    CompletionLight := FALSE;\\n    MotorForward := ForwardButton AND NOT ReverseButton;\\n    MotorReverse := ReverseButton AND NOT ForwardButton;\\nELSE\\n    MotorForward := FALSE;\\n    MotorReverse := FALSE;\\n    kick := FALSE;\\n\\n    CASE phase OF\\n        0:\\n            IF SensorFeed THEN\\n                phase := 1;\\n            END_IF;\\n\\n        1:\\n            IF SensorWash THEN\\n                phase := 2;\\n            END_IF;\\n\\n        2:\\n            IF SensorWash AND washComplete THEN\\n                phase := 3;\\n            END_IF;\\n\\n        3:\\n            IF SensorWeight THEN\\n                phase := 4;\\n            END_IF;\\n\\n        4:\\n            IF SensorWeight AND weightComplete THEN\\n                IF (weight >= 100.0) AND (weight <= 200.0) THEN\\n                    firingTemp := 500.0 + ((weight - 100.0) * 0.5);\\n                    phase := 5;\\n                ELSE\\n                    phase := 9;\\n                END_IF;\\n            END_IF;\\n\\n        5:\\n            IF SensorFiring THEN\\n                phase := 6;\\n            END_IF;\\n\\n        6:\\n            IF SensorFiring AND firingComplete THEN\\n                phase := 7;\\n            END_IF;\\n\\n        7:\\n            IF SensorOutput THEN\\n                phase := 8;\\n                CompletionLight := TRUE;\\n            END_IF;\\n\\n        8:\\n            IF SensorOutput THEN\\n                CompletionLight := TRUE;\\n            ELSE\\n                CompletionLight := FALSE;\\n                phase := 0;\\n            END_IF;\\n\\n        9:\\n            IF NOT SensorWeight THEN\\n                phase := 0;\\n            END_IF;\\n\\n        ELSE\\n            phase := 0;\\n            CompletionLight := FALSE;\\n    END_CASE;\\n\\n    IF (phase = 1) OR (phase = 3) OR (phase = 5) OR (phase = 7) THEN\\n        MotorForward := TRUE;\\n    END_IF;\\n\\n    IF phase = 9 THEN\\n        kick := TRUE;\\n    END_IF;\\nEND_IF;\",\"supporting_objects\":[]}"
+        }
+      ],
+      "role": "assistant"
+    }
+  },
+  {
+    "type": "response.completed",
+    "sequence_number": 2951,
+    "response": {
+      "id": "0a8e865702964c108c4f3d971532633e",
+      "object": "response",
+      "created_at": 1793033737,
+      "status": "completed",
+      "background": false,
+      "error": null,
+      "max_output_tokens": 8192,
+      "model": "kimi-k3.1-pro",
+      "reasoning": {
+        "effort": "medium"
+      },
+      "store": false,
+      "output": [
+        {
+          "id": "rs_0a8e865702964c108c4f3d971532633e_0",
+          "type": "reasoning",
+          "summary": [
+            {
+              "type": "summary_text",
+              "text": "I need produce JSON only with declaration, implementation, supporting_objects. Should design CODESYS ST FB_Task exact interface. Should reason all behaviors incl assumptions, tests. Can implement enum phase perhaps internal INT constants or DUT enum. Should define referenced DUTs. Easier internal phase INT and constants? CODESYS allows VAR CONSTANT? In FB declaration include VAR sections all. Could use phase : INT := 0; with literal phases and no supporting objects. Should declaration \"FUNCTION_BLOCK FB_Task\\nVAR_INPUT... END_VAR...\" etc. Implementation robust mode transitions resetting route WAIT_FEED. Should consider first invocation auto vs previous mode; retained lastMode initialization? Entering manual clears sequence etc. Tests reset each instance. Mode switch semantics: \"Mode changes reset automatic route to WAIT_FEED.\" Entering manual clears sequence, kick completion but retains last firing setpoint. On auto->manual reset; manual->auto reset. Should have internal lastMode perhaps initialized FALSE. First automatic invocation would be mode change and reset WAIT_FEED (already) fine. But potential SensorFeed TRUE first auto call? \"Mode changes reset automatic route to WAIT_FEED\" and transition same scan? Should it then process feed? Could reset then still auto sequence in same scan; at most one phase transition. Could either return after mode change to avoid feed; tests first auto false then feed. likely okay. Should align scan semantics and safety. I should implement deterministic.\n\nPhases:\n0 WAIT_FEED\n1 MOVE_TO_WASH\n2 WAIT_WASH\n3 MOVE_TO_WEIGHT\n4 WAIT_WEIGHT\n5 MOVE_TO_FIRING\n6 WAIT_FIRING\n7 MOVE_TO_OUTPUT\n8 OUTPUT_DONE\n9 REJECTED\n\nOutputs default each scan:\nMotorForward FALSE, MotorReverse FALSE. kick perhaps retained based phase; CompletionLight retained except output done / mode change. In auto set kick := (phase=REJECTED) perhaps before case; completion should remain in OUTPUT_DONE while SensorOutput true. For other phases likely false. Set only on output arrival and clear on removal. Mode change clears. Could default kick FALSE each scan then in rejected set TRUE. CompletionLight not default false globally to retain. But in auto regular phases should be false from reset/previous? At output done then sensor false reset route and clear. Can't be elsewhere with true except weird sensor contradictory ignored. fine.\n\nMovement outputs based post-phase state to satisfy same scan transitions. Approach state machine update phase then output based new phase. Arrival stops because phase becomes wait. Confirmations accepted only in waits, sensor matching required. Arrival invocation with completion already true must not accepted until next invocation. If single case on pre-phase and only one transition per invocation, naturally arrival changes MOVE_TO_WASH->WAIT_WASH, no wash handling same scan. Next call in WAIT_WASH with SensorWash and washComplete starts. Good.\n\nWAIT_FEED: if SensorFeed then phase MOVE_TO_WASH. output forward post-phase. kick false. CompletionLight should be false perhaps set? fine.\n\nMOVE_TO_WASH: if SensorWash then phase WAIT_WASH. else remains. Outputs forward if still move.\nWAIT_WASH: if SensorWash AND washComplete then phase MOVE_TO_WEIGHT.\nMOVE_TO_WEIGHT: if SensorWeight then WAIT_WEIGHT.\nWAIT_WEIGHT: if SensorWeight AND weightComplete then if valid inclusive: firingTemp := 500.0+(weight-100.0)*0.5; phase MOVE_TO_FIRING. else phase REJECTED; kick true.\nMOVE_TO_FIRING: if SensorFiring then WAIT_FIRING.\nWAIT_FIRING: if SensorFiring AND firingComplete then MOVE_TO_OUTPUT.\nMOVE_TO_OUTPUT: if SensorOutput then OUTPUT_DONE; CompletionLight TRUE. Same scan output arrival. Post phase output done means motor false.\nOUTPUT_DONE: CompletionLight := SensorOutput? Requirement light turns off when product taken away. If SensorOutput TRUE keep true. If false clear and reset WAIT_FEED. At most one phase transition. Good. Could set CompletionLight := TRUE if sensor true, false and phase reset if false.\nREJECTED: kick true, motor stopped. if NOT SensorWeight then kick false; phase WAIT_FEED. Same scan can it process SensorFeed if also true? no at most one transition. tests next call feed. Good.\n\nMotorForward := Mode AND (phase IN movements). In ST no IN perhaps use OR. MotorReverse false. In manual: if Mode false, phase WAIT_FEED, kick false, CompletionLight false, MotorForward := ForwardButton AND NOT ReverseButton; MotorReverse := ReverseButton AND NOT ForwardButton. firingTemp retained. Mode changes: Need lastMode and manual behavior. Could simply if NOT Mode then always reset phase etc. Auto when lastMode != Mode reset phase, outputs and CompletionLight, kick. Then if Mode process state same scan or skip? Should have \"Mode changes reset the automatic route to WAIT_FEED.\" Entering manual clear. On manual->auto with SensorFeed perhaps should be able feed same scan? Not specified tests. Most conventional detect mode change, reset, then continue state logic. Since WAIT_FEED and SensorFeed then movement; does that violate reset? post phase MOVE_TO_WASH, but mode change reset route could be interpreted should stay WAIT_FEED on that scan. Better explicit IF Mode <> lastMode THEN reset and lastMode := Mode; ... perhaps then manual/auto logic continues. Tests not cover. I need adhere exact. \"Mode changes reset the automatic route to WAIT_FEED.\" Could mean on switching automatic route initialized and operation proceeds as normal. Either. Simplicity no lastMode needed: manual always phase wait feed, auto runs. When auto->manual reset. manual->auto phase already WAIT_FEED due manual every scan, so reset inherently. If mode switched directly each scan, okay. Completion and kick cleared manual. LastMode not necessary. But assumption says entering manual clears sequence etc; manual does every scan, okay. Mode changes reset automatic route to WAIT_FEED: since manual repeatedly resets, switching to auto starts wait feed. If instance starts auto phase initial wait. Good. No lastMode needed. Could include previous mode for formal, but no benefit.\n\nMake sure CompletionLight only relevant output done. In automatic if not output done perhaps remains? On mode auto after manual it was cleared. initial false. On new cycle after output removed clears. Fine.\n\nSetpoint retention on no_judgment: formula \"no_judgment = NOT judged OR NOT valid\", same temp. For invalid judged, I don't alter. valid accepted updates. Unrelated completion no updates. Good.\n\nAt most one phase transition per invocation. CASE does one. Outputs computed after case. Rejected removal one. output removal one. Fine.\n\nArrival priority: If pre-phase movement, case only arrival. Completion ignored. Good.\n\nSafety interlock manual both false. Auto reverse false. Could compute motor forward after phase; if auto. Should have completion kick values same scan.\n\nPotential issue if WAIT_WEIGHT and SensorWeight false with weightComplete true: ignored. Yes matching sensor required. Rejected remains until SensorWeight false. Good.\n\nWAIT_WASH if SensorWash false but washComplete true ignored and remains; confirmations levels accepted only with sensor. Fine.\n\nDeclaration exact names case. Could use phase INT with initial 0 and named constants in VAR CONSTANT to make readable:\nVAR\n    phase : INT := 0;\nEND_VAR\nVAR CONSTANT\n    WAIT_FEED : INT := 0; etc\nEND_VAR\nCODESYS allows VAR CONSTANT in function block? Yes VAR CONSTANT ... END_VAR. Could also use an enum DUT E_TaskPhase and supporting_objects. User wants define referenced DUTs, supporting objects okay. Simpler avoid helper object and use internal integer literals plus comments. declaration includes all VAR sections. Use phase : INT := 0; only. Use literal values with comments. No need constants. But clarity perhaps constants. CODESYS 3.5 ST syntax supports VAR CONSTANT at local FB. Should compile offline likely parser supports. Safest basic VAR and integer values. All outputs default initial values implicitly false/0. Could explicitly initialize outputs? Interface exact types and initial conditions. Outputs default values correct. phase initial 0. Could include `phase : INT := 0;` and perhaps `lastMode : BOOL;` not needed. No supporting DUTs.\n\nImplementation:\nIF NOT Mode THEN\n    phase := 0;\n    kick := FALSE;\n    CompletionLight := FALSE;\n    MotorForward := ForwardButton AND NOT ReverseButton;\n    MotorReverse := ReverseButton AND NOT ForwardButton;\nELSE\n    MotorReverse := FALSE;\n    MotorForward := FALSE;\n    kick := FALSE;\n\n    CASE phase OF\n       0: ...\n...\n    END_CASE;\n\n    IF (phase = 1) OR ... THEN MotorForward TRUE; END_IF;\n    IF phase = 9 THEN kick TRUE; END_IF;\nEND_IF;\n\nQuestion CompletionLight on automatic non-output phases if weird phase? Not clear. Fine. But in phase OUTPUT_DONE SensorOutput false set false and phase 0. On other phases should perhaps explicitly CompletionLight false? If SensorOutput goes false same scan as output arrival? contradictory no. Fine. On output arrival set true. On output done SensorOutput true set true. Could only set if true else clear. Good.\n\nAt REJECTED, if SensorWeight true, kick gets set at end. if false phase=0 then kick stays false. Good.\n\nWhen weight invalid, phase=9 and kick set end. Motor false. Valid: phase 5 then forward true. firingTemp exact formula.\n\nWhen feed sensor true at WAIT_FEED: phase 1, forward true same scan. If SensorFeed remains true next scans ignored in move. Destination sensors priority.\n\nMode manual outputs no auto case. `firingTemp` untouched always except accepted, retains on resets.\n\nWhat about mode change auto->manual while output completion true: clear. manual->auto kick/completion already false. Good.\n\nNo need timers.\n\nI must return valid JSON strings with \\n. Could include declaration no END_FUNCTION_BLOCK. Implementation ST body alone. supporting_objects [].\n\nShould consider tests T7 wrong feedback step 3: After feed, step2 moving to wash; step3 SensorWash true and washComplete true arrival. Expected stopped. My case pre phase1 -> wait wash, ignore completion same scan, yes. Step4 same completion true -> move weight and forward. Good.\n\nT2 first auto false: phase0 outputs false. good.\n\nOne nuance: manual test reset and initial auto? fine.\n\nI could add comments but no need.\n\nShould I define phase as INT with initial wait. The user initial_conditions says phase WAIT_FEED, internal name phase okay. Use phase exactly. Good.\n\nPerhaps implementation could set CompletionLight false when entering auto from manual? Already manual clears. No lastMode. \"Mode changes reset automatic route to WAIT_FEED.\" In auto no detection but manual resets. If Mode switches FALSE and TRUE between invocations? sampled only current, impossible detect unsampled. fine.\n\nAt most one phase transition. Good.\n\nPotential issue automatic CompletionLight stale if arbitrary initial? reset instance. fine.\n\nJSON only."
+            }
+          ]
+        },
+        {
+          "id": "msg_0a8e865702964c108c4f3d971532633e_0",
+          "type": "message",
+          "status": "completed",
+          "content": [
+            {
+              "type": "output_text",
+              "annotations": [],
+              "logprobs": [],
+              "text": "{\"declaration\":\"FUNCTION_BLOCK FB_Task\\nVAR_INPUT\\n    Mode : BOOL;\\n    ForwardButton : BOOL;\\n    ReverseButton : BOOL;\\n    SensorFeed : BOOL;\\n    SensorWash : BOOL;\\n    SensorWeight : BOOL;\\n    SensorFiring : BOOL;\\n    SensorOutput : BOOL;\\n    washComplete : BOOL;\\n    weightComplete : BOOL;\\n    weight : REAL;\\n    firingComplete : BOOL;\\nEND_VAR\\nVAR_OUTPUT\\n    MotorForward : BOOL;\\n    MotorReverse : BOOL;\\n    kick : BOOL;\\n    CompletionLight : BOOL;\\n    firingTemp : REAL;\\nEND_VAR\\nVAR\\n    phase : INT := 0;\\nEND_VAR\",\"implementation\":\"IF NOT Mode THEN\\n    phase := 0;\\n    kick := FALSE;\\n    CompletionLight := FALSE;\\n    MotorForward := ForwardButton AND NOT ReverseButton;\\n    MotorReverse := ReverseButton AND NOT ForwardButton;\\nELSE\\n    MotorForward := FALSE;\\n    MotorReverse := FALSE;\\n    kick := FALSE;\\n\\n    CASE phase OF\\n        0:\\n            IF SensorFeed THEN\\n                phase := 1;\\n            END_IF;\\n\\n        1:\\n            IF SensorWash THEN\\n                phase := 2;\\n            END_IF;\\n\\n        2:\\n            IF SensorWash AND washComplete THEN\\n                phase := 3;\\n            END_IF;\\n\\n        3:\\n            IF SensorWeight THEN\\n                phase := 4;\\n            END_IF;\\n\\n        4:\\n            IF SensorWeight AND weightComplete THEN\\n                IF (weight >= 100.0) AND (weight <= 200.0) THEN\\n                    firingTemp := 500.0 + ((weight - 100.0) * 0.5);\\n                    phase := 5;\\n                ELSE\\n                    phase := 9;\\n                END_IF;\\n            END_IF;\\n\\n        5:\\n            IF SensorFiring THEN\\n                phase := 6;\\n            END_IF;\\n\\n        6:\\n            IF SensorFiring AND firingComplete THEN\\n                phase := 7;\\n            END_IF;\\n\\n        7:\\n            IF SensorOutput THEN\\n                phase := 8;\\n                CompletionLight := TRUE;\\n            END_IF;\\n\\n        8:\\n            IF SensorOutput THEN\\n                CompletionLight := TRUE;\\n            ELSE\\n                CompletionLight := FALSE;\\n                phase := 0;\\n            END_IF;\\n\\n        9:\\n            IF NOT SensorWeight THEN\\n                phase := 0;\\n            END_IF;\\n\\n        ELSE\\n            phase := 0;\\n            CompletionLight := FALSE;\\n    END_CASE;\\n\\n    IF (phase = 1) OR (phase = 3) OR (phase = 5) OR (phase = 7) THEN\\n        MotorForward := TRUE;\\n    END_IF;\\n\\n    IF phase = 9 THEN\\n        kick := TRUE;\\n    END_IF;\\nEND_IF;\",\"supporting_objects\":[]}"
+            }
+          ],
+          "role": "assistant"
+        }
+      ],
+      "usage": {
+        "input_tokens": 11712,
+        "input_tokens_details": {
+          "cached_tokens": 0
+        },
+        "output_tokens": 2954,
+        "output_tokens_details": {
+          "reasoning_tokens": 2277
+        },
+        "total_tokens": 14666
+      }
+    }
+  }
+]

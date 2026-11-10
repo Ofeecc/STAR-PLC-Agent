@@ -1,0 +1,19 @@
+{
+  "request_id": "1137d11bdb3542d1a69c55b14027a9c3",
+  "source_sha256": "dbc3fb3f844db943965e9ba409588b46c8f10a914428067befbe3fd8df9067ff",
+  "task_id": "PUB008",
+  "project": "D:\\Learning\\大四秋冬\\genai\\finale\\PLC_Agent_Final\\experiments\\E2\\campaign_2026-10-25T121252267365+0000\\PUB008\\run_2026-10-26T133849550303+0000\\compile_00\\task.project",
+  "candidate": {
+    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    count : DINT;\nEND_VAR\nVAR_IN_OUT\n    analogValues : ARRAY[*] OF INT;\n    channels : ARRAY[*] OF ST_AnalogChannel;\nEND_VAR\nVAR\n    i : DINT;\n    analogIndex : DINT;\n    channelIndex : DINT;\n    rawValue : REAL;\nEND_VAR",
+    "implementation": "IF count > 0 THEN\n    FOR i := 0 TO count - 1 DO\n        analogIndex := LOWER_BOUND(analogValues, 1) + i;\n        channelIndex := LOWER_BOUND(channels, 1) + i;\n\n        IF channels[channelIndex].enable THEN\n            CASE channels[channelIndex].measuringMode OF\n                0, 1, 2:\n                    IF channels[channelIndex].hiLIM <= channels[channelIndex].loLIM THEN\n                        channels[channelIndex].retVal := WORD#16#8002;\n                    ELSE\n                        rawValue := INT_TO_REAL(analogValues[analogIndex]);\n                        channels[channelIndex].retVal := WORD#0;\n\n                        CASE channels[channelIndex].measuringMode OF\n                            0:\n                                IF channels[channelIndex].bipolar THEN\n                                    channels[channelIndex].outputValue :=\n                                        channels[channelIndex].loLIM\n                                        + ((rawValue + 27648.0) / 55296.0)\n                                        * (channels[channelIndex].hiLIM - channels[channelIndex].loLIM);\n                                ELSE\n                                    channels[channelIndex].outputValue :=\n                                        channels[channelIndex].loLIM\n                                        + (rawValue / 27648.0)\n                                        * (channels[channelIndex].hiLIM - channels[channelIndex].loLIM);\n                                END_IF;\n                            1:\n                                channels[channelIndex].outputValue := rawValue / 10.0;\n                            2:\n                                channels[channelIndex].outputValue := rawValue / 100.0;\n                        END_CASE;\n                    END_IF;\n            ELSE\n                channels[channelIndex].retVal := WORD#16#8001;\n            END_CASE;\n        END_IF;\n    END_FOR;\nEND_IF;",
+    "supporting_objects": [
+      {
+        "name": "ST_AnalogChannel",
+        "kind": "DUT",
+        "declaration": "TYPE ST_AnalogChannel :\nSTRUCT\n    enable : BOOL;\n    hiLIM : REAL;\n    loLIM : REAL;\n    bipolar : BOOL;\n    measuringMode : INT;\n    retVal : WORD;\n    outputValue : REAL;\nEND_STRUCT\nEND_TYPE"
+      }
+    ]
+  },
+  "result_path": "D:\\Learning\\大四秋冬\\genai\\finale\\PLC_Agent_Final\\experiments\\E2\\campaign_2026-10-25T121252267365+0000\\PUB008\\run_2026-10-26T133849550303+0000\\compile_00\\codesys_evidence.json",
+  "started_utc": "2026-10-26T13:39:16.844775+00:00"
+}

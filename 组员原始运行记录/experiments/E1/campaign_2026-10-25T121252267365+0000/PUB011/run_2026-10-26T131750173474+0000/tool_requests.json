@@ -1,0 +1,19 @@
+[
+  {
+    "index": 0,
+    "source": {
+      "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n  Mode : BOOL;\n  ForwardButton : BOOL;\n  ReverseButton : BOOL;\n  SensorA : BOOL;\n  SensorB : BOOL;\n  SensorC : BOOL;\n  ButtonA : BOOL;\n  ButtonB : BOOL;\n  ButtonC : BOOL;\nEND_VAR\nVAR_OUTPUT\n  MotorForward : BOOL;\n  MotorReverse : BOOL;\n  CompletionLight : BOOL;\nEND_VAR\nVAR\n  phase : E_Phase := E_Phase.WAIT_A;\n  comp : BOOL := FALSE;\nEND_VAR",
+      "implementation": "MotorForward := FALSE;\nMotorReverse := FALSE;\n\nIF NOT Mode THEN\n    phase := E_Phase.WAIT_A;\n    comp := FALSE;\n    CompletionLight := FALSE;\n    IF ForwardButton AND NOT ReverseButton THEN\n        MotorForward := TRUE;\n    ELSIF ReverseButton AND NOT ForwardButton THEN\n        MotorReverse := TRUE;\n    END_IF\nELSE\n    CASE phase OF\n        E_Phase.WAIT_A:\n            IF SensorA AND ButtonA THEN\n                phase := E_Phase.MOVE_AB;\n                MotorForward := TRUE;\n            END_IF\n        E_Phase.MOVE_AB:\n            IF SensorB THEN\n                phase := E_Phase.WAIT_B;\n                MotorForward := FALSE;\n            ELSE\n                MotorForward := TRUE;\n            END_IF\n        E_Phase.WAIT_B:\n            IF SensorB AND ButtonB THEN\n                phase := E_Phase.MOVE_BC;\n                MotorForward := TRUE;\n            END_IF\n        E_Phase.MOVE_BC:\n            IF SensorC THEN\n                phase := E_Phase.WAIT_C;\n                MotorForward := FALSE;\n            ELSE\n                MotorForward := TRUE;\n            END_IF\n        E_Phase.WAIT_C:\n            IF SensorC AND ButtonC THEN\n                comp := TRUE;\n            END_IF\n        ELSE\n            phase := E_Phase.WAIT_A;\n    END_CASE\n\n    IF NOT SensorC THEN\n        comp := FALSE;\n    END_IF\n\n    CompletionLight := comp AND SensorC;\n    MotorReverse := FALSE;\nEND_IF",
+      "supporting_objects": [
+        {
+          "name": "E_Phase",
+          "kind": "DUT",
+          "declaration": "TYPE E_Phase :\n(\n  WAIT_A,\n  MOVE_AB,\n  WAIT_B,\n  MOVE_BC,\n  WAIT_C\n);\nEND_TYPE",
+          "implementation": ""
+        }
+      ]
+    },
+    "requested_utc": "2026-10-26T13:18:04.259996+00:00",
+    "compile_attempt": 0
+  }
+]

@@ -1,0 +1,13 @@
+{
+  "request_id": "00a4914d9c2a4e90af66efe55767e620",
+  "source_sha256": "a9192bd5ddc328f8bf449c83ccb1b878657ee420f72d25233603b633e03117b1",
+  "task_id": "PUB009",
+  "project": "D:\\Learning\\大四秋冬\\genai\\finale\\PLC_Agent_Final\\experiments\\E4\\campaign_2026-10-25T121252267365+0000\\PUB009\\run_2026-10-26T143040293482+0000\\compile_00\\task.project",
+  "candidate": {
+    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    cyclicExecution : BOOL;\n    trigger : BOOL;\n    value : LREAL;\n    windowSize : INT;\n    reset : BOOL;\nEND_VAR\nVAR_OUTPUT\n    average : LREAL := 0.0;\n    windowSizeReached : BOOL := FALSE;\n    error : BOOL := FALSE;\n    status : WORD := 16#0000;\nEND_VAR\nVAR\n    samples : ARRAY[1..100] OF LREAL;\n    sampleCount : INT := 0;\n    writeIndex : INT := 1;\n    sampleSum : LREAL := 0.0;\n    previousTrigger : BOOL := FALSE;\n    lastWindowSize : INT := 0;\n    triggerRise : BOOL;\n    windowChanged : BOOL;\nEND_VAR",
+    "implementation": "triggerRise := trigger AND NOT previousTrigger;\npreviousTrigger := trigger;\n\nIF (windowSize < 1) OR (windowSize > 100) THEN\n    error := TRUE;\n    status := 16#8200;\n    RETURN;\nEND_IF;\n\nerror := FALSE;\nstatus := 16#0000;\nwindowChanged := windowSize <> lastWindowSize;\n\nIF windowChanged THEN\n    lastWindowSize := windowSize;\nEND_IF;\n\nIF reset OR windowChanged THEN\n    sampleCount := 0;\n    writeIndex := 1;\n    sampleSum := 0.0;\n    average := 0.0;\n    windowSizeReached := FALSE;\nEND_IF;\n\nIF reset THEN\n    RETURN;\nEND_IF;\n\nIF cyclicExecution OR triggerRise THEN\n    IF sampleCount >= windowSize THEN\n        sampleSum := sampleSum - samples[writeIndex];\n    ELSE\n        sampleCount := sampleCount + 1;\n    END_IF;\n\n    samples[writeIndex] := value;\n    sampleSum := sampleSum + value;\n\n    writeIndex := writeIndex + 1;\n    IF writeIndex > windowSize THEN\n        writeIndex := 1;\n    END_IF;\n\n    average := sampleSum / TO_LREAL(sampleCount);\n    windowSizeReached := sampleCount = windowSize;\nEND_IF;",
+    "supporting_objects": []
+  },
+  "result_path": "D:\\Learning\\大四秋冬\\genai\\finale\\PLC_Agent_Final\\experiments\\E4\\campaign_2026-10-25T121252267365+0000\\PUB009\\run_2026-10-26T143040293482+0000\\compile_00\\codesys_evidence.json",
+  "started_utc": "2026-10-26T14:31:22.687140+00:00"
+}

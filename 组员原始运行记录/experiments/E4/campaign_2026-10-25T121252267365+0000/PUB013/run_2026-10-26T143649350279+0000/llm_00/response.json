@@ -1,0 +1,51 @@
+{
+  "id": "4c1d20c20a924825a4b875c509bcb82a",
+  "object": "response",
+  "created_at": 1793025418,
+  "status": "completed",
+  "background": false,
+  "error": null,
+  "max_output_tokens": 8192,
+  "model": "kimi-k3.1-pro",
+  "reasoning": {
+    "effort": "medium"
+  },
+  "store": false,
+  "output": [
+    {
+      "id": "rs_4c1d20c20a924825a4b875c509bcb82a_0",
+      "type": "reasoning",
+      "summary": [
+        {
+          "type": "summary_text",
+          "text": "I need produce JSON only. Should have CODESYS FB timer TON standard. Declaration FB_Task with VAR_INPUT etc, internal tmrStart TON, xInitialized BOOL perhaps init outputs. Tests first call dt 0 then 29900 etc TON works. Make sure adjustment immediate, occupied in Night -> night 4. Permit. Timer IN := permit, PT T#30s; SUPPLY_FAN_RUN := permit AND tmrStart.Q. On loss call IN false resets Q. Initialization outputs off zero at powerup. Can simply VAR_OUTPUT initial values := FALSE, 0, internal xInit. First call calculation. Timer first invocation at elapsed zero. Implementation order: IF NOT xInitialized THEN outputs... xInit true END_IF; tmrStart(IN := permit, PT := T#30S); SUPPLY_FAN_RUN := tmrStart.Q; adjustment case. Since Q only true when IN. Good.\n\nPotential CODESYS TON is in standard library, no support objects. declaration all VAR sections omit END_FUNCTION_BLOCK. Include VAR CONSTANT? no. Should have exact interface. Implementation ST body alone. JSON escaped newlines. Could use LIMIT for bounds though case inherently. Use CASE 0 etc. Occupancy for mode 0..2. Night 4. Callers valid. Clamp with LIMIT(-4, TEMP_SETPOINT_ADJUST, 4) typing INT perhaps LIMIT generic okay. Not needed but requirement keep within. Could include. Initialization xInitialized false default. Output init explicit. Ensure timer starts before or after init no issue.\n\nCould avoid xInitialized and just output default initial values counts initialize. \"followed by all VAR sections\" include VAR_INPUT, VAR_OUTPUT, VAR. Declaration string. supporting_objects []. Respond only JSON."
+        }
+      ]
+    },
+    {
+      "id": "msg_4c1d20c20a924825a4b875c509bcb82a_0",
+      "type": "message",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "annotations": [],
+          "logprobs": [],
+          "text": "{\"declaration\":\"FUNCTION_BLOCK FB_Task\\nVAR_INPUT\\n    OCCUPANCY_DETECTED : BOOL;\\n    ENERGY_SAVING_MODE : BOOL;\\n    HVAC_MODE_SELECTOR : INT;\\nEND_VAR\\nVAR_OUTPUT\\n    SUPPLY_FAN_RUN : BOOL := FALSE;\\n    TEMP_SETPOINT_ADJUST : INT := 0;\\nEND_VAR\\nVAR\\n    tmrFanStart : TON;\\n    xInitialized : BOOL := FALSE;\\n    xPermit : BOOL;\\nEND_VAR\",\"implementation\":\"IF NOT xInitialized THEN\\n    SUPPLY_FAN_RUN := FALSE;\\n    TEMP_SETPOINT_ADJUST := 0;\\n    xInitialized := TRUE;\\nEND_IF;\\n\\nxPermit := OCCUPANCY_DETECTED AND (HVAC_MODE_SELECTOR <> 3);\\n\\ntmrFanStart(IN := xPermit, PT := T#30S);\\nSUPPLY_FAN_RUN := xPermit AND tmrFanStart.Q;\\n\\nCASE HVAC_MODE_SELECTOR OF\\n    0:\\n        IF OCCUPANCY_DETECTED THEN\\n            TEMP_SETPOINT_ADJUST := 0;\\n        ELSIF ENERGY_SAVING_MODE THEN\\n            TEMP_SETPOINT_ADJUST := 3;\\n        ELSE\\n            TEMP_SETPOINT_ADJUST := 2;\\n        END_IF;\\n    1:\\n        IF OCCUPANCY_DETECTED THEN\\n            TEMP_SETPOINT_ADJUST := 0;\\n        ELSE\\n            TEMP_SETPOINT_ADJUST := 1;\\n        END_IF;\\n    2:\\n        IF OCCUPANCY_DETECTED THEN\\n            TEMP_SETPOINT_ADJUST := 0;\\n        ELSE\\n            TEMP_SETPOINT_ADJUST := 4;\\n        END_IF;\\n    3:\\n        TEMP_SETPOINT_ADJUST := 4;\\n    ELSE\\n        TEMP_SETPOINT_ADJUST := 0;\\nEND_CASE;\\n\\nTEMP_SETPOINT_ADJUST := LIMIT(-4, TEMP_SETPOINT_ADJUST, 4);\",\"supporting_objects\":[]}"
+        }
+      ],
+      "role": "assistant"
+    }
+  ],
+  "usage": {
+    "input_tokens": 3134,
+    "input_tokens_details": {
+      "cached_tokens": 0
+    },
+    "output_tokens": 800,
+    "output_tokens_details": {
+      "reasoning_tokens": 359
+    },
+    "total_tokens": 3934
+  }
+}

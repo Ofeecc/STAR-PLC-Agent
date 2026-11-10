@@ -1,0 +1,443 @@
+{
+  "schema_version": 1,
+  "id": "PUB004",
+  "kind": "public",
+  "title": "Jam Pump Debouncing and Runtime Maintenance",
+  "difficulty": "easy",
+  "provenance": {
+    "source_type": "official_course_question_bank",
+    "source_file": "大作业题库json/大作业题库json/大作业题库.json",
+    "source_index": {
+      "group": "easy",
+      "index_1based": 4
+    },
+    "adaptation": "Original English question is preserved verbatim in requirements. Only explicit evaluation assumptions, LTL, and tests are added.",
+    "rationale": "Teacher-supplied PLC task; retains the specified interface and control scenario.",
+    "review": "Reviewed against original prose and interface; ambiguities are listed explicitly. Expected traces have not been executed on a PLC."
+  },
+  "requirements": "# Jam Pump Debouncing and Runtime Maintenance\n\n- **Difficulty:** Easy (easy)\n\n## Requirements\n\nControl a jam transfer pump on a food production line, including viscosity-signal debouncing, emergency-stop priority, runtime accumulation and a maintenance-due indication.\n\n1. Accept the viscosity condition only after VISCOSITY_OK has remained TRUE for DebounceTime. Invalidate the condition immediately when the input becomes FALSE.\n2. Allow VFD_RUN to be TRUE only when PASTE_E_STOP_NC is TRUE and the viscosity condition is valid. An emergency stop immediately disables the run output and clears any incomplete debounce timing.\n3. Accumulate PUMP_RUNTIME_ACC using the actual invocation interval CycleTime only while VFD_RUN is TRUE. Preserve the accumulated time while the pump is stopped.\n4. Set PUMP_MAINT_DUE when accumulated runtime reaches 500 hours. This indication is informational and must not affect pump operation or the safety permissive.\n5. At power-up, initialize the run output to OFF, accumulated runtime to zero and the maintenance indication to FALSE.\n\n## Interface Definition\n\n| Direction | Variable/Field | Data Type | Description |\n| --- | --- | --- | --- |\n| Input | `VISCOSITY_OK` | `BOOL` | Raw signal indicating that viscosity is within the permitted range. |\n| Input | `PASTE_E_STOP_NC` | `BOOL` | Normally closed emergency-stop circuit; TRUE permits operation and FALSE means emergency stop. |\n| Input | `DebounceTime` | `TIME` | Required continuous valid duration for the viscosity signal; must be positive. |\n| Input | `CycleTime` | `TIME` | Actual elapsed interval represented by this invocation; must be positive. |\n| Output | `VFD_RUN` | `BOOL` | Pump variable-frequency-drive run command. |\n| Output | `PUMP_MAINT_DUE` | `BOOL` | Maintenance indication when accumulated runtime reaches 500 hours. |\n| Output | `PUMP_RUNTIME_ACC` | `LTIME` | Accumulated enabled runtime, using a long-duration time type. |",
+  "scenario": "Control a jam transfer pump on a food production line, including viscosity-signal debouncing, emergency-stop priority, runtime accumulation and a maintenance-due indication.",
+  "interface": [
+    {
+      "direction": "INPUT",
+      "name": "VISCOSITY_OK",
+      "type": "BOOL",
+      "description": "Raw signal indicating that viscosity is within the permitted range."
+    },
+    {
+      "direction": "INPUT",
+      "name": "PASTE_E_STOP_NC",
+      "type": "BOOL",
+      "description": "Normally closed emergency-stop circuit; TRUE permits operation and FALSE means emergency stop."
+    },
+    {
+      "direction": "INPUT",
+      "name": "DebounceTime",
+      "type": "TIME",
+      "description": "Required continuous valid duration for the viscosity signal; must be positive."
+    },
+    {
+      "direction": "INPUT",
+      "name": "CycleTime",
+      "type": "TIME",
+      "description": "Actual elapsed interval represented by this invocation; must be positive."
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "VFD_RUN",
+      "type": "BOOL",
+      "description": "Pump variable-frequency-drive run command."
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "PUMP_MAINT_DUE",
+      "type": "BOOL",
+      "description": "Maintenance indication when accumulated runtime reaches 500 hours."
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "PUMP_RUNTIME_ACC",
+      "type": "LTIME",
+      "description": "Accumulated enabled runtime, using a long-duration time type."
+    }
+  ],
+  "initial_conditions": {
+    "VFD_RUN": false,
+    "PUMP_RUNTIME_ACC": "LTIME#0ns",
+    "PUMP_MAINT_DUE": false,
+    "debounceElapsed_ms": 0
+  },
+  "scan_semantics": "At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, outputs O[k] are observed after execution, and q[k+1] is the updated state. Each test creates a fresh FB instance before step 0. An initialized instance has not yet executed a scan. Timer elapsed time is zero on the first eligible sampled invocation; dt_ms is elapsed wall time since the previous invocation, not automatically a synthetic input to the FB. No unobserved past input stability is assumed. All sequences here are expected values.",
+  "safety_priority": [
+    "Emergency stop or raw viscosity FALSE clears the run permission immediately.",
+    "Maintenance does not override run permission."
+  ],
+  "assumptions": [
+    "DebounceTime and CycleTime are strictly positive. Inputs are held stable between timed test samples.",
+    "Debouncing follows a TON-style clock: elapsed is zero on the first permitted TRUE sample and becomes valid at elapsed>=DebounceTime.",
+    "An E-stop resets debounce validity as well as incomplete timing, so re-enabling requires a full new qualification.",
+    "At each invocation, add the supplied CycleTime to the LTIME accumulator iff the end-of-scan VFD_RUN is TRUE. Do not use TIME for the 500-hour accumulator.",
+    "PUMP_MAINT_DUE is a level comparison accumulated runtime>=500h and has no reset input. Its threshold case is specified but is not a short practical runtime test.",
+    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "DebounceTime is a strictly positive constant throughout each test case. Dynamic changes are outside this benchmark domain. Time must advance for eventual-start properties."
+  ],
+  "ltl": [
+    {
+      "id": "P1",
+      "formula": "G(VFD_RUN <-> (permit & qualified))",
+      "explanation": "The run output follows the qualified permissive."
+    },
+    {
+      "id": "P2",
+      "formula": "G(!permit -> !VFD_RUN)",
+      "explanation": "Raw loss or E-stop stops immediately."
+    },
+    {
+      "id": "P3",
+      "formula": "G((!permit) -> X(!qualified))",
+      "explanation": "A lost permissive clears qualification history; future qualification must be rebuilt."
+    },
+    {
+      "id": "P4",
+      "formula": "G(VFD_RUN -> accNext=accPrev+TIME_TO_LTIME(CycleTime))",
+      "explanation": "Only enabled intervals are accumulated in a long time type."
+    },
+    {
+      "id": "P5",
+      "formula": "G(!VFD_RUN -> accNext=accPrev)",
+      "explanation": "Stopping retains accumulated service time."
+    },
+    {
+      "id": "P6",
+      "formula": "G(PUMP_MAINT_DUE <-> accNext>=LTIME#500h)",
+      "explanation": "Maintenance threshold is 500 hours."
+    },
+    {
+      "id": "P7",
+      "formula": "G((G(permit) & DebounceTime>TIME#0ms) -> F(VFD_RUN))",
+      "explanation": "A continuously permitted demand eventually starts under advancing time."
+    },
+    {
+      "id": "PUB004.V2.COMPLETE",
+      "formula": "G(CompleteBehaviorV2)",
+      "explanation": "The complete per-invocation relation defined in specification_contract.normative_completion; requires explicit encoding before model checking."
+    }
+  ],
+  "atomic_propositions": {
+    "permit": "VISCOSITY_OK & PASTE_E_STOP_NC",
+    "qualified": "Continuous permitted raw TRUE duration >= DebounceTime, with first sampled TRUE at elapsed zero.",
+    "accPrev": "Pre-scan PUMP_RUNTIME_ACC as nonnegative LTIME.",
+    "accNext": "End-of-scan PUMP_RUNTIME_ACC.",
+    "interface names": "Identically named sampled input or end-of-scan output.",
+    "CompleteBehaviorV2": "明确输入在调用间保持，第一合格采样elapsed=0；丢失permit当拍清计时。选择并注明DebounceTime固定或动态更新规则。把累计写成accAfter=accBefore+(VFD_RUN?TIME_TO_LTIME(CycleTime):0)，并标成离散调用累计口径；约束累计不溢出。维护输出等价于accAfter>=500h。"
+  },
+  "tests": [
+    {
+      "id": "T1",
+      "purpose": "Qualification boundary, accumulation, stop retention and restart",
+      "steps": [
+        {
+          "inputs": {
+            "VISCOSITY_OK": false,
+            "PASTE_E_STOP_NC": true,
+            "DebounceTime": "T#2s",
+            "CycleTime": "T#1s"
+          },
+          "expected": {
+            "VFD_RUN": false,
+            "PUMP_RUNTIME_ACC": "LTIME#0ms",
+            "PUMP_MAINT_DUE": false
+          },
+          "dt_ms": 0
+        },
+        {
+          "inputs": {
+            "VISCOSITY_OK": true,
+            "PASTE_E_STOP_NC": true,
+            "DebounceTime": "T#2s",
+            "CycleTime": "T#1s"
+          },
+          "expected": {
+            "VFD_RUN": false,
+            "PUMP_RUNTIME_ACC": "LTIME#0ms",
+            "PUMP_MAINT_DUE": false
+          },
+          "dt_ms": 1000
+        },
+        {
+          "inputs": {
+            "VISCOSITY_OK": true,
+            "PASTE_E_STOP_NC": true,
+            "DebounceTime": "T#2s",
+            "CycleTime": "T#1s"
+          },
+          "expected": {
+            "VFD_RUN": false,
+            "PUMP_RUNTIME_ACC": "LTIME#0ms",
+            "PUMP_MAINT_DUE": false
+          },
+          "dt_ms": 1000
+        },
+        {
+          "inputs": {
+            "VISCOSITY_OK": true,
+            "PASTE_E_STOP_NC": true,
+            "DebounceTime": "T#2s",
+            "CycleTime": "T#1s"
+          },
+          "expected": {
+            "VFD_RUN": true,
+            "PUMP_RUNTIME_ACC": "LTIME#1000ms",
+            "PUMP_MAINT_DUE": false
+          },
+          "dt_ms": 1000
+        },
+        {
+          "inputs": {
+            "VISCOSITY_OK": true,
+            "PASTE_E_STOP_NC": true,
+            "DebounceTime": "T#2s",
+            "CycleTime": "T#1s"
+          },
+          "expected": {
+            "VFD_RUN": true,
+            "PUMP_RUNTIME_ACC": "LTIME#2000ms",
+            "PUMP_MAINT_DUE": false
+          },
+          "dt_ms": 1000
+        },
+        {
+          "inputs": {
+            "VISCOSITY_OK": false,
+            "PASTE_E_STOP_NC": true,
+            "DebounceTime": "T#2s",
+            "CycleTime": "T#1s"
+          },
+          "expected": {
+            "VFD_RUN": false,
+            "PUMP_RUNTIME_ACC": "LTIME#2000ms",
+            "PUMP_MAINT_DUE": false
+          },
+          "dt_ms": 1000
+        },
+        {
+          "inputs": {
+            "VISCOSITY_OK": true,
+            "PASTE_E_STOP_NC": true,
+            "DebounceTime": "T#2s",
+            "CycleTime": "T#1s"
+          },
+          "expected": {
+            "VFD_RUN": false,
+            "PUMP_RUNTIME_ACC": "LTIME#2000ms",
+            "PUMP_MAINT_DUE": false
+          },
+          "dt_ms": 1000
+        },
+        {
+          "inputs": {
+            "VISCOSITY_OK": true,
+            "PASTE_E_STOP_NC": true,
+            "DebounceTime": "T#2s",
+            "CycleTime": "T#1s"
+          },
+          "expected": {
+            "VFD_RUN": false,
+            "PUMP_RUNTIME_ACC": "LTIME#2000ms",
+            "PUMP_MAINT_DUE": false
+          },
+          "dt_ms": 1000
+        },
+        {
+          "inputs": {
+            "VISCOSITY_OK": true,
+            "PASTE_E_STOP_NC": true,
+            "DebounceTime": "T#2s",
+            "CycleTime": "T#1s"
+          },
+          "expected": {
+            "VFD_RUN": true,
+            "PUMP_RUNTIME_ACC": "LTIME#3000ms",
+            "PUMP_MAINT_DUE": false
+          },
+          "dt_ms": 1000
+        }
+      ]
+    },
+    {
+      "id": "T2",
+      "purpose": "E-stop clears incomplete debounce and completed permission",
+      "steps": [
+        {
+          "inputs": {
+            "VISCOSITY_OK": true,
+            "PASTE_E_STOP_NC": true,
+            "DebounceTime": "T#2s",
+            "CycleTime": "T#1s"
+          },
+          "expected": {
+            "VFD_RUN": false,
+            "PUMP_RUNTIME_ACC": "LTIME#0ms",
+            "PUMP_MAINT_DUE": false
+          },
+          "dt_ms": 0
+        },
+        {
+          "inputs": {
+            "VISCOSITY_OK": true,
+            "PASTE_E_STOP_NC": true,
+            "DebounceTime": "T#2s",
+            "CycleTime": "T#1s"
+          },
+          "expected": {
+            "VFD_RUN": false,
+            "PUMP_RUNTIME_ACC": "LTIME#0ms",
+            "PUMP_MAINT_DUE": false
+          },
+          "dt_ms": 1000
+        },
+        {
+          "inputs": {
+            "VISCOSITY_OK": true,
+            "PASTE_E_STOP_NC": false,
+            "DebounceTime": "T#2s",
+            "CycleTime": "T#1s"
+          },
+          "expected": {
+            "VFD_RUN": false,
+            "PUMP_RUNTIME_ACC": "LTIME#0ms",
+            "PUMP_MAINT_DUE": false
+          },
+          "dt_ms": 1000
+        },
+        {
+          "inputs": {
+            "VISCOSITY_OK": true,
+            "PASTE_E_STOP_NC": true,
+            "DebounceTime": "T#2s",
+            "CycleTime": "T#1s"
+          },
+          "expected": {
+            "VFD_RUN": false,
+            "PUMP_RUNTIME_ACC": "LTIME#0ms",
+            "PUMP_MAINT_DUE": false
+          },
+          "dt_ms": 1000
+        },
+        {
+          "inputs": {
+            "VISCOSITY_OK": true,
+            "PASTE_E_STOP_NC": true,
+            "DebounceTime": "T#2s",
+            "CycleTime": "T#1s"
+          },
+          "expected": {
+            "VFD_RUN": false,
+            "PUMP_RUNTIME_ACC": "LTIME#0ms",
+            "PUMP_MAINT_DUE": false
+          },
+          "dt_ms": 1000
+        },
+        {
+          "inputs": {
+            "VISCOSITY_OK": true,
+            "PASTE_E_STOP_NC": true,
+            "DebounceTime": "T#2s",
+            "CycleTime": "T#1s"
+          },
+          "expected": {
+            "VFD_RUN": true,
+            "PUMP_RUNTIME_ACC": "LTIME#1000ms",
+            "PUMP_MAINT_DUE": false
+          },
+          "dt_ms": 1000
+        },
+        {
+          "inputs": {
+            "VISCOSITY_OK": true,
+            "PASTE_E_STOP_NC": false,
+            "DebounceTime": "T#2s",
+            "CycleTime": "T#1s"
+          },
+          "expected": {
+            "VFD_RUN": false,
+            "PUMP_RUNTIME_ACC": "LTIME#1000ms",
+            "PUMP_MAINT_DUE": false
+          },
+          "dt_ms": 1000
+        }
+      ]
+    },
+    {
+      "id": "T3",
+      "purpose": "Long-duration maintenance arithmetic boundary",
+      "steps": [
+        {
+          "inputs": {
+            "VISCOSITY_OK": true,
+            "PASTE_E_STOP_NC": true,
+            "DebounceTime": "T#2s",
+            "CycleTime": "T#1s"
+          },
+          "expected": {
+            "VFD_RUN": false,
+            "PUMP_RUNTIME_ACC": "LTIME#0ms",
+            "PUMP_MAINT_DUE": false
+          },
+          "dt_ms": 0
+        },
+        {
+          "inputs": {
+            "VISCOSITY_OK": true,
+            "PASTE_E_STOP_NC": true,
+            "DebounceTime": "T#2s",
+            "CycleTime": "T#500h"
+          },
+          "expected": {
+            "VFD_RUN": true,
+            "PUMP_RUNTIME_ACC": "LTIME#1800000000ms",
+            "PUMP_MAINT_DUE": true
+          },
+          "dt_ms": 1800000000
+        },
+        {
+          "inputs": {
+            "VISCOSITY_OK": true,
+            "PASTE_E_STOP_NC": true,
+            "DebounceTime": "T#2s",
+            "CycleTime": "T#1s"
+          },
+          "expected": {
+            "VFD_RUN": true,
+            "PUMP_RUNTIME_ACC": "LTIME#1800001000ms",
+            "PUMP_MAINT_DUE": true
+          },
+          "dt_ms": 1000
+        },
+        {
+          "inputs": {
+            "VISCOSITY_OK": false,
+            "PASTE_E_STOP_NC": true,
+            "DebounceTime": "T#2s",
+            "CycleTime": "T#1s"
+          },
+          "expected": {
+            "VFD_RUN": false,
+            "PUMP_RUNTIME_ACC": "LTIME#1800001000ms",
+            "PUMP_MAINT_DUE": true
+          },
+          "dt_ms": 1000
+        }
+      ],
+      "notes": "This expected trace contains a genuine 500-hour elapsed interval matching CycleTime; it is not a short physical-runtime test or evidence of 500 hours of operation. Automated execution needs a separately validated virtual-clock mechanism, otherwise perform only as a long-duration test. TIME#500h is 1.8e9 ms and fits unsigned 32-bit TIME."
+    }
+  ],
+  "specification_version": "2.0-review-corrections-20261106",
+  "specification_contract": {
+    "observation": "I[k] is sampled before execution; O[k] is observed after execution. Initial conditions apply before invocation zero.",
+    "normative_completion": "明确输入在调用间保持，第一合格采样elapsed=0；丢失permit当拍清计时。选择并注明DebounceTime固定或动态更新规则。把累计写成accAfter=accBefore+(VFD_RUN?TIME_TO_LTIME(CycleTime):0)，并标成离散调用累计口径；约束累计不溢出。维护输出等价于accAfter>=500h。",
+    "history_binding": "Every previous-output name refers to the preceding observed output with the declared initial value. Previous-input memories update on EVERY invocation, including reset, invalid input, stop and mode change. Reference phase/history is independently advanced from sampled inputs by the stated transition rules, never supplied by the candidate.",
+    "evaluation_scope": "Properties include interpreted data predicates. No claim of export to a model checker or completed formal proof.",
+    "review_source": "docs/规约逐题审查_20261106/PUB004.md"
+  }
+}

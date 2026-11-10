@@ -1,0 +1,253 @@
+{
+  "schema_version": 1,
+  "id": "SELF008",
+  "kind": "self_built",
+  "title": "Consecutive scan qualification with an immediate trip",
+  "difficulty": "easy",
+  "provenance": {
+    "source_type": "independent_synthesis",
+    "source_file": "scripts/build_self_dataset.py",
+    "source_index": 8,
+    "adaptation": "Independently specified for this project; no public task was copied. The coding assistant chose the state variables, priority order and fixed scan traces, then reviewed the traces against a separate Python transition implementation.",
+    "rationale": "A cyclic quality check accepts a request only after a configurable number of consecutive healthy invocations.",
+    "review": "Assistant consistency review of initialization, simultaneous commands, retained state and recovery boundaries; independent Python oracle checked against manual expected traces. Not an industrial safety certification or external expert review."
+  },
+  "requirements": "Preset is valid from 1 through 5. Initialize Count=0. If Trip TRUE, Request FALSE, or Preset invalid, clear Count and Ready. Otherwise Count becomes min(previous Count+1, Preset); Ready is TRUE exactly when Count reaches Preset. Count saturates. Changes of Preset take effect immediately using the same rule, so reducing Preset can qualify on that scan. This counts invocations, not elapsed milliseconds.",
+  "scenario": "A cyclic quality check accepts a request only after a configurable number of consecutive healthy invocations.",
+  "interface": [
+    {
+      "direction": "INPUT",
+      "name": "Request",
+      "type": "BOOL",
+      "description": "Raw qualification request"
+    },
+    {
+      "direction": "INPUT",
+      "name": "Trip",
+      "type": "BOOL",
+      "description": "Immediate inhibit"
+    },
+    {
+      "direction": "INPUT",
+      "name": "Preset",
+      "type": "USINT",
+      "description": "Required consecutive scans, valid 1 through 5"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Ready",
+      "type": "BOOL",
+      "description": "Qualified request"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Count",
+      "type": "USINT",
+      "description": "Saturated consecutive scan count"
+    }
+  ],
+  "initial_conditions": {
+    "Count": 0,
+    "Ready": false
+  },
+  "scan_semantics": "At scan k, sample every input once, read retained pre-state q[k], execute one transition, and observe outputs O[k] at the end of that same scan. Updated state becomes q[k+1]. Reset the instance before each test. Step 0 executes normally; initial conditions describe pre-state, not an extra delayed scan. All timing in this task is explicitly counted in invocations, not wall time.",
+  "safety_priority": [
+    "Trip, missing request and invalid Preset clear progress"
+  ],
+  "assumptions": [
+    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+  ],
+  "atomic_propositions": {
+    "Request": "Raw qualification request Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "Trip": "Immediate inhibit Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "Preset": "Required consecutive scans, valid 1 through 5 Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "Ready": "Qualified request Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "Count": "Saturated consecutive scan count Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "first": "True only on the first invocation after resetting the FB instance.",
+    "invalid": "Preset < 1 or Preset > 5.",
+    "qualified": "Count >= Preset and Preset is valid.",
+    "qCount": "Pre-scan Count, initially zero.",
+    "nextCount": "min(qCount+1, Preset) as an integer expression.",
+    "CompleteBehaviorV2": "Every observed OUTPUT equals the output of the independent deterministic transition in specification_contract, initialized and advanced exactly as transition_binding specifies."
+  },
+  "ltl": [
+    {
+      "id": "P1",
+      "formula": "G((Trip | !Request | invalid) -> (!Ready & (Count = 0)))",
+      "explanation": "Every interruption clears qualification immediately."
+    },
+    {
+      "id": "P2",
+      "formula": "G((Request & !Trip & !invalid) -> (Count = nextCount))",
+      "explanation": "Healthy scans increment and saturate precisely."
+    },
+    {
+      "id": "P3",
+      "formula": "G(Ready <-> qualified)",
+      "explanation": "The indication agrees with the post-scan count."
+    },
+    {
+      "id": "P4",
+      "formula": "G(!invalid -> ((Count >= 0) & (Count <= Preset)))",
+      "explanation": "The counter stays within bounds."
+    },
+    {
+      "id": "P5",
+      "formula": "(G(Request & !Trip & !invalid)) -> F Ready",
+      "explanation": "A perpetually valid request qualifies within at most five scans, even if valid Preset varies."
+    },
+    {
+      "id": "SELF008.V2.COMPLETE",
+      "formula": "G(CompleteBehaviorV2)",
+      "explanation": "The complete per-invocation relation defined in specification_contract.normative_completion; requires explicit encoding before model checking."
+    }
+  ],
+  "tests": [
+    {
+      "id": "delay",
+      "purpose": "Three scans qualify, hold saturates, trip clears",
+      "steps": [
+        {
+          "inputs": {
+            "Request": true,
+            "Trip": false,
+            "Preset": 3
+          },
+          "expected": {
+            "Ready": false,
+            "Count": 1
+          }
+        },
+        {
+          "inputs": {
+            "Request": true,
+            "Trip": false,
+            "Preset": 3
+          },
+          "expected": {
+            "Ready": false,
+            "Count": 2
+          }
+        },
+        {
+          "inputs": {
+            "Request": true,
+            "Trip": false,
+            "Preset": 3
+          },
+          "expected": {
+            "Ready": true,
+            "Count": 3
+          }
+        },
+        {
+          "inputs": {
+            "Request": true,
+            "Trip": false,
+            "Preset": 3
+          },
+          "expected": {
+            "Ready": true,
+            "Count": 3
+          }
+        },
+        {
+          "inputs": {
+            "Request": true,
+            "Trip": true,
+            "Preset": 3
+          },
+          "expected": {
+            "Ready": false,
+            "Count": 0
+          }
+        },
+        {
+          "inputs": {
+            "Request": true,
+            "Trip": false,
+            "Preset": 3
+          },
+          "expected": {
+            "Ready": false,
+            "Count": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "bounds",
+      "purpose": "Invalid presets and immediate reduced threshold",
+      "steps": [
+        {
+          "inputs": {
+            "Request": true,
+            "Trip": false,
+            "Preset": 0
+          },
+          "expected": {
+            "Ready": false,
+            "Count": 0
+          }
+        },
+        {
+          "inputs": {
+            "Request": true,
+            "Trip": false,
+            "Preset": 6
+          },
+          "expected": {
+            "Ready": false,
+            "Count": 0
+          }
+        },
+        {
+          "inputs": {
+            "Request": true,
+            "Trip": false,
+            "Preset": 5
+          },
+          "expected": {
+            "Ready": false,
+            "Count": 1
+          }
+        },
+        {
+          "inputs": {
+            "Request": true,
+            "Trip": false,
+            "Preset": 1
+          },
+          "expected": {
+            "Ready": true,
+            "Count": 1
+          }
+        },
+        {
+          "inputs": {
+            "Request": false,
+            "Trip": false,
+            "Preset": 5
+          },
+          "expected": {
+            "Ready": false,
+            "Count": 0
+          }
+        }
+      ]
+    }
+  ],
+  "specification_version": "2.0-review-corrections-20261106",
+  "specification_contract": {
+    "observation": "I[k] is sampled before execution; O[k] is observed after execution. Initial conditions apply before invocation zero.",
+    "normative_completion": "明确invalid↔Preset<1或>5，qCount[0]=0且逐拍更新；计数按清零分支或min(qCount+1,Preset)精确确定，Ready与合法且Count>=Preset等价。P5保留作派生性质。",
+    "history_binding": "Every previous-output name refers to the preceding observed output with the declared initial value. Previous-input memories update on EVERY invocation, including reset, invalid input, stop and mode change. Reference phase/history is independently advanced from sampled inputs by the stated transition rules, never supplied by the candidate.",
+    "evaluation_scope": "Properties include interpreted data predicates. No claim of export to a model checker or completed formal proof.",
+    "review_source": "docs/规约逐题审查_20261106/SELF008.md",
+    "reference_state_initial": {
+      "count": 0
+    },
+    "deterministic_transition_python": "    def _SELF008(self, i):\n        preset = i[\"Preset\"]\n        if not i[\"Request\"] or i[\"Trip\"] or not 1 <= preset <= 5:\n            count = 0\n        else:\n            count = min(self.state.get(\"count\", 0) + 1, preset)\n        self.state[\"count\"] = count\n        return {\"Ready\": count >= preset if 1 <= preset <= 5 else False, \"Count\": count}\n",
+    "transition_binding": "Initialize an independent reference state with reference_state_initial. For every sampled input execute the listed deterministic transition once; require EVERY actual OUTPUT to equal its returned value. Do not update this reference state from candidate outputs. This defines the complete scan relation; it is not evidence of ST execution."
+  }
+}

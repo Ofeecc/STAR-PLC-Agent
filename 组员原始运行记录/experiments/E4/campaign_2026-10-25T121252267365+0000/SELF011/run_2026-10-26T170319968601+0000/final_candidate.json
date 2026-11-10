@@ -1,0 +1,12 @@
+{
+  "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    Start : BOOL;\n    Stop : BOOL;\n    Reset : BOOL;\n    ExtendDone : BOOL;\n    ClampDone : BOOL;\n    ReleaseDone : BOOL;\n    RetractDone : BOOL;\nEND_VAR\nVAR_OUTPUT\n    Extend : BOOL;\n    Clamp : BOOL;\n    Release : BOOL;\n    Retract : BOOL;\n    Busy : BOOL;\n    Done : BOOL;\nEND_VAR\nVAR\n    State : E_FixtureState := FixtureState_IDLE;\nEND_VAR",
+  "implementation": "IF Stop OR Reset THEN\n    State := FixtureState_IDLE;\nELSE\n    CASE State OF\n        FixtureState_IDLE:\n            IF Start AND RetractDone THEN\n                State := FixtureState_EXTEND;\n            END_IF;\n\n        FixtureState_EXTEND:\n            IF ExtendDone THEN\n                State := FixtureState_CLAMP;\n            END_IF;\n\n        FixtureState_CLAMP:\n            IF ClampDone THEN\n                State := FixtureState_RELEASE;\n            END_IF;\n\n        FixtureState_RELEASE:\n            IF ReleaseDone THEN\n                State := FixtureState_RETRACT;\n            END_IF;\n\n        FixtureState_RETRACT:\n            IF RetractDone THEN\n                State := FixtureState_DONE;\n            END_IF;\n\n        FixtureState_DONE:\n            State := FixtureState_DONE;\n    ELSE\n        State := FixtureState_IDLE;\n    END_CASE;\nEND_IF;\n\nExtend := State = FixtureState_EXTEND;\nClamp := State = FixtureState_CLAMP;\nRelease := State = FixtureState_RELEASE;\nRetract := State = FixtureState_RETRACT;\nBusy := Extend OR Clamp OR Release OR Retract;\nDone := State = FixtureState_DONE;",
+  "supporting_objects": [
+    {
+      "name": "E_FixtureState",
+      "kind": "DUT",
+      "declaration": "TYPE E_FixtureState :\n(\n    FixtureState_IDLE,\n    FixtureState_EXTEND,\n    FixtureState_CLAMP,\n    FixtureState_RELEASE,\n    FixtureState_RETRACT,\n    FixtureState_DONE\n);\nEND_TYPE",
+      "implementation": ""
+    }
+  ]
+}

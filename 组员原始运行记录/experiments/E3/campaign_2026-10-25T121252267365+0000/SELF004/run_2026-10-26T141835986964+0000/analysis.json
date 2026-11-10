@@ -1,0 +1,122 @@
+{
+  "pou_type": "FUNCTION_BLOCK",
+  "pou_name": "FB_Task",
+  "interface": [
+    {
+      "direction": "INPUT",
+      "name": "Start",
+      "type": "BOOL",
+      "description": "Start one pallet"
+    },
+    {
+      "direction": "INPUT",
+      "name": "Stop",
+      "type": "BOOL",
+      "description": "Abort cycle"
+    },
+    {
+      "direction": "INPUT",
+      "name": "AtExit",
+      "type": "BOOL",
+      "description": "Pallet at exit"
+    },
+    {
+      "direction": "INPUT",
+      "name": "Jam",
+      "type": "BOOL",
+      "description": "Jam detected"
+    },
+    {
+      "direction": "INPUT",
+      "name": "Reset",
+      "type": "BOOL",
+      "description": "Clear completion or cleared jam"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Belt",
+      "type": "BOOL",
+      "description": "Conveyor command"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Complete",
+      "type": "BOOL",
+      "description": "Pallet cycle completed"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Fault",
+      "type": "BOOL",
+      "description": "Latched jam fault"
+    }
+  ],
+  "initial_conditions": {
+    "state": "IDLE",
+    "Belt": false,
+    "Complete": false,
+    "Fault": false
+  },
+  "scan_semantics": "At scan k, sample every input once, read retained pre-state q[k], execute one transition, and observe outputs O[k] at the end of that same scan. Updated state becomes q[k+1]. Reset the instance before each test. Step 0 executes normally; initial conditions describe pre-state, not an extra delayed scan. All timing in this task is explicitly counted in invocations, not wall time.",
+  "safety_priority": [
+    "Jam",
+    "Reset when Jam is FALSE",
+    "Latched fault",
+    "Stop",
+    "Normal transition"
+  ],
+  "assumptions": [],
+  "formal_properties": [
+    {
+      "id": "P1",
+      "formula": "G(Jam -> (Fault & !Belt & !Complete))",
+      "explanation": "Jam wins over Reset and Start."
+    },
+    {
+      "id": "P2",
+      "formula": "G((qFault & !Reset) -> Fault)",
+      "explanation": "Fault requires an explicit clear operation."
+    },
+    {
+      "id": "P3",
+      "formula": "G((!Jam & Reset) -> (!Belt & !Complete & !Fault))",
+      "explanation": "A cleared-jam reset returns IDLE."
+    },
+    {
+      "id": "P4",
+      "formula": "G((qIdle & !Jam & !Reset & !Stop & Start & !AtExit) -> Belt)",
+      "explanation": "A valid idle start moves the pallet."
+    },
+    {
+      "id": "P5",
+      "formula": "G((qMoving & AtExit & !Jam & !Reset & !Stop) -> (Complete & !Belt))",
+      "explanation": "Exit arrival stops indexing in the same scan."
+    },
+    {
+      "id": "P6",
+      "formula": "G(!(Belt & (Complete | Fault)))",
+      "explanation": "Movement excludes completion and fault outputs."
+    },
+    {
+      "id": "P7",
+      "formula": "G(Fault -> (G Fault | (Fault U (!Jam & Reset))))",
+      "explanation": "A latched jam remains until a cleared-jam reset, or forever if no such reset occurs; this does not assume eventual reset."
+    }
+  ],
+  "atomic_propositions": {
+    "Start": "Start one pallet Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "Stop": "Abort cycle Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "AtExit": "Pallet at exit Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "Jam": "Jam detected Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "Reset": "Clear completion or cleared jam Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "Belt": "Conveyor command Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "Complete": "Pallet cycle completed Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "Fault": "Latched jam fault Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "first": "True only on the first invocation after resetting the FB instance.",
+    "qIdle": "Pre-state IDLE.",
+    "qMoving": "Pre-state MOVING.",
+    "qComplete": "Pre-state COMPLETE.",
+    "qFault": "Pre-state FAULT."
+  },
+  "supporting_types": []
+}

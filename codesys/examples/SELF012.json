@@ -1,0 +1,6 @@
+{
+  "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    Start : BOOL;\n    Stop : BOOL;\n    Fault : BOOL;\n    Reset : BOOL;\nEND_VAR\nVAR_OUTPUT\n    Run : BOOL;\n    Locked : BOOL;\n    Attempts : USINT := 0;\nEND_VAR\nVAR\nState : USINT := 0;\n    FreeScans : USINT := 0;\nEND_VAR\n",
+  "implementation": "IF Reset AND NOT Fault AND NOT Start THEN\n    State := 0; Attempts := 0; FreeScans := 0;\nELSIF State = 3 THEN\n    State := 3;\nELSIF Stop THEN\n    State := 0; FreeScans := 0;\nELSE\n    CASE State OF\n        0: IF Start AND NOT Fault THEN State := 1; END_IF;\n        1: IF Fault THEN\n            FreeScans := 0;\n            IF Attempts < 2 THEN State := 2; ELSE State := 3; END_IF;\n           END_IF;\n        2: IF Fault THEN FreeScans := 0; ELSE FreeScans := FreeScans + 1; END_IF;\n           IF FreeScans >= 2 THEN\n               Attempts := Attempts + 1; State := 1; FreeScans := 0;\n           END_IF;\n    END_CASE;\nEND_IF;\nRun := State = 1; Locked := State = 3;\n",
+  "supporting_objects": [],
+  "provenance": "Hand-designed reference example authored with the task; not a model benchmark output. CODESYS compilation and PLC execution are unverified until actual backend records exist."
+}

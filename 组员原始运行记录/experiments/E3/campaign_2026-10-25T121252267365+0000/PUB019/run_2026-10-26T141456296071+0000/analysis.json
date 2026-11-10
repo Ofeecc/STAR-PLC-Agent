@@ -1,0 +1,265 @@
+{
+  "pou_type": "FUNCTION_BLOCK",
+  "pou_name": "FB_Task",
+  "interface": [
+    {
+      "direction": "INPUT",
+      "name": "ManualMode",
+      "type": "BOOL",
+      "description": "Manual mode"
+    },
+    {
+      "direction": "INPUT",
+      "name": "SingleStepMode",
+      "type": "BOOL",
+      "description": "Single step mode"
+    },
+    {
+      "direction": "INPUT",
+      "name": "SingleCycleMode",
+      "type": "BOOL",
+      "description": "Single cycle mode"
+    },
+    {
+      "direction": "INPUT",
+      "name": "ContinuousMode",
+      "type": "BOOL",
+      "description": "Continuous mode"
+    },
+    {
+      "direction": "INPUT",
+      "name": "EmergencyStop",
+      "type": "BOOL",
+      "description": "Emergency stop signal<br>FALSE: Emergency stop triggered<br>TRUE: No emergency stop triggered"
+    },
+    {
+      "direction": "INPUT",
+      "name": "Start",
+      "type": "BOOL",
+      "description": "Start operation"
+    },
+    {
+      "direction": "INPUT",
+      "name": "DownButton",
+      "type": "BOOL",
+      "description": "Down button"
+    },
+    {
+      "direction": "INPUT",
+      "name": "UpButton",
+      "type": "BOOL",
+      "description": "Up button"
+    },
+    {
+      "direction": "INPUT",
+      "name": "LeftButton",
+      "type": "BOOL",
+      "description": "Left button"
+    },
+    {
+      "direction": "INPUT",
+      "name": "RightButton",
+      "type": "BOOL",
+      "description": "Right button"
+    },
+    {
+      "direction": "INPUT",
+      "name": "GripButton",
+      "type": "BOOL",
+      "description": "Grip button"
+    },
+    {
+      "direction": "INPUT",
+      "name": "ReleaseButton",
+      "type": "BOOL",
+      "description": "Release button"
+    },
+    {
+      "direction": "INPUT",
+      "name": "DownLimitSwitch",
+      "type": "BOOL",
+      "description": "Down position limit switch"
+    },
+    {
+      "direction": "INPUT",
+      "name": "UpLimitSwitch",
+      "type": "BOOL",
+      "description": "Up position limit switch"
+    },
+    {
+      "direction": "INPUT",
+      "name": "LeftLimitSwitch",
+      "type": "BOOL",
+      "description": "Left position limit switch"
+    },
+    {
+      "direction": "INPUT",
+      "name": "RightLimitSwitch",
+      "type": "BOOL",
+      "description": "Right position limit switch"
+    },
+    {
+      "direction": "INPUT",
+      "name": "GripLimitSwitch",
+      "type": "BOOL",
+      "description": "Grip position limit switch"
+    },
+    {
+      "direction": "INPUT",
+      "name": "ReleaseLimitSwitch",
+      "type": "BOOL",
+      "description": "Release position limit switch"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "MoveDown",
+      "type": "BOOL",
+      "description": "Down command"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "MoveUp",
+      "type": "BOOL",
+      "description": "Up command"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "MoveLeft",
+      "type": "BOOL",
+      "description": "Left command"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "MoveRight",
+      "type": "BOOL",
+      "description": "Right command"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "ActivateGrip",
+      "type": "BOOL",
+      "description": "Grip command"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "ActivateRelease",
+      "type": "BOOL",
+      "description": "Release command"
+    }
+  ],
+  "initial_conditions": {
+    "MoveDown": false,
+    "MoveUp": false,
+    "MoveLeft": false,
+    "MoveRight": false,
+    "ActivateGrip": false,
+    "ActivateRelease": false,
+    "next_step": 1,
+    "busy": false,
+    "initial_pose": "top left"
+  },
+  "scan_semantics": "Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call. Retained pre-state q[k] becomes q[k+1]. Each test resets the instance. A transition affects the same observed scan. dt_ms is elapsed time since the preceding invocation; the first invocation starts IEC timers at elapsed zero. CycleTime inputs, where supplied, are attributed to the current invocation rather than inferred from dt_ms.",
+  "safety_priority": [
+    "Emergency stop overrides every mode and request.",
+    "Opposed directions and grip/release are mutually exclusive.",
+    "A reached position suppresses its own command immediately."
+  ],
+  "assumptions": [
+    "EmergencyStop=FALSE cancels the sequence and outputs; recovery requires a fresh Start edge from a verified top-left pose.",
+    "A Start press is a rising edge. Start edges during an active action are ignored; edge history still updates.",
+    "No selected mode means all commands off and sequence reset. Changing mode also resets the sequence.",
+    "Opposing manual commands on an axis or grip pair are both inhibited. Independent non-opposing actions may run together.",
+    "Manual commands are combinational and stop on their matching limit/feedback. Contradictory limit switches are outside the caller contract.",
+    "Only one phase transition occurs per invocation. In cycle modes, completion feedback switches to the next command in that scan; an already-active next limit suppresses its command but is processed as completion on the next invocation.",
+    "Single-step completion switches all outputs off; the next action requires a fresh Start edge on a later scan.",
+    "Continuous completion of left movement wraps to down in the same scan. Single-cycle completion returns to idle.",
+    "At the start of a new automatic sequence (action 1, not every individual single step), UpLimitSwitch and LeftLimitSwitch must both be TRUE. Grip and release complete on the supplied feedback switches."
+  ],
+  "formal_properties": [
+    {
+      "id": "PUB019.P1",
+      "name": "Safety",
+      "formula": "G((!safe | no_mode) -> off)",
+      "explanation": "No command survives emergency stop or no mode."
+    },
+    {
+      "id": "PUB019.P2",
+      "name": "Interlocks",
+      "formula": "G(exclusive)",
+      "explanation": "Opposed actuators are never commanded together."
+    },
+    {
+      "id": "PUB019.P3",
+      "name": "Manual down",
+      "formula": "G(safe & ManualMode -> (down <-> down_manual))",
+      "explanation": "Manual down requires the button and an unreached lower limit."
+    },
+    {
+      "id": "PUB019.P4",
+      "name": "Reached limits",
+      "formula": "G((down_limit -> !down) & (up_limit -> !up) & (left_limit -> !left) & (right_limit -> !right) & (grip_limit -> !grip) & (release_limit -> !release))",
+      "explanation": "Every corresponding completion input suppresses its command."
+    },
+    {
+      "id": "PUB019.P5",
+      "name": "Step wait",
+      "formula": "G(safe & (step_done | waiting) -> off)",
+      "explanation": "A completed single step waits for another press."
+    },
+    {
+      "id": "PUB019.P6",
+      "name": "Automatic start",
+      "formula": "G(safe & start -> started)",
+      "explanation": "A permitted fresh start begins down."
+    },
+    {
+      "id": "PUB019.P7",
+      "name": "Order",
+      "formula": "G(ordered)",
+      "explanation": "The eight preset actions retain their required order."
+    },
+    {
+      "id": "PUB019.P8",
+      "name": "Cycle boundary",
+      "formula": "G(safe -> ((cycle_done -> (idle & off)) & (continuous_done -> begin_next)))",
+      "explanation": "Single-cycle stops; continuous wraps."
+    },
+    {
+      "id": "PUB019.P9",
+      "name": "Conditional liveness",
+      "formula": "(G(safe & SingleCycleMode) & G(busy -> F feedback)) -> G(started -> F idle)",
+      "explanation": "With unchanged safe single-cycle mode and eventual matching feedback, every started sequence eventually returns idle."
+    }
+  ],
+  "atomic_propositions": {
+    "safe": "EmergencyStop input",
+    "off": "all six command outputs FALSE",
+    "no_mode": "none of the four mode selectors TRUE",
+    "exclusive": "NOT(MoveDown AND MoveUp) AND NOT(MoveLeft AND MoveRight) AND NOT(ActivateGrip AND ActivateRelease)",
+    "down_manual": "ManualMode AND DownButton AND NOT UpButton AND NOT DownLimitSwitch",
+    "down": "MoveDown",
+    "down_limit": "DownLimitSwitch",
+    "up_limit": "UpLimitSwitch",
+    "up": "MoveUp",
+    "left_limit": "LeftLimitSwitch",
+    "left": "MoveLeft",
+    "right_limit": "RightLimitSwitch",
+    "right": "MoveRight",
+    "grip_limit": "GripLimitSwitch",
+    "grip": "ActivateGrip",
+    "release_limit": "ReleaseLimitSwitch",
+    "release": "ActivateRelease",
+    "step_done": "SingleStepMode AND pre-busy AND matching completion feedback",
+    "waiting": "SingleStepMode AND NOT pre-busy AND NOT rising(Start)",
+    "cycle_done": "SingleCycleMode AND pre-phase LEFT AND LeftLimitSwitch",
+    "continuous_done": "ContinuousMode AND pre-phase LEFT AND LeftLimitSwitch",
+    "begin_next": "post-phase DOWN with command gated by DownLimitSwitch",
+    "busy": "pre-sequence is executing an action",
+    "feedback": "matching completion feedback for the pre-action is TRUE",
+    "idle": "post-sequence idle",
+    "start": "fresh Start edge in idle with top-left pose and selected automatic mode",
+    "started": "post-phase DOWN, busy TRUE",
+    "ordered": "the next accepted automatic phase follows DOWN, GRIP, UP1, RIGHT, DOWN2, RELEASE, UP2, LEFT"
+  },
+  "supporting_types": []
+}

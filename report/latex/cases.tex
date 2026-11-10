@@ -1,0 +1,67 @@
+\section{Case studies from actual records}
+\subsection{Compiler-guided repair: E1/PUB014}
+
+PUB014 asks for strict dotted-decimal IPv4 parsing into a network-order UDINT, returning zero for malformed input. The E1 baseline's first candidate declared a local integer \pathcode{len} and used \pathcode{len := LEN(ipText)}. CODESYS reported two errors:
+\begin{lstlisting}
+Cannot convert type 'Unknown type: 'LEN(ipText)'' to type 'INT'
+Program name, function or function block instance expected instead of 'LEN'
+\end{lstlisting}
+The diagnostic links to the local declaration. A likely explanation is that \pathcode{len} hides the case-insensitive library function; this is an interpretation of the actual declaration and messages. The next model candidate removed the local variable and replaced the length-based loop with a bounded scan terminating at the string's zero byte:
+\begin{lstlisting}
+(* First candidate; local len : INT *)
+len := LEN(ipText);
+FOR i := 1 TO len DO
+    c := ipText[i];
+    (* segment validation *)
+END_FOR
+
+(* Repaired candidate; local len removed *)
+i := 1;
+WHILE (i <= 254) AND ok DO
+    c := ipText[i];
+    IF c = 0 THEN EXIT; END_IF
+    (* segment validation *)
+    i := i + 1;
+END_WHILE
+\end{lstlisting}
+The second actual build had zero errors and warnings after one repair. The source digests changed from \pathcode{b6638e0b22e5635b...} to \pathcode{3b43179efdf7cdb5...}, and both builds have separate nonces and project evidence. Both processes exited zero. This is evidence of compiler-feedback repair in the existing-agent baseline, not a repair success attributable to our harness. Both subsequent runtime cases fail (13/19 scan observations match), including a zero result for input \texttt{1.2.3.4}. Compiler-guided repair therefore solved a build problem without establishing the required parser behavior.
+
+\subsection{Compilation does not establish task fidelity: E1/PUB018}
+
+The official FIFO interface has caller-owned \pathcode{item : VARIANT} and \pathcode{buffer : VARIANT} storage and requires generic element types and array bounds. E1's initial source produced 38 CODESYS errors, including unknown types and invalid pointer/conversion expressions. After feedback, it added this helper DUT and rewrote byte-copy loops:
+\begin{lstlisting}
+TYPE VARIANT :
+STRUCT
+    pData : POINTER TO BYTE;
+    udiSize : UDINT;
+END_STRUCT
+END_TYPE
+\end{lstlisting}
+The repaired candidate compiled with zero errors and warnings. That is a build success under the stated metric. However, a caller must now supply a custom pointer-and-size structure. Preserving the word \pathcode{VARIANT} does not establish native generic compatibility, array-bound behavior or correct FIFO execution. The agent disclosed this substitution in its final answer. This task remains functionally unverified because the current adapter cannot validate its IN\_OUT/composite binding. We do not describe it as a verified generic FIFO.
+
+\subsection{Early agent termination: E2/PUB018}
+
+The Kimi-route baseline made one build attempt, receiving two unknown-VARIANT type errors. It then called \pathcode{final_answer} and declined to substitute an adapter. No repairs occurred. Three build attempts were available, so this was early agent termination, not budget exhaustion. The candidate also omitted the full data-copy implementation. Its \pathcode{COMPILE_FAIL} result cannot be interpreted as an otherwise complete implementation failing only because of platform portability.
+
+\subsection{A successful repair by our harness: E4/SELF012}
+
+The final generation run provides a separate harness example. SELF012 specifies bounded automatic fault retries with a recovery dwell. The first candidate introduced enum literal \pathcode{LOCKED} and required BOOL output \pathcode{Locked}. CODESYS reported three errors: two INT/BOOL comparison errors at implementation lines 5 and 40, and a BOOL-to-\pathcode{E_TASKSTATE} conversion error at line 23. This is consistent with case-insensitive identifier collision in the candidate's expressions.
+
+\begin{lstlisting}
+(* Initial helper enum and assignment *)
+(IDLE, RUNNING, WAIT, LOCKED)
+State := LOCKED;
+
+(* After compiler-guided repair *)
+(TASK_IDLE, TASK_RUNNING, TASK_WAIT, TASK_LOCKED)
+State := TASK_LOCKED;
+(* Required output remains Locked : BOOL *)
+\end{lstlisting}
+
+The repair prefixes all enum literals and also adds an explicit locked-state CASE branch. The next real build reports zero errors and warnings after one repair. Candidate hashes change from \pathcode{6337eb8fb5e63ea6...} to \pathcode{7c914ea2dd50a9c4...}. This third recovered build belongs to our harness, while the preceding two repair successes belong to baseline E1. Both subsequent simulator cases pass. This demonstrates the implemented feedback loop and finite behavior checks without claiming an ablation or unbounded correctness.
+
+\subsection{Transport failure: E3/PUB010}
+
+This run saved a real model request, but the stream ended with an upstream-closed-before-terminal-event error. No complete candidate was accepted and no CODESYS build occurred. It is \pathcode{TOOL_ERROR}, not a compiler rejection. The task remains in the planned denominator, while compiler coverage shows the missing evaluation.
+
+The saved request also establishes one attempted call even though the harness's stored counter is zero. Independent request-file accounting corrects the comparison without silently rewriting raw records. Missing usage does not prove zero upstream computation or zero charge, and the interruption alone does not prove its cause. Full case links, source versions and diagnostics are in \pathcode{report/case_studies.md}.

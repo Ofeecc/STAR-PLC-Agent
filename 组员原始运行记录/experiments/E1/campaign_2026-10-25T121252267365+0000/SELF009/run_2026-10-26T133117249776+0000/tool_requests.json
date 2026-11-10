@@ -1,0 +1,12 @@
+[
+  {
+    "index": 0,
+    "source": {
+      "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    PartPulse : BOOL;\n    Reset : BOOL;\n    Target : USINT;\nEND_VAR\nVAR_OUTPUT\n    Count : USINT;\n    Complete : BOOL;\n    Error : BOOL;\nEND_VAR\nVAR\n    qPulse : BOOL := FALSE;\nEND_VAR",
+      "implementation": "// Exact target validation\nError := (Target < 1) OR (Target > 20);\n\n// Safety priority: invalid target or reset clears the batch\nIF Error OR Reset THEN\n    Count := 0;\n    Complete := FALSE;\nELSE\n    // Count only FALSE-to-TRUE transitions, saturating at Target\n    IF PartPulse AND NOT qPulse THEN\n        IF Count < Target THEN\n            Count := Count + 1;\n        END_IF;\n    END_IF;\n    // Complete reports the post-scan count; higher target clears it\n    IF Count >= Target THEN\n        Complete := TRUE;\n    ELSE\n        Complete := FALSE;\n    END_IF;\nEND_IF;\n\n// Edge memory samples the pulse on every scan, including reset/invalid scans\nqPulse := PartPulse;",
+      "supporting_objects": []
+    },
+    "requested_utc": "2026-10-26T13:31:25.252556+00:00",
+    "compile_attempt": 0
+  }
+]

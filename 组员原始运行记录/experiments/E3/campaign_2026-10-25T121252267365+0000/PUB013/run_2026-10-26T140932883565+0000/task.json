@@ -1,0 +1,304 @@
+{
+  "schema_version": 1,
+  "id": "PUB013",
+  "kind": "public",
+  "title": "Office HVAC Multi-mode Energy-Saving Control",
+  "difficulty": "medium",
+  "provenance": {
+    "source_type": "instructor_public_question_bank",
+    "source_file": "大作业题库json/大作业题库json/大作业题库.json",
+    "source_index": "medium[6] (zero based), flattened task 13",
+    "source_sha256": "05170ae18c1ec7c316d8334a84b6ecd48de322c8236735d519b50f72f2d8d362",
+    "adaptation": "Official en text and interface preserved verbatim; interpretations are separate assumptions.",
+    "rationale": "An office fan uses a restartable occupancy delay and mode-dependent temperature setback.",
+    "review": "Reviewed against full source, scan convention, boundary cases and state-dependent expectations; instructor validation pending."
+  },
+  "requirements": "# Office HVAC Multi-mode Energy-Saving Control\n\n- **Difficulty:** Medium (medium)\n\n## Requirements\n\nControl an office-building supply fan and generate a temperature-setpoint adjustment from occupancy, operating mode and the energy-saving selection.\n\n1. Valid HVAC_MODE_SELECTOR values are 0 (Auto), 1 (Comfort), 2 (Economy) and 3 (Night).\n2. Start a 30-second delay only when occupancy is detected and Night mode is not selected. SUPPLY_FAN_RUN becomes TRUE only after these conditions remain satisfied for 30 seconds. Immediately stop the fan and reset timing if occupancy is lost or Night mode is selected. Wait the full 30 seconds again when the conditions recover.\n3. Auto mode: use a 0°C adjustment when occupied. When unoccupied, use +3°C in energy-saving mode or +2°C in standard mode.\n4. Comfort mode: use 0°C when occupied or +1°C when unoccupied. Economy mode: use 0°C when occupied or +4°C when unoccupied.\n5. Night mode: use +4°C regardless of occupancy. The energy-saving selection affects only Auto mode.\n6. Keep TEMP_SETPOINT_ADJUST within ±4°C. Initialize outputs to OFF and zero at power-up; update them from current inputs when normal calculation begins.\n7. The start delay controls only the BOOL fan enable; no continuous speed ramp is required.\n\n## Interface Definition\n\n| Direction | Variable/Field | Data Type | Description |\n| --- | --- | --- | --- |\n| Input | `OCCUPANCY_DETECTED` | `BOOL` | Occupancy-detection result derived from the CO₂ sensor. |\n| Input | `ENERGY_SAVING_MODE` | `BOOL` | TRUE selects energy saving; FALSE selects standard operation; affects Auto mode only. |\n| Input | `HVAC_MODE_SELECTOR` | `INT` | 0 Auto, 1 Comfort, 2 Economy, 3 Night; callers supply a valid value. |\n| Output | `SUPPLY_FAN_RUN` | `BOOL` | Supply-fan run enable. |\n| Output | `TEMP_SETPOINT_ADJUST` | `INT` | Temperature-setpoint adjustment in °C. |",
+  "scenario": "An office fan uses a restartable occupancy delay and mode-dependent temperature setback.",
+  "interface": [
+    {
+      "direction": "INPUT",
+      "name": "OCCUPANCY_DETECTED",
+      "type": "BOOL",
+      "description": "Occupancy-detection result derived from the CO₂ sensor."
+    },
+    {
+      "direction": "INPUT",
+      "name": "ENERGY_SAVING_MODE",
+      "type": "BOOL",
+      "description": "TRUE selects energy saving; FALSE selects standard operation; affects Auto mode only."
+    },
+    {
+      "direction": "INPUT",
+      "name": "HVAC_MODE_SELECTOR",
+      "type": "INT",
+      "description": "0 Auto, 1 Comfort, 2 Economy, 3 Night; callers supply a valid value."
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "SUPPLY_FAN_RUN",
+      "type": "BOOL",
+      "description": "Supply-fan run enable."
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "TEMP_SETPOINT_ADJUST",
+      "type": "INT",
+      "description": "Temperature-setpoint adjustment in °C."
+    }
+  ],
+  "initial_conditions": {
+    "SUPPLY_FAN_RUN": false,
+    "TEMP_SETPOINT_ADJUST": 0
+  },
+  "scan_semantics": "Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call. Retained pre-state q[k] becomes q[k+1]. Each test resets the instance. A transition affects the same observed scan. dt_ms is elapsed time since the preceding invocation; the first invocation starts IEC timers at elapsed zero. CycleTime inputs, where supplied, are attributed to the current invocation rather than inferred from dt_ms.",
+  "safety_priority": [
+    "Occupancy loss or Night immediately stops fan and resets delay.",
+    "Energy saving affects only Auto setback."
+  ],
+  "assumptions": [
+    "Selector values are always 0..3 as required by the official input contract.",
+    "Outputs are initialized before the first call, which calculates adjustment immediately.",
+    "The timer starts at elapsed zero on the first non-Night occupied call. Fan starts at the first observation at or after 30s.",
+    "dt_ms is actual elapsed time since the preceding call; real runtime timer tests must preserve this timing."
+  ],
+  "atomic_propositions": {
+    "permit": "OCCUPANCY_DETECTED AND HVAC_MODE_SELECTOR<>3",
+    "mature": "continuous permit elapsed>=30s",
+    "fan": "SUPPLY_FAN_RUN",
+    "bounded": "-4<=TEMP_SETPOINT_ADJUST<=4",
+    "occupied": "OCCUPANCY_DETECTED AND mode<>3",
+    "zero": "TEMP_SETPOINT_ADJUST=0",
+    "night": "mode=3",
+    "four": "adjust=4",
+    "auto_save": "mode=0 AND NOT occupancy AND ENERGY_SAVING_MODE",
+    "three": "adjust=3",
+    "auto_standard": "mode=0 AND NOT occupancy AND NOT ENERGY_SAVING_MODE",
+    "two": "adjust=2",
+    "comfort": "mode=1 AND NOT occupancy",
+    "one": "adjust=1",
+    "economy": "mode=2 AND NOT occupancy"
+  },
+  "ltl": [
+    {
+      "id": "PUB013.P1",
+      "name": "Fan delay",
+      "formula": "G(fan <-> (permit & mature))",
+      "explanation": "Fan follows the complete uninterrupted delay."
+    },
+    {
+      "id": "PUB013.P2",
+      "name": "Bounds",
+      "formula": "G(bounded)",
+      "explanation": "Legal outputs satisfy the required range."
+    },
+    {
+      "id": "PUB013.P3",
+      "name": "Occupied and Night",
+      "formula": "G((occupied -> zero) & (night -> four))",
+      "explanation": "Night overrides occupied setback."
+    },
+    {
+      "id": "PUB013.P4",
+      "name": "Auto",
+      "formula": "G((auto_save -> three) & (auto_standard -> two))",
+      "explanation": "Auto unoccupied setback follows energy saving."
+    },
+    {
+      "id": "PUB013.P5",
+      "name": "Fixed modes",
+      "formula": "G((comfort -> one) & (economy -> four))",
+      "explanation": "Comfort and Economy ignore energy saving."
+    },
+    {
+      "id": "PUB013.P6",
+      "name": "Liveness",
+      "formula": "G((G permit) -> F fan)",
+      "explanation": "If permit stays TRUE from any scan onward, the fan eventually runs, assuming continued calls and diverging physical time."
+    }
+  ],
+  "tests": [
+    {
+      "id": "PUB013.T1",
+      "name": "mode_table",
+      "purpose": "Exercise all setback modes and energy saving scope.",
+      "steps": [
+        {
+          "inputs": {
+            "OCCUPANCY_DETECTED": false,
+            "ENERGY_SAVING_MODE": false,
+            "HVAC_MODE_SELECTOR": 0
+          },
+          "expected": {
+            "SUPPLY_FAN_RUN": false,
+            "TEMP_SETPOINT_ADJUST": 2
+          },
+          "dt_ms": 0
+        },
+        {
+          "inputs": {
+            "OCCUPANCY_DETECTED": false,
+            "ENERGY_SAVING_MODE": true,
+            "HVAC_MODE_SELECTOR": 0
+          },
+          "expected": {
+            "TEMP_SETPOINT_ADJUST": 3
+          },
+          "dt_ms": 100
+        },
+        {
+          "inputs": {
+            "OCCUPANCY_DETECTED": false,
+            "ENERGY_SAVING_MODE": false,
+            "HVAC_MODE_SELECTOR": 1
+          },
+          "expected": {
+            "TEMP_SETPOINT_ADJUST": 1
+          },
+          "dt_ms": 100
+        },
+        {
+          "inputs": {
+            "OCCUPANCY_DETECTED": false,
+            "ENERGY_SAVING_MODE": true,
+            "HVAC_MODE_SELECTOR": 1
+          },
+          "expected": {
+            "TEMP_SETPOINT_ADJUST": 1
+          },
+          "dt_ms": 100
+        },
+        {
+          "inputs": {
+            "OCCUPANCY_DETECTED": false,
+            "ENERGY_SAVING_MODE": false,
+            "HVAC_MODE_SELECTOR": 2
+          },
+          "expected": {
+            "TEMP_SETPOINT_ADJUST": 4
+          },
+          "dt_ms": 100
+        },
+        {
+          "inputs": {
+            "OCCUPANCY_DETECTED": true,
+            "ENERGY_SAVING_MODE": false,
+            "HVAC_MODE_SELECTOR": 3
+          },
+          "expected": {
+            "TEMP_SETPOINT_ADJUST": 4,
+            "SUPPLY_FAN_RUN": false
+          },
+          "dt_ms": 100
+        },
+        {
+          "inputs": {
+            "OCCUPANCY_DETECTED": true,
+            "ENERGY_SAVING_MODE": false,
+            "HVAC_MODE_SELECTOR": 2
+          },
+          "expected": {
+            "TEMP_SETPOINT_ADJUST": 0,
+            "SUPPLY_FAN_RUN": false
+          },
+          "dt_ms": 100
+        }
+      ]
+    },
+    {
+      "id": "PUB013.T2",
+      "name": "delay_restart",
+      "purpose": "Check delay boundary, loss, full restart, Night override.",
+      "steps": [
+        {
+          "inputs": {
+            "OCCUPANCY_DETECTED": true,
+            "ENERGY_SAVING_MODE": false,
+            "HVAC_MODE_SELECTOR": 0
+          },
+          "expected": {
+            "SUPPLY_FAN_RUN": false
+          },
+          "dt_ms": 0
+        },
+        {
+          "inputs": {
+            "OCCUPANCY_DETECTED": true,
+            "ENERGY_SAVING_MODE": false,
+            "HVAC_MODE_SELECTOR": 0
+          },
+          "expected": {
+            "SUPPLY_FAN_RUN": false
+          },
+          "dt_ms": 29900
+        },
+        {
+          "inputs": {
+            "OCCUPANCY_DETECTED": true,
+            "ENERGY_SAVING_MODE": false,
+            "HVAC_MODE_SELECTOR": 0
+          },
+          "expected": {
+            "SUPPLY_FAN_RUN": true
+          },
+          "dt_ms": 100
+        },
+        {
+          "inputs": {
+            "OCCUPANCY_DETECTED": false,
+            "ENERGY_SAVING_MODE": false,
+            "HVAC_MODE_SELECTOR": 0
+          },
+          "expected": {
+            "SUPPLY_FAN_RUN": false
+          },
+          "dt_ms": 100
+        },
+        {
+          "inputs": {
+            "OCCUPANCY_DETECTED": true,
+            "ENERGY_SAVING_MODE": false,
+            "HVAC_MODE_SELECTOR": 0
+          },
+          "expected": {
+            "SUPPLY_FAN_RUN": false
+          },
+          "dt_ms": 100
+        },
+        {
+          "inputs": {
+            "OCCUPANCY_DETECTED": true,
+            "ENERGY_SAVING_MODE": false,
+            "HVAC_MODE_SELECTOR": 0
+          },
+          "expected": {
+            "SUPPLY_FAN_RUN": false
+          },
+          "dt_ms": 29900
+        },
+        {
+          "inputs": {
+            "OCCUPANCY_DETECTED": true,
+            "ENERGY_SAVING_MODE": false,
+            "HVAC_MODE_SELECTOR": 0
+          },
+          "expected": {
+            "SUPPLY_FAN_RUN": true
+          },
+          "dt_ms": 100
+        },
+        {
+          "inputs": {
+            "OCCUPANCY_DETECTED": true,
+            "ENERGY_SAVING_MODE": false,
+            "HVAC_MODE_SELECTOR": 3
+          },
+          "expected": {
+            "SUPPLY_FAN_RUN": false
+          },
+          "dt_ms": 100
+        }
+      ]
+    }
+  ]
+}

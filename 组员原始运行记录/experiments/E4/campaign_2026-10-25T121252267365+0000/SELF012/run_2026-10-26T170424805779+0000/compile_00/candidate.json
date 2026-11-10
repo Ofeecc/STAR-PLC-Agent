@@ -1,0 +1,12 @@
+{
+  "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    Start : BOOL;\n    Stop : BOOL;\n    Fault : BOOL;\n    Reset : BOOL;\nEND_VAR\nVAR_OUTPUT\n    Run : BOOL;\n    Locked : BOOL;\n    Attempts : USINT := 0;\nEND_VAR\nVAR\n    State : E_TaskState := IDLE;\n    RecoveryFreeScans : USINT := 0;\nEND_VAR",
+  "implementation": "IF Reset AND NOT Fault AND NOT Start THEN\n    State := IDLE;\n    Attempts := 0;\n    RecoveryFreeScans := 0;\nELSIF State = LOCKED THEN\n    RecoveryFreeScans := 0;\nELSIF Stop THEN\n    State := IDLE;\n    RecoveryFreeScans := 0;\nELSE\n    CASE State OF\n        IDLE:\n            RecoveryFreeScans := 0;\n            IF Start AND NOT Fault THEN\n                State := RUNNING;\n            END_IF;\n        RUNNING:\n            IF Fault THEN\n                RecoveryFreeScans := 0;\n                IF Attempts < 2 THEN\n                    State := WAIT;\n                ELSE\n                    State := LOCKED;\n                END_IF;\n            END_IF;\n        WAIT:\n            IF Fault THEN\n                RecoveryFreeScans := 0;\n            ELSIF RecoveryFreeScans >= 1 THEN\n                Attempts := Attempts + 1;\n                RecoveryFreeScans := 0;\n                State := RUNNING;\n            ELSE\n                RecoveryFreeScans := 1;\n            END_IF;\n    END_CASE;\nEND_IF;\n\nRun := State = RUNNING;\nLocked := State = LOCKED;",
+  "supporting_objects": [
+    {
+      "name": "E_TaskState",
+      "kind": "DUT",
+      "declaration": "TYPE E_TaskState :\n(\n    IDLE,\n    RUNNING,\n    WAIT,\n    LOCKED\n);\nEND_TYPE",
+      "implementation": ""
+    }
+  ]
+}

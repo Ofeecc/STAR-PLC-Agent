@@ -1,0 +1,406 @@
+{
+  "schema_version": 1,
+  "id": "PUB009",
+  "kind": "public",
+  "title": "Calculate Moving Average",
+  "difficulty": "medium",
+  "provenance": {
+    "source_type": "official_course_question_bank",
+    "source_file": "大作业题库json/大作业题库json/大作业题库.json",
+    "source_index": {
+      "group": "medium",
+      "index_1based": 3
+    },
+    "adaptation": "Original English question is preserved verbatim in requirements. Only explicit evaluation assumptions, LTL, and tests are added.",
+    "rationale": "Teacher-supplied PLC task; retains the specified interface and control scenario.",
+    "review": "Reviewed against original prose and interface; ambiguities are listed explicitly. Expected traces have not been executed on a PLC."
+  },
+  "requirements": "# Calculate Moving Average\n\n- **Difficulty:** Medium (medium)\n\n## Requirements\n\nWrite a function block FB that calculates and updates a moving arithmetic mean. The moving arithmetic mean is a method of averaging over consecutive data points, where each new data point replaces the oldest data point, and then the average is recalculated.\n\n1. When cyclicExecution is TRUE, a new data value is automatically read and the moving average average is updated every scan cycle.\n2. Provide an external trigger signal trigger, which reads a new data value and updates the moving average upon each rising edge.\n3. Provide a reset function reset, which resets the moving average calculation when the reset signal is TRUE. If the window size is less than 1 or greater than 100, output an error status and status code.\n\nThe status parameter indicates the execution status of the program:\n- 16#0000: Execution successful\n- 16#8200: Window length setting error, please set a value between 1 and 100.\n\n## Interface Definition\n\n| Direction | Variable/Field | Data Type | Description |\n| --- | --- | --- | --- |\n| Input | `cyclicExecution` | `BOOL` | When TRUE, periodic reading is performed, and trigger has no effect |\n| Input | `trigger` | `BOOL` | External trigger signal, reads value upon each rising edge |\n| Input | `value` | `LREAL` | Newly read data value |\n| Input | `windowSize` | `INT` | The window size for the moving average, which must be between 1 and 100 |\n| Input | `reset` | `BOOL` | Reset signal, resets the moving average calculation when TRUE |\n| Output | `average` | `LREAL` | The moving average |\n| Output | `windowSizeReached` | `BOOL` | FALSE: Maximum window width not yet reached TRUE: Maximum window width has been reached |\n| Output | `error` | `BOOL` | FALSE: No error occurred TRUE: An error occurred during the execution of FB |\n| Output | `status` | `WORD` | Status code |",
+  "scenario": "Write a function block FB that calculates and updates a moving arithmetic mean. The moving arithmetic mean is a method of averaging over consecutive data points, where each new data point replaces the oldest data point, and then the average is recalculated.",
+  "interface": [
+    {
+      "direction": "INPUT",
+      "name": "cyclicExecution",
+      "type": "BOOL",
+      "description": "When TRUE, periodic reading is performed, and trigger has no effect"
+    },
+    {
+      "direction": "INPUT",
+      "name": "trigger",
+      "type": "BOOL",
+      "description": "External trigger signal, reads value upon each rising edge"
+    },
+    {
+      "direction": "INPUT",
+      "name": "value",
+      "type": "LREAL",
+      "description": "Newly read data value"
+    },
+    {
+      "direction": "INPUT",
+      "name": "windowSize",
+      "type": "INT",
+      "description": "The window size for the moving average, which must be between 1 and 100"
+    },
+    {
+      "direction": "INPUT",
+      "name": "reset",
+      "type": "BOOL",
+      "description": "Reset signal, resets the moving average calculation when TRUE"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "average",
+      "type": "LREAL",
+      "description": "The moving average"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "windowSizeReached",
+      "type": "BOOL",
+      "description": "FALSE: Maximum window width not yet reached TRUE: Maximum window width has been reached"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "error",
+      "type": "BOOL",
+      "description": "FALSE: No error occurred TRUE: An error occurred during the execution of FB"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "status",
+      "type": "WORD",
+      "description": "Status code"
+    }
+  ],
+  "initial_conditions": {
+    "average": 0.0,
+    "windowSizeReached": false,
+    "error": false,
+    "status": 0,
+    "sampleCount": 0,
+    "previousTrigger": false
+  },
+  "scan_semantics": "At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, outputs O[k] are observed after execution, and q[k+1] is the updated state. Each test creates a fresh FB instance before step 0. An initialized instance has not yet executed a scan. Timer elapsed time is zero on the first eligible sampled invocation; dt_ms is elapsed wall time since the previous invocation, not automatically a synthetic input to the FB. No unobserved past input stability is assumed. All sequences here are expected values.",
+  "safety_priority": [
+    "Invalid window returns an error before sampling.",
+    "Reset overrides sample acceptance.",
+    "Cyclic and trigger conditions cannot cause double insertion."
+  ],
+  "assumptions": [
+    "During warm-up, average is the mean of the actual accepted samples; zero-filled unused capacity is excluded.",
+    "reset has priority over sampling for a valid window; it clears history and sets average=0 and windowSizeReached=FALSE.",
+    "Changing a valid windowSize clears history before any same-scan accepted sample. Invalid window sets error/status and does not accept or change history.",
+    "An invalid-window scan preserves average/windowSizeReached. Returning to a valid window clears error/status. Trigger edge history is updated on every invocation, including reset and invalid-window scans.",
+    "cyclicExecution accepts exactly one sample per scan and ignores the trigger. windowSizeReached becomes TRUE once the accepted sample count reaches windowSize.",
+    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "Floating-point inputs and intermediate reference arithmetic are finite. Existing fixed traces retain their declared absolute tolerance; claims do not extend to arbitrary magnitudes without a separately specified numeric error policy."
+  ],
+  "ltl": [
+    {
+      "id": "P1",
+      "formula": "G(!valid -> (error & status=16#8200 & unchangedMean))",
+      "explanation": "Window bounds are checked without silently accepting data."
+    },
+    {
+      "id": "P2",
+      "formula": "G(valid -> (!error & status=0))",
+      "explanation": "A valid window clears configuration error."
+    },
+    {
+      "id": "P3",
+      "formula": "G((valid & reset) -> (average=0 & !windowSizeReached))",
+      "explanation": "Reset produces an empty history."
+    },
+    {
+      "id": "P4",
+      "formula": "G((valid & !reset) -> average=meanOrZero(historyAfter))",
+      "explanation": "The result is the arithmetic mean of the active window or zero when empty."
+    },
+    {
+      "id": "P5",
+      "formula": "G(valid -> (windowSizeReached <-> length(historyAfter)=windowSize))",
+      "explanation": "Full-window indication follows history population."
+    },
+    {
+      "id": "P6",
+      "formula": "G(X(previousTrigger)=trigger)",
+      "explanation": "Rising-edge memory updates even if sampling is inhibited."
+    },
+    {
+      "id": "P7",
+      "formula": "G((valid & !reset & !cyclicExecution & !triggerRise & !windowChanged) -> unchangedMean)",
+      "explanation": "No event means no sample update."
+    },
+    {
+      "id": "PUB009.V2.COMPLETE",
+      "formula": "G(CompleteBehaviorV2)",
+      "explanation": "The complete per-invocation relation defined in specification_contract.normative_completion; requires explicit encoding before model checking."
+    }
+  ],
+  "atomic_propositions": {
+    "valid": "1<=windowSize<=100",
+    "triggerRise": "trigger & !previousTrigger",
+    "accept": "valid & !reset & (cyclicExecution | triggerRise)",
+    "history": "Ghost ordered list of at most windowSize accepted samples, newest last.",
+    "historyAfter": "history after clearing on reset/window change and adding one accepted sample, discarding oldest if full.",
+    "unchangedMean": "average and windowSizeReached equal their pre-scan values.",
+    "interface names": "Identically named sampled input or observed output.",
+    "meanOrZero": "Arithmetic mean for a nonempty list, otherwise zero.",
+    "length": "Number of samples in the history list.",
+    "windowChanged": "Current valid windowSize differs from the last valid configured size.",
+    "previousTrigger": "Pre-scan retained trigger, initialized FALSE.",
+    "CompleteBehaviorV2": "以独立输入历史维护history和lastValidWindow：非法窗不改；首次有效建立窗口；有效窗口变化或reset清空；!reset且cyclicExecution或triggerRise时追加一个样本并截断到窗口长。每拍更新previousTrigger，包括非法和复位拍。average=空则0否则均值，Reached=长度等于窗口。"
+  },
+  "tests": [
+    {
+      "id": "T1",
+      "purpose": "Cyclic warm-up, sliding replacement and reset priority",
+      "steps": [
+        {
+          "inputs": {
+            "cyclicExecution": true,
+            "trigger": false,
+            "value": 3.0,
+            "windowSize": 3,
+            "reset": false
+          },
+          "expected": {
+            "average": 3.0,
+            "windowSizeReached": false,
+            "error": false,
+            "status": 0
+          }
+        },
+        {
+          "inputs": {
+            "cyclicExecution": true,
+            "trigger": false,
+            "value": 6.0,
+            "windowSize": 3,
+            "reset": false
+          },
+          "expected": {
+            "average": 4.5,
+            "windowSizeReached": false,
+            "error": false,
+            "status": 0
+          }
+        },
+        {
+          "inputs": {
+            "cyclicExecution": true,
+            "trigger": false,
+            "value": 9.0,
+            "windowSize": 3,
+            "reset": false
+          },
+          "expected": {
+            "average": 6.0,
+            "windowSizeReached": true,
+            "error": false,
+            "status": 0
+          }
+        },
+        {
+          "inputs": {
+            "cyclicExecution": true,
+            "trigger": true,
+            "value": 12.0,
+            "windowSize": 3,
+            "reset": false
+          },
+          "expected": {
+            "average": 9.0,
+            "windowSizeReached": true,
+            "error": false,
+            "status": 0
+          }
+        },
+        {
+          "inputs": {
+            "cyclicExecution": true,
+            "trigger": false,
+            "value": 99.0,
+            "windowSize": 3,
+            "reset": true
+          },
+          "expected": {
+            "average": 0.0,
+            "windowSizeReached": false,
+            "error": false,
+            "status": 0
+          }
+        },
+        {
+          "inputs": {
+            "cyclicExecution": true,
+            "trigger": false,
+            "value": -6.0,
+            "windowSize": 3,
+            "reset": false
+          },
+          "expected": {
+            "average": -6.0,
+            "windowSizeReached": false,
+            "error": false,
+            "status": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": "T2",
+      "purpose": "Rising edge only, held trigger, window change and invalid bounds",
+      "steps": [
+        {
+          "inputs": {
+            "cyclicExecution": false,
+            "trigger": true,
+            "value": 2.0,
+            "windowSize": 3,
+            "reset": false
+          },
+          "expected": {
+            "average": 2.0,
+            "windowSizeReached": false,
+            "error": false,
+            "status": 0
+          }
+        },
+        {
+          "inputs": {
+            "cyclicExecution": false,
+            "trigger": true,
+            "value": 100.0,
+            "windowSize": 3,
+            "reset": false
+          },
+          "expected": {
+            "average": 2.0,
+            "windowSizeReached": false,
+            "error": false,
+            "status": 0
+          }
+        },
+        {
+          "inputs": {
+            "cyclicExecution": false,
+            "trigger": false,
+            "value": 100.0,
+            "windowSize": 3,
+            "reset": false
+          },
+          "expected": {
+            "average": 2.0,
+            "windowSizeReached": false,
+            "error": false,
+            "status": 0
+          }
+        },
+        {
+          "inputs": {
+            "cyclicExecution": false,
+            "trigger": true,
+            "value": 4.0,
+            "windowSize": 3,
+            "reset": false
+          },
+          "expected": {
+            "average": 3.0,
+            "windowSizeReached": false,
+            "error": false,
+            "status": 0
+          }
+        },
+        {
+          "inputs": {
+            "cyclicExecution": true,
+            "trigger": false,
+            "value": 8.0,
+            "windowSize": 1,
+            "reset": false
+          },
+          "expected": {
+            "average": 8.0,
+            "windowSizeReached": true,
+            "error": false,
+            "status": 0
+          }
+        },
+        {
+          "inputs": {
+            "cyclicExecution": false,
+            "trigger": false,
+            "value": 0.0,
+            "windowSize": 0,
+            "reset": false
+          },
+          "expected": {
+            "average": 8.0,
+            "windowSizeReached": true,
+            "error": true,
+            "status": 33280
+          }
+        },
+        {
+          "inputs": {
+            "cyclicExecution": false,
+            "trigger": false,
+            "value": 0.0,
+            "windowSize": 101,
+            "reset": false
+          },
+          "expected": {
+            "average": 8.0,
+            "windowSizeReached": true,
+            "error": true,
+            "status": 33280
+          }
+        },
+        {
+          "inputs": {
+            "cyclicExecution": false,
+            "trigger": false,
+            "value": 0.0,
+            "windowSize": 1,
+            "reset": true
+          },
+          "expected": {
+            "average": 0.0,
+            "windowSizeReached": false,
+            "error": false,
+            "status": 0
+          }
+        },
+        {
+          "inputs": {
+            "cyclicExecution": false,
+            "trigger": true,
+            "value": 5.0,
+            "windowSize": 1,
+            "reset": false
+          },
+          "expected": {
+            "average": 5.0,
+            "windowSizeReached": true,
+            "error": false,
+            "status": 0
+          }
+        }
+      ],
+      "tolerance": {
+        "absolute": 1e-09,
+        "relative": 1e-09
+      }
+    }
+  ],
+  "specification_version": "2.0-review-corrections-20261106",
+  "specification_contract": {
+    "observation": "I[k] is sampled before execution; O[k] is observed after execution. Initial conditions apply before invocation zero.",
+    "normative_completion": "以独立输入历史维护history和lastValidWindow：非法窗不改；首次有效建立窗口；有效窗口变化或reset清空；!reset且cyclicExecution或triggerRise时追加一个样本并截断到窗口长。每拍更新previousTrigger，包括非法和复位拍。average=空则0否则均值，Reached=长度等于窗口。",
+    "history_binding": "Every previous-output name refers to the preceding observed output with the declared initial value. Previous-input memories update on EVERY invocation, including reset, invalid input, stop and mode change. Reference phase/history is independently advanced from sampled inputs by the stated transition rules, never supplied by the candidate.",
+    "evaluation_scope": "Properties include interpreted data predicates. No claim of export to a model checker or completed formal proof.",
+    "review_source": "docs/规约逐题审查_20261106/PUB009.md"
+  }
+}

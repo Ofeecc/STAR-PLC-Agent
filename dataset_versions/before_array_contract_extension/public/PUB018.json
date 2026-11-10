@@ -1,0 +1,759 @@
+{
+  "schema_version": 1,
+  "id": "PUB018",
+  "kind": "public",
+  "title": "FIFO First-In-First-Out Queue",
+  "difficulty": "hard",
+  "provenance": {
+    "source_type": "instructor_public_question_bank",
+    "source_file": "大作业题库json/大作业题库json/大作业题库.json",
+    "source_index": "hard[3] (zero based), flattened task 18",
+    "source_sha256": "05170ae18c1ec7c316d8334a84b6ecd48de322c8236735d519b50f72f2d8d362",
+    "adaptation": "Official en text and interface preserved verbatim; interpretations are separate assumptions.",
+    "rationale": "A generic circular FIFO derives capacity/type from caller storage and handles edge requests, wraparound and rejection.",
+    "review": "Reviewed against full source, scan convention, boundary cases and state-dependent expectations; instructor validation pending."
+  },
+  "requirements": "# FIFO First-In-First-Out Queue\n\n- **Difficulty:** Hard (hard)\n\n## Requirements\n\nWrite a function block FB implementing a First-In-First-Out (FIFO) circular queue. Derive the queue capacity and element type from the caller-supplied buffer.\n\n1. Each rising edge of enqueue requests one enqueue operation. If the queue is not full, append the current item value to its tail.\n2. Each rising edge of dequeue requests one dequeue operation. If the queue is not empty, remove its front element and write that value back to item. The caller must not request enqueue and dequeue in the same invocation.\n3. When reset is TRUE, empty the queue and set elementCount to zero. Reset takes priority over enqueue and dequeue; stored buffer values need not be overwritten.\n4. Output the current number of valid elements through elementCount. Zero means the queue is empty; a count equal to the actual buffer array length means it is full.\n5. Reject a dequeue request on an empty queue or an enqueue request on a full queue. Leave the queue and item unchanged and report the reason through status.\n6. The queue is empty on its first invocation. Define head and tail positions and other internal state within the implementation; do not expose them as interface parameters.\n\nStatus codes:\n\n- 16#0000: No error in this invocation, including idle, reset and successful operations.\n- 16#8001: The dequeue request was rejected because the queue is empty.\n- 16#8002: The enqueue request was rejected because the queue is full.\n\n## Interface Definition\n\n| Direction | Variable/Field | Data Type | Description |\n| --- | --- | --- | --- |\n| Input | `enqueue` | `BOOL` | Enqueue request; one operation per rising edge. |\n| Input | `dequeue` | `BOOL` | Dequeue request; one operation per rising edge. |\n| Input | `reset` | `BOOL` | TRUE resets the queue to empty; takes priority over enqueue and dequeue. |\n| Output | `elementCount` | `DINT` | Current number of valid elements, from zero through the queue capacity. |\n| Output | `status` | `WORD` | Invocation status: 16#0000 no error, 16#8001 dequeue from an empty queue, 16#8002 enqueue into a full queue. |\n| Input/Output | `item` | `VARIANT` | Mutable scalar reference: read its value when enqueuing; write the removed front value on successful dequeue. Its concrete type must match the array element type. |\n| Input/Output | `buffer` | `VARIANT` | Reference to a nonempty one-dimensional array with a single concrete element type, used as queue storage. Capacity is the actual array length. |\n\nAssociate buffer with a nonempty, homogeneous one-dimensional array and item with a writable scalar of the same element type. Keep the buffer association fixed for each function-block instance. Derive capacity from the actual array length; it must fit in a positive DINT.",
+  "scenario": "A generic circular FIFO derives capacity/type from caller storage and handles edge requests, wraparound and rejection.",
+  "interface": [
+    {
+      "direction": "INPUT",
+      "name": "enqueue",
+      "type": "BOOL",
+      "description": "Enqueue request; one operation per rising edge."
+    },
+    {
+      "direction": "INPUT",
+      "name": "dequeue",
+      "type": "BOOL",
+      "description": "Dequeue request; one operation per rising edge."
+    },
+    {
+      "direction": "INPUT",
+      "name": "reset",
+      "type": "BOOL",
+      "description": "TRUE resets the queue to empty; takes priority over enqueue and dequeue."
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "elementCount",
+      "type": "DINT",
+      "description": "Current number of valid elements, from zero through the queue capacity."
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "status",
+      "type": "WORD",
+      "description": "Invocation status: 16#0000 no error, 16#8001 dequeue from an empty queue, 16#8002 enqueue into a full queue."
+    },
+    {
+      "direction": "IN_OUT",
+      "name": "item",
+      "type": "VARIANT",
+      "description": "Mutable scalar reference: read its value when enqueuing; write the removed front value on successful dequeue. Its concrete type must match the array element type."
+    },
+    {
+      "direction": "IN_OUT",
+      "name": "buffer",
+      "type": "VARIANT",
+      "description": "Reference to a nonempty one-dimensional array with a single concrete element type, used as queue storage. Capacity is the actual array length."
+    }
+  ],
+  "initial_conditions": {
+    "elementCount": 0,
+    "status": 0,
+    "head": 0,
+    "tail": 0
+  },
+  "scan_semantics": "Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call. Retained pre-state q[k] becomes q[k+1]. Each test resets the instance. A transition affects the same observed scan. dt_ms is elapsed time since the preceding invocation; the first invocation starts IEC timers at elapsed zero. CycleTime inputs, where supplied, are attributed to the current invocation rather than inferred from dt_ms.",
+  "safety_priority": [
+    "Reset empties the logical queue before handling requests.",
+    "Rejected requests preserve queue and item.",
+    "Only rising edges perform enqueue/dequeue."
+  ],
+  "assumptions": [
+    "The official VARIANT interface is preserved. Native CODESYS compatibility and runtime type/array metadata access remain unverified; never silently replace it by a DINT-only interface.",
+    "Binding A: item DINT, buffer ARRAY[0..1] OF DINT. Binding B: item BOOL, buffer ARRAY[1..3] OF BOOL. Both must run to substantiate genericity.",
+    "Buffer is initialized and bound once per test; its association and contents are not externally overwritten between calls. item is caller-writable every scan.",
+    "Enqueue and dequeue are never requested together. Reset may coincide with either and wins.",
+    "Edge memories update during reset; a request held afterward is not another edge.",
+    "Reset need not clear buffer values. Unused storage arrangement is unconstrained.",
+    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+  ],
+  "atomic_propositions": {
+    "reset": "reset input",
+    "empty": "elementCount=0",
+    "ok": "status=0",
+    "pop_empty": "NOT reset AND rising(dequeue) AND pre-count=0",
+    "push_full": "NOT reset AND rising(enqueue) AND pre-count=capacity",
+    "e1": "status=16#8001",
+    "e2": "status=16#8002",
+    "same": "logical queue equals pre-queue AND item equals sampled item",
+    "push": "NOT reset AND rising(enqueue) AND pre-count<capacity",
+    "pushed": "post-queue=pre-queue appended with sampled item AND count=pre-count+1 AND status=0",
+    "pop": "NOT reset AND rising(dequeue) AND pre-count>0",
+    "popped": "item=pre-front AND post-queue=pre-queue without front AND count=pre-count-1 AND status=0",
+    "bounded": "0<=elementCount<=actual buffer length",
+    "idle": "NOT reset AND no request rising edge",
+    "CompleteBehaviorV2": "定义Q为独立输入历史参考序列，并把elementCount=|QAfter|写成每拍不变量；pop实际item等于QBefore首项，push/idle/reject/reset实际item等于采样值。reset后QAfter=[]。buffer可允许不同环形布局，但要明确由受检head/tail映射验证存储，或以完整出队序列核对可观察FIFO行为，不凭理想Q自己通过。保持接口，不私改为DINT特例。"
+  },
+  "ltl": [
+    {
+      "id": "PUB018.P1",
+      "name": "Reset",
+      "formula": "G(reset -> (empty & ok))",
+      "explanation": "Reset overrides simultaneous requests."
+    },
+    {
+      "id": "PUB018.P2",
+      "name": "Rejections",
+      "formula": "G((pop_empty -> (e1 & same)) & (push_full -> (e2 & same)))",
+      "explanation": "Full and empty failures preserve data."
+    },
+    {
+      "id": "PUB018.P3",
+      "name": "FIFO order",
+      "formula": "G((push -> pushed) & (pop -> popped))",
+      "explanation": "Accepted edges update the ordered logical queue exactly once."
+    },
+    {
+      "id": "PUB018.P4",
+      "name": "Count",
+      "formula": "G(bounded)",
+      "explanation": "Count remains within the actual caller capacity."
+    },
+    {
+      "id": "PUB018.P5",
+      "name": "Held request",
+      "formula": "G(idle -> (ok & same))",
+      "explanation": "Held levels do not perform another operation."
+    },
+    {
+      "id": "PUB018.V2.COMPLETE",
+      "formula": "G(CompleteBehaviorV2)",
+      "explanation": "The complete per-invocation relation defined in specification_contract.normative_completion; requires explicit encoding before model checking."
+    }
+  ],
+  "tests": [
+    {
+      "id": "PUB018.T1",
+      "name": "wrap_full_empty",
+      "purpose": "Capacity-two FIFO preserves order through wrap, full and empty rejection.",
+      "steps": [
+        {
+          "inputs": {
+            "enqueue": false,
+            "dequeue": false,
+            "reset": false,
+            "item": 0,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "A",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "elementCount": 0,
+            "status": 0
+          }
+        },
+        {
+          "inputs": {
+            "enqueue": true,
+            "dequeue": false,
+            "reset": false,
+            "item": 10,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "A",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "elementCount": 1
+          }
+        },
+        {
+          "inputs": {
+            "enqueue": true,
+            "dequeue": false,
+            "reset": false,
+            "item": 99,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "A",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "elementCount": 1
+          }
+        },
+        {
+          "inputs": {
+            "enqueue": false,
+            "dequeue": false,
+            "reset": false,
+            "item": 0,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "A",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "status": 0
+          }
+        },
+        {
+          "inputs": {
+            "enqueue": true,
+            "dequeue": false,
+            "reset": false,
+            "item": 20,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "A",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "elementCount": 2
+          }
+        },
+        {
+          "inputs": {
+            "enqueue": false,
+            "dequeue": false,
+            "reset": false,
+            "item": 0,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "A",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "status": 0
+          }
+        },
+        {
+          "inputs": {
+            "enqueue": true,
+            "dequeue": false,
+            "reset": false,
+            "item": 30,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "A",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "elementCount": 2,
+            "status": 32770,
+            "item": 30
+          }
+        },
+        {
+          "inputs": {
+            "enqueue": false,
+            "dequeue": false,
+            "reset": false,
+            "item": 0,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "A",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "status": 0
+          }
+        },
+        {
+          "inputs": {
+            "enqueue": false,
+            "dequeue": true,
+            "reset": false,
+            "item": -1,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "A",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "elementCount": 1,
+            "status": 0,
+            "item": 10
+          }
+        },
+        {
+          "inputs": {
+            "enqueue": false,
+            "dequeue": false,
+            "reset": false,
+            "item": 0,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "A",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "status": 0
+          }
+        },
+        {
+          "inputs": {
+            "enqueue": true,
+            "dequeue": false,
+            "reset": false,
+            "item": 30,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "A",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "elementCount": 2
+          }
+        },
+        {
+          "inputs": {
+            "enqueue": false,
+            "dequeue": false,
+            "reset": false,
+            "item": 0,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "A",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "status": 0
+          }
+        },
+        {
+          "inputs": {
+            "enqueue": false,
+            "dequeue": true,
+            "reset": false,
+            "item": 0,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "A",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "elementCount": 1,
+            "item": 20
+          }
+        },
+        {
+          "inputs": {
+            "enqueue": false,
+            "dequeue": false,
+            "reset": false,
+            "item": 0,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "A",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "status": 0
+          }
+        },
+        {
+          "inputs": {
+            "enqueue": false,
+            "dequeue": true,
+            "reset": false,
+            "item": 0,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "A",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "elementCount": 0,
+            "item": 30
+          }
+        },
+        {
+          "inputs": {
+            "enqueue": false,
+            "dequeue": false,
+            "reset": false,
+            "item": 0,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "A",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "status": 0
+          }
+        },
+        {
+          "inputs": {
+            "enqueue": false,
+            "dequeue": true,
+            "reset": false,
+            "item": 77,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "A",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "elementCount": 0,
+            "status": 32769,
+            "item": 77
+          }
+        }
+      ],
+      "binding_id": "A"
+    },
+    {
+      "id": "PUB018.T2",
+      "name": "reset_priority",
+      "purpose": "Reset coincides with request; held request after reset does not execute.",
+      "steps": [
+        {
+          "inputs": {
+            "enqueue": true,
+            "dequeue": false,
+            "reset": false,
+            "item": 10,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "A",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "elementCount": 1
+          }
+        },
+        {
+          "inputs": {
+            "enqueue": false,
+            "dequeue": false,
+            "reset": false,
+            "item": 0,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "A",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "status": 0
+          }
+        },
+        {
+          "inputs": {
+            "enqueue": true,
+            "dequeue": false,
+            "reset": true,
+            "item": 20,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "A",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "elementCount": 0,
+            "status": 0,
+            "item": 20
+          }
+        },
+        {
+          "inputs": {
+            "enqueue": true,
+            "dequeue": false,
+            "reset": false,
+            "item": 30,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "A",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "elementCount": 0,
+            "status": 0
+          }
+        },
+        {
+          "inputs": {
+            "enqueue": false,
+            "dequeue": false,
+            "reset": false,
+            "item": 0,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "A",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "status": 0
+          }
+        },
+        {
+          "inputs": {
+            "enqueue": true,
+            "dequeue": false,
+            "reset": false,
+            "item": 40,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "A",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "elementCount": 1
+          }
+        },
+        {
+          "inputs": {
+            "enqueue": false,
+            "dequeue": false,
+            "reset": false,
+            "item": 0,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "A",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "status": 0
+          }
+        },
+        {
+          "inputs": {
+            "enqueue": false,
+            "dequeue": true,
+            "reset": true,
+            "item": 50,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "A",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "elementCount": 0,
+            "status": 0,
+            "item": 50
+          }
+        }
+      ],
+      "binding_id": "A"
+    },
+    {
+      "id": "PUB018.T3",
+      "name": "generic_BOOL",
+      "purpose": "Second element type and lower-bound-one buffer.",
+      "steps": [
+        {
+          "inputs": {
+            "enqueue": true,
+            "dequeue": false,
+            "reset": false,
+            "item": true,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "B",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "elementCount": 1
+          }
+        },
+        {
+          "inputs": {
+            "enqueue": false,
+            "dequeue": false,
+            "reset": false,
+            "item": false,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "B",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "status": 0
+          }
+        },
+        {
+          "inputs": {
+            "enqueue": true,
+            "dequeue": false,
+            "reset": false,
+            "item": false,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "B",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "elementCount": 2
+          }
+        },
+        {
+          "inputs": {
+            "enqueue": false,
+            "dequeue": false,
+            "reset": false,
+            "item": false,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "B",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "status": 0
+          }
+        },
+        {
+          "inputs": {
+            "enqueue": true,
+            "dequeue": false,
+            "reset": false,
+            "item": true,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "B",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "elementCount": 3
+          }
+        },
+        {
+          "inputs": {
+            "enqueue": false,
+            "dequeue": false,
+            "reset": false,
+            "item": false,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "B",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "status": 0
+          }
+        },
+        {
+          "inputs": {
+            "enqueue": false,
+            "dequeue": true,
+            "reset": false,
+            "item": false,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "B",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "elementCount": 2,
+            "item": true
+          }
+        },
+        {
+          "inputs": {
+            "enqueue": false,
+            "dequeue": false,
+            "reset": false,
+            "item": false,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "B",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "status": 0
+          }
+        },
+        {
+          "inputs": {
+            "enqueue": false,
+            "dequeue": true,
+            "reset": false,
+            "item": true,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "B",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "elementCount": 1,
+            "item": false
+          }
+        }
+      ],
+      "binding_id": "B"
+    }
+  ],
+  "portability": {
+    "status": "UNVERIFIED",
+    "issue": "VARIANT is an official interface but may not be a native CODESYS generic type in the selected profile. A verified variant-reflection library or explicitly disclosed adapter may be required.",
+    "required_validation": "Compile the unchanged generic interface, verify two element types and different lower bounds/capacities. Adapter results must disclose deviations."
+  },
+  "test_bindings": [
+    {
+      "id": "A",
+      "item_type": "DINT",
+      "buffer_type": "ARRAY[0..1] OF DINT",
+      "buffer_initial": [
+        0,
+        0
+      ],
+      "capacity": 2
+    },
+    {
+      "id": "B",
+      "item_type": "BOOL",
+      "buffer_type": "ARRAY[1..3] OF BOOL",
+      "buffer_initial": [
+        false,
+        false,
+        false
+      ],
+      "capacity": 3
+    }
+  ],
+  "specification_version": "2.0-review-corrections-20261106",
+  "specification_contract": {
+    "observation": "I[k] is sampled before execution; O[k] is observed after execution. Initial conditions apply before invocation zero.",
+    "normative_completion": "定义Q为独立输入历史参考序列，并把elementCount=|QAfter|写成每拍不变量；pop实际item等于QBefore首项，push/idle/reject/reset实际item等于采样值。reset后QAfter=[]。buffer可允许不同环形布局，但要明确由受检head/tail映射验证存储，或以完整出队序列核对可观察FIFO行为，不凭理想Q自己通过。保持接口，不私改为DINT特例。",
+    "history_binding": "Every previous-output name refers to the preceding observed output with the declared initial value. Previous-input memories update on EVERY invocation, including reset, invalid input, stop and mode change. Reference phase/history is independently advanced from sampled inputs by the stated transition rules, never supplied by the candidate.",
+    "evaluation_scope": "Properties include interpreted data predicates. No claim of export to a model checker or completed formal proof.",
+    "review_source": "docs/规约逐题审查_20261106/PUB018.md"
+  }
+}

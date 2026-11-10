@@ -1,0 +1,21 @@
+[
+  {
+    "index": 0,
+    "source": {
+      "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    THICKNESS_FAULT : BOOL;\n    THICKNESS_SIGNAL_VALID : BOOL;\n    CUTTING_RUN : BOOL;\n    FaultTimestamp : DINT;\n    CycleTime : TIME;\nEND_VAR\nVAR_OUTPUT\n    THICKNESS_ALARM : BOOL;\n    Slab_Fault_Counter : UINT;\n    Slab_Runtime_Accumulator : LTIME;\n    Slab_Fault_History : ARRAY[0..4] OF DINT;\nEND_VAR\nVAR\n    prevValidFault : BOOL;\n    holdActive : BOOL;\n    holdTimer : TON;\n    i : INT;\nEND_VAR",
+      "implementation": "IF NOT THICKNESS_SIGNAL_VALID THEN\n    THICKNESS_ALARM := FALSE;\n    holdActive := FALSE;\n    holdTimer(IN := FALSE);\n    prevValidFault := FALSE;\nELSE\n    IF THICKNESS_FAULT AND NOT prevValidFault THEN\n        Slab_Fault_Counter := Slab_Fault_Counter + 1;\n        FOR i := 4 TO 1 BY -1 DO\n            Slab_Fault_History[i] := Slab_Fault_History[i - 1];\n        END_FOR\n        Slab_Fault_History[0] := FaultTimestamp;\n        holdActive := TRUE;\n        holdTimer(IN := FALSE);\n    ELSE\n        holdTimer(IN := holdActive);\n        IF holdTimer.Q THEN\n            holdActive := FALSE;\n        END_IF\n    END_IF\n\n    THICKNESS_ALARM := THICKNESS_FAULT OR holdActive;\n\n    IF CUTTING_RUN AND NOT THICKNESS_FAULT THEN\n        Slab_Runtime_Accumulator := Slab_Runtime_Accumulator + TO_LTIME(CycleTime);\n    END_IF\n\n    prevValidFault := THICKNESS_FAULT;\nEND_IF",
+      "supporting_objects": []
+    },
+    "requested_utc": "2026-10-26T13:18:54.612172+00:00",
+    "compile_attempt": 0
+  },
+  {
+    "index": 1,
+    "source": {
+      "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    THICKNESS_FAULT : BOOL;\n    THICKNESS_SIGNAL_VALID : BOOL;\n    CUTTING_RUN : BOOL;\n    FaultTimestamp : DINT;\n    CycleTime : TIME;\nEND_VAR\nVAR_OUTPUT\n    THICKNESS_ALARM : BOOL;\n    Slab_Fault_Counter : UINT;\n    Slab_Runtime_Accumulator : LTIME;\n    Slab_Fault_History : ARRAY[0..4] OF DINT;\nEND_VAR\nVAR\n    prevValidFault : BOOL;\n    holdActive : BOOL;\n    holdTimer : TON;\n    i : INT;\nEND_VAR",
+      "implementation": "IF NOT THICKNESS_SIGNAL_VALID THEN\n    THICKNESS_ALARM := FALSE;\n    holdActive := FALSE;\n    holdTimer(IN := FALSE);\n    prevValidFault := FALSE;\nELSE\n    IF THICKNESS_FAULT AND NOT prevValidFault THEN\n        Slab_Fault_Counter := Slab_Fault_Counter + 1;\n        FOR i := 4 TO 1 BY -1 DO\n            Slab_Fault_History[i] := Slab_Fault_History[i - 1];\n        END_FOR\n        Slab_Fault_History[0] := FaultTimestamp;\n        holdActive := TRUE;\n        holdTimer(IN := FALSE);\n        holdTimer(IN := TRUE);\n    ELSE\n        holdTimer(IN := holdActive);\n        IF holdTimer.Q THEN\n            holdActive := FALSE;\n        END_IF\n    END_IF\n\n    THICKNESS_ALARM := THICKNESS_FAULT OR holdActive;\n\n    IF CUTTING_RUN AND NOT THICKNESS_FAULT THEN\n        Slab_Runtime_Accumulator := Slab_Runtime_Accumulator + TO_LTIME(CycleTime);\n    END_IF\n\n    prevValidFault := THICKNESS_FAULT;\nEND_IF",
+      "supporting_objects": []
+    },
+    "requested_utc": "2026-10-26T13:19:35.087550+00:00"
+  }
+]

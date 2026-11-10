@@ -1,0 +1,13 @@
+{
+  "request_id": "6ce08fac5d1b4e1282fa7c7ff207b09f",
+  "source_sha256": "1a59e71633aebfaf4ffe0c2b9386096b825a2ef2de7b1540d39b83cda3ffe06e",
+  "task_id": "PUB004",
+  "project": "D:\\Learning\\大四秋冬\\genai\\finale\\PLC_Agent_Final\\experiments\\E3\\campaign_2026-10-25T121252267365+0000\\PUB004\\run_2026-10-26T140013099473+0000\\compile_00\\task.project",
+  "candidate": {
+    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    VISCOSITY_OK : BOOL;\n    PASTE_E_STOP_NC : BOOL;\n    DebounceTime : TIME;\n    CycleTime : TIME;\nEND_VAR\nVAR_OUTPUT\n    VFD_RUN : BOOL := FALSE;\n    PUMP_MAINT_DUE : BOOL := FALSE;\n    PUMP_RUNTIME_ACC : LTIME := LTIME#0ns;\nEND_VAR\nVAR\n    debounceStarted : BOOL := FALSE;\n    debounceElapsed : LTIME := LTIME#0ns;\n    viscosityQualified : BOOL := FALSE;\nEND_VAR",
+    "implementation": "IF (NOT PASTE_E_STOP_NC) OR (NOT VISCOSITY_OK) THEN\n    debounceStarted := FALSE;\n    debounceElapsed := LTIME#0ns;\n    viscosityQualified := FALSE;\nELSE\n    IF NOT debounceStarted THEN\n        debounceStarted := TRUE;\n        debounceElapsed := LTIME#0ns;\n        IF DebounceTime <= T#0ms THEN\n            viscosityQualified := TRUE;\n        ELSE\n            viscosityQualified := FALSE;\n        END_IF\n    ELSIF NOT viscosityQualified THEN\n        debounceElapsed := debounceElapsed + TIME_TO_LTIME(CycleTime);\n        IF debounceElapsed >= TIME_TO_LTIME(DebounceTime) THEN\n            viscosityQualified := TRUE;\n        END_IF\n    END_IF\nEND_IF\n\nVFD_RUN := PASTE_E_STOP_NC AND VISCOSITY_OK AND viscosityQualified;\n\nIF VFD_RUN THEN\n    PUMP_RUNTIME_ACC := PUMP_RUNTIME_ACC + TIME_TO_LTIME(CycleTime);\nEND_IF\n\nPUMP_MAINT_DUE := PUMP_RUNTIME_ACC >= LTIME#500h;",
+    "supporting_objects": []
+  },
+  "result_path": "D:\\Learning\\大四秋冬\\genai\\finale\\PLC_Agent_Final\\experiments\\E3\\campaign_2026-10-25T121252267365+0000\\PUB004\\run_2026-10-26T140013099473+0000\\compile_00\\codesys_evidence.json",
+  "started_utc": "2026-10-26T14:01:47.609589+00:00"
+}

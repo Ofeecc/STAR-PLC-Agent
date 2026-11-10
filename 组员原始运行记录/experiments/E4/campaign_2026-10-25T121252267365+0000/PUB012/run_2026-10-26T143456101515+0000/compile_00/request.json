@@ -1,0 +1,13 @@
+{
+  "request_id": "874ea7ed61304123ae7dfbf766d65d59",
+  "source_sha256": "2a007a55bf25ca49a54b2bbe5134df3ab46a85cdd826a5666726ac37522d983c",
+  "task_id": "PUB012",
+  "project": "D:\\Learning\\大四秋冬\\genai\\finale\\PLC_Agent_Final\\experiments\\E4\\campaign_2026-10-25T121252267365+0000\\PUB012\\run_2026-10-26T143456101515+0000\\compile_00\\task.project",
+  "candidate": {
+    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    THICKNESS_FAULT : BOOL;\n    THICKNESS_SIGNAL_VALID : BOOL;\n    CUTTING_RUN : BOOL;\n    FaultTimestamp : DINT;\n    CycleTime : TIME;\nEND_VAR\nVAR_OUTPUT\n    THICKNESS_ALARM : BOOL := FALSE;\n    Slab_Fault_Counter : UINT := 0;\n    Slab_Runtime_Accumulator : LTIME := LTIME#0NS;\n    Slab_Fault_History : ARRAY[0..4] OF DINT := [0, 0, 0, 0, 0];\nEND_VAR\nVAR\n    xPreviousValidFault : BOOL := FALSE;\n    xHoldActive : BOOL := FALSE;\n    tonAlarmHold : TON;\nEND_VAR",
+    "implementation": "IF NOT THICKNESS_SIGNAL_VALID THEN\n    THICKNESS_ALARM := FALSE;\n    xHoldActive := FALSE;\n    tonAlarmHold(IN := FALSE, PT := T#500MS);\nELSE\n    IF THICKNESS_FAULT AND NOT xPreviousValidFault THEN\n        Slab_Fault_Counter := Slab_Fault_Counter + 1;\n        Slab_Fault_History[4] := Slab_Fault_History[3];\n        Slab_Fault_History[3] := Slab_Fault_History[2];\n        Slab_Fault_History[2] := Slab_Fault_History[1];\n        Slab_Fault_History[1] := Slab_Fault_History[0];\n        Slab_Fault_History[0] := FaultTimestamp;\n\n        xHoldActive := TRUE;\n        tonAlarmHold(IN := FALSE, PT := T#500MS);\n    END_IF;\n\n    IF xHoldActive THEN\n        tonAlarmHold(IN := TRUE, PT := T#500MS);\n        IF tonAlarmHold.Q THEN\n            xHoldActive := FALSE;\n        END_IF;\n    ELSE\n        tonAlarmHold(IN := FALSE, PT := T#500MS);\n    END_IF;\n\n    THICKNESS_ALARM := THICKNESS_FAULT OR xHoldActive;\nEND_IF;\n\nIF THICKNESS_SIGNAL_VALID AND NOT THICKNESS_FAULT AND CUTTING_RUN THEN\n    Slab_Runtime_Accumulator := Slab_Runtime_Accumulator + TIME_TO_LTIME(CycleTime);\nEND_IF;\n\nxPreviousValidFault := THICKNESS_SIGNAL_VALID AND THICKNESS_FAULT;",
+    "supporting_objects": []
+  },
+  "result_path": "D:\\Learning\\大四秋冬\\genai\\finale\\PLC_Agent_Final\\experiments\\E4\\campaign_2026-10-25T121252267365+0000\\PUB012\\run_2026-10-26T143456101515+0000\\compile_00\\codesys_evidence.json",
+  "started_utc": "2026-10-26T14:36:36.655186+00:00"
+}

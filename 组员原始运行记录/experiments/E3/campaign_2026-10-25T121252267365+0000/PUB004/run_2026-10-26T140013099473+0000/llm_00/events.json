@@ -1,0 +1,4262 @@
+[
+  {
+    "type": "response.created",
+    "sequence_number": 1,
+    "response": {
+      "id": "b93fd7a71fb14864a109d2a25cd19251",
+      "object": "response",
+      "created_at": 1793023215,
+      "status": "in_progress",
+      "background": false,
+      "error": null,
+      "output": [],
+      "model": "deepseek-v4.1-flash"
+    }
+  },
+  {
+    "type": "response.in_progress",
+    "sequence_number": 2,
+    "response": {
+      "id": "b93fd7a71fb14864a109d2a25cd19251",
+      "object": "response",
+      "created_at": 1793023215,
+      "status": "in_progress",
+      "output": [],
+      "model": "deepseek-v4.1-flash"
+    }
+  },
+  {
+    "type": "response.output_item.added",
+    "sequence_number": 3,
+    "output_index": 0,
+    "item": {
+      "id": "rs_b93fd7a71fb14864a109d2a25cd19251_0",
+      "type": "reasoning",
+      "status": "in_progress",
+      "summary": []
+    }
+  },
+  {
+    "type": "response.output_item.done",
+    "item": {
+      "id": "rs_b93fd7a71fb14864a109d2a25cd19251_0",
+      "type": "reasoning",
+      "encrypted_content": "",
+      "summary": [
+        {
+          "type": "summary_text",
+          "text": "We need answer only JSON object with declaration, implementation, supporting_objects. Need implement CODESYS FB_Task. Need exact interface names/types. Need behavior matching tests. Need understand debounce semantics carefully. We can create FB with VAR_INPUT VISCOSITY_OK BOOL; PASTE_E_STOP_NC BOOL; DebounceTime TIME; CycleTime TIME; VAR_OUTPUT VFD_RUN BOOL; PUMP_MAINT_DUE BOOL; PUMP_RUNTIME_ACC LTIME; VAR internal debounceElapsed LTIME? or TIME? Need handle debounce TON-style clock: elapsed zero on first permitted TRUE sample and becomes valid at elapsed >= DebounceTime. Need tests.\n\nLet's analyze tests semantics. Each step has dt_ms and inputs. They say At scan k inputs sampled once, q pre-scan retained, outputs after execution, q next. Timer elapsed time zero on first eligible sampled invocation; dt_ms elapsed wall time since previous invocation, not automatically synthetic input to FB. But FB has CycleTime input actual elapsed interval represented by invocation. For debounce, use CycleTime? Assumptions: DebounceTime and CycleTime positive. Debouncing follows TON-style clock: elapsed is zero on first permitted TRUE sample and becomes valid at elapsed>=DebounceTime. At each invocation, add supplied CycleTime to LTIME accumulator iff end-of-scan VFD_RUN TRUE. The test dt_ms correspond to CycleTime maybe first step dt_ms 0 CycleTime T#1s. Need debounce elapsed increment by CycleTime only while permit? Let's derive T1.\n\nT1 step1: VISCOSITY_OK false, estop true, Debounce 2s, Cycle 1s, dt_ms 0. Expected run false acc0. First scan likely clears debounce elapsed. Step2: VISC true, permit true, dt 1000. Expected run false, acc0. If debounce: first eligible true sample elapsed zero => false (unless DebounceTime? no). Step3: VISC true, dt 1000. Expected false. If at step2 elapsed=0, at step3 add CycleTime? elapsed becomes 1000ms < 2000, false. Step4: VISC true, dt1000. Expected true, acc1000. If step3 elapsed=1000, step4 add 1000 => 2000 >= 2000, run true. Then accumulate CycleTime because end VFD_RUN true => acc=1000. Matches. Step5 true expected acc2000. Step6 VISC false expected run false acc retained. Step7 VISC true expected false acc retained. After false at step6 clear elapsed. Step7 first true elapsed=0 false. Step8 true expected false: elapsed becomes 1000 false. Step9 true expected true acc +1000 = 3000. Matches.\n\nSo algorithm: Each invocation:\n- Determine permit = VISCOSITY_OK AND PASTE_E_STOP_NC? Debounce validity only if permit? Requirement: Accept viscosity condition after VISCOSITY_OK TRUE for DebounceTime. Invalidate immediately when input false. E-stop clears any incomplete debounce timing. They say E-stop resets debounce validity as well as incomplete timing, re-enable requires full new qualification. LTL qualified continuous permitted raw TRUE. So qualification should depend on permit (both VISC and E-stop) and raw VISCOSITY? If estop false while VISC true, we clear. When estop true again, first sample elapsed zero, need full debounce. Thus condition for timer = VISCOSITY_OK AND PASTE_E_STOP_NC (permit). If not, clear elapsed and qualified false. If permit true:\n  - If not currently timing (elapsed maybe sentinel? need distinguish first sample vs elapsed 0), on first eligible sample set elapsed := T#0ms? But need process same scan? TON style: elapsed zero on first permitted TRUE sample and becomes valid at elapsed>=DebounceTime. So first sample no increment. Need flag debounceTimingActive or use elapsed? Since elapsed may be 0 after first sample, next scan add CycleTime. Could maintain debounceElapsed LTIME initialized 0 and debounceStarted BOOL. On permit true:\n    if not debounceStarted: debounceStarted := TRUE; debounceElapsed := LTIME#0ns; qualified := (DebounceTime <= 0?) but positive so false; (maybe if DebounceTime=0 valid immediately? assumption positive, can handle <=0 true).\n    else: debounceElapsed := debounceElapsed + TIME_TO_LTIME(CycleTime); if debounceElapsed >= TIME_TO_LTIME(DebounceTime) then qualified true. But wait if DebounceTime positive, after second sample with CycleTime=2s? Could become valid. T1 step2 first sample elapsed 0; step3 add 1s (elapsed 1s); step4 add 1s -> 2s valid. Good.\n  - If permit false: debounceStarted false; elapsed 0; qualified false.\nHowever need if permit true already qualified, no need increment? Could keep increment indefinitely or stop. To maintain qualified true. But if DebounceTime changes? Not relevant. Could keep. Need ensure if VISCOSITY_OK true but estop false: permit false, clear. Then next estop true first sample elapsed 0, full qualification. T2: Step1 VISC true estop true dt0 expected run false acc0. First eligible sample: elapsed 0 false. Step2 dt1000: elapsed 1000 <2000 false. Step3 estop false: clear. Step4 estop true dt1000: first sample after clear elapsed 0 false. Step5 dt1000: elapsed 1000 false. Step6 dt1000: elapsed 2000 true, acc +1000 => expected acc1000. Step7 estop false run false acc retained. Good.\n\nNeed implement VFD_RUN only when PASTE_E_STOP_NC TRUE and viscosity condition valid. Permit includes estop. VFD_RUN := PASTE_E_STOP_NC AND qualified. But if raw VISC false, qualified false. If estop false, qualified false. Good.\n\nAccumulator: Add CycleTime to LTIME if end-of-scan VFD_RUN TRUE. Preserve while stopped. Use PUMP_RUNTIME_ACC := PUMP_RUNTIME_ACC + TIME_TO_LTIME(CycleTime) if VFD_RUN. Need maintenance due after accumulate: PUMP_MAINT_DUE := PUMP_RUNTIME_ACC >= LTIME#500h? Or 500h threshold. In T3: step1 first sample true, DebounceTime 2s, dt0 expected run false acc0. Step2 CycleTime T#500h dt 1800000000. Wait input CycleTime = T#500h; expected VFD_RUN true and acc 1800000000ms, maintenance true. How does debounce become true on step2 with DebounceTime 2s? Step1 first sample elapsed 0 false. Step2 is second sample, add CycleTime 500h => elapsed >=2s so qualified true. Run true. Accumulate CycleTime 500h => acc 500h, maint true. Good. Our algorithm: step1 first sample elapsed0 false; step2 add 500h -> qualified true; run true; acc += 500h. Good.\n\nPotential issue TIME_TO_LTIME conversion in CODESYS. TIME is 32-bit ms, LTIME is 64-bit ns. Standard conversion? In CODESYS, TIME_TO_LTIME maybe available? Need use standard library. Could use LTIME(TIME_TO_...?). Need produce compilable CODESYS 3.5 ST. Need know conversions: In CODESYS, TIME and LTIME are distinct. There are conversion functions TIME_TO_LTIME? I think standard IEC has TIME_TO_LTIME? In CODESYS, maybe function TIME_TO_LTIME exists? Need be careful. Could use TIME_TO_UDINT(CycleTime) then multiply by 1000000? LTIME units nanoseconds. CODESYS LTIME literal T#? Actually LTIME#500h. Conversion TIME_TO_LTIME likely returns LTIME. I recall CODESYS has conversion operators: TIME_TO_LTIME, LTIME_TO_TIME maybe? There are standard functions? In TwinCAT, TIME_TO_LTIME exists. CODESYS likely has TIME_TO_LTIME. The requirements mention \"TIME_TO_LTIME(CycleTime)\" in LTL. So safe.\n\nNeed define supporting_objects? Maybe none? But need \"supporting_objects is a list of helper DUT/POU objects, each...\" Could be empty list. We can implement all in FB with internal vars. No helper DUT. Need include declaration as \"FUNCTION_BLOCK FB_Task\" followed by all VAR sections; omit END_FUNCTION_BLOCK. Implementation ST body alone. supporting_objects [].\n\nBut maybe need define LTIME threshold constant? Could use `LTIME#500h` directly in comparison. CODESYS supports LTIME#500h? yes likely. Or use `LTIME#1800000000ms`? `LTIME#500h` valid? In CODESYS, time literal for LTIME? Usually `LTIME#500h` or `LTIME#T500h`? IEC: LTIME#500h maybe. The spec uses `LTIME#500h`. We can use. Need ensure syntax: `PUMP_MAINT_DUE := PUMP_RUNTIME_ACC >= LTIME#500h;` Good.\n\nNeed be mindful variable names and declarations. The declaration:\n```\nFUNCTION_BLOCK FB_Task\nVAR_INPUT\n    VISCOSITY_OK : BOOL;\n    PASTE_E_STOP_NC : BOOL;\n    DebounceTime : TIME;\n    CycleTime : TIME;\nEND_VAR\nVAR_OUTPUT\n    VFD_RUN : BOOL;\n    PUMP_MAINT_DUE : BOOL;\n    PUMP_RUNTIME_ACC : LTIME;\nEND_VAR\nVAR\n    debounceElapsed : LTIME := LTIME#0ns;\n    debounceStarted : BOOL := FALSE;\n    viscosityQualified : BOOL := FALSE;\n    dtLT : LTIME;\nEND_VAR\n```\nNeed initial outputs at power-up: initialize in declaration? VAR_OUTPUT can have init values maybe. In CODESYS, output variables initialized in declarations? Yes. But at power-up FB instance variables initialized. We can set `VFD_RUN : BOOL := FALSE; PUMP_RUNTIME_ACC : LTIME := LTIME#0ns; PUMP_MAINT_DUE : BOOL := FALSE;` in VAR_OUTPUT. Also internal. But implementation should ensure. Could also assign at start? No, would reset every scan. Use init in declaration. Need maybe output init not allowed? In CODESYS, variables in VAR_OUTPUT can have initial values? I think yes. To be safe, declare without init and initialize internal in VAR? But outputs need init at instance creation. We can include initial values in VAR_OUTPUT. CODESYS allows variable initialization in VAR blocks including outputs. Good.\n\nImplementation logic carefully with order:\n```\nIF NOT PASTE_E_STOP_NC OR NOT VISCOSITY_OK THEN\n    debounceStarted := FALSE;\n    debounceElapsed := LTIME#0ns;\n    viscosityQualified := FALSE;\nELSE\n    IF NOT debounceStarted THEN\n        debounceStarted := TRUE;\n        debounceElapsed := LTIME#0ns;\n        IF DebounceTime <= T#0ms THEN\n            viscosityQualified := TRUE;\n        ELSE\n            viscosityQualified := FALSE;\n        END_IF\n    ELSE\n        IF NOT viscosityQualified THEN\n            debounceElapsed := debounceElapsed + TIME_TO_LTIME(CycleTime);\n            IF debounceElapsed >= TIME_TO_LTIME(DebounceTime) THEN\n                viscosityQualified := TRUE;\n            END_IF\n        END_IF\n    END_IF\nEND_IF\n\nVFD_RUN := PASTE_E_STOP_NC AND VISCOSITY_OK AND viscosityQualified; \n```\nBut requirement VFD_RUN true only when estop true and viscosity condition valid. Since viscosityQualified already depends on estop? We clear when estop false; but in same scan if estop false, qualified false. So `VFD_RUN := PASTE_E_STOP_NC AND VISCOSITY_OK AND viscosityQualified;` or `PASTE_E_STOP_NC AND viscosityQualified` because qualified false if VISC false. But include both for clarity. If DebounceTime positive. If DebounceTime <=0, first sample qualified true and VFD_RUN true on first scan. Assumption positive; okay.\n\nThen accumulate:\n```\nIF VFD_RUN THEN\n    PUMP_RUNTIME_ACC := PUMP_RUNTIME_ACC + TIME_TO_LTIME(CycleTime);\nEND_IF\nPUMP_MAINT_DUE := PUMP_RUNTIME_ACC >= LTIME#500h;\n```\nNeed maintenance due at power-up false. If acc initially 0 < threshold false. If threshold maybe 500h. Good.\n\nBut need consider debounce timer update order relative to VFD_RUN. The tests: T1 step4 with VISC true, CycleTime 1s. At start debounceElapsed after step3 = 1s? Let's trace our algorithm:\nStep1 permit false -> clear. Step2 permit true not started -> started true elapsed0 qualified false. Step3 started true not qualified -> elapsed += 1s =>1s (<2). Step4 -> elapsed +=1s=>2s qualified true. VFD_RUN true. Acc += CycleTime =>1s. Good.\nT3 step1: permit true not started -> elapsed0 false. Step2 started true not qualified -> elapsed += 500h => qualified true; run true; acc += 500h. Good.\n\nNeed consider if VISCOSITY_OK false while estop true: clear. If estop true and VISC true but qualified true, then VISC false -> clear. Good.\n\nPotential issue: When permit true and already qualified, if DebounceTime changes? no.\n\nNeed implement `TIME_TO_LTIME`. Is there a function in CODESYS? The LTL uses, but actual ST maybe conversion operator `LTIME(TIME_TO_UDINT(...))`? Let's verify CODESYS 3.5 conversions. In CODESYS, `TIME_TO_LTIME` is a conversion function? I know in IEC 61131-3, standard conversion functions include `TIME_TO_LTIME`? Actually types: TIME, LTIME, DATE, etc. There are conversion functions: `TIME_TO_LTIME` might be in CODESYS? I have seen `TIME_TO_LTIME` in TwinCAT? Let's recall CODESYS lib: `TIME_TO_LTIME` perhaps not; standard operators include `LTIME_TO_TIME`, `TIME_TO_LTIME`? The CODESYS help: \"TIME_TO_LTIME\" converts TIME to LTIME. Yes likely.\n\nNeed if cannot use, define helper function `F_TIME_TO_LTIME`? But supporting_objects could include helper function. But requirement says standard library available. Could avoid conversion by using multiplication: `LTIME#1ms * TIME_TO_UDINT(CycleTime)`? In CODESYS, `TIME_TO_UDINT` exists. LTIME multiplication by integer? `TIME_TO_UDINT(CycleTime) * LTIME#1ms` maybe returns LTIME? But type of LTIME#1ms is LTIME, multiplication by UDINT might be allowed? Could cast. But simpler use TIME_TO_LTIME. Need also convert DebounceTime. Could compare using `debounceElapsed >= TIME_TO_LTIME(DebounceTime)`. Good.\n\nPotential issue `DebounceTime <= T#0ms` valid? TIME literal `T#0ms` yes. Could use `DebounceTime <= TIME#0ms`? CODESYS uses `T#0ms` or `TIME#0ms`. Use `T#0ms`.\n\nNeed output init in declaration:\n```\nVAR_OUTPUT\n    VFD_RUN : BOOL := FALSE;\n    PUMP_MAINT_DUE : BOOL := FALSE;\n    PUMP_RUNTIME_ACC : LTIME := LTIME#0ns;\nEND_VAR\n```\nNeed internal init:\n```\nVAR\n    debounceStarted : BOOL := FALSE;\n    debounceElapsed : LTIME := LTIME#0ns;\n    viscosityQualified : BOOL := FALSE;\nEND_VAR\n```\n\nCould put `dtLT` not needed. In implementation, call TIME_TO_LTIME twice maybe. Fine.\n\nNeed ensure no END_FUNCTION_BLOCK in declaration per instruction. Implementation is ST body alone, no enclosing `END_FUNCTION_BLOCK`? They said declaration is CODESYS FUNCTION_BLOCK FB_Task followed by all VAR sections; omit END_FUNCTION_BLOCK. implementation is ST body alone. So JSON:\n```\n{\n  \"declaration\": \"FUNCTION_BLOCK FB_Task\\nVAR_INPUT\\n...END_VAR\\nVAR_OUTPUT\\n...END_VAR\\nVAR\\n...END_VAR\",\n  \"implementation\": \"IF NOT ...\\nEND_IF\\n...\",\n  \"supporting_objects\": []\n}\n```\nNeed no markdown. Ensure valid JSON escaping newlines. Could include newline characters as `\\n`. Need only JSON object. No extra text.\n\nNeed consider if declaration should include `VAR_OUTPUT` initial values? In CODESYS, declaration syntax: \n```\nFUNCTION_BLOCK FB_Task\nVAR_INPUT\n...\nEND_VAR\nVAR_OUTPUT\n...\nEND_VAR\nVAR\n...\nEND_VAR\n```\nNo `END_FUNCTION_BLOCK`. Good.\n\nNeed maybe declare `DebounceTime` and `CycleTime` as `TIME` inputs. `PUMP_RUNTIME_ACC` LTIME output. Good.\n\nCould there be issue with comparing `debounceElapsed >= TIME_TO_LTIME(DebounceTime)` if `DebounceTime` is TIME and conversion returns LTIME. Good.\n\nPotential subtle: The debounce condition should accept VISCOSITY_OK after it has remained TRUE for DebounceTime. E-stop may be separate. Our timer only runs when both permit true. Is that correct? Spec: Allow VFD_RUN only when PASTE_E_STOP_NC TRUE and viscosity condition valid. Emergency stop clears incomplete debounce timing. If VISC true but E-stop false, should debounce be timing? It says E-stop clears incomplete timing; re-enable requires full new qualification. So no. Good.\n\nPotential subtle: If PASTE_E_STOP_NC false while VISC true and debounce started, clear. When e-stop true again, first sample starts. Good.\n\nPotential subtle: If VISCOSITY_OK false but E-stop true, clear. Good.\n\nPotential subtle: `VFD_RUN := PASTE_E_STOP_NC AND VISCOSITY_OK AND viscosityQualified;` If DebounceTime=0 and first sample true, qualified true; run true. Good.\n\nPotential subtle: Maintenance due should set when accumulated runtime reaches 500 hours. Our due computed after accumulation. T3 step2 acc becomes 500h and due true. Good. Does due persist? yes no reset. If acc threshold reached, due true. Good.\n\nPotential subtle: At power-up initialize acc to zero. Declaration does. But if outputs are retained? In CODESYS, FB instance variables initialized on creation. Good.\n\nPotential subtle: Need preserve acc while stopped. Our code only adds if run. Good.\n\nPotential subtle: CycleTime may be `TIME` positive, but T3 CycleTime T#500h fits 1.8e9 ms (<2^31? 1.8e9 <2.147e9), okay. TIME_TO_LTIME returns 1.8e15 ns? Wait 500h = 1,800,000,000 ms = 1.8e9 ms; in ns = 1.8e15 ns, fits LTIME. Good. The expected PUMP_RUNTIME_ACC `LTIME#1800000000ms` means 1.8e9 ms. LTIME can hold. Our conversion adds ns. Good.\n\nPotential issue `LTIME#500h` literal value maybe 500 hours in ns = 1.8e15 ns. Good.\n\nNeed maybe include helper function to convert TIME to LTIME if standard conversion not available. But standard library available. The LTL explicitly references TIME_TO_LTIME, so answer expected. But if function name in CODESYS is `TIME_TO_LTIME`? I think yes.\n\nLet's think of CODESYS syntax for time literal `LTIME#0ns` and `LTIME#500h`. Is `ns` valid for LTIME? Yes. But `LTIME#500h` maybe accepted. To be safer use `LTIME#1800000000ms`? But `LTIME#500h` is specified. CODESYS time literal for LTIME might require `LTIME#T500h`? Let's recall IEC 61131-3: Duration literal for LTIME: `LTIME#4d5h3m2s1ms2us3ns` perhaps. Prefix `LTIME#` then duration. So `LTIME#500h` okay. For TIME: `T#500h`. For LTIME: `LTIME#500h`. Good.\n\nNeed maybe use `TIME_TO_LTIME` function conversion in implementation. If function not found, compilation fails. Could alternatively define supporting function `F_TIME_TO_LTIME` ourselves and use that. But task says standard library available, expected use. If we define own helper, we can avoid reliance? But implementing own conversion: \n```\nFUNCTION F_TIME_TO_LTIME : LTIME\nVAR_INPUT\n    t : TIME;\nEND_VAR\nF_TIME_TO_LTIME := LTIME#1ms * TIME_TO_UDINT(t);\n```\nIs multiplication of LTIME by UDINT allowed? In CODESYS, arithmetic with LTIME and integer? There is no implicit. Could use `LTIME(TIME_TO_UDINT(t)) * LTIME#1ms` maybe. But not sure. Better use standard `TIME_TO_LTIME`.\n\nNeed maybe include `VAR CONSTANT MAINT_LIMIT : LTIME := LTIME#500h; END_VAR`? Declaration all VAR sections can include VAR CONSTANT. But not necessary.\n\nNeed output `PUMP_RUNTIME_ACC` as LTIME. Good.\n\nLet's consider if internal `debounceStarted` needed. Alternative use `debounceElapsed` and a `debounceFirst` flag. We have. Need ensure if permit true and `viscosityQualified` true, we don't update timer. If later permit false, clear. Good.\n\nCould there be an issue if `DebounceTime` changes to larger than current elapsed after qualified? Not specified. If qualified true, we keep qualified even if DebounceTime increases. Not relevant. Could recalc? No.\n\nNeed maybe if `DebounceTime <= 0` then qualified true. But if permit true and not started: set started true, elapsed 0, if DebounceTime <= T#0ms then qualified true else false. Good. At next scan, if qualified true no increment. If DebounceTime was 0, run true first scan. Good.\n\nNeed if `CycleTime` nonpositive? Assumption positive. No validation.\n\nNeed JSON escaping. Let's produce exactly JSON object. Need \"supporting_objects\": []. Good.\n\nBut let's double-check implementation order for T1 step1: permit false, clear, VFD_RUN false; then if VFD_RUN false no acc; due = acc>=500h false. Good. Step2 permit true not started -> started true elapsed0 qualified false; VFD_RUN false; no acc; due false. Good. Step3 elapsed +1s =1s false; run false; no acc. Step4 elapsed +1s=2s true; run true; acc +=1s; due false. Step5 run true; started true qualified true; no timer inc; run true; acc +=1s =>2s. Good. Step6 permit false clear; run false; acc unchanged. Good. Step7 first true elapsed0 false; run false. Step8 +1s=1s false. Step9 +1s=2s true; run true; acc +=1s=>3s. Good.\n\nT2 step1 first true elapsed0 false. Step2 +1s=1s false. Step3 estop false clear. Step4 estop true first sample elapsed0 false. Step5 +1s=1s false. Step6 +1s=2s true; run true; acc +=1s=1s. Step7 estop false clear run false acc retained 1s. Good.\n\nT3 step1 first true elapsed0 false. Step2 +500h=qualified true; run true; acc +=500h; due true. Step3 started qualified true; run true; acc +=1s => 500h+1s; due true. Step4 VISC false clear; run false; acc unchanged; due true. Good.\n\nNeed maybe `PUMP_MAINT_DUE := PUMP_RUNTIME_ACC >= LTIME#500h;` after acc. If acc exactly 500h due true. Good.\n\nNeed maybe declare `viscosityQualified` not output. Good.\n\nNeed if `PASTE_E_STOP_NC` false but `VISCOSITY_OK` true, `VFD_RUN` false immediate. Good.\n\nPotential issue with using `NOT PASTE_E_STOP_NC OR NOT VISCOSITY_OK`: In ST, `NOT` has higher precedence than OR? Yes. Could parenthesize. Use `IF (NOT PASTE_E_STOP_NC) OR (NOT VISCOSITY_OK) THEN`. Good.\n\nNeed maybe if `VISCOSITY_OK` true and `PASTE_E_STOP_NC` true but `DebounceTime` positive, first sample no increment. Good.\n\nNeed maybe `debounceElapsed := debounceElapsed + TIME_TO_LTIME(CycleTime);` If `debounceElapsed` overflows LTIME? unlikely. Good.\n\nNeed maybe if `DebounceTime` is TIME, `TIME_TO_LTIME(DebounceTime)` on each scan. Good.\n\nLet's produce JSON. Need ensure no markdown, only JSON. We can include newline escapes. Example:\n```\n{\n  \"declaration\": \"FUNCTION_BLOCK FB_Task\\nVAR_INPUT\\n    VISCOSITY_OK : BOOL;\\n...\",\n  \"implementation\": \"IF (NOT PASTE_E_STOP_NC) OR (NOT VISCOSITY_OK) THEN\\n...\",\n  \"supporting_objects\": []\n}\n```\nNeed include semicolons. Implementation body:\n```\nIF (NOT PASTE_E_STOP_NC) OR (NOT VISCOSITY_OK) THEN\n    debounceStarted := FALSE;\n    debounceElapsed := LTIME#0ns;\n    viscosityQualified := FALSE;\nELSE\n    IF NOT debounceStarted THEN\n        debounceStarted := TRUE;\n        debounceElapsed := LTIME#0ns;\n        IF DebounceTime <= T#0ms THEN\n            viscosityQualified := TRUE;\n        ELSE\n            viscosityQualified := FALSE;\n        END_IF\n    ELSIF NOT viscosityQualified THEN\n        debounceElapsed := debounceElapsed + TIME_TO_LTIME(CycleTime);\n        IF debounceElapsed >= TIME_TO_LTIME(DebounceTime) THEN\n            viscosityQualified := TRUE;\n        END_IF\n    END_IF\nEND_IF\n\nVFD_RUN := PASTE_E_STOP_NC AND VISCOSITY_OK AND viscosityQualified;\n\nIF VFD_RUN THEN\n    PUMP_RUNTIME_ACC := PUMP_RUNTIME_ACC + TIME_TO_LTIME(CycleTime);\nEND_IF\n\nPUMP_MAINT_DUE := PUMP_RUNTIME_ACC >= LTIME#500h;\n```\nNeed if `DebounceTime <= T#0ms` compare TIME to time literal. Good. Could avoid the `DebounceTime <= T#0ms` branch because positive but okay.\n\nPotential issue: In CODESYS, `ELSIF` is correct (not ELSEIF). Use `ELSIF`.\n\nNeed declaration output init:\n```\nVAR_OUTPUT\n    VFD_RUN : BOOL := FALSE;\n    PUMP_MAINT_DUE : BOOL := FALSE;\n    PUMP_RUNTIME_ACC : LTIME := LTIME#0ns;\nEND_VAR\n```\nGood.\n\nNeed maybe VAR internal init with `debounceStarted : BOOL := FALSE;` etc.\n\nLet's final."
+        }
+      ]
+    },
+    "output_index": 0,
+    "sequence_number": 6173
+  },
+  {
+    "type": "response.output_item.added",
+    "sequence_number": 6174,
+    "output_index": 1,
+    "item": {
+      "id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+      "type": "message",
+      "status": "in_progress",
+      "content": [],
+      "role": "assistant"
+    }
+  },
+  {
+    "type": "response.content_part.added",
+    "sequence_number": 6175,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "part": {
+      "type": "output_text",
+      "annotations": [],
+      "logprobs": [],
+      "text": ""
+    }
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6176,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "{\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6177,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6178,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " \"",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6179,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "decl",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6180,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "aration",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6181,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\":",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6182,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " \"",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6183,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "F",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6184,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "UNCTION",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6185,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_B",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6186,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "LOCK",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6187,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " FB",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6188,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_T",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6189,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ask",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6190,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6191,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "VAR",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6192,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_IN",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6193,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "PUT",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6194,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6195,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6196,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " V",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6197,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ISC",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6198,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "OS",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6199,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ITY",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6200,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_OK",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6201,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6202,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " BO",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6203,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "OL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6204,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6205,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6206,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6207,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " PA",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6208,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "STE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6209,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_E",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6210,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_ST",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6211,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "OP",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6212,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_N",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6213,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "C",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6214,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6215,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " BO",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6216,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "OL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6217,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6218,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6219,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6220,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " Deb",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6221,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ounce",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6222,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Time",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6223,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6224,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " TIME",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6225,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6226,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6227,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6228,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " Cycle",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6229,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Time",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6230,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6231,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " TIME",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6232,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6233,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6234,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "END",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6235,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_V",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6236,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "AR",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6237,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6238,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "VAR",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6239,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_OUT",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6240,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "PUT",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6241,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6242,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6243,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " V",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6244,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "FD",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6245,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_R",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6246,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "UN",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6247,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6248,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " BO",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6249,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "OL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6250,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6251,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " FALSE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6252,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6253,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6254,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6255,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " PU",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6256,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "MP",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6257,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6258,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "MA",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6259,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "INT",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6260,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_D",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6261,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "UE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6262,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6263,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " BO",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6264,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "OL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6265,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6266,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " FALSE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6267,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6268,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6269,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6270,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " PU",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6271,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "MP",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6272,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_R",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6273,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "UNT",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6274,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "IME",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6275,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6276,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ACC",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6277,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6278,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " LT",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6279,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "IME",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6280,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6281,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " LT",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6282,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "IME",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6283,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "#",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6284,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "0",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6285,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ns",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6286,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6287,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6288,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "END",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6289,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_V",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6290,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "AR",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6291,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6292,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "VAR",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6293,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6294,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6295,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " deb",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6296,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ounce",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6297,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Started",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6298,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6299,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " BO",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6300,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "OL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6301,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6302,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " FALSE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6303,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6304,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6305,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6306,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " deb",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6307,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ounce",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6308,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "El",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6309,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "apsed",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6310,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6311,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " LT",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6312,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "IME",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6313,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6314,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " LT",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6315,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "IME",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6316,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "#",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6317,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "0",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6318,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ns",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6319,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6320,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6321,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6322,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " viscosity",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6323,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Qual",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6324,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ified",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6325,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6326,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " BO",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6327,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "OL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6328,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6329,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " FALSE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6330,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6331,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6332,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "END",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6333,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_V",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6334,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "AR",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6335,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\",\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6336,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6337,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " \"",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6338,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "implementation",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6339,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\":",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6340,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " \"",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6341,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6342,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " (",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6343,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "NOT",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6344,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " PA",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6345,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "STE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6346,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_E",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6347,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_ST",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6348,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "OP",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6349,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_N",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6350,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "C",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6351,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ")",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6352,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " OR",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6353,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " (",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6354,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "NOT",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6355,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " V",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6356,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ISC",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6357,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "OS",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6358,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ITY",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6359,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_OK",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6360,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ")",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6361,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " THEN",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6362,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6363,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6364,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " deb",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6365,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ounce",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6366,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Started",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6367,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6368,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " FALSE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6369,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6370,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6371,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6372,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " deb",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6373,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ounce",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6374,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "El",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6375,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "apsed",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6376,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6377,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " LT",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6378,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "IME",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6379,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "#",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6380,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "0",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6381,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ns",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6382,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6383,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6384,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6385,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " viscosity",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6386,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Qual",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6387,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ified",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6388,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6389,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " FALSE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6390,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6391,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6392,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "EL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6393,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "SE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6394,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6395,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6396,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6397,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " NOT",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6398,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " deb",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6399,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ounce",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6400,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Started",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6401,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " THEN",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6402,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6403,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "       ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6404,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " deb",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6405,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ounce",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6406,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Started",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6407,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6408,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " TRUE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6409,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6410,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6411,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "       ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6412,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " deb",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6413,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ounce",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6414,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "El",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6415,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "apsed",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6416,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6417,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " LT",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6418,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "IME",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6419,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "#",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6420,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "0",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6421,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ns",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6422,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6423,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6424,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "       ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6425,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6426,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " Deb",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6427,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ounce",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6428,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Time",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6429,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " <=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6430,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " T",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6431,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "#",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6432,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "0",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6433,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ms",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6434,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " THEN",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6435,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6436,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "           ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6437,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " viscosity",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6438,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Qual",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6439,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ified",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6440,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6441,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " TRUE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6442,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6443,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6444,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "       ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6445,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ELSE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6446,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6447,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "           ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6448,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " viscosity",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6449,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Qual",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6450,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ified",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6451,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6452,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " FALSE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6453,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6454,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6455,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "       ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6456,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " END",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6457,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6458,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6459,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6460,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6461,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " E",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6462,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "LS",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6463,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6464,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " NOT",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6465,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " viscosity",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6466,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Qual",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6467,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ified",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6468,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " THEN",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6469,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6470,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "       ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6471,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " deb",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6472,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ounce",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6473,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "El",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6474,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "apsed",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6475,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6476,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " deb",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6477,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ounce",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6478,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "El",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6479,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "apsed",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6480,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " +",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6481,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " TIME",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6482,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_TO",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6483,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_L",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6484,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "TIME",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6485,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "(C",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6486,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "y",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6487,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "cle",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6488,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Time",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6489,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ");",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6490,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6491,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6492,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "       ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6493,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6494,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " deb",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6495,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ounce",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6496,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "El",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6497,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "apsed",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6498,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " >=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6499,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " TIME",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6500,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_TO",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6501,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_L",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6502,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "TIME",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6503,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "(D",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6504,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "eb",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6505,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ounce",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6506,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Time",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6507,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ")",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6508,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " THEN",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6509,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6510,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "           ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6511,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " viscosity",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6512,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Qual",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6513,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ified",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6514,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6515,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " TRUE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6516,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6517,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6518,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "       ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6519,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " END",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6520,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6521,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6522,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6523,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6524,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " END",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6525,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6526,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6527,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6528,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "END",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6529,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6530,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6531,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6532,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6533,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "V",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6534,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "FD",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6535,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_R",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6536,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "UN",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6537,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6538,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " PA",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6539,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "STE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6540,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_E",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6541,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_ST",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6542,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "OP",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6543,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_N",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6544,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "C",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6545,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " AND",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6546,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " V",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6547,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ISC",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6548,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "OS",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6549,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ITY",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6550,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_OK",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6551,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " AND",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6552,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " viscosity",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6553,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Qual",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6554,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ified",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6555,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6556,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6557,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6558,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6559,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " V",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6560,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "FD",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6561,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_R",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6562,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "UN",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6563,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " THEN",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6564,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6565,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6566,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " PU",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6567,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "MP",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6568,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_R",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6569,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "UNT",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6570,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "IME",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6571,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6572,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ACC",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6573,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6574,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " PU",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6575,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "MP",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6576,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_R",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6577,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "UNT",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6578,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "IME",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6579,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6580,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ACC",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6581,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " +",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6582,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " TIME",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6583,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_TO",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6584,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_L",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6585,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "TIME",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6586,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "(C",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6587,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "y",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6588,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "cle",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6589,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Time",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6590,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ");",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6591,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6592,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6593,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "END",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6594,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6595,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6596,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6597,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6598,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "PU",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6599,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "MP",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6600,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6601,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "MA",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6602,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "INT",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6603,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_D",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6604,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "UE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6605,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6606,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " PU",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6607,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "MP",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6608,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_R",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6609,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "UNT",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6610,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "IME",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6611,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6612,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ACC",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6613,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " >=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6614,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " LT",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6615,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "IME",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6616,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "#",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6617,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "500",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6618,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "h",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6619,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6620,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\",\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6621,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6622,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " \"",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6623,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "support",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6624,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ing",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6625,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6626,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "objects",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6627,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\":",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6628,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " []\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6629,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "}",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.done",
+    "sequence_number": 6630,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "text": "{\n  \"declaration\": \"FUNCTION_BLOCK FB_Task\\nVAR_INPUT\\n    VISCOSITY_OK : BOOL;\\n    PASTE_E_STOP_NC : BOOL;\\n    DebounceTime : TIME;\\n    CycleTime : TIME;\\nEND_VAR\\nVAR_OUTPUT\\n    VFD_RUN : BOOL := FALSE;\\n    PUMP_MAINT_DUE : BOOL := FALSE;\\n    PUMP_RUNTIME_ACC : LTIME := LTIME#0ns;\\nEND_VAR\\nVAR\\n    debounceStarted : BOOL := FALSE;\\n    debounceElapsed : LTIME := LTIME#0ns;\\n    viscosityQualified : BOOL := FALSE;\\nEND_VAR\",\n  \"implementation\": \"IF (NOT PASTE_E_STOP_NC) OR (NOT VISCOSITY_OK) THEN\\n    debounceStarted := FALSE;\\n    debounceElapsed := LTIME#0ns;\\n    viscosityQualified := FALSE;\\nELSE\\n    IF NOT debounceStarted THEN\\n        debounceStarted := TRUE;\\n        debounceElapsed := LTIME#0ns;\\n        IF DebounceTime <= T#0ms THEN\\n            viscosityQualified := TRUE;\\n        ELSE\\n            viscosityQualified := FALSE;\\n        END_IF\\n    ELSIF NOT viscosityQualified THEN\\n        debounceElapsed := debounceElapsed + TIME_TO_LTIME(CycleTime);\\n        IF debounceElapsed >= TIME_TO_LTIME(DebounceTime) THEN\\n            viscosityQualified := TRUE;\\n        END_IF\\n    END_IF\\nEND_IF\\n\\nVFD_RUN := PASTE_E_STOP_NC AND VISCOSITY_OK AND viscosityQualified;\\n\\nIF VFD_RUN THEN\\n    PUMP_RUNTIME_ACC := PUMP_RUNTIME_ACC + TIME_TO_LTIME(CycleTime);\\nEND_IF\\n\\nPUMP_MAINT_DUE := PUMP_RUNTIME_ACC >= LTIME#500h;\",\n  \"supporting_objects\": []\n}",
+    "logprobs": []
+  },
+  {
+    "type": "response.content_part.done",
+    "sequence_number": 6631,
+    "item_id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+    "output_index": 1,
+    "content_index": 0,
+    "part": {
+      "type": "output_text",
+      "annotations": [],
+      "logprobs": [],
+      "text": "{\n  \"declaration\": \"FUNCTION_BLOCK FB_Task\\nVAR_INPUT\\n    VISCOSITY_OK : BOOL;\\n    PASTE_E_STOP_NC : BOOL;\\n    DebounceTime : TIME;\\n    CycleTime : TIME;\\nEND_VAR\\nVAR_OUTPUT\\n    VFD_RUN : BOOL := FALSE;\\n    PUMP_MAINT_DUE : BOOL := FALSE;\\n    PUMP_RUNTIME_ACC : LTIME := LTIME#0ns;\\nEND_VAR\\nVAR\\n    debounceStarted : BOOL := FALSE;\\n    debounceElapsed : LTIME := LTIME#0ns;\\n    viscosityQualified : BOOL := FALSE;\\nEND_VAR\",\n  \"implementation\": \"IF (NOT PASTE_E_STOP_NC) OR (NOT VISCOSITY_OK) THEN\\n    debounceStarted := FALSE;\\n    debounceElapsed := LTIME#0ns;\\n    viscosityQualified := FALSE;\\nELSE\\n    IF NOT debounceStarted THEN\\n        debounceStarted := TRUE;\\n        debounceElapsed := LTIME#0ns;\\n        IF DebounceTime <= T#0ms THEN\\n            viscosityQualified := TRUE;\\n        ELSE\\n            viscosityQualified := FALSE;\\n        END_IF\\n    ELSIF NOT viscosityQualified THEN\\n        debounceElapsed := debounceElapsed + TIME_TO_LTIME(CycleTime);\\n        IF debounceElapsed >= TIME_TO_LTIME(DebounceTime) THEN\\n            viscosityQualified := TRUE;\\n        END_IF\\n    END_IF\\nEND_IF\\n\\nVFD_RUN := PASTE_E_STOP_NC AND VISCOSITY_OK AND viscosityQualified;\\n\\nIF VFD_RUN THEN\\n    PUMP_RUNTIME_ACC := PUMP_RUNTIME_ACC + TIME_TO_LTIME(CycleTime);\\nEND_IF\\n\\nPUMP_MAINT_DUE := PUMP_RUNTIME_ACC >= LTIME#500h;\",\n  \"supporting_objects\": []\n}"
+    }
+  },
+  {
+    "type": "response.output_item.done",
+    "sequence_number": 6632,
+    "output_index": 1,
+    "item": {
+      "id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+      "type": "message",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "annotations": [],
+          "logprobs": [],
+          "text": "{\n  \"declaration\": \"FUNCTION_BLOCK FB_Task\\nVAR_INPUT\\n    VISCOSITY_OK : BOOL;\\n    PASTE_E_STOP_NC : BOOL;\\n    DebounceTime : TIME;\\n    CycleTime : TIME;\\nEND_VAR\\nVAR_OUTPUT\\n    VFD_RUN : BOOL := FALSE;\\n    PUMP_MAINT_DUE : BOOL := FALSE;\\n    PUMP_RUNTIME_ACC : LTIME := LTIME#0ns;\\nEND_VAR\\nVAR\\n    debounceStarted : BOOL := FALSE;\\n    debounceElapsed : LTIME := LTIME#0ns;\\n    viscosityQualified : BOOL := FALSE;\\nEND_VAR\",\n  \"implementation\": \"IF (NOT PASTE_E_STOP_NC) OR (NOT VISCOSITY_OK) THEN\\n    debounceStarted := FALSE;\\n    debounceElapsed := LTIME#0ns;\\n    viscosityQualified := FALSE;\\nELSE\\n    IF NOT debounceStarted THEN\\n        debounceStarted := TRUE;\\n        debounceElapsed := LTIME#0ns;\\n        IF DebounceTime <= T#0ms THEN\\n            viscosityQualified := TRUE;\\n        ELSE\\n            viscosityQualified := FALSE;\\n        END_IF\\n    ELSIF NOT viscosityQualified THEN\\n        debounceElapsed := debounceElapsed + TIME_TO_LTIME(CycleTime);\\n        IF debounceElapsed >= TIME_TO_LTIME(DebounceTime) THEN\\n            viscosityQualified := TRUE;\\n        END_IF\\n    END_IF\\nEND_IF\\n\\nVFD_RUN := PASTE_E_STOP_NC AND VISCOSITY_OK AND viscosityQualified;\\n\\nIF VFD_RUN THEN\\n    PUMP_RUNTIME_ACC := PUMP_RUNTIME_ACC + TIME_TO_LTIME(CycleTime);\\nEND_IF\\n\\nPUMP_MAINT_DUE := PUMP_RUNTIME_ACC >= LTIME#500h;\",\n  \"supporting_objects\": []\n}"
+        }
+      ],
+      "role": "assistant"
+    }
+  },
+  {
+    "type": "response.completed",
+    "sequence_number": 6633,
+    "response": {
+      "id": "b93fd7a71fb14864a109d2a25cd19251",
+      "object": "response",
+      "created_at": 1793023215,
+      "status": "completed",
+      "background": false,
+      "error": null,
+      "max_output_tokens": 8192,
+      "model": "deepseek-v4.1-flash",
+      "reasoning": {
+        "effort": "medium"
+      },
+      "store": false,
+      "output": [
+        {
+          "id": "rs_b93fd7a71fb14864a109d2a25cd19251_0",
+          "type": "reasoning",
+          "summary": [
+            {
+              "type": "summary_text",
+              "text": "We need answer only JSON object with declaration, implementation, supporting_objects. Need implement CODESYS FB_Task. Need exact interface names/types. Need behavior matching tests. Need understand debounce semantics carefully. We can create FB with VAR_INPUT VISCOSITY_OK BOOL; PASTE_E_STOP_NC BOOL; DebounceTime TIME; CycleTime TIME; VAR_OUTPUT VFD_RUN BOOL; PUMP_MAINT_DUE BOOL; PUMP_RUNTIME_ACC LTIME; VAR internal debounceElapsed LTIME? or TIME? Need handle debounce TON-style clock: elapsed zero on first permitted TRUE sample and becomes valid at elapsed >= DebounceTime. Need tests.\n\nLet's analyze tests semantics. Each step has dt_ms and inputs. They say At scan k inputs sampled once, q pre-scan retained, outputs after execution, q next. Timer elapsed time zero on first eligible sampled invocation; dt_ms elapsed wall time since previous invocation, not automatically synthetic input to FB. But FB has CycleTime input actual elapsed interval represented by invocation. For debounce, use CycleTime? Assumptions: DebounceTime and CycleTime positive. Debouncing follows TON-style clock: elapsed is zero on first permitted TRUE sample and becomes valid at elapsed>=DebounceTime. At each invocation, add supplied CycleTime to LTIME accumulator iff end-of-scan VFD_RUN TRUE. The test dt_ms correspond to CycleTime maybe first step dt_ms 0 CycleTime T#1s. Need debounce elapsed increment by CycleTime only while permit? Let's derive T1.\n\nT1 step1: VISCOSITY_OK false, estop true, Debounce 2s, Cycle 1s, dt_ms 0. Expected run false acc0. First scan likely clears debounce elapsed. Step2: VISC true, permit true, dt 1000. Expected run false, acc0. If debounce: first eligible true sample elapsed zero => false (unless DebounceTime? no). Step3: VISC true, dt 1000. Expected false. If at step2 elapsed=0, at step3 add CycleTime? elapsed becomes 1000ms < 2000, false. Step4: VISC true, dt1000. Expected true, acc1000. If step3 elapsed=1000, step4 add 1000 => 2000 >= 2000, run true. Then accumulate CycleTime because end VFD_RUN true => acc=1000. Matches. Step5 true expected acc2000. Step6 VISC false expected run false acc retained. Step7 VISC true expected false acc retained. After false at step6 clear elapsed. Step7 first true elapsed=0 false. Step8 true expected false: elapsed becomes 1000 false. Step9 true expected true acc +1000 = 3000. Matches.\n\nSo algorithm: Each invocation:\n- Determine permit = VISCOSITY_OK AND PASTE_E_STOP_NC? Debounce validity only if permit? Requirement: Accept viscosity condition after VISCOSITY_OK TRUE for DebounceTime. Invalidate immediately when input false. E-stop clears any incomplete debounce timing. They say E-stop resets debounce validity as well as incomplete timing, re-enable requires full new qualification. LTL qualified continuous permitted raw TRUE. So qualification should depend on permit (both VISC and E-stop) and raw VISCOSITY? If estop false while VISC true, we clear. When estop true again, first sample elapsed zero, need full debounce. Thus condition for timer = VISCOSITY_OK AND PASTE_E_STOP_NC (permit). If not, clear elapsed and qualified false. If permit true:\n  - If not currently timing (elapsed maybe sentinel? need distinguish first sample vs elapsed 0), on first eligible sample set elapsed := T#0ms? But need process same scan? TON style: elapsed zero on first permitted TRUE sample and becomes valid at elapsed>=DebounceTime. So first sample no increment. Need flag debounceTimingActive or use elapsed? Since elapsed may be 0 after first sample, next scan add CycleTime. Could maintain debounceElapsed LTIME initialized 0 and debounceStarted BOOL. On permit true:\n    if not debounceStarted: debounceStarted := TRUE; debounceElapsed := LTIME#0ns; qualified := (DebounceTime <= 0?) but positive so false; (maybe if DebounceTime=0 valid immediately? assumption positive, can handle <=0 true).\n    else: debounceElapsed := debounceElapsed + TIME_TO_LTIME(CycleTime); if debounceElapsed >= TIME_TO_LTIME(DebounceTime) then qualified true. But wait if DebounceTime positive, after second sample with CycleTime=2s? Could become valid. T1 step2 first sample elapsed 0; step3 add 1s (elapsed 1s); step4 add 1s -> 2s valid. Good.\n  - If permit false: debounceStarted false; elapsed 0; qualified false.\nHowever need if permit true already qualified, no need increment? Could keep increment indefinitely or stop. To maintain qualified true. But if DebounceTime changes? Not relevant. Could keep. Need ensure if VISCOSITY_OK true but estop false: permit false, clear. Then next estop true first sample elapsed 0, full qualification. T2: Step1 VISC true estop true dt0 expected run false acc0. First eligible sample: elapsed 0 false. Step2 dt1000: elapsed 1000 <2000 false. Step3 estop false: clear. Step4 estop true dt1000: first sample after clear elapsed 0 false. Step5 dt1000: elapsed 1000 false. Step6 dt1000: elapsed 2000 true, acc +1000 => expected acc1000. Step7 estop false run false acc retained. Good.\n\nNeed implement VFD_RUN only when PASTE_E_STOP_NC TRUE and viscosity condition valid. Permit includes estop. VFD_RUN := PASTE_E_STOP_NC AND qualified. But if raw VISC false, qualified false. If estop false, qualified false. Good.\n\nAccumulator: Add CycleTime to LTIME if end-of-scan VFD_RUN TRUE. Preserve while stopped. Use PUMP_RUNTIME_ACC := PUMP_RUNTIME_ACC + TIME_TO_LTIME(CycleTime) if VFD_RUN. Need maintenance due after accumulate: PUMP_MAINT_DUE := PUMP_RUNTIME_ACC >= LTIME#500h? Or 500h threshold. In T3: step1 first sample true, DebounceTime 2s, dt0 expected run false acc0. Step2 CycleTime T#500h dt 1800000000. Wait input CycleTime = T#500h; expected VFD_RUN true and acc 1800000000ms, maintenance true. How does debounce become true on step2 with DebounceTime 2s? Step1 first sample elapsed 0 false. Step2 is second sample, add CycleTime 500h => elapsed >=2s so qualified true. Run true. Accumulate CycleTime 500h => acc 500h, maint true. Good. Our algorithm: step1 first sample elapsed0 false; step2 add 500h -> qualified true; run true; acc += 500h. Good.\n\nPotential issue TIME_TO_LTIME conversion in CODESYS. TIME is 32-bit ms, LTIME is 64-bit ns. Standard conversion? In CODESYS, TIME_TO_LTIME maybe available? Need use standard library. Could use LTIME(TIME_TO_...?). Need produce compilable CODESYS 3.5 ST. Need know conversions: In CODESYS, TIME and LTIME are distinct. There are conversion functions TIME_TO_LTIME? I think standard IEC has TIME_TO_LTIME? In CODESYS, maybe function TIME_TO_LTIME exists? Need be careful. Could use TIME_TO_UDINT(CycleTime) then multiply by 1000000? LTIME units nanoseconds. CODESYS LTIME literal T#? Actually LTIME#500h. Conversion TIME_TO_LTIME likely returns LTIME. I recall CODESYS has conversion operators: TIME_TO_LTIME, LTIME_TO_TIME maybe? There are standard functions? In TwinCAT, TIME_TO_LTIME exists. CODESYS likely has TIME_TO_LTIME. The requirements mention \"TIME_TO_LTIME(CycleTime)\" in LTL. So safe.\n\nNeed define supporting_objects? Maybe none? But need \"supporting_objects is a list of helper DUT/POU objects, each...\" Could be empty list. We can implement all in FB with internal vars. No helper DUT. Need include declaration as \"FUNCTION_BLOCK FB_Task\" followed by all VAR sections; omit END_FUNCTION_BLOCK. Implementation ST body alone. supporting_objects [].\n\nBut maybe need define LTIME threshold constant? Could use `LTIME#500h` directly in comparison. CODESYS supports LTIME#500h? yes likely. Or use `LTIME#1800000000ms`? `LTIME#500h` valid? In CODESYS, time literal for LTIME? Usually `LTIME#500h` or `LTIME#T500h`? IEC: LTIME#500h maybe. The spec uses `LTIME#500h`. We can use. Need ensure syntax: `PUMP_MAINT_DUE := PUMP_RUNTIME_ACC >= LTIME#500h;` Good.\n\nNeed be mindful variable names and declarations. The declaration:\n```\nFUNCTION_BLOCK FB_Task\nVAR_INPUT\n    VISCOSITY_OK : BOOL;\n    PASTE_E_STOP_NC : BOOL;\n    DebounceTime : TIME;\n    CycleTime : TIME;\nEND_VAR\nVAR_OUTPUT\n    VFD_RUN : BOOL;\n    PUMP_MAINT_DUE : BOOL;\n    PUMP_RUNTIME_ACC : LTIME;\nEND_VAR\nVAR\n    debounceElapsed : LTIME := LTIME#0ns;\n    debounceStarted : BOOL := FALSE;\n    viscosityQualified : BOOL := FALSE;\n    dtLT : LTIME;\nEND_VAR\n```\nNeed initial outputs at power-up: initialize in declaration? VAR_OUTPUT can have init values maybe. In CODESYS, output variables initialized in declarations? Yes. But at power-up FB instance variables initialized. We can set `VFD_RUN : BOOL := FALSE; PUMP_RUNTIME_ACC : LTIME := LTIME#0ns; PUMP_MAINT_DUE : BOOL := FALSE;` in VAR_OUTPUT. Also internal. But implementation should ensure. Could also assign at start? No, would reset every scan. Use init in declaration. Need maybe output init not allowed? In CODESYS, variables in VAR_OUTPUT can have initial values? I think yes. To be safe, declare without init and initialize internal in VAR? But outputs need init at instance creation. We can include initial values in VAR_OUTPUT. CODESYS allows variable initialization in VAR blocks including outputs. Good.\n\nImplementation logic carefully with order:\n```\nIF NOT PASTE_E_STOP_NC OR NOT VISCOSITY_OK THEN\n    debounceStarted := FALSE;\n    debounceElapsed := LTIME#0ns;\n    viscosityQualified := FALSE;\nELSE\n    IF NOT debounceStarted THEN\n        debounceStarted := TRUE;\n        debounceElapsed := LTIME#0ns;\n        IF DebounceTime <= T#0ms THEN\n            viscosityQualified := TRUE;\n        ELSE\n            viscosityQualified := FALSE;\n        END_IF\n    ELSE\n        IF NOT viscosityQualified THEN\n            debounceElapsed := debounceElapsed + TIME_TO_LTIME(CycleTime);\n            IF debounceElapsed >= TIME_TO_LTIME(DebounceTime) THEN\n                viscosityQualified := TRUE;\n            END_IF\n        END_IF\n    END_IF\nEND_IF\n\nVFD_RUN := PASTE_E_STOP_NC AND VISCOSITY_OK AND viscosityQualified; \n```\nBut requirement VFD_RUN true only when estop true and viscosity condition valid. Since viscosityQualified already depends on estop? We clear when estop false; but in same scan if estop false, qualified false. So `VFD_RUN := PASTE_E_STOP_NC AND VISCOSITY_OK AND viscosityQualified;` or `PASTE_E_STOP_NC AND viscosityQualified` because qualified false if VISC false. But include both for clarity. If DebounceTime positive. If DebounceTime <=0, first sample qualified true and VFD_RUN true on first scan. Assumption positive; okay.\n\nThen accumulate:\n```\nIF VFD_RUN THEN\n    PUMP_RUNTIME_ACC := PUMP_RUNTIME_ACC + TIME_TO_LTIME(CycleTime);\nEND_IF\nPUMP_MAINT_DUE := PUMP_RUNTIME_ACC >= LTIME#500h;\n```\nNeed maintenance due at power-up false. If acc initially 0 < threshold false. If threshold maybe 500h. Good.\n\nBut need consider debounce timer update order relative to VFD_RUN. The tests: T1 step4 with VISC true, CycleTime 1s. At start debounceElapsed after step3 = 1s? Let's trace our algorithm:\nStep1 permit false -> clear. Step2 permit true not started -> started true elapsed0 qualified false. Step3 started true not qualified -> elapsed += 1s =>1s (<2). Step4 -> elapsed +=1s=>2s qualified true. VFD_RUN true. Acc += CycleTime =>1s. Good.\nT3 step1: permit true not started -> elapsed0 false. Step2 started true not qualified -> elapsed += 500h => qualified true; run true; acc += 500h. Good.\n\nNeed consider if VISCOSITY_OK false while estop true: clear. If estop true and VISC true but qualified true, then VISC false -> clear. Good.\n\nPotential issue: When permit true and already qualified, if DebounceTime changes? no.\n\nNeed implement `TIME_TO_LTIME`. Is there a function in CODESYS? The LTL uses, but actual ST maybe conversion operator `LTIME(TIME_TO_UDINT(...))`? Let's verify CODESYS 3.5 conversions. In CODESYS, `TIME_TO_LTIME` is a conversion function? I know in IEC 61131-3, standard conversion functions include `TIME_TO_LTIME`? Actually types: TIME, LTIME, DATE, etc. There are conversion functions: `TIME_TO_LTIME` might be in CODESYS? I have seen `TIME_TO_LTIME` in TwinCAT? Let's recall CODESYS lib: `TIME_TO_LTIME` perhaps not; standard operators include `LTIME_TO_TIME`, `TIME_TO_LTIME`? The CODESYS help: \"TIME_TO_LTIME\" converts TIME to LTIME. Yes likely.\n\nNeed if cannot use, define helper function `F_TIME_TO_LTIME`? But supporting_objects could include helper function. But requirement says standard library available. Could avoid conversion by using multiplication: `LTIME#1ms * TIME_TO_UDINT(CycleTime)`? In CODESYS, `TIME_TO_UDINT` exists. LTIME multiplication by integer? `TIME_TO_UDINT(CycleTime) * LTIME#1ms` maybe returns LTIME? But type of LTIME#1ms is LTIME, multiplication by UDINT might be allowed? Could cast. But simpler use TIME_TO_LTIME. Need also convert DebounceTime. Could compare using `debounceElapsed >= TIME_TO_LTIME(DebounceTime)`. Good.\n\nPotential issue `DebounceTime <= T#0ms` valid? TIME literal `T#0ms` yes. Could use `DebounceTime <= TIME#0ms`? CODESYS uses `T#0ms` or `TIME#0ms`. Use `T#0ms`.\n\nNeed output init in declaration:\n```\nVAR_OUTPUT\n    VFD_RUN : BOOL := FALSE;\n    PUMP_MAINT_DUE : BOOL := FALSE;\n    PUMP_RUNTIME_ACC : LTIME := LTIME#0ns;\nEND_VAR\n```\nNeed internal init:\n```\nVAR\n    debounceStarted : BOOL := FALSE;\n    debounceElapsed : LTIME := LTIME#0ns;\n    viscosityQualified : BOOL := FALSE;\nEND_VAR\n```\n\nCould put `dtLT` not needed. In implementation, call TIME_TO_LTIME twice maybe. Fine.\n\nNeed ensure no END_FUNCTION_BLOCK in declaration per instruction. Implementation is ST body alone, no enclosing `END_FUNCTION_BLOCK`? They said declaration is CODESYS FUNCTION_BLOCK FB_Task followed by all VAR sections; omit END_FUNCTION_BLOCK. implementation is ST body alone. So JSON:\n```\n{\n  \"declaration\": \"FUNCTION_BLOCK FB_Task\\nVAR_INPUT\\n...END_VAR\\nVAR_OUTPUT\\n...END_VAR\\nVAR\\n...END_VAR\",\n  \"implementation\": \"IF NOT ...\\nEND_IF\\n...\",\n  \"supporting_objects\": []\n}\n```\nNeed no markdown. Ensure valid JSON escaping newlines. Could include newline characters as `\\n`. Need only JSON object. No extra text.\n\nNeed consider if declaration should include `VAR_OUTPUT` initial values? In CODESYS, declaration syntax: \n```\nFUNCTION_BLOCK FB_Task\nVAR_INPUT\n...\nEND_VAR\nVAR_OUTPUT\n...\nEND_VAR\nVAR\n...\nEND_VAR\n```\nNo `END_FUNCTION_BLOCK`. Good.\n\nNeed maybe declare `DebounceTime` and `CycleTime` as `TIME` inputs. `PUMP_RUNTIME_ACC` LTIME output. Good.\n\nCould there be issue with comparing `debounceElapsed >= TIME_TO_LTIME(DebounceTime)` if `DebounceTime` is TIME and conversion returns LTIME. Good.\n\nPotential subtle: The debounce condition should accept VISCOSITY_OK after it has remained TRUE for DebounceTime. E-stop may be separate. Our timer only runs when both permit true. Is that correct? Spec: Allow VFD_RUN only when PASTE_E_STOP_NC TRUE and viscosity condition valid. Emergency stop clears incomplete debounce timing. If VISC true but E-stop false, should debounce be timing? It says E-stop clears incomplete timing; re-enable requires full new qualification. So no. Good.\n\nPotential subtle: If PASTE_E_STOP_NC false while VISC true and debounce started, clear. When e-stop true again, first sample starts. Good.\n\nPotential subtle: If VISCOSITY_OK false but E-stop true, clear. Good.\n\nPotential subtle: `VFD_RUN := PASTE_E_STOP_NC AND VISCOSITY_OK AND viscosityQualified;` If DebounceTime=0 and first sample true, qualified true; run true. Good.\n\nPotential subtle: Maintenance due should set when accumulated runtime reaches 500 hours. Our due computed after accumulation. T3 step2 acc becomes 500h and due true. Good. Does due persist? yes no reset. If acc threshold reached, due true. Good.\n\nPotential subtle: At power-up initialize acc to zero. Declaration does. But if outputs are retained? In CODESYS, FB instance variables initialized on creation. Good.\n\nPotential subtle: Need preserve acc while stopped. Our code only adds if run. Good.\n\nPotential subtle: CycleTime may be `TIME` positive, but T3 CycleTime T#500h fits 1.8e9 ms (<2^31? 1.8e9 <2.147e9), okay. TIME_TO_LTIME returns 1.8e15 ns? Wait 500h = 1,800,000,000 ms = 1.8e9 ms; in ns = 1.8e15 ns, fits LTIME. Good. The expected PUMP_RUNTIME_ACC `LTIME#1800000000ms` means 1.8e9 ms. LTIME can hold. Our conversion adds ns. Good.\n\nPotential issue `LTIME#500h` literal value maybe 500 hours in ns = 1.8e15 ns. Good.\n\nNeed maybe include helper function to convert TIME to LTIME if standard conversion not available. But standard library available. The LTL explicitly references TIME_TO_LTIME, so answer expected. But if function name in CODESYS is `TIME_TO_LTIME`? I think yes.\n\nLet's think of CODESYS syntax for time literal `LTIME#0ns` and `LTIME#500h`. Is `ns` valid for LTIME? Yes. But `LTIME#500h` maybe accepted. To be safer use `LTIME#1800000000ms`? But `LTIME#500h` is specified. CODESYS time literal for LTIME might require `LTIME#T500h`? Let's recall IEC 61131-3: Duration literal for LTIME: `LTIME#4d5h3m2s1ms2us3ns` perhaps. Prefix `LTIME#` then duration. So `LTIME#500h` okay. For TIME: `T#500h`. For LTIME: `LTIME#500h`. Good.\n\nNeed maybe use `TIME_TO_LTIME` function conversion in implementation. If function not found, compilation fails. Could alternatively define supporting function `F_TIME_TO_LTIME` ourselves and use that. But task says standard library available, expected use. If we define own helper, we can avoid reliance? But implementing own conversion: \n```\nFUNCTION F_TIME_TO_LTIME : LTIME\nVAR_INPUT\n    t : TIME;\nEND_VAR\nF_TIME_TO_LTIME := LTIME#1ms * TIME_TO_UDINT(t);\n```\nIs multiplication of LTIME by UDINT allowed? In CODESYS, arithmetic with LTIME and integer? There is no implicit. Could use `LTIME(TIME_TO_UDINT(t)) * LTIME#1ms` maybe. But not sure. Better use standard `TIME_TO_LTIME`.\n\nNeed maybe include `VAR CONSTANT MAINT_LIMIT : LTIME := LTIME#500h; END_VAR`? Declaration all VAR sections can include VAR CONSTANT. But not necessary.\n\nNeed output `PUMP_RUNTIME_ACC` as LTIME. Good.\n\nLet's consider if internal `debounceStarted` needed. Alternative use `debounceElapsed` and a `debounceFirst` flag. We have. Need ensure if permit true and `viscosityQualified` true, we don't update timer. If later permit false, clear. Good.\n\nCould there be an issue if `DebounceTime` changes to larger than current elapsed after qualified? Not specified. If qualified true, we keep qualified even if DebounceTime increases. Not relevant. Could recalc? No.\n\nNeed maybe if `DebounceTime <= 0` then qualified true. But if permit true and not started: set started true, elapsed 0, if DebounceTime <= T#0ms then qualified true else false. Good. At next scan, if qualified true no increment. If DebounceTime was 0, run true first scan. Good.\n\nNeed if `CycleTime` nonpositive? Assumption positive. No validation.\n\nNeed JSON escaping. Let's produce exactly JSON object. Need \"supporting_objects\": []. Good.\n\nBut let's double-check implementation order for T1 step1: permit false, clear, VFD_RUN false; then if VFD_RUN false no acc; due = acc>=500h false. Good. Step2 permit true not started -> started true elapsed0 qualified false; VFD_RUN false; no acc; due false. Good. Step3 elapsed +1s =1s false; run false; no acc. Step4 elapsed +1s=2s true; run true; acc +=1s; due false. Step5 run true; started true qualified true; no timer inc; run true; acc +=1s =>2s. Good. Step6 permit false clear; run false; acc unchanged. Good. Step7 first true elapsed0 false; run false. Step8 +1s=1s false. Step9 +1s=2s true; run true; acc +=1s=>3s. Good.\n\nT2 step1 first true elapsed0 false. Step2 +1s=1s false. Step3 estop false clear. Step4 estop true first sample elapsed0 false. Step5 +1s=1s false. Step6 +1s=2s true; run true; acc +=1s=1s. Step7 estop false clear run false acc retained 1s. Good.\n\nT3 step1 first true elapsed0 false. Step2 +500h=qualified true; run true; acc +=500h; due true. Step3 started qualified true; run true; acc +=1s => 500h+1s; due true. Step4 VISC false clear; run false; acc unchanged; due true. Good.\n\nNeed maybe `PUMP_MAINT_DUE := PUMP_RUNTIME_ACC >= LTIME#500h;` after acc. If acc exactly 500h due true. Good.\n\nNeed maybe declare `viscosityQualified` not output. Good.\n\nNeed if `PASTE_E_STOP_NC` false but `VISCOSITY_OK` true, `VFD_RUN` false immediate. Good.\n\nPotential issue with using `NOT PASTE_E_STOP_NC OR NOT VISCOSITY_OK`: In ST, `NOT` has higher precedence than OR? Yes. Could parenthesize. Use `IF (NOT PASTE_E_STOP_NC) OR (NOT VISCOSITY_OK) THEN`. Good.\n\nNeed maybe if `VISCOSITY_OK` true and `PASTE_E_STOP_NC` true but `DebounceTime` positive, first sample no increment. Good.\n\nNeed maybe `debounceElapsed := debounceElapsed + TIME_TO_LTIME(CycleTime);` If `debounceElapsed` overflows LTIME? unlikely. Good.\n\nNeed maybe if `DebounceTime` is TIME, `TIME_TO_LTIME(DebounceTime)` on each scan. Good.\n\nLet's produce JSON. Need ensure no markdown, only JSON. We can include newline escapes. Example:\n```\n{\n  \"declaration\": \"FUNCTION_BLOCK FB_Task\\nVAR_INPUT\\n    VISCOSITY_OK : BOOL;\\n...\",\n  \"implementation\": \"IF (NOT PASTE_E_STOP_NC) OR (NOT VISCOSITY_OK) THEN\\n...\",\n  \"supporting_objects\": []\n}\n```\nNeed include semicolons. Implementation body:\n```\nIF (NOT PASTE_E_STOP_NC) OR (NOT VISCOSITY_OK) THEN\n    debounceStarted := FALSE;\n    debounceElapsed := LTIME#0ns;\n    viscosityQualified := FALSE;\nELSE\n    IF NOT debounceStarted THEN\n        debounceStarted := TRUE;\n        debounceElapsed := LTIME#0ns;\n        IF DebounceTime <= T#0ms THEN\n            viscosityQualified := TRUE;\n        ELSE\n            viscosityQualified := FALSE;\n        END_IF\n    ELSIF NOT viscosityQualified THEN\n        debounceElapsed := debounceElapsed + TIME_TO_LTIME(CycleTime);\n        IF debounceElapsed >= TIME_TO_LTIME(DebounceTime) THEN\n            viscosityQualified := TRUE;\n        END_IF\n    END_IF\nEND_IF\n\nVFD_RUN := PASTE_E_STOP_NC AND VISCOSITY_OK AND viscosityQualified;\n\nIF VFD_RUN THEN\n    PUMP_RUNTIME_ACC := PUMP_RUNTIME_ACC + TIME_TO_LTIME(CycleTime);\nEND_IF\n\nPUMP_MAINT_DUE := PUMP_RUNTIME_ACC >= LTIME#500h;\n```\nNeed if `DebounceTime <= T#0ms` compare TIME to time literal. Good. Could avoid the `DebounceTime <= T#0ms` branch because positive but okay.\n\nPotential issue: In CODESYS, `ELSIF` is correct (not ELSEIF). Use `ELSIF`.\n\nNeed declaration output init:\n```\nVAR_OUTPUT\n    VFD_RUN : BOOL := FALSE;\n    PUMP_MAINT_DUE : BOOL := FALSE;\n    PUMP_RUNTIME_ACC : LTIME := LTIME#0ns;\nEND_VAR\n```\nGood.\n\nNeed maybe VAR internal init with `debounceStarted : BOOL := FALSE;` etc.\n\nLet's final."
+            }
+          ]
+        },
+        {
+          "id": "msg_b93fd7a71fb14864a109d2a25cd19251_0",
+          "type": "message",
+          "status": "completed",
+          "content": [
+            {
+              "type": "output_text",
+              "annotations": [],
+              "logprobs": [],
+              "text": "{\n  \"declaration\": \"FUNCTION_BLOCK FB_Task\\nVAR_INPUT\\n    VISCOSITY_OK : BOOL;\\n    PASTE_E_STOP_NC : BOOL;\\n    DebounceTime : TIME;\\n    CycleTime : TIME;\\nEND_VAR\\nVAR_OUTPUT\\n    VFD_RUN : BOOL := FALSE;\\n    PUMP_MAINT_DUE : BOOL := FALSE;\\n    PUMP_RUNTIME_ACC : LTIME := LTIME#0ns;\\nEND_VAR\\nVAR\\n    debounceStarted : BOOL := FALSE;\\n    debounceElapsed : LTIME := LTIME#0ns;\\n    viscosityQualified : BOOL := FALSE;\\nEND_VAR\",\n  \"implementation\": \"IF (NOT PASTE_E_STOP_NC) OR (NOT VISCOSITY_OK) THEN\\n    debounceStarted := FALSE;\\n    debounceElapsed := LTIME#0ns;\\n    viscosityQualified := FALSE;\\nELSE\\n    IF NOT debounceStarted THEN\\n        debounceStarted := TRUE;\\n        debounceElapsed := LTIME#0ns;\\n        IF DebounceTime <= T#0ms THEN\\n            viscosityQualified := TRUE;\\n        ELSE\\n            viscosityQualified := FALSE;\\n        END_IF\\n    ELSIF NOT viscosityQualified THEN\\n        debounceElapsed := debounceElapsed + TIME_TO_LTIME(CycleTime);\\n        IF debounceElapsed >= TIME_TO_LTIME(DebounceTime) THEN\\n            viscosityQualified := TRUE;\\n        END_IF\\n    END_IF\\nEND_IF\\n\\nVFD_RUN := PASTE_E_STOP_NC AND VISCOSITY_OK AND viscosityQualified;\\n\\nIF VFD_RUN THEN\\n    PUMP_RUNTIME_ACC := PUMP_RUNTIME_ACC + TIME_TO_LTIME(CycleTime);\\nEND_IF\\n\\nPUMP_MAINT_DUE := PUMP_RUNTIME_ACC >= LTIME#500h;\",\n  \"supporting_objects\": []\n}"
+            }
+          ],
+          "role": "assistant"
+        }
+      ],
+      "usage": {
+        "input_tokens": 4481,
+        "input_tokens_details": {
+          "cached_tokens": 0
+        },
+        "output_tokens": 6621,
+        "output_tokens_details": {
+          "reasoning_tokens": 6166
+        },
+        "total_tokens": 11102
+      }
+    }
+  }
+]

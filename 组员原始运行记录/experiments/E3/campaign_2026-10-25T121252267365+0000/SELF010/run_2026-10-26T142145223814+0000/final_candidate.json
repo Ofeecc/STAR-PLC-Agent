@@ -1,0 +1,5 @@
+{
+  "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    Fault : BOOL;\n    Ack : BOOL;\n    Reset : BOOL;\nEND_VAR\nVAR_OUTPUT\n    Alarm : BOOL := FALSE;\n    Acknowledged : BOOL := FALSE;\n    Horn : BOOL := FALSE;\nEND_VAR\nVAR\n    previousFault : BOOL := FALSE;\nEND_VAR",
+  "implementation": "// New Fault rising edge has top priority over Ack and reannunciates.\nIF Fault AND NOT previousFault THEN\n    Alarm := TRUE;\n    Acknowledged := FALSE;\n\n// While Fault is present, Alarm remains set and Ack can silence it.\nELSIF Fault THEN\n    Alarm := TRUE;\n    IF Ack THEN\n        Acknowledged := TRUE;\n    END_IF;\n\n// Reset clears only when Fault is absent and takes priority over Ack.\nELSIF Reset THEN\n    Alarm := FALSE;\n    Acknowledged := FALSE;\n\n// Ack can acknowledge a retained Alarm when Fault is absent.\nELSIF Ack THEN\n    IF Alarm THEN\n        Acknowledged := TRUE;\n    END_IF;\nEND_IF;\n\nHorn := Alarm AND NOT Acknowledged;\n\n// Always update the previous Fault sample for the next scan.\npreviousFault := Fault;",
+  "supporting_objects": []
+}

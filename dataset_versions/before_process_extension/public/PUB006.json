@@ -1,0 +1,351 @@
+{
+  "schema_version": 1,
+  "id": "PUB006",
+  "kind": "public",
+  "title": "Aeration Blower Delayed Start",
+  "difficulty": "easy",
+  "provenance": {
+    "source_type": "official_course_question_bank",
+    "source_file": "大作业题库json/大作业题库json/大作业题库.json",
+    "source_index": {
+      "group": "easy",
+      "index_1based": 6
+    },
+    "adaptation": "Original English question is preserved verbatim in requirements. Only explicit evaluation assumptions, LTL, and tests are added.",
+    "rationale": "Teacher-supplied PLC task; retains the specified interface and control scenario.",
+    "review": "Reviewed against original prose and interface; ambiguities are listed explicitly. Expected traces have not been executed on a PLC."
+  },
+  "requirements": "# Aeration Blower Delayed Start\n\n- **Difficulty:** Easy (easy)\n\n## Requirements\n\nControl a wastewater-treatment aeration blower with a low-dissolved-oxygen demand, a 5-second start delay, emergency-stop priority and start-cycle counting.\n\n1. Start delay timing when both DO_LOW and AERATION_E_STOP_NC are TRUE. Allow BLOWER_RUN to become TRUE only after these conditions have remained satisfied for 5 seconds.\n2. If DO_LOW becomes FALSE or an emergency stop occurs, immediately disable BLOWER_RUN and reset the start timer, whether timing is incomplete or complete. A new demand must wait the full 5 seconds again.\n3. Increment AERATION_BLOWER_CYCLE_COUNT once on each FALSE-to-TRUE transition of BLOWER_RUN. Do not count repeatedly during continuous operation.\n4. At power-up, initialize the blower to OFF and the start count to zero. The start delay gates a BOOL enable; no continuous speed ramp is required.\n\n## Interface Definition\n\n| Direction | Variable/Field | Data Type | Description |\n| --- | --- | --- | --- |\n| Input | `DO_LOW` | `BOOL` | Dissolved oxygen is below its threshold and aeration is needed. |\n| Input | `AERATION_E_STOP_NC` | `BOOL` | TRUE means the emergency stop is inactive; FALSE means it is active. |\n| Output | `BLOWER_RUN` | `BOOL` | Blower motor-contactor run command. |\n| Output | `AERATION_BLOWER_CYCLE_COUNT` | `UINT` | Count of actual blower starts. |",
+  "scenario": "Control a wastewater-treatment aeration blower with a low-dissolved-oxygen demand, a 5-second start delay, emergency-stop priority and start-cycle counting.",
+  "interface": [
+    {
+      "direction": "INPUT",
+      "name": "DO_LOW",
+      "type": "BOOL",
+      "description": "Dissolved oxygen is below its threshold and aeration is needed."
+    },
+    {
+      "direction": "INPUT",
+      "name": "AERATION_E_STOP_NC",
+      "type": "BOOL",
+      "description": "TRUE means the emergency stop is inactive; FALSE means it is active."
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "BLOWER_RUN",
+      "type": "BOOL",
+      "description": "Blower motor-contactor run command."
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "AERATION_BLOWER_CYCLE_COUNT",
+      "type": "UINT",
+      "description": "Count of actual blower starts."
+    }
+  ],
+  "initial_conditions": {
+    "BLOWER_RUN": false,
+    "AERATION_BLOWER_CYCLE_COUNT": 0,
+    "delayElapsed_ms": 0
+  },
+  "scan_semantics": "At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, outputs O[k] are observed after execution, and q[k+1] is the updated state. Each test creates a fresh FB instance before step 0. An initialized instance has not yet executed a scan. Timer elapsed time is zero on the first eligible sampled invocation; dt_ms is elapsed wall time since the previous invocation, not automatically a synthetic input to the FB. No unobserved past input stability is assumed. All sequences here are expected values.",
+  "safety_priority": [
+    "DO_LOW FALSE or emergency stop overrides timing and resets it immediately."
+  ],
+  "assumptions": [
+    "Start delay elapsed is zero at the first sample of DO_LOW & AERATION_E_STOP_NC; run becomes TRUE at elapsed>=5s.",
+    "Count increments on the same invocation that changes end-of-scan BLOWER_RUN from FALSE to TRUE.",
+    "Tests stay below UINT overflow; overflow behavior is outside the specified operating domain.",
+    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+  ],
+  "ltl": [
+    {
+      "id": "P1",
+      "formula": "G(BLOWER_RUN <-> (permit & delayDone))",
+      "explanation": "Run is enabled only after the full delay."
+    },
+    {
+      "id": "P2",
+      "formula": "G(!permit -> (!BLOWER_RUN & X(!delayDone)))",
+      "explanation": "Loss of demand or safety permissive clears run and its timer."
+    },
+    {
+      "id": "P3",
+      "formula": "G((!runPrev & BLOWER_RUN) -> AERATION_BLOWER_CYCLE_COUNT=countPrev+1)",
+      "explanation": "One count per genuine start."
+    },
+    {
+      "id": "P4",
+      "formula": "G((runPrev | !BLOWER_RUN) -> AERATION_BLOWER_CYCLE_COUNT=countPrev)",
+      "explanation": "No repeated count during continuous operation or stop."
+    },
+    {
+      "id": "P5",
+      "formula": "G((G(permit)) -> F(BLOWER_RUN))",
+      "explanation": "A sustained permitted demand eventually starts under advancing time."
+    },
+    {
+      "id": "PUB006.V2.COMPLETE",
+      "formula": "G(CompleteBehaviorV2)",
+      "explanation": "The complete per-invocation relation defined in specification_contract.normative_completion; requires explicit encoding before model checking."
+    }
+  ],
+  "atomic_propositions": {
+    "permit": "DO_LOW & AERATION_E_STOP_NC",
+    "delayDone": "Permissive has continuously remained true for >=5s after its first sampled TRUE.",
+    "runPrev": "Pre-scan retained BLOWER_RUN.",
+    "countPrev": "Pre-scan AERATION_BLOWER_CYCLE_COUNT.",
+    "interface names": "Identically named sampled input or observed output.",
+    "CompleteBehaviorV2": "将permit连续计时、首次TRUE年龄0、FALSE清零定义成确定时钟状态；运行与permit且elapsed>=5s等价。初始runPrev=FALSE、countPrev=0，每拍更新。加入累计启动次数<65536的评测域或另外约定溢出策略。"
+  },
+  "tests": [
+    {
+      "id": "T1",
+      "purpose": "Exact delay threshold, sustained operation and second counted start",
+      "steps": [
+        {
+          "inputs": {
+            "DO_LOW": false,
+            "AERATION_E_STOP_NC": true
+          },
+          "expected": {
+            "BLOWER_RUN": false,
+            "AERATION_BLOWER_CYCLE_COUNT": 0
+          },
+          "dt_ms": 0
+        },
+        {
+          "inputs": {
+            "DO_LOW": true,
+            "AERATION_E_STOP_NC": true
+          },
+          "expected": {
+            "BLOWER_RUN": false,
+            "AERATION_BLOWER_CYCLE_COUNT": 0
+          },
+          "dt_ms": 100
+        },
+        {
+          "inputs": {
+            "DO_LOW": true,
+            "AERATION_E_STOP_NC": true
+          },
+          "expected": {
+            "BLOWER_RUN": false,
+            "AERATION_BLOWER_CYCLE_COUNT": 0
+          },
+          "dt_ms": 4999
+        },
+        {
+          "inputs": {
+            "DO_LOW": true,
+            "AERATION_E_STOP_NC": true
+          },
+          "expected": {
+            "BLOWER_RUN": true,
+            "AERATION_BLOWER_CYCLE_COUNT": 1
+          },
+          "dt_ms": 1
+        },
+        {
+          "inputs": {
+            "DO_LOW": true,
+            "AERATION_E_STOP_NC": true
+          },
+          "expected": {
+            "BLOWER_RUN": true,
+            "AERATION_BLOWER_CYCLE_COUNT": 1
+          },
+          "dt_ms": 1000
+        },
+        {
+          "inputs": {
+            "DO_LOW": false,
+            "AERATION_E_STOP_NC": true
+          },
+          "expected": {
+            "BLOWER_RUN": false,
+            "AERATION_BLOWER_CYCLE_COUNT": 1
+          },
+          "dt_ms": 100
+        },
+        {
+          "inputs": {
+            "DO_LOW": true,
+            "AERATION_E_STOP_NC": true
+          },
+          "expected": {
+            "BLOWER_RUN": false,
+            "AERATION_BLOWER_CYCLE_COUNT": 1
+          },
+          "dt_ms": 100
+        },
+        {
+          "inputs": {
+            "DO_LOW": true,
+            "AERATION_E_STOP_NC": true
+          },
+          "expected": {
+            "BLOWER_RUN": true,
+            "AERATION_BLOWER_CYCLE_COUNT": 2
+          },
+          "dt_ms": 5000
+        }
+      ]
+    },
+    {
+      "id": "T2",
+      "purpose": "Emergency stop discards partial and completed delay",
+      "steps": [
+        {
+          "inputs": {
+            "DO_LOW": true,
+            "AERATION_E_STOP_NC": true
+          },
+          "expected": {
+            "BLOWER_RUN": false,
+            "AERATION_BLOWER_CYCLE_COUNT": 0
+          },
+          "dt_ms": 0
+        },
+        {
+          "inputs": {
+            "DO_LOW": true,
+            "AERATION_E_STOP_NC": true
+          },
+          "expected": {
+            "BLOWER_RUN": false,
+            "AERATION_BLOWER_CYCLE_COUNT": 0
+          },
+          "dt_ms": 4000
+        },
+        {
+          "inputs": {
+            "DO_LOW": true,
+            "AERATION_E_STOP_NC": false
+          },
+          "expected": {
+            "BLOWER_RUN": false,
+            "AERATION_BLOWER_CYCLE_COUNT": 0
+          },
+          "dt_ms": 1000
+        },
+        {
+          "inputs": {
+            "DO_LOW": true,
+            "AERATION_E_STOP_NC": true
+          },
+          "expected": {
+            "BLOWER_RUN": false,
+            "AERATION_BLOWER_CYCLE_COUNT": 0
+          },
+          "dt_ms": 100
+        },
+        {
+          "inputs": {
+            "DO_LOW": true,
+            "AERATION_E_STOP_NC": true
+          },
+          "expected": {
+            "BLOWER_RUN": false,
+            "AERATION_BLOWER_CYCLE_COUNT": 0
+          },
+          "dt_ms": 4999
+        },
+        {
+          "inputs": {
+            "DO_LOW": true,
+            "AERATION_E_STOP_NC": true
+          },
+          "expected": {
+            "BLOWER_RUN": true,
+            "AERATION_BLOWER_CYCLE_COUNT": 1
+          },
+          "dt_ms": 1
+        },
+        {
+          "inputs": {
+            "DO_LOW": true,
+            "AERATION_E_STOP_NC": false
+          },
+          "expected": {
+            "BLOWER_RUN": false,
+            "AERATION_BLOWER_CYCLE_COUNT": 1
+          },
+          "dt_ms": 1
+        }
+      ]
+    },
+    {
+      "id": "V2_permit_loss_at_deadline",
+      "purpose": "Permission loss at the exact deadline wins; recovery starts a fresh full interval, even after a long gap.",
+      "steps": [
+        {
+          "inputs": {
+            "DO_LOW": true,
+            "AERATION_E_STOP_NC": true
+          },
+          "expected": {
+            "BLOWER_RUN": false,
+            "AERATION_BLOWER_CYCLE_COUNT": 0
+          },
+          "dt_ms": 0
+        },
+        {
+          "inputs": {
+            "DO_LOW": true,
+            "AERATION_E_STOP_NC": false
+          },
+          "expected": {
+            "BLOWER_RUN": false,
+            "AERATION_BLOWER_CYCLE_COUNT": 0
+          },
+          "dt_ms": 5000
+        },
+        {
+          "inputs": {
+            "DO_LOW": true,
+            "AERATION_E_STOP_NC": true
+          },
+          "expected": {
+            "BLOWER_RUN": false,
+            "AERATION_BLOWER_CYCLE_COUNT": 0
+          },
+          "dt_ms": 10000
+        },
+        {
+          "inputs": {
+            "DO_LOW": true,
+            "AERATION_E_STOP_NC": true
+          },
+          "expected": {
+            "BLOWER_RUN": false,
+            "AERATION_BLOWER_CYCLE_COUNT": 0
+          },
+          "dt_ms": 4999
+        },
+        {
+          "inputs": {
+            "DO_LOW": true,
+            "AERATION_E_STOP_NC": true
+          },
+          "expected": {
+            "BLOWER_RUN": true,
+            "AERATION_BLOWER_CYCLE_COUNT": 1
+          },
+          "dt_ms": 1
+        }
+      ]
+    }
+  ],
+  "specification_version": "2.0-review-corrections-20261106",
+  "specification_contract": {
+    "observation": "I[k] is sampled before execution; O[k] is observed after execution. Initial conditions apply before invocation zero.",
+    "normative_completion": "将permit连续计时、首次TRUE年龄0、FALSE清零定义成确定时钟状态；运行与permit且elapsed>=5s等价。初始runPrev=FALSE、countPrev=0，每拍更新。加入累计启动次数<65536的评测域或另外约定溢出策略。",
+    "history_binding": "Every previous-output name refers to the preceding observed output with the declared initial value. Previous-input memories update on EVERY invocation, including reset, invalid input, stop and mode change. Reference phase/history is independently advanced from sampled inputs by the stated transition rules, never supplied by the candidate.",
+    "evaluation_scope": "Properties include interpreted data predicates. No claim of export to a model checker or completed formal proof.",
+    "review_source": "docs/规约逐题审查_20261106/PUB006.md",
+    "executable_monitor": "plc_agent.timed_contracts.TimedContract:PUB006",
+    "timing_binding": "dt_ms is measured between invocations; the first invocation establishes time zero. An eligible period begins at its first eligible observation, with age zero. No time before that observation is credited. Missing/nonfinite/negative timing is rejected. Timed monitor acceptance is not evidence of a real PLC clock."
+  }
+}

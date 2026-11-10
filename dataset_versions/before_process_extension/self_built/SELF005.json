@@ -1,0 +1,297 @@
+{
+  "schema_version": 1,
+  "id": "SELF005",
+  "kind": "self_built",
+  "title": "Three phase signal with externally clocked durations",
+  "difficulty": "medium",
+  "provenance": {
+    "source_type": "independent_synthesis",
+    "source_file": "scripts/build_self_dataset.py",
+    "source_index": 5,
+    "adaptation": "Independently specified for this project; no public task was copied. The coding assistant chose the state variables, priority order and fixed scan traces, then reviewed the traces against a separate Python transition implementation.",
+    "rationale": "A training traffic signal uses a deterministic logical tick, allowing reproducible testing without wall-clock timing jitter.",
+    "review": "Assistant consistency review of initialization, simultaneous commands, retained state and recovery boundaries; independent Python oracle checked against manual expected traces. Not an industrial safety certification or external expert review."
+  },
+  "requirements": "Phase 0 is RED for 2 Tick=TRUE invocations, phase 1 GREEN for 3, and phase 2 AMBER for 1. At initialization set phase RED and elapsed ticks zero. With Enable FALSE force RED and clear elapsed ticks every scan. With Enable TRUE and Tick FALSE retain phase and elapsed ticks. A TRUE Tick adds one; upon reaching that phase's duration transition RED->GREEN->AMBER->RED and clear elapsed ticks. Output Phase is 0,1,2 and exactly one color describes the post-transition phase. Tick is an enable level per invocation, not a rising-edge detector.",
+  "scenario": "A training traffic signal uses a deterministic logical tick, allowing reproducible testing without wall-clock timing jitter.",
+  "interface": [
+    {
+      "direction": "INPUT",
+      "name": "Enable",
+      "type": "BOOL",
+      "description": "Enable normal signal cycle"
+    },
+    {
+      "direction": "INPUT",
+      "name": "Tick",
+      "type": "BOOL",
+      "description": "One logical tick on each TRUE invocation"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Red",
+      "type": "BOOL",
+      "description": "Red lamp"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Green",
+      "type": "BOOL",
+      "description": "Green lamp"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Amber",
+      "type": "BOOL",
+      "description": "Amber lamp"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Phase",
+      "type": "USINT",
+      "description": "Post-scan phase number"
+    }
+  ],
+  "initial_conditions": {
+    "phase": 0,
+    "elapsed_ticks": 0
+  },
+  "scan_semantics": "At scan k, sample every input once, read retained pre-state q[k], execute one transition, and observe outputs O[k] at the end of that same scan. Updated state becomes q[k+1]. Reset the instance before each test. Step 0 executes normally; initial conditions describe pre-state, not an extra delayed scan. All timing in this task is explicitly counted in invocations, not wall time.",
+  "safety_priority": [
+    "Disable resets the cycle to RED"
+  ],
+  "assumptions": [
+    "A logical tick is not claimed to be a physical second.",
+    "No opposite road or pedestrian signal is controlled.",
+    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+  ],
+  "atomic_propositions": {
+    "Enable": "Enable normal signal cycle Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "Tick": "One logical tick on each TRUE invocation Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "Red": "Red lamp Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "Green": "Green lamp Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "Amber": "Amber lamp Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "Phase": "Post-scan phase number Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "first": "True only on the first invocation after resetting the FB instance.",
+    "qRedLast": "Pre-state is RED with one elapsed tick.",
+    "qGreenLast": "Pre-state is GREEN with two elapsed ticks.",
+    "qAmber": "Pre-state is AMBER.",
+    "qPhase": "Pre-state phase number.",
+    "oneColor": "Exactly one of Red, Green and Amber is TRUE.",
+    "CompleteBehaviorV2": "Every observed OUTPUT equals the output of the independent deterministic transition in specification_contract, initialized and advanced exactly as transition_binding specifies."
+  },
+  "ltl": [
+    {
+      "id": "P1",
+      "formula": "G(oneColor)",
+      "explanation": "The lamp encoding is one-hot."
+    },
+    {
+      "id": "P2",
+      "formula": "G(!Enable -> (Red & !Green & !Amber))",
+      "explanation": "Disabled operation is a steady red."
+    },
+    {
+      "id": "P3",
+      "formula": "G((Enable & !Tick) -> (Phase = qPhase))",
+      "explanation": "No tick preserves phase."
+    },
+    {
+      "id": "P4",
+      "formula": "G((Enable & Tick & qRedLast) -> Green)",
+      "explanation": "The second red tick enters green."
+    },
+    {
+      "id": "P5",
+      "formula": "G((Enable & Tick & qGreenLast) -> Amber)",
+      "explanation": "The third green tick enters amber."
+    },
+    {
+      "id": "P6",
+      "formula": "G((Enable & Tick & qAmber) -> Red)",
+      "explanation": "One amber tick returns red."
+    },
+    {
+      "id": "P7",
+      "formula": "(G Enable & G(F Tick)) -> (G(F Red) & G(F Green) & G(F Amber))",
+      "explanation": "Persistent enable plus infinitely many ticks makes every phase recur; finite traces cannot prove this liveness property."
+    },
+    {
+      "id": "SELF005.V2.COMPLETE",
+      "formula": "G(CompleteBehaviorV2)",
+      "explanation": "The complete per-invocation relation defined in specification_contract.normative_completion; requires explicit encoding before model checking."
+    }
+  ],
+  "tests": [
+    {
+      "id": "cycle",
+      "purpose": "Full phase duration boundaries and pause",
+      "steps": [
+        {
+          "inputs": {
+            "Enable": true,
+            "Tick": true
+          },
+          "expected": {
+            "Red": true,
+            "Green": false,
+            "Amber": false,
+            "Phase": 0
+          }
+        },
+        {
+          "inputs": {
+            "Enable": true,
+            "Tick": false
+          },
+          "expected": {
+            "Red": true,
+            "Green": false,
+            "Amber": false,
+            "Phase": 0
+          }
+        },
+        {
+          "inputs": {
+            "Enable": true,
+            "Tick": true
+          },
+          "expected": {
+            "Red": false,
+            "Green": true,
+            "Amber": false,
+            "Phase": 1
+          }
+        },
+        {
+          "inputs": {
+            "Enable": true,
+            "Tick": true
+          },
+          "expected": {
+            "Red": false,
+            "Green": true,
+            "Amber": false,
+            "Phase": 1
+          }
+        },
+        {
+          "inputs": {
+            "Enable": true,
+            "Tick": true
+          },
+          "expected": {
+            "Red": false,
+            "Green": true,
+            "Amber": false,
+            "Phase": 1
+          }
+        },
+        {
+          "inputs": {
+            "Enable": true,
+            "Tick": true
+          },
+          "expected": {
+            "Red": false,
+            "Green": false,
+            "Amber": true,
+            "Phase": 2
+          }
+        },
+        {
+          "inputs": {
+            "Enable": true,
+            "Tick": true
+          },
+          "expected": {
+            "Red": true,
+            "Green": false,
+            "Amber": false,
+            "Phase": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": "disable",
+      "purpose": "Disable clears elapsed tick progress",
+      "steps": [
+        {
+          "inputs": {
+            "Enable": true,
+            "Tick": true
+          },
+          "expected": {
+            "Red": true,
+            "Green": false,
+            "Amber": false,
+            "Phase": 0
+          }
+        },
+        {
+          "inputs": {
+            "Enable": true,
+            "Tick": true
+          },
+          "expected": {
+            "Red": false,
+            "Green": true,
+            "Amber": false,
+            "Phase": 1
+          }
+        },
+        {
+          "inputs": {
+            "Enable": false,
+            "Tick": true
+          },
+          "expected": {
+            "Red": true,
+            "Green": false,
+            "Amber": false,
+            "Phase": 0
+          }
+        },
+        {
+          "inputs": {
+            "Enable": true,
+            "Tick": true
+          },
+          "expected": {
+            "Red": true,
+            "Green": false,
+            "Amber": false,
+            "Phase": 0
+          }
+        },
+        {
+          "inputs": {
+            "Enable": true,
+            "Tick": true
+          },
+          "expected": {
+            "Red": false,
+            "Green": true,
+            "Amber": false,
+            "Phase": 1
+          }
+        }
+      ]
+    }
+  ],
+  "specification_version": "2.0-review-corrections-20261106",
+  "specification_contract": {
+    "observation": "I[k] is sampled before execution; O[k] is observed after execution. Initial conditions apply before invocation zero.",
+    "normative_completion": "设D(0)=2,D(1)=3,D(2)=1。!Enable→(phaseAfter,ageAfter)=(0,0)；Enable且!Tick→保持；Enable且Tick且ageBefore+1<D→同phase,age+1；否则→((phase+1) mod3,0)。Phase=phaseAfter，Red↔Phase=0、Green↔1、Amber↔2。初始(0,0)，每拍更新ghost，禁止仅从实际Phase反推期望灯。",
+    "history_binding": "Every previous-output name refers to the preceding observed output with the declared initial value. Previous-input memories update on EVERY invocation, including reset, invalid input, stop and mode change. Reference phase/history is independently advanced from sampled inputs by the stated transition rules, never supplied by the candidate.",
+    "evaluation_scope": "Properties include interpreted data predicates. No claim of export to a model checker or completed formal proof.",
+    "review_source": "docs/规约逐题审查_20261106/SELF005.md",
+    "reference_state_initial": {
+      "phase": 0,
+      "age": 0
+    },
+    "deterministic_transition_python": "    def _SELF005(self, i):\n        phase, age = self.state.get(\"phase\", 0), self.state.get(\"age\", 0)\n        if not i[\"Enable\"]:\n            phase, age = 0, 0\n        elif i[\"Tick\"]:\n            age += 1\n            if age >= (2, 3, 1)[phase]:\n                phase, age = (phase + 1) % 3, 0\n        self.state.update(phase=phase, age=age)\n        return {\"Red\": phase == 0, \"Green\": phase == 1, \"Amber\": phase == 2, \"Phase\": phase}\n",
+    "transition_binding": "Initialize an independent reference state with reference_state_initial. For every sampled input execute the listed deterministic transition once; require EVERY actual OUTPUT to equal its returned value. Do not update this reference state from candidate outputs. This defines the complete scan relation; it is not evidence of ST execution."
+  }
+}

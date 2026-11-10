@@ -1,0 +1,12 @@
+{
+  "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    Start : BOOL;\n    Stop : BOOL;\n    AtExit : BOOL;\n    Jam : BOOL;\n    Reset : BOOL;\nEND_VAR\nVAR_OUTPUT\n    Belt : BOOL;\n    Complete : BOOL;\n    Fault : BOOL;\nEND_VAR\nVAR\n    state : E_TaskState := E_TaskState.IDLE;\nEND_VAR",
+  "implementation": "IF Jam THEN\n    state := E_TaskState.FAULT;\nELSIF Reset THEN\n    state := E_TaskState.IDLE;\nELSIF state = E_TaskState.FAULT THEN\n    state := E_TaskState.FAULT;\nELSIF Stop THEN\n    state := E_TaskState.IDLE;\nELSE\n    CASE state OF\n        E_TaskState.IDLE:\n            IF Start AND NOT AtExit THEN\n                state := E_TaskState.MOVING;\n            END_IF;\n        E_TaskState.MOVING:\n            IF AtExit THEN\n                state := E_TaskState.COMPLETE;\n            END_IF;\n        E_TaskState.COMPLETE:\n            ;\n        E_TaskState.FAULT:\n            ;\n    END_CASE;\nEND_IF;\n\nBelt := (state = E_TaskState.MOVING);\nComplete := (state = E_TaskState.COMPLETE);\nFault := (state = E_TaskState.FAULT);",
+  "supporting_objects": [
+    {
+      "name": "E_TaskState",
+      "kind": "DUT",
+      "declaration": "TYPE E_TaskState :\n(\n    IDLE,\n    MOVING,\n    COMPLETE,\n    FAULT\n);\nEND_TYPE",
+      "implementation": ""
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+[
+  {
+    "index": 0,
+    "source": {
+      "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    cyclicExecution : BOOL;\n    trigger : BOOL;\n    value : LREAL;\n    windowSize : INT;\n    reset : BOOL;\nEND_VAR\nVAR_OUTPUT\n    average : LREAL;\n    windowSizeReached : BOOL;\n    error : BOOL;\n    status : WORD;\nEND_VAR\nVAR\n    samples : ARRAY[1..100] OF LREAL;\n    sampleCount : INT;\n    writeIndex : INT := 1;\n    sampleSum : LREAL;\n    previousTrigger : BOOL;\n    lastWindowSize : INT;\n    acceptSample : BOOL;\nEND_VAR",
+      "implementation": "acceptSample := FALSE;\n\nIF (windowSize < 1) OR (windowSize > 100) THEN\n    error := TRUE;\n    status := WORD#16#8200;\nELSE\n    error := FALSE;\n    status := WORD#16#0000;\n\n    IF windowSize <> lastWindowSize THEN\n        sampleCount := 0;\n        writeIndex := 1;\n        sampleSum := 0.0;\n        average := 0.0;\n        windowSizeReached := FALSE;\n        lastWindowSize := windowSize;\n    END_IF;\n\n    IF reset THEN\n        sampleCount := 0;\n        writeIndex := 1;\n        sampleSum := 0.0;\n        average := 0.0;\n        windowSizeReached := FALSE;\n    ELSE\n        acceptSample := cyclicExecution OR (trigger AND NOT previousTrigger);\n        IF acceptSample THEN\n            IF sampleCount < windowSize THEN\n                sampleCount := sampleCount + 1;\n            ELSE\n                sampleSum := sampleSum - samples[writeIndex];\n            END_IF;\n\n            samples[writeIndex] := value;\n            sampleSum := sampleSum + value;\n\n            writeIndex := writeIndex + 1;\n            IF writeIndex > windowSize THEN\n                writeIndex := 1;\n            END_IF;\n\n            average := sampleSum / TO_LREAL(sampleCount);\n            windowSizeReached := sampleCount = windowSize;\n        END_IF;\n    END_IF;\nEND_IF;\n\npreviousTrigger := trigger;"
+    },
+    "requested_utc": "2026-10-26T13:40:15.050009+00:00",
+    "compile_attempt": 0
+  }
+]

@@ -1,0 +1,145 @@
+{
+  "pou_type": "FUNCTION_BLOCK",
+  "pou_name": "FB_Task",
+  "interface": [
+    {
+      "direction": "INPUT",
+      "name": "Mode",
+      "type": "BOOL",
+      "description": "Used to switch the production line between manual and automatic modes, 0=manual mode, 1=automatic mode"
+    },
+    {
+      "direction": "INPUT",
+      "name": "ForwardButton",
+      "type": "BOOL",
+      "description": "Forward rotation button"
+    },
+    {
+      "direction": "INPUT",
+      "name": "ReverseButton",
+      "type": "BOOL",
+      "description": "Reverse rotation button"
+    },
+    {
+      "direction": "INPUT",
+      "name": "SensorA",
+      "type": "BOOL",
+      "description": "Sensor A"
+    },
+    {
+      "direction": "INPUT",
+      "name": "SensorB",
+      "type": "BOOL",
+      "description": "Sensor B"
+    },
+    {
+      "direction": "INPUT",
+      "name": "SensorC",
+      "type": "BOOL",
+      "description": "Sensor C"
+    },
+    {
+      "direction": "INPUT",
+      "name": "ButtonA",
+      "type": "BOOL",
+      "description": "Button A"
+    },
+    {
+      "direction": "INPUT",
+      "name": "ButtonB",
+      "type": "BOOL",
+      "description": "Button B"
+    },
+    {
+      "direction": "INPUT",
+      "name": "ButtonC",
+      "type": "BOOL",
+      "description": "Button C"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "MotorForward",
+      "type": "BOOL",
+      "description": "Motor forward rotation output"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "MotorReverse",
+      "type": "BOOL",
+      "description": "Motor reverse rotation output"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "CompletionLight",
+      "type": "BOOL",
+      "description": "Indicator light for product processing completion"
+    }
+  ],
+  "initial_conditions": {
+    "MotorForward": false,
+    "MotorReverse": false,
+    "CompletionLight": false,
+    "phase": "WAIT_A"
+  },
+  "scan_semantics": "Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call. Retained pre-state q[k] becomes q[k+1]. Each test resets the instance. A transition affects the same observed scan. dt_ms is elapsed time since the preceding invocation; the first invocation starts IEC timers at elapsed zero. CycleTime inputs, where supplied, are attributed to the current invocation rather than inferred from dt_ms.",
+  "safety_priority": [
+    "Forward and reverse are mutually exclusive.",
+    "Destination arrival stops movement before processing resumes."
+  ],
+  "assumptions": [
+    "Opposing manual buttons produce neither direction.",
+    "Buttons are level signals accepted only in their corresponding station wait. One phase transition is accepted per call.",
+    "Entering manual mode clears automatic state and completion; return to automatic waits for A.",
+    "Only one product is presented; station sensors are not contradictory."
+  ],
+  "formal_properties": [
+    {
+      "id": "PUB011.P1",
+      "name": "Interlock",
+      "formula": "G(!(fwd & rev))",
+      "explanation": "Motor directions are mutually exclusive."
+    },
+    {
+      "id": "PUB011.P2",
+      "name": "Manual",
+      "formula": "G(!auto -> ((fwd <-> mf) & (rev <-> mr)))",
+      "explanation": "Manual level requests obey neutral conflict resolution."
+    },
+    {
+      "id": "PUB011.P3",
+      "name": "Auto direction",
+      "formula": "G(auto -> !rev)",
+      "explanation": "Automatic routing only moves forward."
+    },
+    {
+      "id": "PUB011.P4",
+      "name": "Arrival",
+      "formula": "G(auto & arrive -> !fwd)",
+      "explanation": "Arrival stops the motor in the observed scan."
+    },
+    {
+      "id": "PUB011.P5",
+      "name": "Completion",
+      "formula": "G(auto & finish -> light)",
+      "explanation": "C completion asserts the light."
+    },
+    {
+      "id": "PUB011.P6",
+      "name": "Removal",
+      "formula": "G(auto & removed -> !light)",
+      "explanation": "Removal clears completion."
+    }
+  ],
+  "atomic_propositions": {
+    "auto": "Mode",
+    "fwd": "MotorForward after scan",
+    "rev": "MotorReverse after scan",
+    "mf": "ForwardButton AND NOT ReverseButton",
+    "mr": "ReverseButton AND NOT ForwardButton",
+    "arrive": "pre-phase MOVE_AB AND SensorB OR pre-phase MOVE_BC AND SensorC",
+    "finish": "pre-phase WAIT_C AND SensorC AND ButtonC",
+    "light": "CompletionLight",
+    "removed": "NOT SensorC"
+  },
+  "supporting_types": []
+}

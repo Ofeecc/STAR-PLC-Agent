@@ -1,0 +1,51 @@
+{
+  "id": "b57bf565ad55442b9e05d399fa8c5f4f",
+  "object": "response",
+  "created_at": 1793023184,
+  "status": "completed",
+  "background": false,
+  "error": null,
+  "max_output_tokens": 8192,
+  "model": "deepseek-v4.1-flash",
+  "reasoning": {
+    "effort": "medium"
+  },
+  "store": false,
+  "output": [
+    {
+      "id": "rs_b57bf565ad55442b9e05d399fa8c5f4f_0",
+      "type": "reasoning",
+      "summary": [
+        {
+          "type": "summary_text",
+          "text": "We need answer only JSON object. Need provide declaration, implementation, supporting_objects. Need CODESYS FUNCTION_BLOCK FB_Task with VAR sections. Need implement behavior. No markdown. Need exact names/types. Need decide declaration format. They ask declaration is CODESYS FUNCTION_BLOCK FB_Task followed by all VAR sections; omit END_FUNCTION_BLOCK. So declaration string includes \"FUNCTION_BLOCK FB_Task\" then VAR_INPUT... etc. Implementation ST body alone.\n\nNeed infer behavior. Inputs REAL Value hiLevel loLevel hystWindow. Outputs BOOL hiAlarm loAlarm error status WORD. Need preserve alarms across invalid config. error/status recalculated each scan; valid clears. If loLevel >= hiLevel: error true status 16#8001, exit program (return) preserving alarm outputs. Else if hystWindow >= hiLevel - loLevel: error true status 16#8002, preserve alarms. Need maybe if hystWindow negative? Assumptions valid includes hystWindow>=0, negative outside domain. Could ignore or perhaps badWindow? Spec says if hystWindow >= deviation. Negative not defined. No need.\n\nNeed implement hysteresis strict comparisons. Important equality retains previous alarm value. For high: if Value > hiLevel then hiAlarm := TRUE; elsif Value < hiLevel - hystWindow then hiAlarm := FALSE; else retain. For low: if Value < loLevel then loAlarm := TRUE; elsif Value > loLevel + hystWindow then loAlarm := FALSE; else retain. Need ensure both checked each valid scan. If Value>hiLevel and Value<loLevel? Valid limits loLevel < hiLevel, cannot both if hyst nonnegative? Could maybe no. But independent okay.\n\nNeed status type WORD. Assign 16#8001 and 16#8002. In ST, status := 16#8001; okay fits WORD? 16#8001 = 32769. Could use WORD#16#8001? CODESYS syntax: 16#8001 maybe integer literal. Assign to WORD fine. status := 16#0? perhaps 0.\n\nNeed declaration sections. Could use VAR_INPUT/OUTPUT. Implementation body. supporting_objects empty list? The task says define referenced DUTs; no DUTs referenced. So [].\n\nNeed ensure JSON valid, strings escape newlines. No Markdown. Return ONLY JSON. Need include declaration as string with newline characters. Implementation string. supporting_objects [].\n\nNeed consider whether declaration should include VAR_INPUT and VAR_OUTPUT maybe no VAR. \"followed by all VAR sections; omit END_FUNCTION_BLOCK.\" We'll include:\nFUNCTION_BLOCK FB_Task\nVAR_INPUT\n    Value : REAL;\n    hiLevel : REAL;\n    loLevel : REAL;\n    hystWindow : REAL;\nEND_VAR\nVAR_OUTPUT\n    hiAlarm : BOOL;\n    loAlarm : BOOL;\n    error : BOOL;\n    status : WORD;\nEND_VAR\n\nNeed implementation maybe:\nIF loLevel >= hiLevel THEN\n    error := TRUE;\n    status := 16#8001;\n    RETURN;\nEND_IF;\n\nIF hystWindow >= (hiLevel - loLevel) THEN\n    error := TRUE;\n    status := 16#8002;\n    RETURN;\nEND_IF;\n\nerror := FALSE;\nstatus := 0;\n\nIF Value > hiLevel THEN\n    hiAlarm := TRUE;\nELSIF Value < (hiLevel - hystWindow) THEN\n    hiAlarm := FALSE;\nEND_IF;\n\nIF Value < loLevel THEN\n    loAlarm := TRUE;\nELSIF Value > (loLevel + hystWindow) THEN\n    loAlarm := FALSE;\nEND_IF;\n\nNeed ensure invalid config leaves alarms unchanged. RETURN does. error/status set. For badRange priority over badWindow: check range first. Good.\n\nNeed possible issue: In valid config, need maybe ensure hystWindow negative? assumption outside. If negative, hystWindow >= diff false if diff positive; then release thresholds weird. But not defined. okay.\n\nNeed maybe \"exit the program\" means RETURN. Good.\n\nNeed check equality at hiLevel: Value > hiLevel false, Value < hiLevel-hyst false, retain previous. Test T1 step 2 at Value=80 after step1 false => false. Step 3 81 true. Step4 75: high release threshold 75? hiLevel-hyst=75. Value < 75 false, retain true. Step5 74 <75 false. Good. Low: Value=20, loLevel=20, Value<lo false, Value>25 false retain previous (false). Step7 19<20 true. Step8 25: not <20, >25 false, retain true. Step9 26>25 false. Good.\n\nT2: step1 90>80 hi true. step2 loLevel=80 >= hiLevel=80 bad range, preserve hi true, error true status 32769. step3 valid range, hystWindow 60 >= 60 bad window, preserve hi true error true status 32770. step4 valid: error false status 0; Value 50; hiAlarm currently true. high: Value>80 false; Value<75? 50<75 true => hiAlarm false. low: Value<20 false; >25 true => loAlarm false. expected false false. Good.\n\nNeed produce JSON exactly. \"supporting_objects\": [] maybe list. The prompt: supporting_objects is a list of helper DUT/POU objects, each with name, kind, declaration, implementation; functions need return_type. Empty okay.\n\nNeed no markdown. Ensure no trailing commas. Use escaped \\n. JSON object keys declaration, implementation, supporting_objects. Need maybe include status cast? no.\n\nPotential CODESYS ST syntax: RETURN in function block? In ST, RETURN exits POU? Yes. Could use \"RETURN;\" in FB. CODESYS supports RETURN. Good.\n\nPotential issue: \"exit the program\" maybe not return but skip alarm update. RETURN okay.\n\nNeed final only JSON."
+        }
+      ]
+    },
+    {
+      "id": "msg_b57bf565ad55442b9e05d399fa8c5f4f_0",
+      "type": "message",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "annotations": [],
+          "logprobs": [],
+          "text": "{\"declaration\":\"FUNCTION_BLOCK FB_Task\\nVAR_INPUT\\n    Value : REAL;\\n    hiLevel : REAL;\\n    loLevel : REAL;\\n    hystWindow : REAL;\\nEND_VAR\\nVAR_OUTPUT\\n    hiAlarm : BOOL;\\n    loAlarm : BOOL;\\n    error : BOOL;\\n    status : WORD;\\nEND_VAR\",\"implementation\":\"IF loLevel >= hiLevel THEN\\n    error := TRUE;\\n    status := 16#8001;\\n    RETURN;\\nEND_IF;\\n\\nIF hystWindow >= (hiLevel - loLevel) THEN\\n    error := TRUE;\\n    status := 16#8002;\\n    RETURN;\\nEND_IF;\\n\\nerror := FALSE;\\nstatus := 0;\\n\\nIF Value > hiLevel THEN\\n    hiAlarm := TRUE;\\nELSIF Value < (hiLevel - hystWindow) THEN\\n    hiAlarm := FALSE;\\nEND_IF;\\n\\nIF Value < loLevel THEN\\n    loAlarm := TRUE;\\nELSIF Value > (loLevel + hystWindow) THEN\\n    loAlarm := FALSE;\\nEND_IF;\",\"supporting_objects\":[]}"
+        }
+      ],
+      "role": "assistant"
+    }
+  ],
+  "usage": {
+    "input_tokens": 3234,
+    "input_tokens_details": {
+      "cached_tokens": 0
+    },
+    "output_tokens": 1565,
+    "output_tokens_details": {
+      "reasoning_tokens": 1296
+    },
+    "total_tokens": 4799
+  }
+}

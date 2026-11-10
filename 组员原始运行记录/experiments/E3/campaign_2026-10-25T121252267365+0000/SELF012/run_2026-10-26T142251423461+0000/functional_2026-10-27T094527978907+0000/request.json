@@ -1,0 +1,177 @@
+{
+  "request_id": "7c8cd295dffc4e29af22206129332fe1",
+  "mode": "IDE_SIMULATION_ONLY",
+  "no_physical_connection": true,
+  "workspace": "D:\\Learning\\大四秋冬\\genai\\finale\\PLC_Agent_Final\\experiments\\E3\\campaign_2026-10-25T121252267365+0000\\SELF012\\run_2026-10-26T142251423461+0000\\functional_2026-10-27T094527978907+0000",
+  "project": "D:\\Learning\\大四秋冬\\genai\\finale\\PLC_Agent_Final\\experiments\\E3\\campaign_2026-10-25T121252267365+0000\\SELF012\\run_2026-10-26T142251423461+0000\\functional_2026-10-27T094527978907+0000\\simulation.project",
+  "template": "D:/Learning/大四秋冬/genai/finale/PLC_Agent_Final/codesys/templates/benchmark.project",
+  "task_id": "SELF012",
+  "task_sha256": "e0c35399e770e6fb6b78792ab614be40263929d453c0f2a1c654ccd068bf90d5",
+  "source_sha256": "49ab434f7ff35eb9b41bc38db1bd5adb80c9d6c82bb95f13d252a7a9b6dec863",
+  "candidate": {
+    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    Start : BOOL;\n    Stop : BOOL;\n    Fault : BOOL;\n    Reset : BOOL;\nEND_VAR\nVAR_OUTPUT\n    Run : BOOL := FALSE;\n    Locked : BOOL := FALSE;\n    Attempts : USINT := 0;\nEND_VAR\nVAR\n    State : E_TaskState := E_TaskState.IDLE;\n    RecoveryFreeScans : USINT := 0;\nEND_VAR",
+    "implementation": "IF Reset AND NOT Fault AND NOT Start THEN\n    State := E_TaskState.IDLE;\n    Attempts := 0;\n    RecoveryFreeScans := 0;\nELSIF State = E_TaskState.LOCKED THEN\n    RecoveryFreeScans := 0;\nELSIF Stop THEN\n    State := E_TaskState.IDLE;\n    RecoveryFreeScans := 0;\nELSIF (State = E_TaskState.RUNNING) AND Fault THEN\n    IF Attempts < 2 THEN\n        State := E_TaskState.WAIT;\n        RecoveryFreeScans := 0;\n    ELSE\n        State := E_TaskState.LOCKED;\n        RecoveryFreeScans := 0;\n    END_IF\nELSIF State = E_TaskState.WAIT THEN\n    IF Fault THEN\n        RecoveryFreeScans := 0;\n    ELSIF RecoveryFreeScans >= 1 THEN\n        Attempts := Attempts + 1;\n        State := E_TaskState.RUNNING;\n        RecoveryFreeScans := 0;\n    ELSE\n        RecoveryFreeScans := RecoveryFreeScans + 1;\n    END_IF\nELSIF State = E_TaskState.IDLE THEN\n    IF Start AND NOT Fault THEN\n        State := E_TaskState.RUNNING;\n        RecoveryFreeScans := 0;\n    END_IF\nEND_IF\n\nRun := (State = E_TaskState.RUNNING) AND NOT Fault;\nLocked := (State = E_TaskState.LOCKED);",
+    "supporting_objects": [
+      {
+        "name": "E_TaskState",
+        "kind": "DUT",
+        "declaration": "TYPE E_TaskState :\n(\n    IDLE,\n    RUNNING,\n    WAIT,\n    LOCKED\n);\nEND_TYPE",
+        "implementation": ""
+      }
+    ]
+  },
+  "program": {
+    "declaration": "PROGRAM PLC_PRG\nVAR\n BenchStep : UDINT := 0;\n BenchCalls : UDINT := 0;\n BenchDone : BOOL := FALSE;\n BenchUut0 : FB_Task;\n BenchUut1 : FB_Task;\n TraceIn0 : ARRAY[0..19] OF BOOL;\n TraceIn1 : ARRAY[0..19] OF BOOL;\n TraceIn2 : ARRAY[0..19] OF BOOL;\n TraceIn3 : ARRAY[0..19] OF BOOL;\n TraceOut0 : ARRAY[0..19] OF BOOL;\n TraceOut1 : ARRAY[0..19] OF BOOL;\n TraceOut2 : ARRAY[0..19] OF USINT;\nEND_VAR",
+    "implementation": "IF NOT BenchDone THEN\n CASE BenchStep OF\n 0:\n  BenchUut0.Start := TRUE;\n  BenchUut0.Stop := FALSE;\n  BenchUut0.Fault := FALSE;\n  BenchUut0.Reset := FALSE;\n  TraceIn0[0] := BenchUut0.Start;\n  TraceIn1[0] := BenchUut0.Stop;\n  TraceIn2[0] := BenchUut0.Fault;\n  TraceIn3[0] := BenchUut0.Reset;\n  BenchUut0();\n  TraceOut0[0] := BenchUut0.Run;\n  TraceOut1[0] := BenchUut0.Locked;\n  TraceOut2[0] := BenchUut0.Attempts;\n  BenchCalls := BenchCalls + 1;\n 1:\n  BenchUut0.Start := FALSE;\n  BenchUut0.Stop := FALSE;\n  BenchUut0.Fault := TRUE;\n  BenchUut0.Reset := FALSE;\n  TraceIn0[1] := BenchUut0.Start;\n  TraceIn1[1] := BenchUut0.Stop;\n  TraceIn2[1] := BenchUut0.Fault;\n  TraceIn3[1] := BenchUut0.Reset;\n  BenchUut0();\n  TraceOut0[1] := BenchUut0.Run;\n  TraceOut1[1] := BenchUut0.Locked;\n  TraceOut2[1] := BenchUut0.Attempts;\n  BenchCalls := BenchCalls + 1;\n 2:\n  BenchUut0.Start := FALSE;\n  BenchUut0.Stop := FALSE;\n  BenchUut0.Fault := FALSE;\n  BenchUut0.Reset := FALSE;\n  TraceIn0[2] := BenchUut0.Start;\n  TraceIn1[2] := BenchUut0.Stop;\n  TraceIn2[2] := BenchUut0.Fault;\n  TraceIn3[2] := BenchUut0.Reset;\n  BenchUut0();\n  TraceOut0[2] := BenchUut0.Run;\n  TraceOut1[2] := BenchUut0.Locked;\n  TraceOut2[2] := BenchUut0.Attempts;\n  BenchCalls := BenchCalls + 1;\n 3:\n  BenchUut0.Start := FALSE;\n  BenchUut0.Stop := FALSE;\n  BenchUut0.Fault := FALSE;\n  BenchUut0.Reset := FALSE;\n  TraceIn0[3] := BenchUut0.Start;\n  TraceIn1[3] := BenchUut0.Stop;\n  TraceIn2[3] := BenchUut0.Fault;\n  TraceIn3[3] := BenchUut0.Reset;\n  BenchUut0();\n  TraceOut0[3] := BenchUut0.Run;\n  TraceOut1[3] := BenchUut0.Locked;\n  TraceOut2[3] := BenchUut0.Attempts;\n  BenchCalls := BenchCalls + 1;\n 4:\n  BenchUut0.Start := FALSE;\n  BenchUut0.Stop := FALSE;\n  BenchUut0.Fault := TRUE;\n  BenchUut0.Reset := FALSE;\n  TraceIn0[4] := BenchUut0.Start;\n  TraceIn1[4] := BenchUut0.Stop;\n  TraceIn2[4] := BenchUut0.Fault;\n  TraceIn3[4] := BenchUut0.Reset;\n  BenchUut0();\n  TraceOut0[4] := BenchUut0.Run;\n  TraceOut1[4] := BenchUut0.Locked;\n  TraceOut2[4] := BenchUut0.Attempts;\n  BenchCalls := BenchCalls + 1;\n 5:\n  BenchUut0.Start := FALSE;\n  BenchUut0.Stop := FALSE;\n  BenchUut0.Fault := FALSE;\n  BenchUut0.Reset := FALSE;\n  TraceIn0[5] := BenchUut0.Start;\n  TraceIn1[5] := BenchUut0.Stop;\n  TraceIn2[5] := BenchUut0.Fault;\n  TraceIn3[5] := BenchUut0.Reset;\n  BenchUut0();\n  TraceOut0[5] := BenchUut0.Run;\n  TraceOut1[5] := BenchUut0.Locked;\n  TraceOut2[5] := BenchUut0.Attempts;\n  BenchCalls := BenchCalls + 1;\n 6:\n  BenchUut0.Start := FALSE;\n  BenchUut0.Stop := FALSE;\n  BenchUut0.Fault := FALSE;\n  BenchUut0.Reset := FALSE;\n  TraceIn0[6] := BenchUut0.Start;\n  TraceIn1[6] := BenchUut0.Stop;\n  TraceIn2[6] := BenchUut0.Fault;\n  TraceIn3[6] := BenchUut0.Reset;\n  BenchUut0();\n  TraceOut0[6] := BenchUut0.Run;\n  TraceOut1[6] := BenchUut0.Locked;\n  TraceOut2[6] := BenchUut0.Attempts;\n  BenchCalls := BenchCalls + 1;\n 7:\n  BenchUut0.Start := FALSE;\n  BenchUut0.Stop := FALSE;\n  BenchUut0.Fault := TRUE;\n  BenchUut0.Reset := FALSE;\n  TraceIn0[7] := BenchUut0.Start;\n  TraceIn1[7] := BenchUut0.Stop;\n  TraceIn2[7] := BenchUut0.Fault;\n  TraceIn3[7] := BenchUut0.Reset;\n  BenchUut0();\n  TraceOut0[7] := BenchUut0.Run;\n  TraceOut1[7] := BenchUut0.Locked;\n  TraceOut2[7] := BenchUut0.Attempts;\n  BenchCalls := BenchCalls + 1;\n 8:\n  BenchUut0.Start := FALSE;\n  BenchUut0.Stop := TRUE;\n  BenchUut0.Fault := FALSE;\n  BenchUut0.Reset := FALSE;\n  TraceIn0[8] := BenchUut0.Start;\n  TraceIn1[8] := BenchUut0.Stop;\n  TraceIn2[8] := BenchUut0.Fault;\n  TraceIn3[8] := BenchUut0.Reset;\n  BenchUut0();\n  TraceOut0[8] := BenchUut0.Run;\n  TraceOut1[8] := BenchUut0.Locked;\n  TraceOut2[8] := BenchUut0.Attempts;\n  BenchCalls := BenchCalls + 1;\n 9:\n  BenchUut0.Start := TRUE;\n  BenchUut0.Stop := FALSE;\n  BenchUut0.Fault := FALSE;\n  BenchUut0.Reset := TRUE;\n  TraceIn0[9] := BenchUut0.Start;\n  TraceIn1[9] := BenchUut0.Stop;\n  TraceIn2[9] := BenchUut0.Fault;\n  TraceIn3[9] := BenchUut0.Reset;\n  BenchUut0();\n  TraceOut0[9] := BenchUut0.Run;\n  TraceOut1[9] := BenchUut0.Locked;\n  TraceOut2[9] := BenchUut0.Attempts;\n  BenchCalls := BenchCalls + 1;\n 10:\n  BenchUut0.Start := FALSE;\n  BenchUut0.Stop := FALSE;\n  BenchUut0.Fault := FALSE;\n  BenchUut0.Reset := TRUE;\n  TraceIn0[10] := BenchUut0.Start;\n  TraceIn1[10] := BenchUut0.Stop;\n  TraceIn2[10] := BenchUut0.Fault;\n  TraceIn3[10] := BenchUut0.Reset;\n  BenchUut0();\n  TraceOut0[10] := BenchUut0.Run;\n  TraceOut1[10] := BenchUut0.Locked;\n  TraceOut2[10] := BenchUut0.Attempts;\n  BenchCalls := BenchCalls + 1;\n 11:\n  BenchUut1.Start := TRUE;\n  BenchUut1.Stop := FALSE;\n  BenchUut1.Fault := FALSE;\n  BenchUut1.Reset := FALSE;\n  TraceIn0[11] := BenchUut1.Start;\n  TraceIn1[11] := BenchUut1.Stop;\n  TraceIn2[11] := BenchUut1.Fault;\n  TraceIn3[11] := BenchUut1.Reset;\n  BenchUut1();\n  TraceOut0[11] := BenchUut1.Run;\n  TraceOut1[11] := BenchUut1.Locked;\n  TraceOut2[11] := BenchUut1.Attempts;\n  BenchCalls := BenchCalls + 1;\n 12:\n  BenchUut1.Start := FALSE;\n  BenchUut1.Stop := FALSE;\n  BenchUut1.Fault := TRUE;\n  BenchUut1.Reset := FALSE;\n  TraceIn0[12] := BenchUut1.Start;\n  TraceIn1[12] := BenchUut1.Stop;\n  TraceIn2[12] := BenchUut1.Fault;\n  TraceIn3[12] := BenchUut1.Reset;\n  BenchUut1();\n  TraceOut0[12] := BenchUut1.Run;\n  TraceOut1[12] := BenchUut1.Locked;\n  TraceOut2[12] := BenchUut1.Attempts;\n  BenchCalls := BenchCalls + 1;\n 13:\n  BenchUut1.Start := FALSE;\n  BenchUut1.Stop := FALSE;\n  BenchUut1.Fault := FALSE;\n  BenchUut1.Reset := FALSE;\n  TraceIn0[13] := BenchUut1.Start;\n  TraceIn1[13] := BenchUut1.Stop;\n  TraceIn2[13] := BenchUut1.Fault;\n  TraceIn3[13] := BenchUut1.Reset;\n  BenchUut1();\n  TraceOut0[13] := BenchUut1.Run;\n  TraceOut1[13] := BenchUut1.Locked;\n  TraceOut2[13] := BenchUut1.Attempts;\n  BenchCalls := BenchCalls + 1;\n 14:\n  BenchUut1.Start := FALSE;\n  BenchUut1.Stop := FALSE;\n  BenchUut1.Fault := TRUE;\n  BenchUut1.Reset := FALSE;\n  TraceIn0[14] := BenchUut1.Start;\n  TraceIn1[14] := BenchUut1.Stop;\n  TraceIn2[14] := BenchUut1.Fault;\n  TraceIn3[14] := BenchUut1.Reset;\n  BenchUut1();\n  TraceOut0[14] := BenchUut1.Run;\n  TraceOut1[14] := BenchUut1.Locked;\n  TraceOut2[14] := BenchUut1.Attempts;\n  BenchCalls := BenchCalls + 1;\n 15:\n  BenchUut1.Start := FALSE;\n  BenchUut1.Stop := FALSE;\n  BenchUut1.Fault := FALSE;\n  BenchUut1.Reset := FALSE;\n  TraceIn0[15] := BenchUut1.Start;\n  TraceIn1[15] := BenchUut1.Stop;\n  TraceIn2[15] := BenchUut1.Fault;\n  TraceIn3[15] := BenchUut1.Reset;\n  BenchUut1();\n  TraceOut0[15] := BenchUut1.Run;\n  TraceOut1[15] := BenchUut1.Locked;\n  TraceOut2[15] := BenchUut1.Attempts;\n  BenchCalls := BenchCalls + 1;\n 16:\n  BenchUut1.Start := FALSE;\n  BenchUut1.Stop := FALSE;\n  BenchUut1.Fault := FALSE;\n  BenchUut1.Reset := FALSE;\n  TraceIn0[16] := BenchUut1.Start;\n  TraceIn1[16] := BenchUut1.Stop;\n  TraceIn2[16] := BenchUut1.Fault;\n  TraceIn3[16] := BenchUut1.Reset;\n  BenchUut1();\n  TraceOut0[16] := BenchUut1.Run;\n  TraceOut1[16] := BenchUut1.Locked;\n  TraceOut2[16] := BenchUut1.Attempts;\n  BenchCalls := BenchCalls + 1;\n 17:\n  BenchUut1.Start := FALSE;\n  BenchUut1.Stop := FALSE;\n  BenchUut1.Fault := TRUE;\n  BenchUut1.Reset := FALSE;\n  TraceIn0[17] := BenchUut1.Start;\n  TraceIn1[17] := BenchUut1.Stop;\n  TraceIn2[17] := BenchUut1.Fault;\n  TraceIn3[17] := BenchUut1.Reset;\n  BenchUut1();\n  TraceOut0[17] := BenchUut1.Run;\n  TraceOut1[17] := BenchUut1.Locked;\n  TraceOut2[17] := BenchUut1.Attempts;\n  BenchCalls := BenchCalls + 1;\n 18:\n  BenchUut1.Start := FALSE;\n  BenchUut1.Stop := TRUE;\n  BenchUut1.Fault := FALSE;\n  BenchUut1.Reset := FALSE;\n  TraceIn0[18] := BenchUut1.Start;\n  TraceIn1[18] := BenchUut1.Stop;\n  TraceIn2[18] := BenchUut1.Fault;\n  TraceIn3[18] := BenchUut1.Reset;\n  BenchUut1();\n  TraceOut0[18] := BenchUut1.Run;\n  TraceOut1[18] := BenchUut1.Locked;\n  TraceOut2[18] := BenchUut1.Attempts;\n  BenchCalls := BenchCalls + 1;\n 19:\n  BenchUut1.Start := FALSE;\n  BenchUut1.Stop := FALSE;\n  BenchUut1.Fault := FALSE;\n  BenchUut1.Reset := FALSE;\n  TraceIn0[19] := BenchUut1.Start;\n  TraceIn1[19] := BenchUut1.Stop;\n  TraceIn2[19] := BenchUut1.Fault;\n  TraceIn3[19] := BenchUut1.Reset;\n  BenchUut1();\n  TraceOut0[19] := BenchUut1.Run;\n  TraceOut1[19] := BenchUut1.Locked;\n  TraceOut2[19] := BenchUut1.Attempts;\n  BenchCalls := BenchCalls + 1;\n END_CASE;\n BenchStep := BenchStep + 1;\n IF BenchStep >= 20 THEN BenchDone := TRUE; END_IF;\nEND_IF;",
+    "step_count": 20,
+    "steps": [
+      {
+        "index": 0,
+        "case_id": "exhaustion",
+        "case_step": 0
+      },
+      {
+        "index": 1,
+        "case_id": "exhaustion",
+        "case_step": 1
+      },
+      {
+        "index": 2,
+        "case_id": "exhaustion",
+        "case_step": 2
+      },
+      {
+        "index": 3,
+        "case_id": "exhaustion",
+        "case_step": 3
+      },
+      {
+        "index": 4,
+        "case_id": "exhaustion",
+        "case_step": 4
+      },
+      {
+        "index": 5,
+        "case_id": "exhaustion",
+        "case_step": 5
+      },
+      {
+        "index": 6,
+        "case_id": "exhaustion",
+        "case_step": 6
+      },
+      {
+        "index": 7,
+        "case_id": "exhaustion",
+        "case_step": 7
+      },
+      {
+        "index": 8,
+        "case_id": "exhaustion",
+        "case_step": 8
+      },
+      {
+        "index": 9,
+        "case_id": "exhaustion",
+        "case_step": 9
+      },
+      {
+        "index": 10,
+        "case_id": "exhaustion",
+        "case_step": 10
+      },
+      {
+        "index": 11,
+        "case_id": "dwell_interrupt",
+        "case_step": 0
+      },
+      {
+        "index": 12,
+        "case_id": "dwell_interrupt",
+        "case_step": 1
+      },
+      {
+        "index": 13,
+        "case_id": "dwell_interrupt",
+        "case_step": 2
+      },
+      {
+        "index": 14,
+        "case_id": "dwell_interrupt",
+        "case_step": 3
+      },
+      {
+        "index": 15,
+        "case_id": "dwell_interrupt",
+        "case_step": 4
+      },
+      {
+        "index": 16,
+        "case_id": "dwell_interrupt",
+        "case_step": 5
+      },
+      {
+        "index": 17,
+        "case_id": "dwell_interrupt",
+        "case_step": 6
+      },
+      {
+        "index": 18,
+        "case_id": "dwell_interrupt",
+        "case_step": 7
+      },
+      {
+        "index": 19,
+        "case_id": "dwell_interrupt",
+        "case_step": 8
+      }
+    ],
+    "inputs": [
+      {
+        "direction": "INPUT",
+        "name": "Start",
+        "type": "BOOL",
+        "description": "Operator start request"
+      },
+      {
+        "direction": "INPUT",
+        "name": "Stop",
+        "type": "BOOL",
+        "description": "Abort without clearing retry count"
+      },
+      {
+        "direction": "INPUT",
+        "name": "Fault",
+        "type": "BOOL",
+        "description": "Process fault"
+      },
+      {
+        "direction": "INPUT",
+        "name": "Reset",
+        "type": "BOOL",
+        "description": "Clear retry history with Start released"
+      }
+    ],
+    "outputs": [
+      {
+        "direction": "OUTPUT",
+        "name": "Run",
+        "type": "BOOL",
+        "description": "Feeder command"
+      },
+      {
+        "direction": "OUTPUT",
+        "name": "Locked",
+        "type": "BOOL",
+        "description": "Retry exhaustion lockout"
+      },
+      {
+        "direction": "OUTPUT",
+        "name": "Attempts",
+        "type": "USINT",
+        "description": "Automatic restarts issued, zero through two"
+      }
+    ]
+  },
+  "result_path": "D:\\Learning\\大四秋冬\\genai\\finale\\PLC_Agent_Final\\experiments\\E3\\campaign_2026-10-25T121252267365+0000\\SELF012\\run_2026-10-26T142251423461+0000\\functional_2026-10-27T094527978907+0000\\simulation_evidence.json"
+}

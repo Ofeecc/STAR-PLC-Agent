@@ -1,0 +1,75 @@
+{
+  "model": "kimi-k3.1-pro",
+  "input": [
+    {
+      "role": "system",
+      "content": "You are an expert assistant who can solve any task using tool calls. You will be given a task to solve as best you can.\nTo do so, you have been given access to some tools.\n\nThe tool call you write is an action: after the tool is executed, you will get the result of the tool call as an \"observation\".\nThis Action/Observation can repeat N times, you should take several steps when needed.\n\nYou can use the result of the previous action as input for the next action.\nThe observation will always be a string: it can represent a file, like \"image_1.jpg\".\nThen you can use it as input for the next action. You can do it for instance as follows:\n\nObservation: \"image_1.jpg\"\n\nAction:\n{\n  \"name\": \"image_transformer\",\n  \"arguments\": {\"image\": \"image_1.jpg\"}\n}\n\nTo provide the final answer to the task, use an action blob with \"name\": \"final_answer\" tool. It is the only way to complete the task, else you will be stuck on a loop. So your final output should look like this:\nAction:\n{\n  \"name\": \"final_answer\",\n  \"arguments\": {\"answer\": \"insert your final answer here\"}\n}\n\n\nHere are a few examples using notional tools:\n---\nTask: \"Generate an image of the oldest person in this document.\"\n\nAction:\n{\n  \"name\": \"document_qa\",\n  \"arguments\": {\"document\": \"document.pdf\", \"question\": \"Who is the oldest person mentioned?\"}\n}\nObservation: \"The oldest person in the document is John Doe, a 55 year old lumberjack living in Newfoundland.\"\n\nAction:\n{\n  \"name\": \"image_generator\",\n  \"arguments\": {\"prompt\": \"A portrait of John Doe, a 55-year-old man living in Canada.\"}\n}\nObservation: \"image.png\"\n\nAction:\n{\n  \"name\": \"final_answer\",\n  \"arguments\": \"image.png\"\n}\n\n---\nTask: \"What is the result of the following operation: 5 + 3 + 1294.678?\"\n\nAction:\n{\n    \"name\": \"python_interpreter\",\n    \"arguments\": {\"code\": \"5 + 3 + 1294.678\"}\n}\nObservation: 1302.678\n\nAction:\n{\n  \"name\": \"final_answer\",\n  \"arguments\": \"1302.678\"\n}\n\n---\nTask: \"Which city has the highest population , Guangzhou or Shanghai?\"\n\nAction:\n{\n    \"name\": \"web_search\",\n    \"arguments\": \"Population Guangzhou\"\n}\nObservation: ['Guangzhou has a population of 15 million inhabitants as of 2021.']\n\n\nAction:\n{\n    \"name\": \"web_search\",\n    \"arguments\": \"Population Shanghai\"\n}\nObservation: '26 million (2019)'\n\nAction:\n{\n  \"name\": \"final_answer\",\n  \"arguments\": \"Shanghai\"\n}\n\nAbove example were using notional tools that might not exist for you. You only have access to these tools:\n- compile_st: Compile the supplied CODESYS FB_Task source in an isolated project with the real compiler. Returns actual diagnostics. Repair only code errors; stop after success, infrastructure failure, or the configured total compiler-attempt limit.\n    Takes inputs: {'source': {'type': 'object', 'description': 'Object containing string declaration, string implementation, and supporting_objects list.', 'properties': {'declaration': {'type': 'string'}, 'implementation': {'type': 'string'}, 'supporting_objects': {'type': 'array', 'items': {'type': 'object'}}}, 'required': ['declaration', 'implementation'], 'additionalProperties': False}}\n    Returns an output of type: object\n- final_answer: Provides a final answer to the given problem.\n    Takes inputs: {'answer': {'type': 'any', 'description': 'The final answer to the problem'}}\n    Returns an output of type: any\nConstruct source as a JSON object with declaration, implementation, supporting_objects and submit it to compile_st.\ndeclaration is CODESYS FUNCTION_BLOCK FB_Task followed by all VAR sections; omit END_FUNCTION_BLOCK.\nimplementation is the ST body alone. supporting_objects is a list of helper DUT/POU objects, each with\nname, kind (DUT/FUNCTION/FUNCTION_BLOCK), declaration, implementation; functions need return_type.\nKeep exact task interface names/types and implement all behavior. Define referenced DUTs. No Markdown.\nDo not change requirements or use reference answers. Standard library is available in the project.\nThe target is CODESYS 3.5 ST. Compilation is offline; do not contact physical equipment.\n\nUse compile_st for every candidate, at most 3 total compilation attempts. Use the returned diagnostics to repair focused code errors. Once compiled, call final_answer with a short status. Stop on infrastructure failure. Do not claim PLC functional tests have been executed. No filesystem, shell, internet-search, or reference-solution tools are provided.\n\nHere are the rules you should always follow to solve your task:\n1. ALWAYS provide a tool call, else you will fail.\n2. Always use the right arguments for the tools. Never use variable names as the action arguments, use the value instead.\n3. Call a tool only when needed: do not call the search agent if you do not need information, try to solve the task yourself. If no tool call is needed, use final_answer tool to return your answer.\n4. Never re-do a tool call that you previously did with the exact same parameters.\n\nNow Begin!"
+    },
+    {
+      "role": "user",
+      "content": "New task:\nTASK AND SPECIFICATIONS\n{\n  \"schema_version\": 1,\n  \"id\": \"SELF008\",\n  \"kind\": \"self_built\",\n  \"title\": \"Consecutive scan qualification with an immediate trip\",\n  \"difficulty\": \"easy\",\n  \"provenance\": {\n    \"source_type\": \"independent_synthesis\",\n    \"source_file\": \"scripts/build_self_dataset.py\",\n    \"source_index\": 8,\n    \"adaptation\": \"Independently specified for this project; no public task was copied. The coding assistant chose the state variables, priority order and fixed scan traces, then reviewed the traces against a separate Python transition implementation.\",\n    \"rationale\": \"A cyclic quality check accepts a request only after a configurable number of consecutive healthy invocations.\",\n    \"review\": \"Assistant consistency review of initialization, simultaneous commands, retained state and recovery boundaries; independent Python oracle checked against manual expected traces. Not an industrial safety certification or external expert review.\"\n  },\n  \"requirements\": \"Preset is valid from 1 through 5. Initialize Count=0. If Trip TRUE, Request FALSE, or Preset invalid, clear Count and Ready. Otherwise Count becomes min(previous Count+1, Preset); Ready is TRUE exactly when Count reaches Preset. Count saturates. Changes of Preset take effect immediately using the same rule, so reducing Preset can qualify on that scan. This counts invocations, not elapsed milliseconds.\",\n  \"scenario\": \"A cyclic quality check accepts a request only after a configurable number of consecutive healthy invocations.\",\n  \"interface\": [\n    {\n      \"direction\": \"INPUT\",\n      \"name\": \"Request\",\n      \"type\": \"BOOL\",\n      \"description\": \"Raw qualification request\"\n    },\n    {\n      \"direction\": \"INPUT\",\n      \"name\": \"Trip\",\n      \"type\": \"BOOL\",\n      \"description\": \"Immediate inhibit\"\n    },\n    {\n      \"direction\": \"INPUT\",\n      \"name\": \"Preset\",\n      \"type\": \"USINT\",\n      \"description\": \"Required consecutive scans, valid 1 through 5\"\n    },\n    {\n      \"direction\": \"OUTPUT\",\n      \"name\": \"Ready\",\n      \"type\": \"BOOL\",\n      \"description\": \"Qualified request\"\n    },\n    {\n      \"direction\": \"OUTPUT\",\n      \"name\": \"Count\",\n      \"type\": \"USINT\",\n      \"description\": \"Saturated consecutive scan count\"\n    }\n  ],\n  \"initial_conditions\": {\n    \"Count\": 0,\n    \"Ready\": false\n  },\n  \"scan_semantics\": \"At scan k, sample every input once, read retained pre-state q[k], execute one transition, and observe outputs O[k] at the end of that same scan. Updated state becomes q[k+1]. Reset the instance before each test. Step 0 executes normally; initial conditions describe pre-state, not an extra delayed scan. All timing in this task is explicitly counted in invocations, not wall time.\",\n  \"safety_priority\": [\n    \"Trip, missing request and invalid Preset clear progress\"\n  ],\n  \"assumptions\": [],\n  \"atomic_propositions\": {\n    \"Request\": \"Raw qualification request Boolean names are propositions; numeric names appear only inside defined predicates.\",\n    \"Trip\": \"Immediate inhibit Boolean names are propositions; numeric names appear only inside defined predicates.\",\n    \"Preset\": \"Required consecutive scans, valid 1 through 5 Boolean names are propositions; numeric names appear only inside defined predicates.\",\n    \"Ready\": \"Qualified request Boolean names are propositions; numeric names appear only inside defined predicates.\",\n    \"Count\": \"Saturated consecutive scan count Boolean names are propositions; numeric names appear only inside defined predicates.\",\n    \"first\": \"True only on the first invocation after resetting the FB instance.\",\n    \"invalid\": \"Preset < 1 or Preset > 5.\",\n    \"qualified\": \"Count >= Preset and Preset is valid.\",\n    \"qCount\": \"Pre-scan Count, initially zero.\",\n    \"nextCount\": \"min(qCount+1, Preset) as an integer expression.\"\n  },\n  \"ltl\": [\n    {\n      \"id\": \"P1\",\n      \"formula\": \"G((Trip | !Request | invalid) -> (!Ready & (Count = 0)))\",\n      \"explanation\": \"Every interruption clears qualification immediately.\"\n    },\n    {\n      \"id\": \"P2\",\n      \"formula\": \"G((Request & !Trip & !invalid) -> (Count = nextCount))\",\n      \"explanation\": \"Healthy scans increment and saturate precisely.\"\n    },\n    {\n      \"id\": \"P3\",\n      \"formula\": \"G(Ready <-> qualified)\",\n      \"explanation\": \"The indication agrees with the post-scan count.\"\n    },\n    {\n      \"id\": \"P4\",\n      \"formula\": \"G(!invalid -> ((Count >= 0) & (Count <= Preset)))\",\n      \"explanation\": \"The counter stays within bounds.\"\n    },\n    {\n      \"id\": \"P5\",\n      \"formula\": \"(G(Request & !Trip & !invalid)) -> F Ready\",\n      \"explanation\": \"A perpetually valid request qualifies within at most five scans, even if valid Preset varies.\"\n    }\n  ],\n  \"tests\": [\n    {\n      \"id\": \"delay\",\n      \"purpose\": \"Three scans qualify, hold saturates, trip clears\",\n      \"steps\": [\n        {\n          \"inputs\": {\n            \"Request\": true,\n            \"Trip\": false,\n            \"Preset\": 3\n          },\n          \"expected\": {\n            \"Count\": 1,\n            \"Ready\": false\n          }\n        },\n        {\n          \"inputs\": {\n            \"Request\": true,\n            \"Trip\": false,\n            \"Preset\": 3\n          },\n          \"expected\": {\n            \"Count\": 2,\n            \"Ready\": false\n          }\n        },\n        {\n          \"inputs\": {\n            \"Request\": true,\n            \"Trip\": false,\n            \"Preset\": 3\n          },\n          \"expected\": {\n            \"Count\": 3,\n            \"Ready\": true\n          }\n        },\n        {\n          \"inputs\": {\n            \"Request\": true,\n            \"Trip\": false,\n            \"Preset\": 3\n          },\n          \"expected\": {\n            \"Count\": 3,\n            \"Ready\": true\n          }\n        },\n        {\n          \"inputs\": {\n            \"Request\": true,\n            \"Trip\": true,\n            \"Preset\": 3\n          },\n          \"expected\": {\n            \"Count\": 0,\n            \"Ready\": false\n          }\n        },\n        {\n          \"inputs\": {\n            \"Request\": true,\n            \"Trip\": false,\n            \"Preset\": 3\n          },\n          \"expected\": {\n            \"Count\": 1,\n            \"Ready\": false\n          }\n        }\n      ]\n    },\n    {\n      \"id\": \"bounds\",\n      \"purpose\": \"Invalid presets and immediate reduced threshold\",\n      \"steps\": [\n        {\n          \"inputs\": {\n            \"Request\": true,\n            \"Trip\": false,\n            \"Preset\": 0\n          },\n          \"expected\": {\n            \"Count\": 0,\n            \"Ready\": false\n          }\n        },\n        {\n          \"inputs\": {\n            \"Request\": true,\n            \"Trip\": false,\n            \"Preset\": 6\n          },\n          \"expected\": {\n            \"Count\": 0,\n            \"Ready\": false\n          }\n        },\n        {\n          \"inputs\": {\n            \"Request\": true,\n            \"Trip\": false,\n            \"Preset\": 5\n          },\n          \"expected\": {\n            \"Count\": 1,\n            \"Ready\": false\n          }\n        },\n        {\n          \"inputs\": {\n            \"Request\": true,\n            \"Trip\": false,\n            \"Preset\": 1\n          },\n          \"expected\": {\n            \"Count\": 1,\n            \"Ready\": true\n          }\n        },\n        {\n          \"inputs\": {\n            \"Request\": false,\n            \"Trip\": false,\n            \"Preset\": 5\n          },\n          \"expected\": {\n            \"Count\": 0,\n            \"Ready\": false\n          }\n        }\n      ]\n    }\n  ]\n}"
+    }
+  ],
+  "store": false,
+  "stream": true,
+  "max_output_tokens": 8192,
+  "reasoning": {
+    "effort": "medium"
+  },
+  "tools": [
+    {
+      "type": "function",
+      "name": "compile_st",
+      "description": "Compile the supplied CODESYS FB_Task source in an isolated project with the real compiler. Returns actual diagnostics. Repair only code errors; stop after success, infrastructure failure, or the configured total compiler-attempt limit.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "object",
+            "description": "Object containing string declaration, string implementation, and supporting_objects list.",
+            "properties": {
+              "declaration": {
+                "type": "string"
+              },
+              "implementation": {
+                "type": "string"
+              },
+              "supporting_objects": {
+                "type": "array",
+                "items": {
+                  "type": "object"
+                }
+              }
+            },
+            "required": [
+              "declaration",
+              "implementation"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "source"
+        ]
+      }
+    },
+    {
+      "type": "function",
+      "name": "final_answer",
+      "description": "Provides a final answer to the given problem.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "answer": {
+            "type": "string",
+            "description": "The final answer to the problem"
+          }
+        },
+        "required": [
+          "answer"
+        ]
+      }
+    }
+  ],
+  "tool_choice": "required"
+}

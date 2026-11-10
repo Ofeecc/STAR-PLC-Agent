@@ -1,0 +1,20 @@
+{
+  "request_id": "669b4f5b790042dd8d1a3a5be81af564",
+  "source_sha256": "1fbe868f05f718f1a45d69ce4d192dc9e3c8534931f3d383617e0bd9cddc66bf",
+  "task_id": "SELF011",
+  "project": "D:\\Learning\\大四秋冬\\genai\\finale\\PLC_Agent_Final\\experiments\\E1\\campaign_2026-10-25T121252267365+0000\\SELF011\\run_2026-10-26T133233010172+0000\\compile_00\\task.project",
+  "candidate": {
+    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    Start : BOOL;\n    Stop : BOOL;\n    Reset : BOOL;\n    ExtendDone : BOOL;\n    ClampDone : BOOL;\n    ReleaseDone : BOOL;\n    RetractDone : BOOL;\nEND_VAR\nVAR_OUTPUT\n    Extend : BOOL;\n    Clamp : BOOL;\n    Release : BOOL;\n    Retract : BOOL;\n    Busy : BOOL;\n    Done : BOOL;\nEND_VAR\nVAR\n    State : E_TaskState := E_TaskState.IDLE;\nEND_VAR",
+    "implementation": "// Default outputs every scan\nExtend := FALSE;\nClamp := FALSE;\nRelease := FALSE;\nRetract := FALSE;\nBusy := FALSE;\nDone := FALSE;\n\n// Stop and Reset have highest priority and immediately clear the cycle\nIF Stop OR Reset THEN\n    State := E_TaskState.IDLE;\nELSE\n    // Execute exactly one state transition, based on the retained pre-state\n    CASE State OF\n        E_TaskState.IDLE:\n            IF Start AND RetractDone THEN\n                State := E_TaskState.EXTEND;\n            END_IF\n\n        E_TaskState.EXTEND:\n            IF ExtendDone THEN\n                State := E_TaskState.CLAMP;\n            END_IF\n\n        E_TaskState.CLAMP:\n            IF ClampDone THEN\n                State := E_TaskState.RELEASE;\n            END_IF\n\n        E_TaskState.RELEASE:\n            IF ReleaseDone THEN\n                State := E_TaskState.RETRACT;\n            END_IF\n\n        E_TaskState.RETRACT:\n            IF RetractDone THEN\n                State := E_TaskState.DONE;\n            END_IF\n\n        E_TaskState.DONE:\n            ; // Hold completion until Stop or Reset\n    END_CASE\nEND_IF\n\n// Outputs reflect the post-transition state at the end of this scan\nCASE State OF\n    E_TaskState.EXTEND:\n        Extend := TRUE;\n        Busy := TRUE;\n\n    E_TaskState.CLAMP:\n        Clamp := TRUE;\n        Busy := TRUE;\n\n    E_TaskState.RELEASE:\n        Release := TRUE;\n        Busy := TRUE;\n\n    E_TaskState.RETRACT:\n        Retract := TRUE;\n        Busy := TRUE;\n\n    E_TaskState.DONE:\n        Done := TRUE;\nEND_CASE",
+    "supporting_objects": [
+      {
+        "name": "E_TaskState",
+        "kind": "DUT",
+        "declaration": "TYPE E_TaskState :\n(\n    IDLE,\n    EXTEND,\n    CLAMP,\n    RELEASE,\n    RETRACT,\n    DONE\n);\nEND_TYPE",
+        "implementation": ""
+      }
+    ]
+  },
+  "result_path": "D:\\Learning\\大四秋冬\\genai\\finale\\PLC_Agent_Final\\experiments\\E1\\campaign_2026-10-25T121252267365+0000\\SELF011\\run_2026-10-26T133233010172+0000\\compile_00\\codesys_evidence.json",
+  "started_utc": "2026-10-26T13:32:45.303042+00:00"
+}

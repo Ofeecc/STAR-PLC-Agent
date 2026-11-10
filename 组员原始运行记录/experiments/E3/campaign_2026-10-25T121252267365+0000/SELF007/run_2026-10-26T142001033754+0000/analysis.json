@@ -1,0 +1,103 @@
+{
+  "pou_type": "FUNCTION_BLOCK",
+  "pou_name": "FB_Task",
+  "interface": [
+    {
+      "direction": "INPUT",
+      "name": "Demand",
+      "type": "BOOL",
+      "description": "Sump pumping demand"
+    },
+    {
+      "direction": "INPUT",
+      "name": "FaultA",
+      "type": "BOOL",
+      "description": "Pump A unavailable"
+    },
+    {
+      "direction": "INPUT",
+      "name": "FaultB",
+      "type": "BOOL",
+      "description": "Pump B unavailable"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "PumpA",
+      "type": "BOOL",
+      "description": "Pump A run command"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "PumpB",
+      "type": "BOOL",
+      "description": "Pump B run command"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "LeadA",
+      "type": "BOOL",
+      "description": "TRUE selects A as preferred pump"
+    }
+  ],
+  "initial_conditions": {
+    "LeadA": true,
+    "previous_demand": false,
+    "episode_served": false
+  },
+  "scan_semantics": "At scan k, sample every input once, read retained pre-state q[k], execute one transition, and observe outputs O[k] at the end of that same scan. Updated state becomes q[k+1]. Reset the instance before each test. Step 0 executes normally; initial conditions describe pre-state, not an extra delayed scan. All timing in this task is explicitly counted in invocations, not wall time.",
+  "safety_priority": [
+    "Faulted pumps never run",
+    "No demand forces both off",
+    "Prefer selected lead, then healthy fallback"
+  ],
+  "assumptions": [],
+  "formal_properties": [
+    {
+      "id": "P1",
+      "formula": "G(!(PumpA & PumpB))",
+      "explanation": "At most one pump runs."
+    },
+    {
+      "id": "P2",
+      "formula": "G((!Demand | FaultA) -> !PumpA)",
+      "explanation": "A cannot run without demand or with its fault."
+    },
+    {
+      "id": "P3",
+      "formula": "G((!Demand | FaultB) -> !PumpB)",
+      "explanation": "B cannot run without demand or with its fault."
+    },
+    {
+      "id": "P4",
+      "formula": "G((Demand & LeadA & !FaultA) -> PumpA)",
+      "explanation": "A is selected when it is the healthy lead."
+    },
+    {
+      "id": "P5",
+      "formula": "G((Demand & !LeadA & !FaultB) -> PumpB)",
+      "explanation": "B is selected when it is the healthy lead."
+    },
+    {
+      "id": "P6",
+      "formula": "G(completedServed -> (LeadA <-> !qLeadA))",
+      "explanation": "Toggle once on a served demand's falling edge."
+    },
+    {
+      "id": "P7",
+      "formula": "G(!completedServed -> (LeadA <-> qLeadA))",
+      "explanation": "Unserved episodes and held demand preserve preference."
+    }
+  ],
+  "atomic_propositions": {
+    "Demand": "Sump pumping demand Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "FaultA": "Pump A unavailable Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "FaultB": "Pump B unavailable Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "PumpA": "Pump A run command Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "PumpB": "Pump B run command Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "LeadA": "TRUE selects A as preferred pump Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "first": "True only on the first invocation after resetting the FB instance.",
+    "qLeadA": "Pre-scan lead preference, initially TRUE.",
+    "completedServed": "Pre-scan Demand was TRUE, current Demand is FALSE and a pump ran in that episode."
+  },
+  "supporting_types": []
+}

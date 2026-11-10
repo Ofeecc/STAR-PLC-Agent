@@ -1,0 +1,324 @@
+{
+  "schema_version": 1,
+  "id": "PUB002",
+  "kind": "public",
+  "title": "Dual-Word Edge Detection",
+  "difficulty": "easy",
+  "provenance": {
+    "source_type": "official_course_question_bank",
+    "source_file": "大作业题库json/大作业题库json/大作业题库.json",
+    "source_index": {
+      "group": "easy",
+      "index_1based": 2
+    },
+    "adaptation": "Original English question is preserved verbatim in requirements. Only explicit evaluation assumptions, LTL, and tests are added.",
+    "rationale": "Teacher-supplied PLC task; retains the specified interface and control scenario.",
+    "review": "Reviewed against original prose and interface; ambiguities are listed explicitly. Expected traces have not been executed on a PLC."
+  },
+  "requirements": "# Dual-Word Edge Detection\n\n- **Difficulty:** Easy (easy)\n\n## Requirements\n\nWrite a function block FB that checks for rising and falling edges in each bit of a dual-word (DWord) input value every cycle. The function block should be able to detect and report changes, rising edges, and falling edges in the input value.\n\n## Interface Definition\n\n| Direction | Variable/Field | Data Type | Description |\n| --- | --- | --- | --- |\n| Input | `value` | `DWORD` | The input value to be checked for changes and edge triggering |\n| Output | `hasChanged` | `BOOL` | True indicates that the input value has changed |\n| Output | `hasRisingEdges` | `BOOL` | True indicates that rising edges have occurred in the input value |\n| Output | `risingBits` | `DWORD` | The bit stream of rising edges, where each bit indicates whether the corresponding input bit has experienced a rising edge (1 for a rising edge, 0 for no rising edge) |\n| Output | `noOfRisingBits` | `USINT` | The number of rising edges in the input value |\n| Output | `hasFallingEdges` | `BOOL` | True indicates that falling edges have occurred in the input value |\n| Output | `fallingBits` | `DWORD` | The bit stream of falling edges, where each bit indicates whether the corresponding input bit has experienced a falling edge (1 for a falling edge, 0 for no falling edge) |\n| Output | `noOfFallingBits` | `USINT` | The number of falling edges in the input value |",
+  "scenario": "Write a function block FB that checks for rising and falling edges in each bit of a dual-word (DWord) input value every cycle. The function block should be able to detect and report changes, rising edges, and falling edges in the input value.",
+  "interface": [
+    {
+      "direction": "INPUT",
+      "name": "value",
+      "type": "DWORD",
+      "description": "The input value to be checked for changes and edge triggering"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "hasChanged",
+      "type": "BOOL",
+      "description": "True indicates that the input value has changed"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "hasRisingEdges",
+      "type": "BOOL",
+      "description": "True indicates that rising edges have occurred in the input value"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "risingBits",
+      "type": "DWORD",
+      "description": "The bit stream of rising edges, where each bit indicates whether the corresponding input bit has experienced a rising edge (1 for a rising edge, 0 for no rising edge)"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "noOfRisingBits",
+      "type": "USINT",
+      "description": "The number of rising edges in the input value"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "hasFallingEdges",
+      "type": "BOOL",
+      "description": "True indicates that falling edges have occurred in the input value"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "fallingBits",
+      "type": "DWORD",
+      "description": "The bit stream of falling edges, where each bit indicates whether the corresponding input bit has experienced a falling edge (1 for a falling edge, 0 for no falling edge)"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "noOfFallingBits",
+      "type": "USINT",
+      "description": "The number of falling edges in the input value"
+    }
+  ],
+  "initial_conditions": {
+    "previousValue": 0,
+    "risingBits": 0,
+    "fallingBits": 0,
+    "noOfRisingBits": 0,
+    "noOfFallingBits": 0,
+    "hasChanged": false,
+    "hasRisingEdges": false,
+    "hasFallingEdges": false
+  },
+  "scan_semantics": "At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, outputs O[k] are observed after execution, and q[k+1] is the updated state. Each test creates a fresh FB instance before step 0. An initialized instance has not yet executed a scan. Timer elapsed time is zero on the first eligible sampled invocation; dt_ms is elapsed wall time since the previous invocation, not automatically a synthetic input to the FB. No unobserved past input stability is assumed. All sequences here are expected values.",
+  "safety_priority": [
+    "Previous value is updated after calculating both edge masks."
+  ],
+  "assumptions": [
+    "The previous DWORD is initialized to DWORD#0. Therefore nonzero bits on the first scan count as rising edges.",
+    "Bitwise complement is restricted to 32 bits; counts range from 0 through 32.",
+    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+  ],
+  "ltl": [
+    {
+      "id": "P1",
+      "formula": "G(risingBits = (value AND NOT prev))",
+      "explanation": "The rising mask identifies only 0-to-1 bits."
+    },
+    {
+      "id": "P2",
+      "formula": "G(fallingBits = (prev AND NOT value))",
+      "explanation": "The falling mask identifies only 1-to-0 bits."
+    },
+    {
+      "id": "P3",
+      "formula": "G((risingBits AND fallingBits)=0)",
+      "explanation": "A bit cannot rise and fall in one scan."
+    },
+    {
+      "id": "P4",
+      "formula": "G((noOfRisingBits=popcount(risingBits)) & (noOfFallingBits=popcount(fallingBits)))",
+      "explanation": "Both counts equal their mask population."
+    },
+    {
+      "id": "P5",
+      "formula": "G((hasRisingEdges <-> risingBits<>0) & (hasFallingEdges <-> fallingBits<>0) & (hasChanged <-> value<>prev))",
+      "explanation": "Flags match masks and value changes."
+    },
+    {
+      "id": "P6",
+      "formula": "G(X(prev)=value)",
+      "explanation": "The current value is the next scan history."
+    },
+    {
+      "id": "PUB002.V2.COMPLETE",
+      "formula": "G(CompleteBehaviorV2)",
+      "explanation": "The complete per-invocation relation defined in specification_contract.normative_completion; requires explicit encoding before model checking."
+    }
+  ],
+  "atomic_propositions": {
+    "prev": "Ghost pre-scan previous DWORD; initialized to zero.",
+    "risingBits": "End-of-scan mask value & NOT prev, restricted to DWORD width.",
+    "fallingBits": "End-of-scan mask prev & NOT value, restricted to DWORD width.",
+    "popcount": "Number of set bits in the unsigned 32-bit argument.",
+    "other interface names": "Identically named sampled inputs or observed outputs.",
+    "CompleteBehaviorV2": "明确risingBits/fallingBits始终指实际输出；另定义riseExpected=value & (~prev & 16#FFFFFFFF)、fallExpected=prev & (~value & 16#FFFFFFFF)。比较实际值与期望值；初始prev=0，每拍结束只更新一次prev。计数域0..32，按无符号DWORD处理。"
+  },
+  "tests": [
+    {
+      "id": "T1",
+      "purpose": "No change, mixed edges, full width and bit 31",
+      "steps": [
+        {
+          "inputs": {
+            "value": 0
+          },
+          "expected": {
+            "hasChanged": false,
+            "hasRisingEdges": false,
+            "risingBits": 0,
+            "noOfRisingBits": 0,
+            "hasFallingEdges": false,
+            "fallingBits": 0,
+            "noOfFallingBits": 0
+          }
+        },
+        {
+          "inputs": {
+            "value": 1
+          },
+          "expected": {
+            "hasChanged": true,
+            "hasRisingEdges": true,
+            "risingBits": 1,
+            "noOfRisingBits": 1,
+            "hasFallingEdges": false,
+            "fallingBits": 0,
+            "noOfFallingBits": 0
+          }
+        },
+        {
+          "inputs": {
+            "value": 1
+          },
+          "expected": {
+            "hasChanged": false,
+            "hasRisingEdges": false,
+            "risingBits": 0,
+            "noOfRisingBits": 0,
+            "hasFallingEdges": false,
+            "fallingBits": 0,
+            "noOfFallingBits": 0
+          }
+        },
+        {
+          "inputs": {
+            "value": 3
+          },
+          "expected": {
+            "hasChanged": true,
+            "hasRisingEdges": true,
+            "risingBits": 2,
+            "noOfRisingBits": 1,
+            "hasFallingEdges": false,
+            "fallingBits": 0,
+            "noOfFallingBits": 0
+          }
+        },
+        {
+          "inputs": {
+            "value": 2
+          },
+          "expected": {
+            "hasChanged": true,
+            "hasRisingEdges": false,
+            "risingBits": 0,
+            "noOfRisingBits": 0,
+            "hasFallingEdges": true,
+            "fallingBits": 1,
+            "noOfFallingBits": 1
+          }
+        },
+        {
+          "inputs": {
+            "value": 0
+          },
+          "expected": {
+            "hasChanged": true,
+            "hasRisingEdges": false,
+            "risingBits": 0,
+            "noOfRisingBits": 0,
+            "hasFallingEdges": true,
+            "fallingBits": 2,
+            "noOfFallingBits": 1
+          }
+        },
+        {
+          "inputs": {
+            "value": 4294967295
+          },
+          "expected": {
+            "hasChanged": true,
+            "hasRisingEdges": true,
+            "risingBits": 4294967295,
+            "noOfRisingBits": 32,
+            "hasFallingEdges": false,
+            "fallingBits": 0,
+            "noOfFallingBits": 0
+          }
+        },
+        {
+          "inputs": {
+            "value": 0
+          },
+          "expected": {
+            "hasChanged": true,
+            "hasRisingEdges": false,
+            "risingBits": 0,
+            "noOfRisingBits": 0,
+            "hasFallingEdges": true,
+            "fallingBits": 4294967295,
+            "noOfFallingBits": 32
+          }
+        },
+        {
+          "inputs": {
+            "value": 2147483648
+          },
+          "expected": {
+            "hasChanged": true,
+            "hasRisingEdges": true,
+            "risingBits": 2147483648,
+            "noOfRisingBits": 1,
+            "hasFallingEdges": false,
+            "fallingBits": 0,
+            "noOfFallingBits": 0
+          }
+        },
+        {
+          "inputs": {
+            "value": 2147483647
+          },
+          "expected": {
+            "hasChanged": true,
+            "hasRisingEdges": true,
+            "risingBits": 2147483647,
+            "noOfRisingBits": 31,
+            "hasFallingEdges": true,
+            "fallingBits": 2147483648,
+            "noOfFallingBits": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "T2",
+      "purpose": "First nonzero invocation is compared with initialized zero",
+      "steps": [
+        {
+          "inputs": {
+            "value": 4294967295
+          },
+          "expected": {
+            "hasChanged": true,
+            "hasRisingEdges": true,
+            "risingBits": 4294967295,
+            "noOfRisingBits": 32,
+            "hasFallingEdges": false,
+            "fallingBits": 0,
+            "noOfFallingBits": 0
+          }
+        },
+        {
+          "inputs": {
+            "value": 4294967295
+          },
+          "expected": {
+            "hasChanged": false,
+            "hasRisingEdges": false,
+            "risingBits": 0,
+            "noOfRisingBits": 0,
+            "hasFallingEdges": false,
+            "fallingBits": 0,
+            "noOfFallingBits": 0
+          }
+        }
+      ]
+    }
+  ],
+  "specification_version": "2.0-review-corrections-20261106",
+  "specification_contract": {
+    "observation": "I[k] is sampled before execution; O[k] is observed after execution. Initial conditions apply before invocation zero.",
+    "normative_completion": "明确risingBits/fallingBits始终指实际输出；另定义riseExpected=value & (~prev & 16#FFFFFFFF)、fallExpected=prev & (~value & 16#FFFFFFFF)。比较实际值与期望值；初始prev=0，每拍结束只更新一次prev。计数域0..32，按无符号DWORD处理。",
+    "history_binding": "Every previous-output name refers to the preceding observed output with the declared initial value. Previous-input memories update on EVERY invocation, including reset, invalid input, stop and mode change. Reference phase/history is independently advanced from sampled inputs by the stated transition rules, never supplied by the candidate.",
+    "evaluation_scope": "Properties include interpreted data predicates. No claim of export to a model checker or completed formal proof.",
+    "review_source": "docs/规约逐题审查_20261106/PUB002.md"
+  }
+}

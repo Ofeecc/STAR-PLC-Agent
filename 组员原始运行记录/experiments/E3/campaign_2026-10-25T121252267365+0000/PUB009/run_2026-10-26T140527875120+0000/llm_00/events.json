@@ -1,0 +1,5306 @@
+[
+  {
+    "type": "response.created",
+    "sequence_number": 1,
+    "response": {
+      "id": "0ff49656c4b84e01a7f22bf934a36e0a",
+      "object": "response",
+      "created_at": 1793023529,
+      "status": "in_progress",
+      "background": false,
+      "error": null,
+      "output": [],
+      "model": "deepseek-v4.1-flash"
+    }
+  },
+  {
+    "type": "response.in_progress",
+    "sequence_number": 2,
+    "response": {
+      "id": "0ff49656c4b84e01a7f22bf934a36e0a",
+      "object": "response",
+      "created_at": 1793023529,
+      "status": "in_progress",
+      "output": [],
+      "model": "deepseek-v4.1-flash"
+    }
+  },
+  {
+    "type": "response.output_item.added",
+    "sequence_number": 3,
+    "output_index": 0,
+    "item": {
+      "id": "rs_0ff49656c4b84e01a7f22bf934a36e0a_0",
+      "type": "reasoning",
+      "status": "in_progress",
+      "summary": []
+    }
+  },
+  {
+    "type": "response.output_item.done",
+    "item": {
+      "id": "rs_0ff49656c4b84e01a7f22bf934a36e0a_0",
+      "type": "reasoning",
+      "encrypted_content": "",
+      "summary": [
+        {
+          "type": "summary_text",
+          "text": "We need answer ONLY JSON object with declaration, implementation, supporting_objects. Need construct CODESYS FB_Task? Task says declaration is CODESYS FUNCTION_BLOCK FB_Task followed by all VAR sections; omit END_FUNCTION_BLOCK. Need implement moving average. Need decide variable names interface exactly. Function block name FB_Task? It says declaration is CODESYS FUNCTION_BLOCK FB_Task. Interface names types. Need supporting objects for DUT? We need an array up to 100 LREAL. Could declare array inside FB. No referenced custom DUT needed. supporting_objects empty. Need implement behavior carefully with edge, reset, window changes, invalid preservation, status.\n\nNeed output JSON valid. No markdown.\n\nNeed craft declaration:\nFUNCTION_BLOCK FB_Task\nVAR_INPUT\n cyclicExecution : BOOL;\n trigger : BOOL;\n value : LREAL;\n windowSize : INT;\n reset : BOOL;\nEND_VAR\nVAR_OUTPUT\n average : LREAL;\n windowSizeReached : BOOL;\n error : BOOL;\n status : WORD;\nEND_VAR\nVAR\n samples : ARRAY[1..100] OF LREAL;\n sampleCount : INT := 0; // accepted count up to window? history length.\n writeIndex : INT := 1? Use for circular? Simpler shift array. Max 100 tiny. Need include last valid window and previousTrigger.\n previousTrigger : BOOL := FALSE;\n lastValidWindowSize : INT := 0; // last valid configured size? Initial? Need windowChanged semantics. Need handle initial. If valid window on first scan, windowChanged? \"Changing a valid windowSize clears history before any same-scan accepted sample.\" At fresh instance sampleCount 0, lastValid maybe 0. First valid windowSize differs, but clearing empty, then accept same scan. Expected T1 first step accepts 3. Good. For T2 first trigger true accepts 2. If we clear due window change, then accept. Good.\n sum : LREAL? Need compute average. Could maintain sum to avoid loop. But window shifts if fixed size. Use sumSamples. Need exact.\n validWindow : BOOL? Use local.\n isTriggerRise : BOOL;\n i : INT;\nEND_VAR\n\nNeed logic.\n\nAt each scan:\n1 valid := (windowSize >=1) AND (windowSize <=100)\n2 Trigger rising edge computed from current trigger and previousTrigger pre-scan. Need update previousTrigger at end every invocation including reset/invalid. Formula P6 X(previousTrigger)=trigger means previousTrigger next = trigger. So compute rise := trigger AND NOT previousTrigger. At end previousTrigger := trigger.\n3 If NOT valid:\n   error := TRUE; status := 16#8200;\n   preserve average, windowSizeReached, history? Assumption invalid window preserves average/windowSizeReached; \"does not accept or change history.\" We should not change history or lastValid? Probably preserve history and lastValid. Trigger memory updates. No sampling. Return (but need previousTrigger update). Implementation can use if/else chain. Ensure outputs error/status. average/windowSizeReached retain from previous? Need assign? If not assigned, output variable holds prior. But if reset in same scan invalid? Safety: invalid before reset? \"Invalid window returns error before sampling\"; reset? T2 invalid reset? They don't test invalid+reset except maybe. LTL P1 invalid -> error status unchangedMean. Reset priority over sampling for valid. For invalid, should not reset? \"Invalid window ... does not accept or change history\", and status. \"Invalid-window scan preserves average/windowSizeReached.\" So even reset true invalid, preserve. Good. So in invalid branch set error true status error; do not modify average/windowSizeReached/history. Then previousTrigger := trigger and maybe next scan. Need ensure no other logic. If using IF valid then ... ELSE invalid ... END_IF; then after previousTrigger := trigger. In invalid branch no average assignment. Good.\n\n4 Valid:\n   error := FALSE; status := 16#0000; (P2)\n   Need determine windowChanged: Current valid windowSize differs from last valid configured size. lastValidWindowSize initial 0. On first valid, differs. Clear history. Set lastValidWindowSize := windowSize after clearing? Need if changed clear before sampling. We can check if (lastValidWindowSize <> windowSize) then clear history (sampleCount :=0; sum:=0; average:=0? windowSizeReached false) then lastValidWindowSize:=windowSize. Important if reset same scan, reset clears also. If window changed and reset true, clear anyway, no sample. Good.\n   But subtle: lastValidWindowSize should update only on valid. If invalid scans, lastValid retains previous. Returning to valid same as previous valid -> no window change. In T2: after windowSize=1 valid at step 5 lastValid=1. Invalid 0,101 preserve lastValid=1. Step 8 valid 1 reset -> no window change, reset clears. Step9 valid 1 trigger -> lastValid same, accept. Good.\n   Need windowChanged using pre-scan lastValid. If valid and lastValidWindowSize <> windowSize then clear. initial lastValid=0. After clear set lastValidWindowSize := windowSize. Need declare lastValidWindowSize : INT := 0.\n   Then if reset TRUE: clear history again? If window changed, already clear. Reset should clear history and average=0 windowSizeReached false. No sample. Set average :=0; windowSizeReached := FALSE; sampleCount :=0; sum :=0; maybe writeIndex no need. Do not accept. error false status 0. Need reset overrides sample. Good.\n   Else if accept: valid & !reset & (cyclicExecution OR triggerRise). Note if cyclic true and trigger rise true, still one sample. Good. Need add sample:\n      If sampleCount < windowSize then\n         sampleCount := sampleCount + 1;\n         samples[sampleCount] := value; // But if we use shift, need careful. We'll maintain ordered list newest last of length sampleCount. On add if sampleCount < windowSize append at sampleCount+1. else full: shift left discard oldest, samples[windowSize] := value. Since sampleCount equals windowSize. Use FOR i:=1 TO windowSize-1 DO samples[i] := samples[i+1]; END_FOR; samples[windowSize] := value. Sum update: sumSamples := sumSamples - old oldest + value. Or recompute. Simpler maintain sum.\n         sumSamples := sumSamples + value;\n      else\n         sumSamples := sumSamples - samples[1] + value;\n         FOR i:=1 TO windowSize-1 DO samples[i] := samples[i+1]; END_FOR;\n         samples[windowSize] := value;\n      END_IF\n      average := sumSamples / sampleCount; // sampleCount up to windowSize. If full count=windowSize.\n      windowSizeReached := (sampleCount = windowSize); // if count >=? exactly.\n   Else no accept:\n      Need if window changed? We already cleared on window changed at start. This means changing window clears even if no accept, and average should become 0 and windowSizeReached false. Requirement \"Changing valid windowSize clears history before any same-scan accepted sample.\" LTL P7 says valid & !reset & !cyclic & !triggerRise & !windowChanged -> unchangedMean. If windowChanged true and no accept, clear history and average 0. So we need set average=0 etc after clearing. In our window change clear should set average :=0 windowSizeReached:=FALSE sampleCount:=0 sum:=0. Good. Then if no accept, average remains 0. If no window changed and no accept, average unchanged. Need not assign average. \n   Need after adding sample if sampleCount=0? Only if no accept. If accepted sampleCount >=1.\n   Need windowSizeReached should become TRUE once accepted count reaches windowSize. If window changed down to 1 and accept same scan, after clear count 0, add count1 -> reached true. T2 step5.\n   Need if window changed but reset false and no accept, windowSizeReached false. Good.\n\nPotential issue: In reset branch after window changed, we clear. Then set average 0. Good. If reset true and window invalid, invalid branch preserves. Is that okay? Safety says invalid before sampling; invalid preserves average/windowSizeReached. Yes.\n\nNeed status numeric: 16#8200 = decimal 33280. WORD. In ST assign status := 16#8200; CODESYS literal okay. error := TRUE.\n\nNeed handle previousTrigger update at end. But with early returns? ST no return maybe. We can avoid RETURN. Structure:\nvalidWindow := (windowSize >= 1) AND (windowSize <= 100);\ntriggerRise := trigger AND NOT previousTrigger;\n\nIF NOT validWindow THEN\n   error := TRUE;\n   status := 16#8200;\nELSE\n   error := FALSE;\n   status := 16#0000;\n   IF lastValidWindowSize <> windowSize THEN\n       sampleCount := 0;\n       sumSamples := 0.0;\n       average := 0.0;\n       windowSizeReached := FALSE;\n       lastValidWindowSize := windowSize;\n   END_IF;\n   IF reset THEN\n       sampleCount := 0;\n       sumSamples := 0.0;\n       average := 0.0;\n       windowSizeReached := FALSE;\n   ELSIF cyclicExecution OR triggerRise THEN\n       IF sampleCount < windowSize THEN\n           sampleCount := sampleCount + 1;\n           samples[sampleCount] := value;\n           sumSamples := sumSamples + value;\n       ELSE\n           sumSamples := sumSamples - samples[1] + value;\n           FOR i := 1 TO windowSize - 1 DO\n               samples[i] := samples[i + 1];\n           END_FOR;\n           samples[windowSize] := value;\n       END_IF;\n       average := sumSamples / sampleCount;\n       windowSizeReached := (sampleCount >= windowSize); // or =.\n   END_IF;\nEND_IF;\npreviousTrigger := trigger;\n\nNeed consider sampleCount after window change to smaller. Suppose sampleCount was > new window? We clear all if window changed. Good. Suppose lastValid=3 sampleCount=2, new window=5 valid changed -> clear and sampleCount=0, then accept one if cyclic. Good.\n\nNeed if windowSize valid and lastValid same but sampleCount maybe > windowSize? No.\n\nPotential issue sumSamples when sampleCount < windowSize append at [sampleCount]. But samples array may have old data beyond. Fine. When full sampleCount = windowSize, else branch. Need if sampleCount somehow > windowSize, FOR windowSize-1 indexes. But no.\n\nNeed define supporting_objects maybe empty list [].\n\nNeed exact JSON. Need ensure declaration string includes newlines escaped or can include \\n. JSON valid. We can output pretty JSON. No markdown.\n\nNeed maybe declaration should not include END_FUNCTION_BLOCK. Implementation ST body alone. Supporting_objects empty.\n\nNeed maybe variable names case. Interface exact: cyclicExecution, trigger, value, windowSize, reset, average, windowSizeReached, error, status.\n\nNeed possibly use CODESYS syntax for WORD literal: status := 16#8200; okay.\n\nNeed no DUT. Supporting objects [].\n\nNeed ensure declarations all VAR sections. We can include VAR_INPUT, VAR_OUTPUT, VAR. Need no END_FUNCTION_BLOCK. The declaration string starts \"FUNCTION_BLOCK FB_Task\\nVAR_INPUT...\"\n\nNeed implementation body string. Need not include \"END_FUNCTION_BLOCK\".\n\nNeed maybe \"windowSizeReached := (sampleCount = windowSize);\" is exact. If accepted count reaches windowSize. Good.\n\nNeed maybe if reset and window changed: our window changed clear sets lastValid, then reset clear. average 0. error false status 0. Good. T1 step5: lastValid 3 same, reset -> clear average 0 false. Step6 cyclic accept -6 average -6 false. Good.\n\nLet's simulate T2:\nInitial lastValid=0, prevTrig false.\nStep1 valid 3 changed -> clear, last=3. reset false. cyclic false, trigger true rise true accept. sampleCount<3 -> count1 samples1=2 sum2 avg2 reached false. prevTrig=true.\nStep2 valid3 no changed. reset false. cyclic false. trigger true rise false. no accept. avg unchanged 2 reached false. prevTrig true.\nStep3 trigger false rise false no accept avg 2. prevTrig false.\nStep4 trigger true rise true accept value4: count2 avg3 reached false. prevTrig true.\nStep5 valid1 changed -> clear last=1 avg0 reached false. reset false cyclic true accept value8: count<1 -> count1 samples1=8 sum8 avg8 reached true. prevTrig false.\nStep6 window0 invalid -> error true status, preserve avg8 reached true. prevTrig false.\nStep7 101 invalid preserve. \nStep8 window1 valid lastValid=1 no change. error false status0. reset true -> clear avg0 reached false. prevTrig false. (trigger false)\nStep9 window1 valid reset false trigger true rise true accept 5 count1 avg5 reached true. Good.\n\nT1: step4 cyclic true trigger true. previousTrigger false? T1 step1 trigger false prev false; step2 false prev false; step3 false; step4 trigger true rise true but cyclic true accept one value12: sampleCount=3 full. sum=18? Wait T1 step1 avg3 count1 sum3; step2 value6 count2 sum9 avg4.5; step3 value9 count3 sum18 avg6 reached true; step4 value12 full: sum=18 - samples1(3) +12 =27; shift samples [6,9,12] avg9 reached true. Good. trigger rise but one. prev true.\nStep5 cyclic true trigger false reset true: valid no change reset clear avg0 false. prev false.\nStep6 accept -6 count1 avg -6 false. Good.\n\nNeed potential issue: In invalid branch, we don't set average etc. If prior outputs maybe not initialized? Output default 0. Fine. In valid branch when window changed clear then reset? Good.\n\nNeed maybe status should be set to success on valid even if reset? yes.\n\nNeed final only JSON. Need no extra explanation.\n\nCould include supporting_objects: [].\n\nNeed ensure JSON string escaping: newline \\n. We can provide JSON pretty with declaration as string with \\n. Need valid. Let's compose.\n\nNeed include \"kind\": \"FUNCTION_BLOCK\"? supporting empty. No functions.\n\nPotential hidden tests for changing window from 3 to 3? no. Initial lastValid 0. If first scan invalid, lastValid remains 0, history none, average default 0. Next valid changed clear, okay. If invalid after valid preserve lastValid. Good.\n\nPotential hidden test: valid window changed while reset false, cyclic false, trigger false. Our code clears history and average 0, reached false. LTL P7 condition windowChanged false not triggered. Assumption says changing valid window clears history before any same-scan accepted sample. It doesn't explicitly say average becomes 0 if no sample; but clear history implies mean empty=0 and reached false. Good.\n\nPotential hidden test: valid window changed, reset true. Our clear then reset, avg 0. Good.\n\nPotential hidden test: invalid window with reset true and trigger rising. We preserve avg/reached, but error true; previousTrigger update. Good. If next scan valid reset false trigger still true, rise false; no accept. P6. Good. If invalid+reset true, history preserved. Spec says reset resets when true, but safety invalid before sampling / invalid preserves. Ambiguity. Assumptions: \"Invalid window sets error/status and does not accept or change history.\" \"An invalid-window scan preserves average/windowSizeReached.\" So yes.\n\nNeed maybe \"error\" on valid cleared before reset. Good.\n\nNeed maybe if window changed to invalid? invalid branch preserve lastValid and history; average unchanged. Good.\n\nNeed maybe average calculation uses sumSamples. If sampleCount = 0, division? We only compute in accept. If windowSize=0 invalid. Good.\n\nNeed maybe LREAL type, sumSamples LREAL. declare `sumSamples : LREAL := 0.0;` CODESYS allows initialization in VAR? Yes.\n\nNeed variable `i : INT;` for FOR loop. In ST, `FOR i := 1 TO windowSize - 1 DO` if windowSize=1, upper=0, loop doesn't execute? In IEC, FOR with initial 1 and end 0 may execute? Actually FOR i:=1 TO 0 DO might execute once depending? Need know. In ST, if start > end, loop is not executed? Usually yes not executed. But to be safe, wrap IF windowSize > 1 THEN FOR ... END_FOR; END_IF; In else branch sampleCount >= windowSize. If windowSize=1 and sampleCount=1, else branch. Need shift loop from 1 to 0. In CODESYS, FOR loop with TO 0 likely no iterations because condition checked before. But safe:\nIF windowSize > 1 THEN\n FOR i := 1 TO windowSize - 1 DO ...\n END_FOR;\nEND_IF;\nsamples[windowSize] := value;\nGood.\n\nNeed if sampleCount < windowSize append. If windowSize maybe 100 and sampleCount 99 append at 100. Good. If sampleCount 100 full else.\n\nNeed `windowSizeReached := (sampleCount = windowSize);` Good.\n\nLet's produce final JSON. Need no markdown. Ensure all quotes escaped. Use pretty."
+        }
+      ]
+    },
+    "output_index": 0,
+    "sequence_number": 3835
+  },
+  {
+    "type": "response.output_item.added",
+    "sequence_number": 3836,
+    "output_index": 1,
+    "item": {
+      "id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+      "type": "message",
+      "status": "in_progress",
+      "content": [],
+      "role": "assistant"
+    }
+  },
+  {
+    "type": "response.content_part.added",
+    "sequence_number": 3837,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "part": {
+      "type": "output_text",
+      "annotations": [],
+      "logprobs": [],
+      "text": ""
+    }
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3838,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "{\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3839,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3840,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " \"",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3841,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "decl",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3842,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "aration",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3843,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\":",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3844,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " \"",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3845,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "F",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3846,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "UNCTION",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3847,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_B",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3848,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "LOCK",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3849,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " FB",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3850,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_T",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3851,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ask",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3852,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3853,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "VAR",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3854,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_IN",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3855,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "PUT",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3856,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3857,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3858,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " cyclic",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3859,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Execution",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3860,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3861,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " BO",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3862,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "OL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3863,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3864,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3865,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3866,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " trigger",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3867,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3868,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " BO",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3869,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "OL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3870,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3871,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3872,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3873,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " value",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3874,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3875,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " L",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3876,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "RE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3877,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "AL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3878,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3879,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3880,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3881,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " window",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3882,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Size",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3883,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3884,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " INT",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3885,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3886,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3887,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3888,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " reset",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3889,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3890,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " BO",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3891,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "OL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3892,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3893,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3894,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "END",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3895,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_V",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3896,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "AR",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3897,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3898,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "VAR",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3899,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_OUT",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3900,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "PUT",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3901,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3902,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3903,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " average",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3904,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3905,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " L",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3906,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "RE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3907,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "AL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3908,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3909,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3910,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3911,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " window",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3912,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Size",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3913,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Re",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3914,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ached",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3915,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3916,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " BO",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3917,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "OL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3918,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3919,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3920,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3921,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " error",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3922,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3923,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " BO",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3924,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "OL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3925,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3926,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3927,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3928,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " status",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3929,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3930,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " WORD",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3931,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3932,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3933,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "END",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3934,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_V",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3935,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "AR",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3936,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3937,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "VAR",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3938,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3939,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3940,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " samples",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3941,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3942,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " AR",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3943,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "RAY",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3944,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "[",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3945,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "1",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3946,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "..",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3947,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "100",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3948,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "]",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3949,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " OF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3950,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " L",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3951,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "RE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3952,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "AL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3953,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3954,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3955,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3956,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " sample",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3957,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Count",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3958,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3959,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " INT",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3960,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3961,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3962,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "0",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3963,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3964,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3965,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3966,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " sum",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3967,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "S",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3968,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "amples",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3969,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3970,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " L",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3971,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "RE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3972,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "AL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3973,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3974,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3975,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "0",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3976,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ".",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3977,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "0",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3978,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3979,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3980,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3981,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " previous",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3982,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Trigger",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3983,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3984,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " BO",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3985,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "OL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3986,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3987,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " FALSE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3988,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3989,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3990,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3991,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " last",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3992,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Valid",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3993,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Window",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3994,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Size",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3995,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3996,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " INT",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3997,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3998,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 3999,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "0",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4000,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4001,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4002,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4003,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " i",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4004,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4005,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " INT",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4006,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4007,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4008,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4009,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " valid",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4010,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Window",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4011,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4012,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " BO",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4013,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "OL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4014,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4015,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4016,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4017,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " trigger",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4018,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "R",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4019,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ise",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4020,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4021,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " BO",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4022,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "OL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4023,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4024,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4025,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "END",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4026,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_V",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4027,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "AR",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4028,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\",\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4029,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4030,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " \"",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4031,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "implementation",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4032,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\":",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4033,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " \"",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4034,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "valid",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4035,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Window",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4036,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4037,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " (",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4038,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "window",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4039,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Size",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4040,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " >=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4041,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4042,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "1",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4043,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ")",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4044,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " AND",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4045,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " (",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4046,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "window",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4047,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Size",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4048,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " <=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4049,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4050,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "100",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4051,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ");",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4052,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4053,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "nt",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4054,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "rig",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4055,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ger",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4056,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "R",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4057,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ise",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4058,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4059,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " trigger",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4060,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " AND",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4061,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " NOT",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4062,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " previous",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4063,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Trigger",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4064,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4065,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4066,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4067,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4068,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " NOT",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4069,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " valid",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4070,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Window",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4071,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " THEN",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4072,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4073,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4074,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " error",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4075,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4076,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " TRUE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4077,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4078,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4079,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4080,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " status",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4081,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4082,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4083,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "16",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4084,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "#",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4085,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "820",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4086,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "0",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4087,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4088,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4089,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "EL",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4090,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "SE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4091,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4092,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4093,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " error",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4094,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4095,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " FALSE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4096,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4097,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4098,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4099,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " status",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4100,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4101,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4102,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "16",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4103,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "#",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4104,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "000",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4105,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "0",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4106,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4107,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4108,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4109,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4110,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4111,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " last",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4112,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Valid",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4113,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Window",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4114,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Size",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4115,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " <>",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4116,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " window",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4117,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Size",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4118,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " THEN",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4119,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4120,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4121,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " sample",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4122,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Count",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4123,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4124,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4125,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "0",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4126,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4127,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4128,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4129,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " sum",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4130,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "S",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4131,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "amples",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4132,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4133,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4134,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "0",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4135,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ".",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4136,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "0",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4137,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4138,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4139,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4140,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " average",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4141,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4142,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4143,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "0",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4144,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ".",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4145,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "0",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4146,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4147,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4148,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4149,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " window",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4150,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Size",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4151,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Re",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4152,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ached",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4153,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4154,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " FALSE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4155,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4156,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4157,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4158,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " last",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4159,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Valid",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4160,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Window",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4161,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Size",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4162,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4163,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " window",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4164,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Size",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4165,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4166,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4167,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4168,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " END",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4169,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4170,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4171,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4172,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4173,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4174,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4175,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4176,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " reset",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4177,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " THEN",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4178,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4179,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4180,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " sample",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4181,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Count",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4182,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4183,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4184,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "0",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4185,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4186,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4187,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4188,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " sum",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4189,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "S",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4190,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "amples",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4191,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4192,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4193,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "0",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4194,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ".",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4195,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "0",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4196,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4197,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4198,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4199,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " average",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4200,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4201,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4202,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "0",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4203,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ".",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4204,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "0",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4205,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4206,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4207,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4208,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " window",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4209,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Size",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4210,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Re",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4211,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ached",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4212,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4213,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " FALSE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4214,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4215,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4216,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4217,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " E",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4218,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "LS",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4219,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4220,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " cyclic",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4221,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Execution",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4222,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " OR",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4223,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " trigger",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4224,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "R",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4225,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ise",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4226,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " THEN",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4227,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4228,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4229,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4230,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " sample",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4231,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Count",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4232,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " <",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4233,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " window",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4234,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Size",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4235,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " THEN",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4236,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4237,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "     ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4238,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " sample",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4239,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Count",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4240,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4241,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " sample",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4242,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Count",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4243,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " +",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4244,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4245,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "1",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4246,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4247,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4248,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "     ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4249,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " samples",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4250,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "[s",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4251,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ample",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4252,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Count",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4253,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "]",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4254,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4255,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " value",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4256,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4257,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4258,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "     ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4259,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " sum",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4260,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "S",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4261,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "amples",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4262,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4263,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " sum",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4264,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "S",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4265,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "amples",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4266,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " +",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4267,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " value",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4268,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4269,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4270,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4271,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ELSE",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4272,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4273,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "     ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4274,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " sum",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4275,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "S",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4276,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "amples",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4277,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4278,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " sum",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4279,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "S",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4280,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "amples",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4281,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " -",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4282,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " samples",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4283,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "[",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4284,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "1",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4285,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "]",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4286,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " +",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4287,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " value",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4288,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4289,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4290,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "     ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4291,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4292,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " window",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4293,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Size",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4294,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " >",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4295,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4296,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "1",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4297,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " THEN",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4298,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4299,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "       ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4300,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " FOR",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4301,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " i",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4302,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4303,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4304,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "1",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4305,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " TO",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4306,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " window",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4307,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Size",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4308,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " -",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4309,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4310,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "1",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4311,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " DO",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4312,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4313,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "         ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4314,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " samples",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4315,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "[i",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4316,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "]",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4317,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4318,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " samples",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4319,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "[i",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4320,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " +",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4321,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4322,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "1",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4323,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "];",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4324,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4325,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4326,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "       ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4327,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " END",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4328,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_F",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4329,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "OR",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4330,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4331,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4332,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "     ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4333,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " END",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4334,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4335,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4336,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4337,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4338,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "     ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4339,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " samples",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4340,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "[",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4341,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "window",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4342,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Size",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4343,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "]",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4344,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4345,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " value",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4346,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4347,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4348,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4349,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " END",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4350,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4351,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4352,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4353,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4354,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4355,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4356,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " average",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4357,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4358,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " sum",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4359,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "S",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4360,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "amples",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4361,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " /",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4362,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " sample",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4363,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Count",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4364,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4365,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4366,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "   ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4367,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " window",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4368,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Size",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4369,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Re",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4370,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ached",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4371,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4372,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " (",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4373,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "sample",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4374,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Count",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4375,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " =",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4376,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " window",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4377,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Size",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4378,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ");",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4379,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4380,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4381,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4382,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " END",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4383,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4384,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4385,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4386,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4387,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "END",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4388,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4389,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "IF",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4390,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";\\",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4391,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4392,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4393,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "previous",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4394,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "Trigger",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4395,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " :=",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4396,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " trigger",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4397,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": ";",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4398,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\",\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4399,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " ",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4400,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " \"",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4401,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "support",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4402,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "ing",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4403,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "_",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4404,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "objects",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4405,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "\":",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4406,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": " []\n",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4407,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "delta": "}",
+    "logprobs": []
+  },
+  {
+    "type": "response.output_text.done",
+    "sequence_number": 4408,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "text": "{\n  \"declaration\": \"FUNCTION_BLOCK FB_Task\\nVAR_INPUT\\n  cyclicExecution : BOOL;\\n  trigger : BOOL;\\n  value : LREAL;\\n  windowSize : INT;\\n  reset : BOOL;\\nEND_VAR\\nVAR_OUTPUT\\n  average : LREAL;\\n  windowSizeReached : BOOL;\\n  error : BOOL;\\n  status : WORD;\\nEND_VAR\\nVAR\\n  samples : ARRAY[1..100] OF LREAL;\\n  sampleCount : INT := 0;\\n  sumSamples : LREAL := 0.0;\\n  previousTrigger : BOOL := FALSE;\\n  lastValidWindowSize : INT := 0;\\n  i : INT;\\n  validWindow : BOOL;\\n  triggerRise : BOOL;\\nEND_VAR\",\n  \"implementation\": \"validWindow := (windowSize >= 1) AND (windowSize <= 100);\\ntriggerRise := trigger AND NOT previousTrigger;\\n\\nIF NOT validWindow THEN\\n  error := TRUE;\\n  status := 16#8200;\\nELSE\\n  error := FALSE;\\n  status := 16#0000;\\n\\n  IF lastValidWindowSize <> windowSize THEN\\n    sampleCount := 0;\\n    sumSamples := 0.0;\\n    average := 0.0;\\n    windowSizeReached := FALSE;\\n    lastValidWindowSize := windowSize;\\n  END_IF;\\n\\n  IF reset THEN\\n    sampleCount := 0;\\n    sumSamples := 0.0;\\n    average := 0.0;\\n    windowSizeReached := FALSE;\\n  ELSIF cyclicExecution OR triggerRise THEN\\n    IF sampleCount < windowSize THEN\\n      sampleCount := sampleCount + 1;\\n      samples[sampleCount] := value;\\n      sumSamples := sumSamples + value;\\n    ELSE\\n      sumSamples := sumSamples - samples[1] + value;\\n      IF windowSize > 1 THEN\\n        FOR i := 1 TO windowSize - 1 DO\\n          samples[i] := samples[i + 1];\\n        END_FOR;\\n      END_IF;\\n      samples[windowSize] := value;\\n    END_IF;\\n\\n    average := sumSamples / sampleCount;\\n    windowSizeReached := (sampleCount = windowSize);\\n  END_IF;\\nEND_IF;\\n\\npreviousTrigger := trigger;\",\n  \"supporting_objects\": []\n}",
+    "logprobs": []
+  },
+  {
+    "type": "response.content_part.done",
+    "sequence_number": 4409,
+    "item_id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+    "output_index": 1,
+    "content_index": 0,
+    "part": {
+      "type": "output_text",
+      "annotations": [],
+      "logprobs": [],
+      "text": "{\n  \"declaration\": \"FUNCTION_BLOCK FB_Task\\nVAR_INPUT\\n  cyclicExecution : BOOL;\\n  trigger : BOOL;\\n  value : LREAL;\\n  windowSize : INT;\\n  reset : BOOL;\\nEND_VAR\\nVAR_OUTPUT\\n  average : LREAL;\\n  windowSizeReached : BOOL;\\n  error : BOOL;\\n  status : WORD;\\nEND_VAR\\nVAR\\n  samples : ARRAY[1..100] OF LREAL;\\n  sampleCount : INT := 0;\\n  sumSamples : LREAL := 0.0;\\n  previousTrigger : BOOL := FALSE;\\n  lastValidWindowSize : INT := 0;\\n  i : INT;\\n  validWindow : BOOL;\\n  triggerRise : BOOL;\\nEND_VAR\",\n  \"implementation\": \"validWindow := (windowSize >= 1) AND (windowSize <= 100);\\ntriggerRise := trigger AND NOT previousTrigger;\\n\\nIF NOT validWindow THEN\\n  error := TRUE;\\n  status := 16#8200;\\nELSE\\n  error := FALSE;\\n  status := 16#0000;\\n\\n  IF lastValidWindowSize <> windowSize THEN\\n    sampleCount := 0;\\n    sumSamples := 0.0;\\n    average := 0.0;\\n    windowSizeReached := FALSE;\\n    lastValidWindowSize := windowSize;\\n  END_IF;\\n\\n  IF reset THEN\\n    sampleCount := 0;\\n    sumSamples := 0.0;\\n    average := 0.0;\\n    windowSizeReached := FALSE;\\n  ELSIF cyclicExecution OR triggerRise THEN\\n    IF sampleCount < windowSize THEN\\n      sampleCount := sampleCount + 1;\\n      samples[sampleCount] := value;\\n      sumSamples := sumSamples + value;\\n    ELSE\\n      sumSamples := sumSamples - samples[1] + value;\\n      IF windowSize > 1 THEN\\n        FOR i := 1 TO windowSize - 1 DO\\n          samples[i] := samples[i + 1];\\n        END_FOR;\\n      END_IF;\\n      samples[windowSize] := value;\\n    END_IF;\\n\\n    average := sumSamples / sampleCount;\\n    windowSizeReached := (sampleCount = windowSize);\\n  END_IF;\\nEND_IF;\\n\\npreviousTrigger := trigger;\",\n  \"supporting_objects\": []\n}"
+    }
+  },
+  {
+    "type": "response.output_item.done",
+    "sequence_number": 4410,
+    "output_index": 1,
+    "item": {
+      "id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+      "type": "message",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "annotations": [],
+          "logprobs": [],
+          "text": "{\n  \"declaration\": \"FUNCTION_BLOCK FB_Task\\nVAR_INPUT\\n  cyclicExecution : BOOL;\\n  trigger : BOOL;\\n  value : LREAL;\\n  windowSize : INT;\\n  reset : BOOL;\\nEND_VAR\\nVAR_OUTPUT\\n  average : LREAL;\\n  windowSizeReached : BOOL;\\n  error : BOOL;\\n  status : WORD;\\nEND_VAR\\nVAR\\n  samples : ARRAY[1..100] OF LREAL;\\n  sampleCount : INT := 0;\\n  sumSamples : LREAL := 0.0;\\n  previousTrigger : BOOL := FALSE;\\n  lastValidWindowSize : INT := 0;\\n  i : INT;\\n  validWindow : BOOL;\\n  triggerRise : BOOL;\\nEND_VAR\",\n  \"implementation\": \"validWindow := (windowSize >= 1) AND (windowSize <= 100);\\ntriggerRise := trigger AND NOT previousTrigger;\\n\\nIF NOT validWindow THEN\\n  error := TRUE;\\n  status := 16#8200;\\nELSE\\n  error := FALSE;\\n  status := 16#0000;\\n\\n  IF lastValidWindowSize <> windowSize THEN\\n    sampleCount := 0;\\n    sumSamples := 0.0;\\n    average := 0.0;\\n    windowSizeReached := FALSE;\\n    lastValidWindowSize := windowSize;\\n  END_IF;\\n\\n  IF reset THEN\\n    sampleCount := 0;\\n    sumSamples := 0.0;\\n    average := 0.0;\\n    windowSizeReached := FALSE;\\n  ELSIF cyclicExecution OR triggerRise THEN\\n    IF sampleCount < windowSize THEN\\n      sampleCount := sampleCount + 1;\\n      samples[sampleCount] := value;\\n      sumSamples := sumSamples + value;\\n    ELSE\\n      sumSamples := sumSamples - samples[1] + value;\\n      IF windowSize > 1 THEN\\n        FOR i := 1 TO windowSize - 1 DO\\n          samples[i] := samples[i + 1];\\n        END_FOR;\\n      END_IF;\\n      samples[windowSize] := value;\\n    END_IF;\\n\\n    average := sumSamples / sampleCount;\\n    windowSizeReached := (sampleCount = windowSize);\\n  END_IF;\\nEND_IF;\\n\\npreviousTrigger := trigger;\",\n  \"supporting_objects\": []\n}"
+        }
+      ],
+      "role": "assistant"
+    }
+  },
+  {
+    "type": "response.completed",
+    "sequence_number": 4411,
+    "response": {
+      "id": "0ff49656c4b84e01a7f22bf934a36e0a",
+      "object": "response",
+      "created_at": 1793023529,
+      "status": "completed",
+      "background": false,
+      "error": null,
+      "max_output_tokens": 8192,
+      "model": "deepseek-v4.1-flash",
+      "reasoning": {
+        "effort": "medium"
+      },
+      "store": false,
+      "output": [
+        {
+          "id": "rs_0ff49656c4b84e01a7f22bf934a36e0a_0",
+          "type": "reasoning",
+          "summary": [
+            {
+              "type": "summary_text",
+              "text": "We need answer ONLY JSON object with declaration, implementation, supporting_objects. Need construct CODESYS FB_Task? Task says declaration is CODESYS FUNCTION_BLOCK FB_Task followed by all VAR sections; omit END_FUNCTION_BLOCK. Need implement moving average. Need decide variable names interface exactly. Function block name FB_Task? It says declaration is CODESYS FUNCTION_BLOCK FB_Task. Interface names types. Need supporting objects for DUT? We need an array up to 100 LREAL. Could declare array inside FB. No referenced custom DUT needed. supporting_objects empty. Need implement behavior carefully with edge, reset, window changes, invalid preservation, status.\n\nNeed output JSON valid. No markdown.\n\nNeed craft declaration:\nFUNCTION_BLOCK FB_Task\nVAR_INPUT\n cyclicExecution : BOOL;\n trigger : BOOL;\n value : LREAL;\n windowSize : INT;\n reset : BOOL;\nEND_VAR\nVAR_OUTPUT\n average : LREAL;\n windowSizeReached : BOOL;\n error : BOOL;\n status : WORD;\nEND_VAR\nVAR\n samples : ARRAY[1..100] OF LREAL;\n sampleCount : INT := 0; // accepted count up to window? history length.\n writeIndex : INT := 1? Use for circular? Simpler shift array. Max 100 tiny. Need include last valid window and previousTrigger.\n previousTrigger : BOOL := FALSE;\n lastValidWindowSize : INT := 0; // last valid configured size? Initial? Need windowChanged semantics. Need handle initial. If valid window on first scan, windowChanged? \"Changing a valid windowSize clears history before any same-scan accepted sample.\" At fresh instance sampleCount 0, lastValid maybe 0. First valid windowSize differs, but clearing empty, then accept same scan. Expected T1 first step accepts 3. Good. For T2 first trigger true accepts 2. If we clear due window change, then accept. Good.\n sum : LREAL? Need compute average. Could maintain sum to avoid loop. But window shifts if fixed size. Use sumSamples. Need exact.\n validWindow : BOOL? Use local.\n isTriggerRise : BOOL;\n i : INT;\nEND_VAR\n\nNeed logic.\n\nAt each scan:\n1 valid := (windowSize >=1) AND (windowSize <=100)\n2 Trigger rising edge computed from current trigger and previousTrigger pre-scan. Need update previousTrigger at end every invocation including reset/invalid. Formula P6 X(previousTrigger)=trigger means previousTrigger next = trigger. So compute rise := trigger AND NOT previousTrigger. At end previousTrigger := trigger.\n3 If NOT valid:\n   error := TRUE; status := 16#8200;\n   preserve average, windowSizeReached, history? Assumption invalid window preserves average/windowSizeReached; \"does not accept or change history.\" We should not change history or lastValid? Probably preserve history and lastValid. Trigger memory updates. No sampling. Return (but need previousTrigger update). Implementation can use if/else chain. Ensure outputs error/status. average/windowSizeReached retain from previous? Need assign? If not assigned, output variable holds prior. But if reset in same scan invalid? Safety: invalid before reset? \"Invalid window returns error before sampling\"; reset? T2 invalid reset? They don't test invalid+reset except maybe. LTL P1 invalid -> error status unchangedMean. Reset priority over sampling for valid. For invalid, should not reset? \"Invalid window ... does not accept or change history\", and status. \"Invalid-window scan preserves average/windowSizeReached.\" So even reset true invalid, preserve. Good. So in invalid branch set error true status error; do not modify average/windowSizeReached/history. Then previousTrigger := trigger and maybe next scan. Need ensure no other logic. If using IF valid then ... ELSE invalid ... END_IF; then after previousTrigger := trigger. In invalid branch no average assignment. Good.\n\n4 Valid:\n   error := FALSE; status := 16#0000; (P2)\n   Need determine windowChanged: Current valid windowSize differs from last valid configured size. lastValidWindowSize initial 0. On first valid, differs. Clear history. Set lastValidWindowSize := windowSize after clearing? Need if changed clear before sampling. We can check if (lastValidWindowSize <> windowSize) then clear history (sampleCount :=0; sum:=0; average:=0? windowSizeReached false) then lastValidWindowSize:=windowSize. Important if reset same scan, reset clears also. If window changed and reset true, clear anyway, no sample. Good.\n   But subtle: lastValidWindowSize should update only on valid. If invalid scans, lastValid retains previous. Returning to valid same as previous valid -> no window change. In T2: after windowSize=1 valid at step 5 lastValid=1. Invalid 0,101 preserve lastValid=1. Step 8 valid 1 reset -> no window change, reset clears. Step9 valid 1 trigger -> lastValid same, accept. Good.\n   Need windowChanged using pre-scan lastValid. If valid and lastValidWindowSize <> windowSize then clear. initial lastValid=0. After clear set lastValidWindowSize := windowSize. Need declare lastValidWindowSize : INT := 0.\n   Then if reset TRUE: clear history again? If window changed, already clear. Reset should clear history and average=0 windowSizeReached false. No sample. Set average :=0; windowSizeReached := FALSE; sampleCount :=0; sum :=0; maybe writeIndex no need. Do not accept. error false status 0. Need reset overrides sample. Good.\n   Else if accept: valid & !reset & (cyclicExecution OR triggerRise). Note if cyclic true and trigger rise true, still one sample. Good. Need add sample:\n      If sampleCount < windowSize then\n         sampleCount := sampleCount + 1;\n         samples[sampleCount] := value; // But if we use shift, need careful. We'll maintain ordered list newest last of length sampleCount. On add if sampleCount < windowSize append at sampleCount+1. else full: shift left discard oldest, samples[windowSize] := value. Since sampleCount equals windowSize. Use FOR i:=1 TO windowSize-1 DO samples[i] := samples[i+1]; END_FOR; samples[windowSize] := value. Sum update: sumSamples := sumSamples - old oldest + value. Or recompute. Simpler maintain sum.\n         sumSamples := sumSamples + value;\n      else\n         sumSamples := sumSamples - samples[1] + value;\n         FOR i:=1 TO windowSize-1 DO samples[i] := samples[i+1]; END_FOR;\n         samples[windowSize] := value;\n      END_IF\n      average := sumSamples / sampleCount; // sampleCount up to windowSize. If full count=windowSize.\n      windowSizeReached := (sampleCount = windowSize); // if count >=? exactly.\n   Else no accept:\n      Need if window changed? We already cleared on window changed at start. This means changing window clears even if no accept, and average should become 0 and windowSizeReached false. Requirement \"Changing valid windowSize clears history before any same-scan accepted sample.\" LTL P7 says valid & !reset & !cyclic & !triggerRise & !windowChanged -> unchangedMean. If windowChanged true and no accept, clear history and average 0. So we need set average=0 etc after clearing. In our window change clear should set average :=0 windowSizeReached:=FALSE sampleCount:=0 sum:=0. Good. Then if no accept, average remains 0. If no window changed and no accept, average unchanged. Need not assign average. \n   Need after adding sample if sampleCount=0? Only if no accept. If accepted sampleCount >=1.\n   Need windowSizeReached should become TRUE once accepted count reaches windowSize. If window changed down to 1 and accept same scan, after clear count 0, add count1 -> reached true. T2 step5.\n   Need if window changed but reset false and no accept, windowSizeReached false. Good.\n\nPotential issue: In reset branch after window changed, we clear. Then set average 0. Good. If reset true and window invalid, invalid branch preserves. Is that okay? Safety says invalid before sampling; invalid preserves average/windowSizeReached. Yes.\n\nNeed status numeric: 16#8200 = decimal 33280. WORD. In ST assign status := 16#8200; CODESYS literal okay. error := TRUE.\n\nNeed handle previousTrigger update at end. But with early returns? ST no return maybe. We can avoid RETURN. Structure:\nvalidWindow := (windowSize >= 1) AND (windowSize <= 100);\ntriggerRise := trigger AND NOT previousTrigger;\n\nIF NOT validWindow THEN\n   error := TRUE;\n   status := 16#8200;\nELSE\n   error := FALSE;\n   status := 16#0000;\n   IF lastValidWindowSize <> windowSize THEN\n       sampleCount := 0;\n       sumSamples := 0.0;\n       average := 0.0;\n       windowSizeReached := FALSE;\n       lastValidWindowSize := windowSize;\n   END_IF;\n   IF reset THEN\n       sampleCount := 0;\n       sumSamples := 0.0;\n       average := 0.0;\n       windowSizeReached := FALSE;\n   ELSIF cyclicExecution OR triggerRise THEN\n       IF sampleCount < windowSize THEN\n           sampleCount := sampleCount + 1;\n           samples[sampleCount] := value;\n           sumSamples := sumSamples + value;\n       ELSE\n           sumSamples := sumSamples - samples[1] + value;\n           FOR i := 1 TO windowSize - 1 DO\n               samples[i] := samples[i + 1];\n           END_FOR;\n           samples[windowSize] := value;\n       END_IF;\n       average := sumSamples / sampleCount;\n       windowSizeReached := (sampleCount >= windowSize); // or =.\n   END_IF;\nEND_IF;\npreviousTrigger := trigger;\n\nNeed consider sampleCount after window change to smaller. Suppose sampleCount was > new window? We clear all if window changed. Good. Suppose lastValid=3 sampleCount=2, new window=5 valid changed -> clear and sampleCount=0, then accept one if cyclic. Good.\n\nNeed if windowSize valid and lastValid same but sampleCount maybe > windowSize? No.\n\nPotential issue sumSamples when sampleCount < windowSize append at [sampleCount]. But samples array may have old data beyond. Fine. When full sampleCount = windowSize, else branch. Need if sampleCount somehow > windowSize, FOR windowSize-1 indexes. But no.\n\nNeed define supporting_objects maybe empty list [].\n\nNeed exact JSON. Need ensure declaration string includes newlines escaped or can include \\n. JSON valid. We can output pretty JSON. No markdown.\n\nNeed maybe declaration should not include END_FUNCTION_BLOCK. Implementation ST body alone. Supporting_objects empty.\n\nNeed maybe variable names case. Interface exact: cyclicExecution, trigger, value, windowSize, reset, average, windowSizeReached, error, status.\n\nNeed possibly use CODESYS syntax for WORD literal: status := 16#8200; okay.\n\nNeed no DUT. Supporting objects [].\n\nNeed ensure declarations all VAR sections. We can include VAR_INPUT, VAR_OUTPUT, VAR. Need no END_FUNCTION_BLOCK. The declaration string starts \"FUNCTION_BLOCK FB_Task\\nVAR_INPUT...\"\n\nNeed implementation body string. Need not include \"END_FUNCTION_BLOCK\".\n\nNeed maybe \"windowSizeReached := (sampleCount = windowSize);\" is exact. If accepted count reaches windowSize. Good.\n\nNeed maybe if reset and window changed: our window changed clear sets lastValid, then reset clear. average 0. error false status 0. Good. T1 step5: lastValid 3 same, reset -> clear average 0 false. Step6 cyclic accept -6 average -6 false. Good.\n\nLet's simulate T2:\nInitial lastValid=0, prevTrig false.\nStep1 valid 3 changed -> clear, last=3. reset false. cyclic false, trigger true rise true accept. sampleCount<3 -> count1 samples1=2 sum2 avg2 reached false. prevTrig=true.\nStep2 valid3 no changed. reset false. cyclic false. trigger true rise false. no accept. avg unchanged 2 reached false. prevTrig true.\nStep3 trigger false rise false no accept avg 2. prevTrig false.\nStep4 trigger true rise true accept value4: count2 avg3 reached false. prevTrig true.\nStep5 valid1 changed -> clear last=1 avg0 reached false. reset false cyclic true accept value8: count<1 -> count1 samples1=8 sum8 avg8 reached true. prevTrig false.\nStep6 window0 invalid -> error true status, preserve avg8 reached true. prevTrig false.\nStep7 101 invalid preserve. \nStep8 window1 valid lastValid=1 no change. error false status0. reset true -> clear avg0 reached false. prevTrig false. (trigger false)\nStep9 window1 valid reset false trigger true rise true accept 5 count1 avg5 reached true. Good.\n\nT1: step4 cyclic true trigger true. previousTrigger false? T1 step1 trigger false prev false; step2 false prev false; step3 false; step4 trigger true rise true but cyclic true accept one value12: sampleCount=3 full. sum=18? Wait T1 step1 avg3 count1 sum3; step2 value6 count2 sum9 avg4.5; step3 value9 count3 sum18 avg6 reached true; step4 value12 full: sum=18 - samples1(3) +12 =27; shift samples [6,9,12] avg9 reached true. Good. trigger rise but one. prev true.\nStep5 cyclic true trigger false reset true: valid no change reset clear avg0 false. prev false.\nStep6 accept -6 count1 avg -6 false. Good.\n\nNeed potential issue: In invalid branch, we don't set average etc. If prior outputs maybe not initialized? Output default 0. Fine. In valid branch when window changed clear then reset? Good.\n\nNeed maybe status should be set to success on valid even if reset? yes.\n\nNeed final only JSON. Need no extra explanation.\n\nCould include supporting_objects: [].\n\nNeed ensure JSON string escaping: newline \\n. We can provide JSON pretty with declaration as string with \\n. Need valid. Let's compose.\n\nNeed include \"kind\": \"FUNCTION_BLOCK\"? supporting empty. No functions.\n\nPotential hidden tests for changing window from 3 to 3? no. Initial lastValid 0. If first scan invalid, lastValid remains 0, history none, average default 0. Next valid changed clear, okay. If invalid after valid preserve lastValid. Good.\n\nPotential hidden test: valid window changed while reset false, cyclic false, trigger false. Our code clears history and average 0, reached false. LTL P7 condition windowChanged false not triggered. Assumption says changing valid window clears history before any same-scan accepted sample. It doesn't explicitly say average becomes 0 if no sample; but clear history implies mean empty=0 and reached false. Good.\n\nPotential hidden test: valid window changed, reset true. Our clear then reset, avg 0. Good.\n\nPotential hidden test: invalid window with reset true and trigger rising. We preserve avg/reached, but error true; previousTrigger update. Good. If next scan valid reset false trigger still true, rise false; no accept. P6. Good. If invalid+reset true, history preserved. Spec says reset resets when true, but safety invalid before sampling / invalid preserves. Ambiguity. Assumptions: \"Invalid window sets error/status and does not accept or change history.\" \"An invalid-window scan preserves average/windowSizeReached.\" So yes.\n\nNeed maybe \"error\" on valid cleared before reset. Good.\n\nNeed maybe if window changed to invalid? invalid branch preserve lastValid and history; average unchanged. Good.\n\nNeed maybe average calculation uses sumSamples. If sampleCount = 0, division? We only compute in accept. If windowSize=0 invalid. Good.\n\nNeed maybe LREAL type, sumSamples LREAL. declare `sumSamples : LREAL := 0.0;` CODESYS allows initialization in VAR? Yes.\n\nNeed variable `i : INT;` for FOR loop. In ST, `FOR i := 1 TO windowSize - 1 DO` if windowSize=1, upper=0, loop doesn't execute? In IEC, FOR with initial 1 and end 0 may execute? Actually FOR i:=1 TO 0 DO might execute once depending? Need know. In ST, if start > end, loop is not executed? Usually yes not executed. But to be safe, wrap IF windowSize > 1 THEN FOR ... END_FOR; END_IF; In else branch sampleCount >= windowSize. If windowSize=1 and sampleCount=1, else branch. Need shift loop from 1 to 0. In CODESYS, FOR loop with TO 0 likely no iterations because condition checked before. But safe:\nIF windowSize > 1 THEN\n FOR i := 1 TO windowSize - 1 DO ...\n END_FOR;\nEND_IF;\nsamples[windowSize] := value;\nGood.\n\nNeed if sampleCount < windowSize append. If windowSize maybe 100 and sampleCount 99 append at 100. Good. If sampleCount 100 full else.\n\nNeed `windowSizeReached := (sampleCount = windowSize);` Good.\n\nLet's produce final JSON. Need no markdown. Ensure all quotes escaped. Use pretty."
+            }
+          ]
+        },
+        {
+          "id": "msg_0ff49656c4b84e01a7f22bf934a36e0a_0",
+          "type": "message",
+          "status": "completed",
+          "content": [
+            {
+              "type": "output_text",
+              "annotations": [],
+              "logprobs": [],
+              "text": "{\n  \"declaration\": \"FUNCTION_BLOCK FB_Task\\nVAR_INPUT\\n  cyclicExecution : BOOL;\\n  trigger : BOOL;\\n  value : LREAL;\\n  windowSize : INT;\\n  reset : BOOL;\\nEND_VAR\\nVAR_OUTPUT\\n  average : LREAL;\\n  windowSizeReached : BOOL;\\n  error : BOOL;\\n  status : WORD;\\nEND_VAR\\nVAR\\n  samples : ARRAY[1..100] OF LREAL;\\n  sampleCount : INT := 0;\\n  sumSamples : LREAL := 0.0;\\n  previousTrigger : BOOL := FALSE;\\n  lastValidWindowSize : INT := 0;\\n  i : INT;\\n  validWindow : BOOL;\\n  triggerRise : BOOL;\\nEND_VAR\",\n  \"implementation\": \"validWindow := (windowSize >= 1) AND (windowSize <= 100);\\ntriggerRise := trigger AND NOT previousTrigger;\\n\\nIF NOT validWindow THEN\\n  error := TRUE;\\n  status := 16#8200;\\nELSE\\n  error := FALSE;\\n  status := 16#0000;\\n\\n  IF lastValidWindowSize <> windowSize THEN\\n    sampleCount := 0;\\n    sumSamples := 0.0;\\n    average := 0.0;\\n    windowSizeReached := FALSE;\\n    lastValidWindowSize := windowSize;\\n  END_IF;\\n\\n  IF reset THEN\\n    sampleCount := 0;\\n    sumSamples := 0.0;\\n    average := 0.0;\\n    windowSizeReached := FALSE;\\n  ELSIF cyclicExecution OR triggerRise THEN\\n    IF sampleCount < windowSize THEN\\n      sampleCount := sampleCount + 1;\\n      samples[sampleCount] := value;\\n      sumSamples := sumSamples + value;\\n    ELSE\\n      sumSamples := sumSamples - samples[1] + value;\\n      IF windowSize > 1 THEN\\n        FOR i := 1 TO windowSize - 1 DO\\n          samples[i] := samples[i + 1];\\n        END_FOR;\\n      END_IF;\\n      samples[windowSize] := value;\\n    END_IF;\\n\\n    average := sumSamples / sampleCount;\\n    windowSizeReached := (sampleCount = windowSize);\\n  END_IF;\\nEND_IF;\\n\\npreviousTrigger := trigger;\",\n  \"supporting_objects\": []\n}"
+            }
+          ],
+          "role": "assistant"
+        }
+      ],
+      "usage": {
+        "input_tokens": 3619,
+        "input_tokens_details": {
+          "cached_tokens": 0
+        },
+        "output_tokens": 4399,
+        "output_tokens_details": {
+          "reasoning_tokens": 3828
+        },
+        "total_tokens": 8018
+      }
+    }
+  }
+]

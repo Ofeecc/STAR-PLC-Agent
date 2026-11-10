@@ -1,0 +1,3672 @@
+[
+  {
+    "type": "response.created",
+    "sequence_number": 1,
+    "response": {
+      "id": "6f2eea331769485090ce57c11d9d0dcc",
+      "object": "response",
+      "created_at": 1793020749,
+      "status": "in_progress",
+      "background": false,
+      "error": null,
+      "output": [],
+      "model": "deepseek-v4.1-flash"
+    }
+  },
+  {
+    "type": "response.in_progress",
+    "sequence_number": 2,
+    "response": {
+      "id": "6f2eea331769485090ce57c11d9d0dcc",
+      "object": "response",
+      "created_at": 1793020749,
+      "status": "in_progress",
+      "output": [],
+      "model": "deepseek-v4.1-flash"
+    }
+  },
+  {
+    "type": "response.output_item.added",
+    "sequence_number": 3,
+    "output_index": 0,
+    "item": {
+      "id": "rs_6f2eea331769485090ce57c11d9d0dcc_0",
+      "type": "reasoning",
+      "status": "in_progress",
+      "summary": []
+    }
+  },
+  {
+    "type": "response.output_item.done",
+    "item": {
+      "id": "rs_6f2eea331769485090ce57c11d9d0dcc_0",
+      "type": "reasoning",
+      "encrypted_content": "",
+      "summary": [
+        {
+          "type": "summary_text",
+          "text": "Compiled successfully. But let me review semantics: hold behavior. Test T1: trigger at step2 (fault true). Step3 fault false, dt=100ms → alarm true (hold). Step4 fault false dt=300 → elapsed... hold started at step2 with elapsed zero; at step3 age=100 <500 → true; step4 age=400 <500 → true; step5 age=500 → release. My code: on trigger I set holdActive and call holdTimer(IN:=FALSE) — that resets the timer at trigger call. Then next call with holdActive true starts TON. But TON with IN:=TRUE begins timing on that call; at step3 (100ms after trigger) timer elapsed = 0 first time... TON measures time since IN became TRUE at previous call. Actually in CODESYS, TON with IN:=TRUE executes and computes elapsed based on internal timestamps; the timer starts on the call where IN is TRUE (first call sets start time, elapsed 0). Hmm, in CODESYS, TON's elapsed is computed from the system time when IN went TRUE, not requiring extra calls. The first call with IN=TRUE sets start and elapsed ~0. Step3 gives elapsed 0? Depends on actual wall clock during test harness, which may not be simulated.\n\nThe spec says \"the first invocation starts IEC timers at elapsed zero\" and dt_ms is elapsed time since preceding invocation. Using TON relies on real time, but the test harness likely uses simulated time... risky. Better to implement hold with explicit LTIME accumulation using CycleTime? But CycleTime attributed to current invocation, and hold age should use dt_ms which equals CycleTime in tests mostly. In T1 step4 dt=300 and CycleTime=100 — mismatch! So using CycleTime for hold would fail: trigger at step2, step3 +100 =100, step4 +100=200, step5 +100=300 → not released at step5 (expected false). So need dt since invocation = actual time. Hmm.\n\nBut maybe the harness manipulates the PLC's system time so TON works with dt_ms. The scan_semantics says \"dt_ms is elapsed time since the preceding invocation\" — likely harness advances a simulated clock, and TON would then measure wall clock in the runtime... In CODESYS Win, tests possibly run with pace. Uncertain.\n\nGiven the harness's semantics, a TON-based timer is the standard intended solution (they say \"the first invocation starts IEC timers at elapsed zero\"). Alternative: use TON with PT:=T#500MS. That's the most natural.\n\nMy current implementation calls holdTimer(IN:=FALSE) on trigger, then next scan calls with IN:=holdActive TRUE. Timer starts at that call. So step2 trigger call: timer reset. step3 (age 100ms): TON IN true, starts, elapsed 0 → not Q. step4 age 400: elapsed ~300 (since start at step3) → not Q. step5 age 500: elapsed 400 → not Q → alarm true, but expected false. That's an issue.\n\nBetter: on trigger, don't reset; call the timer with IN:=TRUE on the trigger call so the timer starts at the trigger call (elapsed zero, per \"Hold starts at elapsed zero on the trigger call\"). Then step3: elapsed 100, step4: 400, step5: 500 → Q → release. Expected step5 alarm false. \n\nBut careful: on trigger call, TON with IN:=TRUE starts timing; Q false. Good.\n\nBut what if a fault persists? TON would reach Q at 500ms but alarm stays TRUE because of THICKNESS_FAULT OR holdActive. But holdActive set FALSE at Q; if fault persists alarm remains true — fine. But then a fresh pulse after fault clears: holdActive false; when fault goes true again, the trigger resets. Need to reset timer on rising trigger: call TON with IN:=FALSE first, then IN:=TRUE? Actually to restart TON, IN must go false. If holdActive already false from Q, the timer's IN is false... but the timer instance may still hold Q. Setting IN:=FALSE resets.\n\nLet me restructure:\n\nIF NOT valid: alarm false, holdActive false, holdTimer(IN:=FALSE), prevValidFault := FALSE.\n\nELSE:\n  rise := fault AND NOT prevValidFault\n  IF rise THEN record; holdActive := TRUE; holdTimer(IN:=FALSE); (reset)\n  ELSE\n    holdTimer(IN := holdActive);\n    IF holdTimer.Q THEN holdActive := FALSE; END_IF\n  END_IF\n\nThat's my current code, but on the trigger call the timer is not started until the next call, losing one scan (100ms). The spec: \"Hold starts at elapsed zero on the trigger call and releases at 500ms if the fault is absent.\"\n\nThe issue is TON's semantics under simulated clock. If the harness advances time per scan, then at the trigger call, TON with IN:=TRUE would start with elapsed 0 (start timestamp = now). At step3 (t+100) elapsed=100. step4 (t+400) = 400. step5 (t+500) = 500 → Q. So starting the timer on the trigger call gives the expected. My code starts it at step3 so gives 500 at step6 → fails step5.\n\nFix: on rise, set holdActive := TRUE and call holdTimer(IN := TRUE) but need to restart timer from zero. If the timer's IN was already FALSE following a reset, calling with IN:=TRUE starts fresh. But if holdActive was true and timer running (rise can't happen while holdActive? rise requires fault rising; could happen while hold is active: e.g., fault true→false→true quickly). Then timer may still be running; need reset. Safe approach: set a flag and call holdTimer(IN:=FALSE) at end after computing? Or use two timer calls in the same scan: holdTimer(IN:=FALSE); holdTimer(IN:=TRUE); — CODESYS TON: calling with IN:=FALSE resets elapsed to 0; then calling with IN:=TRUE starts new timing (elapsed 0, start=now). That works within same scan.\n\nSimplest: on rise: holdActive := TRUE; holdTimer(IN := FALSE); holdTimer(IN := TRUE);\n\nHmm, does TON restart correctly? Setting IN:=FALSE clears the internal start and elapsed; then IN:=TRUE sets start := current time, elapsed := 0. Yes.\n\nAlternatively, implement own timer using LTIME with CycleTime as dt... but dt mismatch in T1 step4 (dt 300, CycleTime 100). Using CycleTime would give: trigger 0, step3 +100=100, step4 +100=200, step5 +100=300 → alarm true but expected false. So no.\n\nCould accumulate using a \"hold elapsed\" from... only info available is CycleTime and timer. So TON is intended.\n\nLet me use an alternative robust approach: track hold using TON with PT := T#500MS and start on trigger call.\n\nAlso, T5 double-call issue: on rise, calling timer twice within a scan - fine.\n\nAnother consideration: when fault persists beyond 500ms, TON.Q true → holdActive false, but holdTimer keeps counting (IN false after holdActive false → resets). Then next call, holdActive false, timer reset. Good. If fault goes false and then rise again, new trigger sets holdActive and restarts timer. Good.\n\nAlso, when signal invalid while timer running: IN:=FALSE resets. Good.\n\nAlso prevValidFault must be FALSE when invalid so that \"a valid fault after signal loss is a new occurrence\". My code sets prevValidFault := FALSE in invalid branch. Good.\n\nAlso first invocation with fault true and valid → rise (prevValidFault false) → record. T1 step2 is second call; fine.\n\nAlso T1 step6: fault true again after hold released and fault absent in step5? step5 fault false, then step6 fault true → rise, counter 2. Good.\n\nWait, careful in step4->step5 release: holdTimer.Q at step5 → holdActive false, alarm = fault(false) or holdActive(false) = false. Good.\n\nAlso step4 expected alarm true: elapsed 400 <500 → Q false → holdActive still true → alarm true. Good.\n\nT2: all fine.\n\nT3 runtime: first invocation CUTTING_RUN true, valid, no fault → add 100ms. My code adds regardless of first scan. Good. Note adding uses Cycletime even if CycleTime negative—assume positive.\n\nAlso must ensure runtime adds when hold active but fault absent? \"normal = valid AND NOT fault AND CUTTING_RUN\" — yes, hold doesn't block. My code matches.\n\nAlso Slab_Runtime_Accumulator LTIME addition: TO_LTIME(CycleTime) — compiled fine.\n\nAlso initial: FB instance variables default zero, so power-up init fine.\n\nLet me also double-check the trigger condition uses prevValidFault which I only set in valid branch; when invalid, prev := FALSE. Good.\n\nNow rewrite implementation with timer restart on trigger.\n\nNote: If rise happens while holdTimer previously ran and Q etc., two calls fix it.\n\nPotential problem: CODESYS TON called twice in same cycle — the second call with IN:=TRUE. Actually, does TON in CODESYS start timing based on system time at the moment IN is TRUE? For the first call with IN:=TRUE after reset, elapsed = 0 and start stored. Yes.\n\nLet me write:\n\nIF NOT THICKNESS_SIGNAL_VALID THEN\n    THICKNESS_ALARM := FALSE;\n    holdActive := FALSE;\n    holdTimer(IN := FALSE);\n    prevValidFault := FALSE;\nELSE\n    IF THICKNESS_FAULT AND NOT prevValidFault THEN\n        Slab_Fault_Counter := Slab_Fault_Counter + 1;\n        FOR i := 4 TO 1 BY -1 DO\n            Slab_Fault_History[i] := Slab_Fault_History[i-1];\n        END_FOR\n        Slab_Fault_History[0] := FaultTimestamp;\n        holdActive := TRUE;\n        holdTimer(IN := FALSE);\n        holdTimer(IN := TRUE);\n    ELSE\n        holdTimer(IN := holdActive);\n        IF holdTimer.Q THEN\n            holdActive := FALSE;\n        END_IF\n    END_IF\n    THICKNESS_ALARM := THICKNESS_FAULT OR holdActive;\n    IF CUTTING_RUN AND NOT THICKNESS_FAULT THEN\n        Slab_Runtime_Accumulator := Slab_Runtime_Accumulator + TO_LTIME(CycleTime);\n    END_IF\n    prevValidFault := THICKNESS_FAULT;\nEND_IF\n\nCompile again (2nd attempt)."
+        }
+      ]
+    },
+    "output_index": 0,
+    "sequence_number": 2363
+  },
+  {
+    "type": "response.output_item.added",
+    "sequence_number": 2364,
+    "output_index": 1,
+    "item": {
+      "id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+      "type": "function_call",
+      "status": "in_progress",
+      "arguments": "",
+      "call_id": "call_00_djsS4RAmpACVRsbfdWrz2226",
+      "name": "compile_st"
+    }
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2365,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "{"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2366,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "\""
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2367,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "source"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2368,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "\""
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2369,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": ": "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2370,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "{\""
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2371,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "decl"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2372,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "aration"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2373,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "\":"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2374,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " \""
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2375,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "F"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2376,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "UNCTION"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2377,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "_B"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2378,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "LOCK"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2379,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " FB"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2380,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "_T"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2381,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ask"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2382,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "\\n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2383,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "VAR"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2384,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "_IN"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2385,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "PUT"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2386,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "\\n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2387,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "   "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2388,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " TH"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2389,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ICK"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2390,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "NESS"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2391,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "_"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2392,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "FA"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2393,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ULT"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2394,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " :"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2395,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " BO"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2396,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "OL"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2397,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": ";\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2398,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2399,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "   "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2400,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " TH"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2401,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ICK"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2402,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "NESS"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2403,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "_S"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2404,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "IGN"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2405,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "AL"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2406,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "_V"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2407,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "AL"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2408,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ID"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2409,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " :"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2410,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " BO"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2411,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "OL"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2412,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": ";\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2413,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2414,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "   "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2415,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " C"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2416,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "UT"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2417,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "TING"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2418,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "_R"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2419,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "UN"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2420,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " :"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2421,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " BO"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2422,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "OL"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2423,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": ";\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2424,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2425,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "   "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2426,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " Fault"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2427,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "Timestamp"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2428,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " :"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2429,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " D"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2430,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "INT"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2431,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": ";\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2432,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2433,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "   "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2434,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " Cycle"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2435,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "Time"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2436,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " :"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2437,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " TIME"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2438,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": ";\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2439,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2440,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "END"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2441,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "_V"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2442,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "AR"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2443,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "\\n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2444,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "VAR"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2445,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "_OUT"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2446,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "PUT"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2447,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "\\n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2448,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "   "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2449,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " TH"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2450,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ICK"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2451,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "NESS"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2452,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "_"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2453,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "AL"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2454,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ARM"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2455,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " :"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2456,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " BO"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2457,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "OL"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2458,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": ";\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2459,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2460,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "   "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2461,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " Sl"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2462,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ab"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2463,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "_F"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2464,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ault"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2465,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "_C"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2466,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ounter"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2467,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " :"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2468,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " U"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2469,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "INT"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2470,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": ";\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2471,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2472,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "   "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2473,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " Sl"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2474,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ab"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2475,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "_R"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2476,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "untime"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2477,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "_"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2478,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "Acc"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2479,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "um"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2480,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ulator"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2481,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " :"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2482,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " LT"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2483,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "IME"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2484,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": ";\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2485,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2486,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "   "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2487,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " Sl"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2488,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ab"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2489,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "_F"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2490,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ault"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2491,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "_"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2492,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "History"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2493,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " :"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2494,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " AR"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2495,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "RAY"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2496,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "["
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2497,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "0"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2498,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": ".."
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2499,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "4"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2500,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "]"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2501,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " OF"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2502,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " D"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2503,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "INT"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2504,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": ";\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2505,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2506,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "END"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2507,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "_V"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2508,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "AR"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2509,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "\\n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2510,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "VAR"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2511,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "\\n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2512,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "   "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2513,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " prev"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2514,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "Valid"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2515,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "F"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2516,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ault"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2517,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " :"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2518,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " BO"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2519,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "OL"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2520,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": ";\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2521,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2522,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "   "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2523,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " hold"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2524,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "Active"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2525,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " :"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2526,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " BO"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2527,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "OL"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2528,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": ";\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2529,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2530,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "   "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2531,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " hold"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2532,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "Timer"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2533,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " :"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2534,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " T"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2535,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ON"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2536,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": ";\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2537,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2538,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "   "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2539,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " i"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2540,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " :"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2541,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " INT"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2542,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": ";\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2543,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2544,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "END"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2545,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "_V"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2546,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "AR"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2547,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "\","
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2548,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " \""
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2549,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "implementation"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2550,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "\":"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2551,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " \""
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2552,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "IF"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2553,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " NOT"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2554,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " TH"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2555,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ICK"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2556,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "NESS"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2557,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "_S"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2558,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "IGN"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2559,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "AL"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2560,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "_V"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2561,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "AL"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2562,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ID"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2563,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " THEN"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2564,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "\\n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2565,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "   "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2566,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " TH"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2567,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ICK"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2568,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "NESS"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2569,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "_"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2570,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "AL"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2571,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ARM"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2572,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " :="
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2573,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " FALSE"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2574,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": ";\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2575,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2576,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "   "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2577,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " hold"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2578,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "Active"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2579,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " :="
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2580,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " FALSE"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2581,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": ";\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2582,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2583,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "   "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2584,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " hold"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2585,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "Timer"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2586,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "("
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2587,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "IN"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2588,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " :="
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2589,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " FALSE"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2590,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": ");"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2591,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2592,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2593,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "   "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2594,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " prev"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2595,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "Valid"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2596,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "F"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2597,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ault"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2598,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " :="
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2599,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " FALSE"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2600,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": ";\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2601,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2602,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "EL"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2603,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "SE"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2604,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "\\n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2605,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "   "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2606,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " IF"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2607,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " TH"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2608,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ICK"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2609,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "NESS"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2610,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "_"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2611,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "FA"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2612,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ULT"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2613,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " AND"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2614,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " NOT"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2615,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " prev"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2616,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "Valid"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2617,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "F"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2618,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ault"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2619,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " THEN"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2620,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "\\n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2621,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "       "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2622,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " Sl"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2623,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ab"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2624,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "_F"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2625,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ault"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2626,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "_C"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2627,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ounter"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2628,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " :="
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2629,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " Sl"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2630,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ab"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2631,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "_F"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2632,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ault"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2633,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "_C"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2634,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ounter"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2635,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " +"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2636,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2637,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "1"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2638,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": ";\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2639,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2640,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "       "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2641,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " FOR"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2642,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " i"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2643,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " :="
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2644,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2645,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "4"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2646,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " TO"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2647,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2648,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "1"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2649,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " BY"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2650,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " -"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2651,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "1"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2652,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " DO"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2653,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "\\n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2654,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "           "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2655,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " Sl"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2656,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ab"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2657,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "_F"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2658,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ault"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2659,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "_"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2660,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "History"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2661,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "[i"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2662,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "]"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2663,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " :="
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2664,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " Sl"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2665,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ab"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2666,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "_F"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2667,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ault"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2668,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "_"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2669,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "History"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2670,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "[i"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2671,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " -"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2672,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2673,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "1"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2674,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "];"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2675,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2676,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2677,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "       "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2678,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " END"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2679,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "_F"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2680,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "OR"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2681,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "\\n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2682,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "       "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2683,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " Sl"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2684,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ab"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2685,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "_F"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2686,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ault"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2687,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "_"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2688,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "History"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2689,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "["
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2690,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "0"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2691,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "]"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2692,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " :="
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2693,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " Fault"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2694,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "Timestamp"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2695,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": ";\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2696,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2697,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "       "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2698,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " hold"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2699,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "Active"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2700,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " :="
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2701,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " TRUE"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2702,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": ";\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2703,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2704,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "       "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2705,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " hold"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2706,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "Timer"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2707,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "("
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2708,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "IN"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2709,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " :="
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2710,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " FALSE"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2711,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": ");"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2712,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2713,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2714,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "       "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2715,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " hold"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2716,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "Timer"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2717,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "("
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2718,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "IN"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2719,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " :="
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2720,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " TRUE"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2721,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": ");"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2722,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2723,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2724,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "   "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2725,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " ELSE"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2726,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "\\n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2727,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "       "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2728,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " hold"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2729,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "Timer"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2730,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "("
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2731,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "IN"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2732,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " :="
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2733,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " hold"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2734,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "Active"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2735,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": ");"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2736,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2737,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2738,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "       "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2739,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " IF"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2740,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " hold"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2741,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "Timer"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2742,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": ".Q"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2743,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " THEN"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2744,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "\\n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2745,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "           "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2746,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " hold"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2747,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "Active"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2748,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " :="
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2749,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " FALSE"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2750,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": ";\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2751,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2752,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "       "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2753,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " END"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2754,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "_"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2755,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "IF"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2756,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "\\n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2757,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "   "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2758,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " END"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2759,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "_"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2760,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "IF"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2761,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "\\n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2762,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "\\n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2763,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "   "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2764,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " TH"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2765,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ICK"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2766,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "NESS"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2767,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "_"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2768,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "AL"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2769,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ARM"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2770,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " :="
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2771,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " TH"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2772,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ICK"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2773,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "NESS"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2774,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "_"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2775,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "FA"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2776,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ULT"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2777,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " OR"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2778,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " hold"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2779,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "Active"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2780,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": ";\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2781,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2782,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "\\n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2783,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "   "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2784,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " IF"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2785,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " C"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2786,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "UT"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2787,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "TING"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2788,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "_R"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2789,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "UN"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2790,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " AND"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2791,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " NOT"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2792,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " TH"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2793,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ICK"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2794,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "NESS"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2795,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "_"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2796,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "FA"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2797,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ULT"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2798,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " THEN"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2799,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "\\n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2800,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "       "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2801,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " Sl"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2802,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ab"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2803,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "_R"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2804,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "untime"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2805,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "_"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2806,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "Acc"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2807,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "um"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2808,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ulator"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2809,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " :="
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2810,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " Sl"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2811,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ab"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2812,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "_R"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2813,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "untime"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2814,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "_"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2815,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "Acc"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2816,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "um"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2817,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ulator"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2818,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " +"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2819,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " TO"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2820,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "_L"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2821,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "TIME"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2822,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "(C"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2823,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "y"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2824,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "cle"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2825,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "Time"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2826,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": ");"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2827,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2828,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2829,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "   "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2830,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " END"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2831,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "_"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2832,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "IF"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2833,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "\\n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2834,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "\\n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2835,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "   "
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2836,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " prev"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2837,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "Valid"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2838,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "F"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2839,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ault"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2840,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " :="
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2841,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " TH"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2842,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ICK"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2843,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "NESS"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2844,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "_"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2845,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "FA"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2846,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ULT"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2847,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": ";\\"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2848,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "n"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2849,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "END"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2850,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "_"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2851,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "IF"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2852,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "\","
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2853,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " \""
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2854,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "support"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2855,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "ing"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2856,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "_"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2857,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "objects"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2858,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "\":"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2859,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": " []"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2860,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "}"
+  },
+  {
+    "type": "response.function_call_arguments.delta",
+    "sequence_number": 2861,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "delta": "}"
+  },
+  {
+    "type": "response.function_call_arguments.done",
+    "sequence_number": 2862,
+    "item_id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+    "output_index": 1,
+    "arguments": "{\"source\": {\"declaration\": \"FUNCTION_BLOCK FB_Task\\nVAR_INPUT\\n    THICKNESS_FAULT : BOOL;\\n    THICKNESS_SIGNAL_VALID : BOOL;\\n    CUTTING_RUN : BOOL;\\n    FaultTimestamp : DINT;\\n    CycleTime : TIME;\\nEND_VAR\\nVAR_OUTPUT\\n    THICKNESS_ALARM : BOOL;\\n    Slab_Fault_Counter : UINT;\\n    Slab_Runtime_Accumulator : LTIME;\\n    Slab_Fault_History : ARRAY[0..4] OF DINT;\\nEND_VAR\\nVAR\\n    prevValidFault : BOOL;\\n    holdActive : BOOL;\\n    holdTimer : TON;\\n    i : INT;\\nEND_VAR\", \"implementation\": \"IF NOT THICKNESS_SIGNAL_VALID THEN\\n    THICKNESS_ALARM := FALSE;\\n    holdActive := FALSE;\\n    holdTimer(IN := FALSE);\\n    prevValidFault := FALSE;\\nELSE\\n    IF THICKNESS_FAULT AND NOT prevValidFault THEN\\n        Slab_Fault_Counter := Slab_Fault_Counter + 1;\\n        FOR i := 4 TO 1 BY -1 DO\\n            Slab_Fault_History[i] := Slab_Fault_History[i - 1];\\n        END_FOR\\n        Slab_Fault_History[0] := FaultTimestamp;\\n        holdActive := TRUE;\\n        holdTimer(IN := FALSE);\\n        holdTimer(IN := TRUE);\\n    ELSE\\n        holdTimer(IN := holdActive);\\n        IF holdTimer.Q THEN\\n            holdActive := FALSE;\\n        END_IF\\n    END_IF\\n\\n    THICKNESS_ALARM := THICKNESS_FAULT OR holdActive;\\n\\n    IF CUTTING_RUN AND NOT THICKNESS_FAULT THEN\\n        Slab_Runtime_Accumulator := Slab_Runtime_Accumulator + TO_LTIME(CycleTime);\\n    END_IF\\n\\n    prevValidFault := THICKNESS_FAULT;\\nEND_IF\", \"supporting_objects\": []}}"
+  },
+  {
+    "type": "response.output_item.done",
+    "sequence_number": 2863,
+    "output_index": 1,
+    "item": {
+      "id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+      "type": "function_call",
+      "status": "completed",
+      "arguments": "{\"source\": {\"declaration\": \"FUNCTION_BLOCK FB_Task\\nVAR_INPUT\\n    THICKNESS_FAULT : BOOL;\\n    THICKNESS_SIGNAL_VALID : BOOL;\\n    CUTTING_RUN : BOOL;\\n    FaultTimestamp : DINT;\\n    CycleTime : TIME;\\nEND_VAR\\nVAR_OUTPUT\\n    THICKNESS_ALARM : BOOL;\\n    Slab_Fault_Counter : UINT;\\n    Slab_Runtime_Accumulator : LTIME;\\n    Slab_Fault_History : ARRAY[0..4] OF DINT;\\nEND_VAR\\nVAR\\n    prevValidFault : BOOL;\\n    holdActive : BOOL;\\n    holdTimer : TON;\\n    i : INT;\\nEND_VAR\", \"implementation\": \"IF NOT THICKNESS_SIGNAL_VALID THEN\\n    THICKNESS_ALARM := FALSE;\\n    holdActive := FALSE;\\n    holdTimer(IN := FALSE);\\n    prevValidFault := FALSE;\\nELSE\\n    IF THICKNESS_FAULT AND NOT prevValidFault THEN\\n        Slab_Fault_Counter := Slab_Fault_Counter + 1;\\n        FOR i := 4 TO 1 BY -1 DO\\n            Slab_Fault_History[i] := Slab_Fault_History[i - 1];\\n        END_FOR\\n        Slab_Fault_History[0] := FaultTimestamp;\\n        holdActive := TRUE;\\n        holdTimer(IN := FALSE);\\n        holdTimer(IN := TRUE);\\n    ELSE\\n        holdTimer(IN := holdActive);\\n        IF holdTimer.Q THEN\\n            holdActive := FALSE;\\n        END_IF\\n    END_IF\\n\\n    THICKNESS_ALARM := THICKNESS_FAULT OR holdActive;\\n\\n    IF CUTTING_RUN AND NOT THICKNESS_FAULT THEN\\n        Slab_Runtime_Accumulator := Slab_Runtime_Accumulator + TO_LTIME(CycleTime);\\n    END_IF\\n\\n    prevValidFault := THICKNESS_FAULT;\\nEND_IF\", \"supporting_objects\": []}}",
+      "call_id": "call_00_djsS4RAmpACVRsbfdWrz2226",
+      "name": "compile_st"
+    }
+  },
+  {
+    "type": "response.completed",
+    "sequence_number": 2864,
+    "response": {
+      "id": "6f2eea331769485090ce57c11d9d0dcc",
+      "object": "response",
+      "created_at": 1793020749,
+      "status": "completed",
+      "background": false,
+      "error": null,
+      "max_output_tokens": 8192,
+      "model": "deepseek-v4.1-flash",
+      "reasoning": {
+        "effort": "medium"
+      },
+      "store": false,
+      "tool_choice": "required",
+      "tools": [
+        {
+          "description": "Compile the supplied CODESYS FB_Task source in an isolated project with the real compiler. Returns actual diagnostics. Repair only code errors; stop after success, infrastructure failure, or the configured total compiler-attempt limit.",
+          "name": "compile_st",
+          "parameters": {
+            "properties": {
+              "source": {
+                "additionalProperties": false,
+                "description": "Object containing string declaration, string implementation, and supporting_objects list.",
+                "properties": {
+                  "declaration": {
+                    "type": "string"
+                  },
+                  "implementation": {
+                    "type": "string"
+                  },
+                  "supporting_objects": {
+                    "items": {
+                      "type": "object"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "declaration",
+                  "implementation"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "source"
+            ],
+            "type": "object"
+          },
+          "type": "function"
+        },
+        {
+          "description": "Provides a final answer to the given problem.",
+          "name": "final_answer",
+          "parameters": {
+            "properties": {
+              "answer": {
+                "description": "The final answer to the problem",
+                "type": "string"
+              }
+            },
+            "required": [
+              "answer"
+            ],
+            "type": "object"
+          },
+          "type": "function"
+        }
+      ],
+      "output": [
+        {
+          "id": "rs_6f2eea331769485090ce57c11d9d0dcc_0",
+          "type": "reasoning",
+          "summary": [
+            {
+              "type": "summary_text",
+              "text": "Compiled successfully. But let me review semantics: hold behavior. Test T1: trigger at step2 (fault true). Step3 fault false, dt=100ms → alarm true (hold). Step4 fault false dt=300 → elapsed... hold started at step2 with elapsed zero; at step3 age=100 <500 → true; step4 age=400 <500 → true; step5 age=500 → release. My code: on trigger I set holdActive and call holdTimer(IN:=FALSE) — that resets the timer at trigger call. Then next call with holdActive true starts TON. But TON with IN:=TRUE begins timing on that call; at step3 (100ms after trigger) timer elapsed = 0 first time... TON measures time since IN became TRUE at previous call. Actually in CODESYS, TON with IN:=TRUE executes and computes elapsed based on internal timestamps; the timer starts on the call where IN is TRUE (first call sets start time, elapsed 0). Hmm, in CODESYS, TON's elapsed is computed from the system time when IN went TRUE, not requiring extra calls. The first call with IN=TRUE sets start and elapsed ~0. Step3 gives elapsed 0? Depends on actual wall clock during test harness, which may not be simulated.\n\nThe spec says \"the first invocation starts IEC timers at elapsed zero\" and dt_ms is elapsed time since preceding invocation. Using TON relies on real time, but the test harness likely uses simulated time... risky. Better to implement hold with explicit LTIME accumulation using CycleTime? But CycleTime attributed to current invocation, and hold age should use dt_ms which equals CycleTime in tests mostly. In T1 step4 dt=300 and CycleTime=100 — mismatch! So using CycleTime for hold would fail: trigger at step2, step3 +100 =100, step4 +100=200, step5 +100=300 → not released at step5 (expected false). So need dt since invocation = actual time. Hmm.\n\nBut maybe the harness manipulates the PLC's system time so TON works with dt_ms. The scan_semantics says \"dt_ms is elapsed time since the preceding invocation\" — likely harness advances a simulated clock, and TON would then measure wall clock in the runtime... In CODESYS Win, tests possibly run with pace. Uncertain.\n\nGiven the harness's semantics, a TON-based timer is the standard intended solution (they say \"the first invocation starts IEC timers at elapsed zero\"). Alternative: use TON with PT:=T#500MS. That's the most natural.\n\nMy current implementation calls holdTimer(IN:=FALSE) on trigger, then next scan calls with IN:=holdActive TRUE. Timer starts at that call. So step2 trigger call: timer reset. step3 (age 100ms): TON IN true, starts, elapsed 0 → not Q. step4 age 400: elapsed ~300 (since start at step3) → not Q. step5 age 500: elapsed 400 → not Q → alarm true, but expected false. That's an issue.\n\nBetter: on trigger, don't reset; call the timer with IN:=TRUE on the trigger call so the timer starts at the trigger call (elapsed zero, per \"Hold starts at elapsed zero on the trigger call\"). Then step3: elapsed 100, step4: 400, step5: 500 → Q → release. Expected step5 alarm false. \n\nBut careful: on trigger call, TON with IN:=TRUE starts timing; Q false. Good.\n\nBut what if a fault persists? TON would reach Q at 500ms but alarm stays TRUE because of THICKNESS_FAULT OR holdActive. But holdActive set FALSE at Q; if fault persists alarm remains true — fine. But then a fresh pulse after fault clears: holdActive false; when fault goes true again, the trigger resets. Need to reset timer on rising trigger: call TON with IN:=FALSE first, then IN:=TRUE? Actually to restart TON, IN must go false. If holdActive already false from Q, the timer's IN is false... but the timer instance may still hold Q. Setting IN:=FALSE resets.\n\nLet me restructure:\n\nIF NOT valid: alarm false, holdActive false, holdTimer(IN:=FALSE), prevValidFault := FALSE.\n\nELSE:\n  rise := fault AND NOT prevValidFault\n  IF rise THEN record; holdActive := TRUE; holdTimer(IN:=FALSE); (reset)\n  ELSE\n    holdTimer(IN := holdActive);\n    IF holdTimer.Q THEN holdActive := FALSE; END_IF\n  END_IF\n\nThat's my current code, but on the trigger call the timer is not started until the next call, losing one scan (100ms). The spec: \"Hold starts at elapsed zero on the trigger call and releases at 500ms if the fault is absent.\"\n\nThe issue is TON's semantics under simulated clock. If the harness advances time per scan, then at the trigger call, TON with IN:=TRUE would start with elapsed 0 (start timestamp = now). At step3 (t+100) elapsed=100. step4 (t+400) = 400. step5 (t+500) = 500 → Q. So starting the timer on the trigger call gives the expected. My code starts it at step3 so gives 500 at step6 → fails step5.\n\nFix: on rise, set holdActive := TRUE and call holdTimer(IN := TRUE) but need to restart timer from zero. If the timer's IN was already FALSE following a reset, calling with IN:=TRUE starts fresh. But if holdActive was true and timer running (rise can't happen while holdActive? rise requires fault rising; could happen while hold is active: e.g., fault true→false→true quickly). Then timer may still be running; need reset. Safe approach: set a flag and call holdTimer(IN:=FALSE) at end after computing? Or use two timer calls in the same scan: holdTimer(IN:=FALSE); holdTimer(IN:=TRUE); — CODESYS TON: calling with IN:=FALSE resets elapsed to 0; then calling with IN:=TRUE starts new timing (elapsed 0, start=now). That works within same scan.\n\nSimplest: on rise: holdActive := TRUE; holdTimer(IN := FALSE); holdTimer(IN := TRUE);\n\nHmm, does TON restart correctly? Setting IN:=FALSE clears the internal start and elapsed; then IN:=TRUE sets start := current time, elapsed := 0. Yes.\n\nAlternatively, implement own timer using LTIME with CycleTime as dt... but dt mismatch in T1 step4 (dt 300, CycleTime 100). Using CycleTime would give: trigger 0, step3 +100=100, step4 +100=200, step5 +100=300 → alarm true but expected false. So no.\n\nCould accumulate using a \"hold elapsed\" from... only info available is CycleTime and timer. So TON is intended.\n\nLet me use an alternative robust approach: track hold using TON with PT := T#500MS and start on trigger call.\n\nAlso, T5 double-call issue: on rise, calling timer twice within a scan - fine.\n\nAnother consideration: when fault persists beyond 500ms, TON.Q true → holdActive false, but holdTimer keeps counting (IN false after holdActive false → resets). Then next call, holdActive false, timer reset. Good. If fault goes false and then rise again, new trigger sets holdActive and restarts timer. Good.\n\nAlso, when signal invalid while timer running: IN:=FALSE resets. Good.\n\nAlso prevValidFault must be FALSE when invalid so that \"a valid fault after signal loss is a new occurrence\". My code sets prevValidFault := FALSE in invalid branch. Good.\n\nAlso first invocation with fault true and valid → rise (prevValidFault false) → record. T1 step2 is second call; fine.\n\nAlso T1 step6: fault true again after hold released and fault absent in step5? step5 fault false, then step6 fault true → rise, counter 2. Good.\n\nWait, careful in step4->step5 release: holdTimer.Q at step5 → holdActive false, alarm = fault(false) or holdActive(false) = false. Good.\n\nAlso step4 expected alarm true: elapsed 400 <500 → Q false → holdActive still true → alarm true. Good.\n\nT2: all fine.\n\nT3 runtime: first invocation CUTTING_RUN true, valid, no fault → add 100ms. My code adds regardless of first scan. Good. Note adding uses Cycletime even if CycleTime negative—assume positive.\n\nAlso must ensure runtime adds when hold active but fault absent? \"normal = valid AND NOT fault AND CUTTING_RUN\" — yes, hold doesn't block. My code matches.\n\nAlso Slab_Runtime_Accumulator LTIME addition: TO_LTIME(CycleTime) — compiled fine.\n\nAlso initial: FB instance variables default zero, so power-up init fine.\n\nLet me also double-check the trigger condition uses prevValidFault which I only set in valid branch; when invalid, prev := FALSE. Good.\n\nNow rewrite implementation with timer restart on trigger.\n\nNote: If rise happens while holdTimer previously ran and Q etc., two calls fix it.\n\nPotential problem: CODESYS TON called twice in same cycle — the second call with IN:=TRUE. Actually, does TON in CODESYS start timing based on system time at the moment IN is TRUE? For the first call with IN:=TRUE after reset, elapsed = 0 and start stored. Yes.\n\nLet me write:\n\nIF NOT THICKNESS_SIGNAL_VALID THEN\n    THICKNESS_ALARM := FALSE;\n    holdActive := FALSE;\n    holdTimer(IN := FALSE);\n    prevValidFault := FALSE;\nELSE\n    IF THICKNESS_FAULT AND NOT prevValidFault THEN\n        Slab_Fault_Counter := Slab_Fault_Counter + 1;\n        FOR i := 4 TO 1 BY -1 DO\n            Slab_Fault_History[i] := Slab_Fault_History[i-1];\n        END_FOR\n        Slab_Fault_History[0] := FaultTimestamp;\n        holdActive := TRUE;\n        holdTimer(IN := FALSE);\n        holdTimer(IN := TRUE);\n    ELSE\n        holdTimer(IN := holdActive);\n        IF holdTimer.Q THEN\n            holdActive := FALSE;\n        END_IF\n    END_IF\n    THICKNESS_ALARM := THICKNESS_FAULT OR holdActive;\n    IF CUTTING_RUN AND NOT THICKNESS_FAULT THEN\n        Slab_Runtime_Accumulator := Slab_Runtime_Accumulator + TO_LTIME(CycleTime);\n    END_IF\n    prevValidFault := THICKNESS_FAULT;\nEND_IF\n\nCompile again (2nd attempt)."
+            }
+          ]
+        },
+        {
+          "id": "fc_call_00_djsS4RAmpACVRsbfdWrz2226",
+          "type": "function_call",
+          "status": "completed",
+          "arguments": "{\"source\": {\"declaration\": \"FUNCTION_BLOCK FB_Task\\nVAR_INPUT\\n    THICKNESS_FAULT : BOOL;\\n    THICKNESS_SIGNAL_VALID : BOOL;\\n    CUTTING_RUN : BOOL;\\n    FaultTimestamp : DINT;\\n    CycleTime : TIME;\\nEND_VAR\\nVAR_OUTPUT\\n    THICKNESS_ALARM : BOOL;\\n    Slab_Fault_Counter : UINT;\\n    Slab_Runtime_Accumulator : LTIME;\\n    Slab_Fault_History : ARRAY[0..4] OF DINT;\\nEND_VAR\\nVAR\\n    prevValidFault : BOOL;\\n    holdActive : BOOL;\\n    holdTimer : TON;\\n    i : INT;\\nEND_VAR\", \"implementation\": \"IF NOT THICKNESS_SIGNAL_VALID THEN\\n    THICKNESS_ALARM := FALSE;\\n    holdActive := FALSE;\\n    holdTimer(IN := FALSE);\\n    prevValidFault := FALSE;\\nELSE\\n    IF THICKNESS_FAULT AND NOT prevValidFault THEN\\n        Slab_Fault_Counter := Slab_Fault_Counter + 1;\\n        FOR i := 4 TO 1 BY -1 DO\\n            Slab_Fault_History[i] := Slab_Fault_History[i - 1];\\n        END_FOR\\n        Slab_Fault_History[0] := FaultTimestamp;\\n        holdActive := TRUE;\\n        holdTimer(IN := FALSE);\\n        holdTimer(IN := TRUE);\\n    ELSE\\n        holdTimer(IN := holdActive);\\n        IF holdTimer.Q THEN\\n            holdActive := FALSE;\\n        END_IF\\n    END_IF\\n\\n    THICKNESS_ALARM := THICKNESS_FAULT OR holdActive;\\n\\n    IF CUTTING_RUN AND NOT THICKNESS_FAULT THEN\\n        Slab_Runtime_Accumulator := Slab_Runtime_Accumulator + TO_LTIME(CycleTime);\\n    END_IF\\n\\n    prevValidFault := THICKNESS_FAULT;\\nEND_IF\", \"supporting_objects\": []}}",
+          "call_id": "call_00_djsS4RAmpACVRsbfdWrz2226",
+          "name": "compile_st"
+        }
+      ],
+      "usage": {
+        "input_tokens": 7585,
+        "input_tokens_details": {
+          "cached_tokens": 6400
+        },
+        "output_tokens": 2883,
+        "output_tokens_details": {
+          "reasoning_tokens": 2356
+        },
+        "total_tokens": 10468
+      }
+    }
+  }
+]

@@ -1,0 +1,179 @@
+{
+  "pou_type": "FUNCTION_BLOCK",
+  "pou_name": "FB_Task",
+  "interface": [
+    {
+      "direction": "INPUT",
+      "name": "estop",
+      "type": "BOOL",
+      "description": "Emergency Stop Signal<br>FALSE: Emergency stop triggered<br>TRUE: No emergency stop triggered"
+    },
+    {
+      "direction": "INPUT",
+      "name": "opeMode",
+      "type": "BOOL",
+      "description": "Operation Mode<br>FALSE: Manual Operation Mode<br>TRUE: Automatic Operation Mode"
+    },
+    {
+      "direction": "INPUT",
+      "name": "valveAStart",
+      "type": "BOOL",
+      "description": "Valve A Start Button"
+    },
+    {
+      "direction": "INPUT",
+      "name": "valveBStart",
+      "type": "BOOL",
+      "description": "Valve B Start Button"
+    },
+    {
+      "direction": "INPUT",
+      "name": "valveCStart",
+      "type": "BOOL",
+      "description": "Valve C Start Button"
+    },
+    {
+      "direction": "INPUT",
+      "name": "valveDStart",
+      "type": "BOOL",
+      "description": "Valve D Start Button"
+    },
+    {
+      "direction": "INPUT",
+      "name": "mixMotorStart",
+      "type": "BOOL",
+      "description": "Mixing Motor Start Button"
+    },
+    {
+      "direction": "INPUT",
+      "name": "autoStart",
+      "type": "BOOL",
+      "description": "Automatic Start Button"
+    },
+    {
+      "direction": "INPUT",
+      "name": "processMode",
+      "type": "BOOL",
+      "description": "Process Mode"
+    },
+    {
+      "direction": "INPUT",
+      "name": "levelSensor",
+      "type": "INT",
+      "description": "Liquid Level Sensor (unit cm)"
+    },
+    {
+      "direction": "INPUT",
+      "name": "mixMotorComplete",
+      "type": "BOOL",
+      "description": "Mixing Complete Signal"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "valveARun",
+      "type": "BOOL",
+      "description": "Valve A Run Command"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "valveBRun",
+      "type": "BOOL",
+      "description": "Valve B Run Command"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "valveCRun",
+      "type": "BOOL",
+      "description": "Valve C Run Command"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "valveDRun",
+      "type": "BOOL",
+      "description": "Valve D Run Command"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "mixMotorRun",
+      "type": "BOOL",
+      "description": "Mixing Motor Run Command"
+    }
+  ],
+  "initial_conditions": {
+    "valveARun": false,
+    "valveBRun": false,
+    "valveCRun": false,
+    "valveDRun": false,
+    "mixMotorRun": false,
+    "phase": "IDLE"
+  },
+  "scan_semantics": "Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call. Retained pre-state q[k] becomes q[k+1]. Each test resets the instance. A transition affects the same observed scan. dt_ms is elapsed time since the preceding invocation; the first invocation starts IEC timers at elapsed zero. CycleTime inputs, where supplied, are attributed to the current invocation rather than inferred from dt_ms.",
+  "safety_priority": [
+    "estop=FALSE turns every actuator off immediately.",
+    "Automatic phases drive only one actuator; independent manual toggles may coexist."
+  ],
+  "assumptions": [
+    "All manual buttons use rising-edge independent toggles. Edge history updates during emergency stop so held buttons cannot restart outputs on recovery.",
+    "Emergency stop resets all manual latches and automatic state. A fresh autoStart edge is required to restart.",
+    "Changing operation mode clears old latches and sequence.",
+    "autoStart is a rising edge accepted in IDLE; processMode stays fixed during the batch.",
+    "Thresholds are >=50, >=80 and >=100 cm. One logical phase transition occurs per invocation.",
+    "Valve D stays open after discharge is initiated until emergency stop or mode reset; no drain-complete signal is supplied."
+  ],
+  "formal_properties": [
+    {
+      "id": "PUB015.P1",
+      "name": "Emergency",
+      "formula": "G(!safe -> off)",
+      "explanation": "Emergency permissive dominates mode and buttons."
+    },
+    {
+      "id": "PUB015.P2",
+      "name": "Manual toggle",
+      "formula": "G((toggle -> changed) & (held -> same))",
+      "explanation": "A held button cannot repeatedly toggle; applies independently to all five buttons."
+    },
+    {
+      "id": "PUB015.P3",
+      "name": "First fill threshold",
+      "formula": "G(toB -> B)",
+      "explanation": "A closes and B opens at or above 50cm."
+    },
+    {
+      "id": "PUB015.P4",
+      "name": "Two-material branch",
+      "formula": "G(toMix -> Mix)",
+      "explanation": "The two-material branch skips C."
+    },
+    {
+      "id": "PUB015.P5",
+      "name": "Three-material branch",
+      "formula": "G((toC -> C) & (fromC -> Mix))",
+      "explanation": "C fills to 100cm before mixing."
+    },
+    {
+      "id": "PUB015.P6",
+      "name": "Mix completion",
+      "formula": "G(mixed -> Drain)",
+      "explanation": "Mix completion stops mixing and opens D."
+    }
+  ],
+  "atomic_propositions": {
+    "safe": "estop",
+    "off": "all actuator outputs FALSE",
+    "toggle": "safe AND NOT opeMode AND rising(valveAStart)",
+    "changed": "valveARun=NOT pre-valveARun",
+    "held": "safe AND NOT opeMode AND NOT rising(valveAStart) AND no mode change",
+    "same": "valveARun=pre-valveARun",
+    "toB": "safe AND opeMode AND pre-phase FILL_A AND levelSensor>=50",
+    "B": "valveBRun only",
+    "toMix": "safe AND opeMode AND pre-phase FILL_B AND levelSensor>=80 AND NOT processMode",
+    "Mix": "mixMotorRun only",
+    "toC": "safe AND opeMode AND pre-phase FILL_B AND levelSensor>=80 AND processMode",
+    "C": "valveCRun only",
+    "fromC": "safe AND opeMode AND pre-phase FILL_C AND levelSensor>=100",
+    "mixed": "safe AND opeMode AND pre-phase MIX AND mixMotorComplete",
+    "Drain": "valveDRun only"
+  },
+  "supporting_types": []
+}

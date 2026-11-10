@@ -1,0 +1,51 @@
+{
+  "id": "4ae9aaee198044d5a0fb59b9ab3db8e6",
+  "object": "response",
+  "created_at": 1793023410,
+  "status": "completed",
+  "background": false,
+  "error": null,
+  "max_output_tokens": 8192,
+  "model": "deepseek-v4.1-flash",
+  "reasoning": {
+    "effort": "medium"
+  },
+  "store": false,
+  "output": [
+    {
+      "id": "rs_4ae9aaee198044d5a0fb59b9ab3db8e6_0",
+      "type": "reasoning",
+      "summary": [
+        {
+          "type": "summary_text",
+          "text": "We need answer only JSON object with declaration, implementation, supporting_objects. Need implement CODESYS FB_Task. Need include all VAR sections. Need define ST_Pump DUT. Supporting_objects list helper DUT/POU. Need no markdown. Need exact interface names/types. Need behavior.\n\nNeed reason carefully. FB_Task has input mode BOOL, start BOOL, stop BOOL, in/out pumpGroup ARRAY[1..5] OF ST_Pump. Need implement manual/automatic latching.\n\nAt each scan:\nif stop true: set all RunComd FALSE.\nelse if start true:\n  if mode false manual: RunComd[i] := pumpGroup[i].selection\n  if mode true auto: RunComd[i] := TRUE if i among top 3 by priority descending, tie lower index.\nelse (not stop not start): retain RunComd (do nothing).\nNeed not modify priority/selection.\nStop wins over start. If stop & start => stop all.\nNeed automatic top3. Could implement in FB body with local vars: i,j, temp arrays? Need no helper? supporting_objects can be empty? Need define ST_Pump. Could include local variables in FB VAR. Need declaration includes VAR sections. Could implement top3 via local arrays selected? In ST, need CODESYS syntax.\n\nPotential issue: assignment to pumpGroup[i].RunComd only. For auto need determine top3 among 5 priorities with tie lower index. Simplicity: For each i set RunComd FALSE initially? But in auto start, need set true top3 and false others. Can compute rank count: For pump i, count pumps j with priority greater than i, or equal and j < i. If count <3 then top3 true. This avoids sorting. For each i:\nrank := 0;\nFOR j:=1 TO 5 DO\n IF (pumpGroup[j].priority > pumpGroup[i].priority) OR ((pumpGroup[j].priority = pumpGroup[i].priority) AND (j < i)) THEN rank := rank + 1; END_IF\nEND_FOR\npumpGroup[i].RunComd := (rank < 3);\nThis works. Need local i,j,rank. Need for manual assign selection.\n\nNeed consider scan semantics \"stop has priority over start and clears all five commands\"; \"Start command selects running set from current mode/configuration; commands retained while neither button TRUE. There is no automatic selection change until another start.\" For auto start with top3 each scan when start true. Good.\n\nNeed declaration:\nFUNCTION_BLOCK FB_Task\nVAR_INPUT\n    mode : BOOL;\n    start : BOOL;\n    stop : BOOL;\nEND_VAR\nVAR_IN_OUT\n    pumpGroup : ARRAY[1..5] OF ST_Pump;\nEND_VAR\nVAR\n    i : INT;\n    j : INT;\n    rank : INT;\nEND_VAR\nNo END_FUNCTION_BLOCK.\n\nNeed implementation:\nIF stop THEN\n    FOR i := 1 TO 5 DO\n        pumpGroup[i].RunComd := FALSE;\n    END_FOR\nELSIF start THEN\n    IF mode THEN\n        FOR i := 1 TO 5 DO\n            rank := 0;\n            FOR j := 1 TO 5 DO\n                IF (pumpGroup[j].priority > pumpGroup[i].priority) OR ((pumpGroup[j].priority = pumpGroup[i].priority) AND (j < i)) THEN\n                    rank := rank + 1;\n                END_IF\n            END_FOR\n            IF rank < 3 THEN\n                pumpGroup[i].RunComd := TRUE;\n            ELSE\n                pumpGroup[i].RunComd := FALSE;\n            END_IF\n        END_FOR\n    ELSE\n        FOR i := 1 TO 5 DO\n            pumpGroup[i].RunComd := pumpGroup[i].selection;\n        END_FOR\n    END_IF\nEND_IF\n\nNeed ensure no write to priority/selection. Good.\n\nSupporting_objects:\n[\n { \"name\":\"ST_Pump\", \"kind\":\"DUT\", \"declaration\":\"TYPE ST_Pump :\\nSTRUCT\\n    priority : INT;\\n    selection : BOOL;\\n    RunComd : BOOL;\\nEND_STRUCT\\nEND_TYPE\", \"implementation\":\"\" }\n]\nNeed perhaps kind \"DUT\". Implementation maybe empty string. Need JSON only. Ensure valid JSON escaping newlines. Could include declaration string with \\n. Need no markdown.\n\nNeed consider if \"declaration is CODESYS FUNCTION_BLOCK FB_Task followed by all VAR sections; omit END_FUNCTION_BLOCK.\" So declaration string should include \"FUNCTION_BLOCK FB_Task\\nVAR_INPUT...\" no END. Good.\n\nNeed perhaps CODESYS requires VAR_IN_OUT array of struct okay. Good.\n\nNeed maybe no implicit conversion. Fine.\n\nNeed only JSON object. Ensure exact key names declaration, implementation, supporting_objects. No extra. Use JSON. Need newline escapes. Could produce pretty JSON. No markdown. final only.\n\nDouble-check tie lower index first for equal priorities. rank count greater, or equal and j<i. For i lower index among equal, count excluding itself? j<i for equal. For j=i equal and j<i false. Good. For i=1 rank 0. For all equal priorities: i1 rank0 true, i2 rank1 true, i3 rank2 true, i4 rank3 false, i5 rank4 false. Matches T2 second expected: pumps 1,2,3 true; 4,5 false. Good.\n\nT2 third: priorities [-3,0,-1,-2,4]. Top: 5(4),2(0),3(-1), then4(-2),1(-3). Expected RunComd pump1 false, pump2 true, pump3 true, pump4 false, pump5 true. Our rank: i1 greater: 2(0),3(-1),4(-2),5(4)=4 => false. i2 greater: 5 only =1 true. i3 greater: 2,5=2 true. i4 greater:2,3,5=3 false. i5 greater 0 true. Good.\n\nT1 manual: stop&start => stop all. Good.\n\nPotential issue \"In manual mode, control start and stop of selected pump based on pumpGroup[1..5].selection\" If start true manually, set selected pumps run true, non-selected false. If stop false start false retain. Good. If start true and selected maybe multiple. Good.\n\nNeed maybe if stop true and start true, stop wins. Our IF stop first. Good.\n\nNeed maybe on initial scan with stop false start false, do nothing. Initial RunComd assumed false by caller. Good.\n\nNeed \"Read-only priority and selection fields must be unchanged.\" We don't write.\n\nCould include supporting_objects empty? Need ST_Pump. Yes.\n\nPotential issue with CODESYS ST: variable named \"start\" or \"stop\" not reserved? \"STOP\" maybe keyword? In CODESYS, STOP might not be reserved? Actually ST has no STOP keyword? There is CONTINUE, EXIT, RETURN. STOP perhaps not. Input interface exact names. Use start, stop. Good.\n\nPotential issue \"mode\" maybe not reserved.\n\nPotential issue rank variable shadows? Fine.\n\nNeed include END_VAR? Yes.\n\nLet's craft JSON. Ensure declaration string escaped. For ST_Pump DUT declaration: \n\"TYPE ST_Pump :\\nSTRUCT\\n    priority : INT;\\n    selection : BOOL;\\n    RunComd : BOOL;\\nEND_STRUCT\\nEND_TYPE\"\nImplementation empty.\n\nNeed perhaps \"kind\":\"DUT\" accepted. Functions need return_type but DUT no. Good.\n\nNeed maybe only one supporting object. final.\n\nNeed no explanation. Just JSON.\n\nLet's final."
+        }
+      ]
+    },
+    {
+      "id": "msg_4ae9aaee198044d5a0fb59b9ab3db8e6_0",
+      "type": "message",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "annotations": [],
+          "logprobs": [],
+          "text": "{\n  \"declaration\": \"FUNCTION_BLOCK FB_Task\\nVAR_INPUT\\n    mode : BOOL;\\n    start : BOOL;\\n    stop : BOOL;\\nEND_VAR\\nVAR_IN_OUT\\n    pumpGroup : ARRAY[1..5] OF ST_Pump;\\nEND_VAR\\nVAR\\n    i : INT;\\n    j : INT;\\n    rank : INT;\\nEND_VAR\",\n  \"implementation\": \"IF stop THEN\\n    FOR i := 1 TO 5 DO\\n        pumpGroup[i].RunComd := FALSE;\\n    END_FOR\\nELSIF start THEN\\n    IF mode THEN\\n        FOR i := 1 TO 5 DO\\n            rank := 0;\\n            FOR j := 1 TO 5 DO\\n                IF (pumpGroup[j].priority > pumpGroup[i].priority) OR\\n                   ((pumpGroup[j].priority = pumpGroup[i].priority) AND (j < i)) THEN\\n                    rank := rank + 1;\\n                END_IF\\n            END_FOR\\n            IF rank < 3 THEN\\n                pumpGroup[i].RunComd := TRUE;\\n            ELSE\\n                pumpGroup[i].RunComd := FALSE;\\n            END_IF\\n        END_FOR\\n    ELSE\\n        FOR i := 1 TO 5 DO\\n            pumpGroup[i].RunComd := pumpGroup[i].selection;\\n        END_FOR\\n    END_IF\\nEND_IF\",\n  \"supporting_objects\": [\n    {\n      \"name\": \"ST_Pump\",\n      \"kind\": \"DUT\",\n      \"declaration\": \"TYPE ST_Pump :\\nSTRUCT\\n    priority : INT;\\n    selection : BOOL;\\n    RunComd : BOOL;\\nEND_STRUCT\\nEND_TYPE\",\n      \"implementation\": \"\"\n    }\n  ]\n}"
+        }
+      ],
+      "role": "assistant"
+    }
+  ],
+  "usage": {
+    "input_tokens": 3710,
+    "input_tokens_details": {
+      "cached_tokens": 0
+    },
+    "output_tokens": 2064,
+    "output_tokens_details": {
+      "reasoning_tokens": 1664
+    },
+    "total_tokens": 5774
+  }
+}

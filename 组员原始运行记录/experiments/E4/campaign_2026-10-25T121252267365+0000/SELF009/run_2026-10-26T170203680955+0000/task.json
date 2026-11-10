@@ -1,0 +1,265 @@
+{
+  "schema_version": 1,
+  "id": "SELF009",
+  "kind": "self_built",
+  "title": "Rising edge batch counter with reset sampling",
+  "difficulty": "easy",
+  "provenance": {
+    "source_type": "independent_synthesis",
+    "source_file": "scripts/build_self_dataset.py",
+    "source_index": 9,
+    "adaptation": "Independently specified for this project; no public task was copied. The coding assistant chose the state variables, priority order and fixed scan traces, then reviewed the traces against a separate Python transition implementation.",
+    "rationale": "A packaging batch counts individual sensor edges and prevents a held sensor during reset from being counted again.",
+    "review": "Assistant consistency review of initialization, simultaneous commands, retained state and recovery boundaries; independent Python oracle checked against manual expected traces. Not an industrial safety certification or external expert review."
+  },
+  "requirements": "Target is valid 1..20. Initialize Count=0 and previous PartPulse FALSE. Error is TRUE exactly when Target is invalid. An invalid Target or Reset clears Count and Complete. Otherwise count only a FALSE-to-TRUE PartPulse transition, then clamp Count to Target. Complete is TRUE when Count reaches Target and remains TRUE until reset or an invalid target; a higher Target can clear it. Every scan, including reset and invalid-target scans, samples PartPulse into its edge memory. A held TRUE pulse after reset therefore cannot cause a phantom count.",
+  "scenario": "A packaging batch counts individual sensor edges and prevents a held sensor during reset from being counted again.",
+  "interface": [
+    {
+      "direction": "INPUT",
+      "name": "PartPulse",
+      "type": "BOOL",
+      "description": "Part detection level"
+    },
+    {
+      "direction": "INPUT",
+      "name": "Reset",
+      "type": "BOOL",
+      "description": "Reset batch"
+    },
+    {
+      "direction": "INPUT",
+      "name": "Target",
+      "type": "USINT",
+      "description": "Batch target, valid 1 through 20"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Count",
+      "type": "USINT",
+      "description": "Saturated part count"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Complete",
+      "type": "BOOL",
+      "description": "Target reached"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Error",
+      "type": "BOOL",
+      "description": "Invalid target"
+    }
+  ],
+  "initial_conditions": {
+    "Count": 0,
+    "previous_pulse": false
+  },
+  "scan_semantics": "At scan k, sample every input once, read retained pre-state q[k], execute one transition, and observe outputs O[k] at the end of that same scan. Updated state becomes q[k+1]. Reset the instance before each test. Step 0 executes normally; initial conditions describe pre-state, not an extra delayed scan. All timing in this task is explicitly counted in invocations, not wall time.",
+  "safety_priority": [
+    "Invalid Target and Reset override counting",
+    "Update edge memory on every scan"
+  ],
+  "assumptions": [],
+  "atomic_propositions": {
+    "PartPulse": "Part detection level Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "Reset": "Reset batch Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "Target": "Batch target, valid 1 through 20 Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "Count": "Saturated part count Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "Complete": "Target reached Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "Error": "Invalid target Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "first": "True only on the first invocation after resetting the FB instance.",
+    "invalid": "Target < 1 or Target > 20.",
+    "rise": "PartPulse & !qPulse.",
+    "qPulse": "Previous scan PartPulse, initially FALSE.",
+    "qCount": "Pre-scan Count, initially zero.",
+    "countAfterEdge": "min(qCount + (1 if rise else 0), Target)."
+  },
+  "ltl": [
+    {
+      "id": "P1",
+      "formula": "G(Error <-> invalid)",
+      "explanation": "Target validation is exact."
+    },
+    {
+      "id": "P2",
+      "formula": "G((Reset | invalid) -> ((Count = 0) & !Complete))",
+      "explanation": "Reset or invalid target clears the batch."
+    },
+    {
+      "id": "P3",
+      "formula": "G((!Reset & !invalid) -> (Count = countAfterEdge))",
+      "explanation": "Only rising edges add an item, with saturation."
+    },
+    {
+      "id": "P4",
+      "formula": "G((!Reset & !invalid) -> (Complete <-> (Count >= Target)))",
+      "explanation": "Complete reports the post-scan count."
+    },
+    {
+      "id": "P5",
+      "formula": "G(PartPulse -> X qPulse)",
+      "explanation": "Edge memory samples the pulse even during reset."
+    }
+  ],
+  "tests": [
+    {
+      "id": "edges",
+      "purpose": "Held pulses count once and target saturates",
+      "steps": [
+        {
+          "inputs": {
+            "PartPulse": false,
+            "Reset": false,
+            "Target": 2
+          },
+          "expected": {
+            "Count": 0,
+            "Complete": false,
+            "Error": false
+          }
+        },
+        {
+          "inputs": {
+            "PartPulse": true,
+            "Reset": false,
+            "Target": 2
+          },
+          "expected": {
+            "Count": 1,
+            "Complete": false
+          }
+        },
+        {
+          "inputs": {
+            "PartPulse": true,
+            "Reset": false,
+            "Target": 2
+          },
+          "expected": {
+            "Count": 1,
+            "Complete": false
+          }
+        },
+        {
+          "inputs": {
+            "PartPulse": false,
+            "Reset": false,
+            "Target": 2
+          },
+          "expected": {
+            "Count": 1
+          }
+        },
+        {
+          "inputs": {
+            "PartPulse": true,
+            "Reset": false,
+            "Target": 2
+          },
+          "expected": {
+            "Count": 2,
+            "Complete": true
+          }
+        },
+        {
+          "inputs": {
+            "PartPulse": false,
+            "Reset": false,
+            "Target": 2
+          },
+          "expected": {
+            "Count": 2,
+            "Complete": true
+          }
+        },
+        {
+          "inputs": {
+            "PartPulse": true,
+            "Reset": false,
+            "Target": 2
+          },
+          "expected": {
+            "Count": 2,
+            "Complete": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "reset_edge",
+      "purpose": "Reset while pulse is high suppresses phantom count",
+      "steps": [
+        {
+          "inputs": {
+            "PartPulse": true,
+            "Reset": true,
+            "Target": 1
+          },
+          "expected": {
+            "Count": 0,
+            "Complete": false,
+            "Error": false
+          }
+        },
+        {
+          "inputs": {
+            "PartPulse": true,
+            "Reset": false,
+            "Target": 1
+          },
+          "expected": {
+            "Count": 0,
+            "Complete": false
+          }
+        },
+        {
+          "inputs": {
+            "PartPulse": false,
+            "Reset": false,
+            "Target": 1
+          },
+          "expected": {
+            "Count": 0
+          }
+        },
+        {
+          "inputs": {
+            "PartPulse": true,
+            "Reset": false,
+            "Target": 1
+          },
+          "expected": {
+            "Count": 1,
+            "Complete": true
+          }
+        },
+        {
+          "inputs": {
+            "PartPulse": true,
+            "Reset": false,
+            "Target": 0
+          },
+          "expected": {
+            "Count": 0,
+            "Complete": false,
+            "Error": true
+          }
+        },
+        {
+          "inputs": {
+            "PartPulse": true,
+            "Reset": false,
+            "Target": 21
+          },
+          "expected": {
+            "Count": 0,
+            "Complete": false,
+            "Error": true
+          }
+        }
+      ]
+    }
+  ]
+}
