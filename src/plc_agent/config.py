@@ -17,8 +17,10 @@ class Settings:
     ascii_work_root: str = ""
     compiler_timeout: int = 180
     llm_timeout: int = 180
-    task_timeout: int = 900
-    max_repairs: int = 2
+    task_timeout: int = 1500
+    max_repairs: int = 3
+    max_simulations: int = 3
+    max_llm_calls: int = 9
     max_output_tokens: int = 8192
     reasoning_effort: str = "medium"
 
