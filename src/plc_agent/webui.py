@@ -6,19 +6,19 @@ and testing/verifying ST programs.
 """
 from __future__ import annotations
 
-import dataclasses
 import contextlib
-import uuid
+import dataclasses
 import http.server
 import json
 import tempfile
 import threading
 import urllib.parse
+import uuid
 from pathlib import Path
 from typing import Any
 
 from .backend import Backend, CodesysBackend, FakeBackend, SimResult
-from .common import ROOT, read_json, digest
+from .common import ROOT, digest, read_json
 from .config import Settings
 from .dataset import load_tasks
 from .formal_verify import export_verification_bundle

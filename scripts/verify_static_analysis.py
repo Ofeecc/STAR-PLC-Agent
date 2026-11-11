@@ -3,12 +3,12 @@
 Run from the repository root with its Python environment and PYTHONPATH=src.
 No IDE automation or language-model API is used.
 """
-from dataclasses import asdict
+import argparse
 import hashlib
 import json
 import re
+from dataclasses import asdict
 from pathlib import Path
-import argparse
 
 from plc_agent.cli import compiler_smoke, require_compiler_preflight
 from plc_agent.common import ROOT, now, read_json, write_json

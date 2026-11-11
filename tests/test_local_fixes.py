@@ -3,13 +3,15 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
-from test_star_harness import MockLLMClient, SAMPLE_TASK
+
 from plc_agent.backend import FakeBackend, SimResult
+from plc_agent.common import write_json
 from plc_agent.compiler import CompileResult
 from plc_agent.config import Settings
-from plc_agent.harness import run_harness
 from plc_agent.formal_verify import import_verification_evidence
-from plc_agent.common import write_json
+from plc_agent.harness import run_harness
+from test_star_harness import SAMPLE_TASK, MockLLMClient
+
 
 class LocalFixTests(unittest.TestCase):
     def test_repair_feedback_retains_static_analysis_diagnostic_code(self):

@@ -1,16 +1,18 @@
 """Read CODESYS template dependencies in a disposable project copy. No model API."""
+import argparse
 import hashlib
 import json
 import os
 import shutil
 import subprocess
 import uuid
-import argparse
-from dataclasses import replace, asdict
+from dataclasses import asdict, replace
 from pathlib import Path
+
 from plc_agent.common import ROOT, write_json
-from plc_agent.compiler import codesys_command, compiler_lock, compile_st
+from plc_agent.compiler import codesys_command, compile_st, compiler_lock
 from plc_agent.config import Settings
+
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)

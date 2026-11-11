@@ -7,13 +7,12 @@ from unittest.mock import MagicMock, patch
 
 from plc_agent.backend import FakeBackend
 from plc_agent.baseline import run_baseline
-from plc_agent.common import read_json
+from plc_agent.common import read_json, write_json
 from plc_agent.compiler import CompileResult
 from plc_agent.config import Settings
 from plc_agent.llm import ProviderError, ResponsesClient
 from plc_agent.mcp_server import dispatch
 from plc_agent.replay import ResumingClient
-from plc_agent.common import write_json
 
 
 class ContextLoggingTests(unittest.TestCase):
