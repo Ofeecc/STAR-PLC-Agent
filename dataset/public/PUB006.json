@@ -62,41 +62,64 @@
     {
       "id": "P1",
       "formula": "G(BLOWER_RUN <-> (permit & delayDone))",
-      "explanation": "Run is enabled only after the full delay."
+      "explanation": "Run is enabled only after the full delay.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
     },
     {
       "id": "P2",
       "formula": "G(!permit -> (!BLOWER_RUN & X(!delayDone)))",
-      "explanation": "Loss of demand or safety permissive clears run and its timer."
+      "explanation": "Loss of demand or safety permissive clears run and its timer.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
     },
     {
       "id": "P3",
       "formula": "G((!runPrev & BLOWER_RUN) -> AERATION_BLOWER_CYCLE_COUNT=countPrev+1)",
-      "explanation": "One count per genuine start."
+      "explanation": "One count per genuine start.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
     },
     {
       "id": "P4",
       "formula": "G((runPrev | !BLOWER_RUN) -> AERATION_BLOWER_CYCLE_COUNT=countPrev)",
-      "explanation": "No repeated count during continuous operation or stop."
+      "explanation": "No repeated count during continuous operation or stop.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
     },
     {
       "id": "P5",
-      "formula": "G((G(permit)) -> F(BLOWER_RUN))",
-      "explanation": "A sustained permitted demand eventually starts under advancing time."
+      "formula": "(G(F(TimeTick))) -> (G((G(permit)) -> F(BLOWER_RUN)))",
+      "explanation": "A sustained permitted demand eventually starts under advancing time. Explicit non-Zeno environment premise: physical elapsed time crosses infinitely many 1ms boundaries.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
     },
     {
       "id": "PUB006.V2.COMPLETE",
       "formula": "G(CompleteBehaviorV2)",
-      "explanation": "The complete per-invocation relation defined in specification_contract.normative_completion; requires explicit encoding before model checking."
+      "explanation": "Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
     }
   ],
   "atomic_propositions": {
     "permit": "DO_LOW & AERATION_E_STOP_NC",
     "delayDone": "Permissive has continuously remained true for >=5s after its first sampled TRUE.",
-    "runPrev": "Pre-scan retained BLOWER_RUN.",
-    "countPrev": "Pre-scan AERATION_BLOWER_CYCLE_COUNT.",
+    "runPrev": "{\"kind\": \"previous_observed_output\", \"source\": \"O[k-1].BLOWER_RUN\", \"initial\": false, \"update\": \"After comparing scan k, store ACTUAL O[k].BLOWER_RUN; never write into reference state.\"}",
+    "countPrev": "{\"kind\": \"previous_observed_output\", \"source\": \"O[k-1].AERATION_BLOWER_CYCLE_COUNT\", \"initial\": 0, \"update\": \"After comparing scan k, store ACTUAL O[k].AERATION_BLOWER_CYCLE_COUNT; never write into reference state.\"}",
     "interface names": "Identically named sampled input or observed output.",
-    "CompleteBehaviorV2": "将permit连续计时、首次TRUE年龄0、FALSE清零定义成确定时钟状态；运行与permit且elapsed>=5s等价。初始runPrev=FALSE、countPrev=0，每拍更新。加入累计启动次数<65536的评测域或另外约定溢出策略。"
+    "CompleteBehaviorV2": "令(Sref[k+1], E[k])=T_PUB006(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\npermit=DO_LOW & AERATION_E_STOP_NC；首次真年龄0，假清计时；run=permit且年龄>=5s。countAfter=countBefore+int(run & !refRunBefore)，初始count=0/refRun=FALSE；每拍更新refRun。计数域0..65535，越界输入历史不在评测域。",
+    "TimeTick": "Boolean: floor(t[k]/1ms)>floor(t[k-1]/1ms), with t[0]=0, TimeTick[0]=FALSE, t[k]=sum(dt_ms[1..k]). G(F(TimeTick)) states unbounded physical time progress; merely positive dt is insufficient.",
+    "DO_LOW": "I[k].DO_LOW: sampled input (BOOL).",
+    "AERATION_E_STOP_NC": "I[k].AERATION_E_STOP_NC: sampled input (BOOL).",
+    "BLOWER_RUN": "O[k].BLOWER_RUN: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "AERATION_BLOWER_CYCLE_COUNT": "O[k].AERATION_BLOWER_CYCLE_COUNT: independently observed post-scan candidate value (UINT); never defined as expected output."
   },
   "tests": [
     {
@@ -338,14 +361,158 @@
       ]
     }
   ],
-  "specification_version": "2.0-review-corrections-20261106",
+  "specification_version": "2.1-normalized-20261111",
   "specification_contract": {
     "observation": "I[k] is sampled before execution; O[k] is observed after execution. Initial conditions apply before invocation zero.",
-    "normative_completion": "将permit连续计时、首次TRUE年龄0、FALSE清零定义成确定时钟状态；运行与permit且elapsed>=5s等价。初始runPrev=FALSE、countPrev=0，每拍更新。加入累计启动次数<65536的评测域或另外约定溢出策略。",
-    "history_binding": "Every previous-output name refers to the preceding observed output with the declared initial value. Previous-input memories update on EVERY invocation, including reset, invalid input, stop and mode change. Reference phase/history is independently advanced from sampled inputs by the stated transition rules, never supplied by the candidate.",
-    "evaluation_scope": "Properties include interpreted data predicates. No claim of export to a model checker or completed formal proof.",
+    "normative_completion": "令(Sref[k+1], E[k])=T_PUB006(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\npermit=DO_LOW & AERATION_E_STOP_NC；首次真年龄0，假清计时；run=permit且年龄>=5s。countAfter=countBefore+int(run & !refRunBefore)，初始count=0/refRun=FALSE；每拍更新refRun。计数域0..65535，越界输入历史不在评测域。",
+    "history_binding": "I, O and Sref namespaces, initialization and updates are defined in normalized_specification.observation, history_bindings and reference_state_initial. Candidate output never drives Sref.",
+    "evaluation_scope": "Versioned executable scan predicate plus LTL over interpreted predicates. No native checker encoding or completed formal proof is claimed.",
     "review_source": "docs/规约逐题审查_20261106/PUB006.md",
     "executable_monitor": "plc_agent.timed_contracts.TimedContract:PUB006",
-    "timing_binding": "dt_ms is measured between invocations; the first invocation establishes time zero. An eligible period begins at its first eligible observation, with age zero. No time before that observation is credited. Missing/nonfinite/negative timing is rejected. Timed monitor acceptance is not evidence of a real PLC clock."
+    "timing_binding": "dt_ms is measured between invocations; the first invocation establishes time zero. An eligible period begins at its first eligible observation, with age zero. No time before that observation is credited. Missing/nonfinite/negative timing is rejected. Timed monitor acceptance is not evidence of a real PLC clock.",
+    "transition_binding": "Use normalized_specification.transition and exact pinned source snapshots."
+  },
+  "normalized_specification": {
+    "schema_version": 1,
+    "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+    "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
+    "candidate_formal_verification": "UNVERIFIED",
+    "initial_observed": {
+      "BLOWER_RUN": false,
+      "AERATION_BLOWER_CYCLE_COUNT": 0
+    },
+    "reference_state_initial": {
+      "class": "ScanContract",
+      "state": {
+        "task_id": "PUB006",
+        "array_contract": null,
+        "process_contract": null,
+        "timed_contract": {
+          "class": "TimedContract",
+          "state": {
+            "task_id": "PUB006",
+            "clock": {
+              "decimal": "0"
+            },
+            "first": true,
+            "since": null,
+            "debounce": null,
+            "runtime": 0,
+            "count": 0,
+            "previous_run": false,
+            "previous_fault": false,
+            "history": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          }
+        },
+        "data_contract": null,
+        "reference": null,
+        "phase": 0,
+        "previous_mode": null,
+        "clock": 0.0,
+        "heat_start": null,
+        "protection_start": null,
+        "demand": false
+      }
+    },
+    "transition": {
+      "entrypoint": "plc_agent.normalized_spec.reference_step(task, reference, deepCopy(I[k]), dt_ms[k])",
+      "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('PUB006'); constructed once per independent case, current state is Sref[k].",
+      "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
+      "module_sha256": {
+        "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
+        "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
+        "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
+        "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
+        "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+        "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
+        "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+      },
+      "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
+      "frozen_sources": "dataset/specifications/normalized_transition_v1"
+    },
+    "constrained_observed_fields": [
+      "AERATION_BLOWER_CYCLE_COUNT",
+      "BLOWER_RUN"
+    ],
+    "unconstrained_representation_fields": [],
+    "comparison": {
+      "integer_boolean": "exact type and value; no tolerance",
+      "float": "finite; abs error<=1e-5; dictionary/list shape and non-float values exact",
+      "PUB008": "only successfully converted channels[j].outputValue: abs<=1e-5 OR rel<=2e-6; all preserved/config fields exact",
+      "PUB017": "Successful deletion constrains recipeID=0; other fields of that deleted slot are unconstrained for the deletion scan. Subsequent no-write scans preserve the sampled actual representation. This observer history is separate from the logical reference database.",
+      "TIME_LTIME": "exact integer nanoseconds after IEC literal parsing",
+      "implementation": "plc_agent.normalized_spec.NormalizedScanMonitor.step with output_matches (pinned sources); observer histories never drive the independent logical reference"
+    },
+    "observation": {
+      "I[k]": "deep-copied inputs immediately before invocation k",
+      "O[k]": "actual outputs immediately after invocation k, supplied by independent execution backend",
+      "Sref[k]": "independent reference state BEFORE k; unrelated to similarly named candidate variables",
+      "initial": "fresh instance BEFORE invocation 0; never substituted by O[0]",
+      "X": "next scan-sequence position; argument must be Boolean, not a numeric term",
+      "time": "dt_ms is observed elapsed time; public timers use physical time, SELF Tick/count timers use logical scans"
+    },
+    "history_bindings": {
+      "runPrev": {
+        "kind": "previous_observed_output",
+        "source": "O[k-1].BLOWER_RUN",
+        "initial": false,
+        "update": "After comparing scan k, store ACTUAL O[k].BLOWER_RUN; never write into reference state."
+      },
+      "countPrev": {
+        "kind": "previous_observed_output",
+        "source": "O[k-1].AERATION_BLOWER_CYCLE_COUNT",
+        "initial": 0,
+        "update": "After comparing scan k, store ACTUAL O[k].AERATION_BLOWER_CYCLE_COUNT; never write into reference state."
+      }
+    },
+    "auxiliary_state_bindings": {
+      "Spre": "Sref[k], before the invocation; initialized by reference_state_initial",
+      "Spost": "Sref[k+1], after exactly one pinned transition on I[k]",
+      "first": "k=0 (first invocation); distinct from the pre-invocation initial observation",
+      "pre-output": "actual O[k-1] for OUTPUT (explicit history initial where declared); I[k] for caller-owned IN_OUT",
+      "previous-input": "I[k-1] for k>=1; edge memory for BOOL requests initially FALSE and updated after EVERY invocation",
+      "reference_warning": "Spre/Spost predicates are input-driven ghosts, not evidence that candidate internals match. Conclusions about the candidate must constrain actual O.",
+      "timing": {
+        "clock": "Spost.timed_contract.clock (exact integer nanoseconds; first invocation 0)",
+        "start": "Spost.timed_contract.since; None means inactive",
+        "qualified": "start is not None AND clock-start >= duration_ns(limit)",
+        "hold": "start is not None AND clock-start < 500000000",
+        "initial_start": null,
+        "initial_clock": 0,
+        "limit": "DebounceTime for PUB004/PUB005, 5000000000ns for PUB006, 30000000000ns for PUB013",
+        "previous_fault": "Spre.timed_contract.previous_fault, initially FALSE; next=THICKNESS_SIGNAL_VALID AND THICKNESS_FAULT",
+        "pre_count": "Spre.timed_contract.count",
+        "pre_history": "Spre.timed_contract.history",
+        "pre_runtime": "Spre.timed_contract.runtime"
+      }
+    },
+    "finite_conjunctions": {},
+    "reference_state_rule": "Initial state is the serialized constructor above; all fields update solely through the pinned transition. Ghost phase/history/queue are names for this state, not observed candidate state.",
+    "primitives": {
+      "bitwise": "DWORD AND/NOT and popcount operate on unsigned 32-bit values; complement is masked by 0xFFFFFFFF.",
+      "time_literals": "IEC TIME/LTIME literals are exact integer durations in nanoseconds.",
+      "observed_arrays": "All IN_OUT inputs are snapshots before invocation; outputs are independently acquired after invocation. Physical bounds map by ordinal, never share another array lower bound.",
+      "boolean_next": "X takes a Boolean formula. Numeric history transport is bit-expanded for DWORD; Boolean histories use equivalence.",
+      "time_progress": "Timed eventuality clauses explicitly require G(F(TimeTick)); TimeTick denotes crossing a new integer-ms boundary. Finite observations cannot establish this premise."
+    },
+    "assumptions": [
+      "Start delay elapsed is zero at the first sample of DO_LOW & AERATION_E_STOP_NC; run becomes TRUE at elapsed>=5s.",
+      "Count increments on the same invocation that changes end-of-scan BLOWER_RUN from FALSE to TRUE.",
+      "Tests stay below UINT overflow; overflow behavior is outside the specified operating domain.",
+      "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+    ],
+    "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
+    "limitations": [
+      "No ST-to-model translation or infinite-trace proof is implemented here.",
+      "Focused legacy LTL predicates still require backend lowering; normalization is not model-checker acceptance.",
+      "Finite matching cannot establish liveness or validate runtime provenance."
+    ],
+    "rules_zh": "permit=DO_LOW & AERATION_E_STOP_NC；首次真年龄0，假清计时；run=permit且年龄>=5s。countAfter=countBefore+int(run & !refRunBefore)，初始count=0/refRun=FALSE；每拍更新refRun。计数域0..65535，越界输入历史不在评测域。"
   }
 }

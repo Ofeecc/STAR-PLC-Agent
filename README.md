@@ -6,7 +6,9 @@ The implementation strictly separates generated-code compilation, compiler infra
 
 The local review UI now covers all 32 tasks with Chinese review notes, 244 property explanations and a persistent Chinese/English switch. Use [Chinese review](http://127.0.0.1:8765/?scope=all&lang=zh) or [English presentation](http://127.0.0.1:8765/?scope=all&lang=en) after starting the web server. See [双语审核界面说明](docs/全题库双语审核界面_20261111.md) and [模板库检查与角色token配置](docs/模板库与Token配置建议_20261111.md). Review translations do not modify benchmark inputs or constitute human approval.
 
-Latest changes and their validation scope: [2026-11-11 更新记录](docs/更新记录_20261111.md). The latest local Python suite passed 158 tests, and browser checks covered all 32 tasks and 244 properties in both languages.
+Changes and their validation scope: [2026-11-11 更新记录](docs/更新记录_20261111.md). The latest specification revision passed 170 sandbox unit/business tests and 1 separate Windows loopback HTTP integration test (171 total); browser checks covered all 32 tasks and 244 material entries in both languages.
+
+Specification revision 2.1: all 32 composite scan predicates now have pinned executable transition definitions, separate input/observed/reference namespaces and explicit comparison policies. Numeric-next and array-quantifier notation has been normalized; timed liveness has an explicit non-Zeno premise. The 244 entries are specification materials, **not 244 completed native-LTL proofs**. See [规约规范化与逐题定义](docs/规约规范化_20261111.md). Human review remains pending; the candidate ST-to-model chain remains UNVERIFIED. Historical pilot results keep their original task hashes.
 
 ## STAR v2 Architecture
 

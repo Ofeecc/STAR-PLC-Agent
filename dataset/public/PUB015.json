@@ -152,49 +152,86 @@
     "fromC": "No mode change this invocation AND (safe AND opeMode AND pre-phase FILL_C AND levelSensor>=100)",
     "mixed": "No mode change this invocation AND (safe AND opeMode AND pre-phase MIX AND mixMotorComplete)",
     "Drain": "valveDRun only",
-    "CompleteBehaviorV2": "按优先级急停→模式变化→正常分支明确复位当拍是否抑制按钮；随后为五个手动输出逐一写XOR上升沿方程，所有按钮历史每拍更新。自动给完整IDLE/FILL_A/FILL_B/FILL_C/MIX/DRAIN转移表，输出由转移后阶段唯一决定。独立定义processMode批次固定或采样锁存。"
+    "CompleteBehaviorV2": "令(Sref[k+1], E[k])=T_PUB015(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\n五按钮及autoStart历史初值FALSE、每拍更新。急停优先，其次已建立模式的变化；二者清阶段/五锁存且当拍全关。手动逐项latchAfter=latchBefore XOR buttonRise。自动IDLE遇autoStartRise进A，A液位>=50进B，B>=80按批次processMode进C或MIX，C>=100进MIX，MIX完成进DRAIN；每拍一阶，DRAIN保持至复位条件。五输出对应转移后A/B/C/DRAIN/MIX。批次模式在活动批次内固定。",
+    "estop": "I[k].estop: sampled input (BOOL).",
+    "opeMode": "I[k].opeMode: sampled input (BOOL).",
+    "valveAStart": "I[k].valveAStart: sampled input (BOOL).",
+    "valveBStart": "I[k].valveBStart: sampled input (BOOL).",
+    "valveCStart": "I[k].valveCStart: sampled input (BOOL).",
+    "valveDStart": "I[k].valveDStart: sampled input (BOOL).",
+    "mixMotorStart": "I[k].mixMotorStart: sampled input (BOOL).",
+    "autoStart": "I[k].autoStart: sampled input (BOOL).",
+    "processMode": "I[k].processMode: sampled input (BOOL).",
+    "levelSensor": "I[k].levelSensor: sampled input (INT).",
+    "mixMotorComplete": "I[k].mixMotorComplete: sampled input (BOOL).",
+    "valveARun": "O[k].valveARun: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "valveBRun": "O[k].valveBRun: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "valveCRun": "O[k].valveCRun: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "valveDRun": "O[k].valveDRun: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "mixMotorRun": "O[k].mixMotorRun: independently observed post-scan candidate value (BOOL); never defined as expected output."
   },
   "ltl": [
     {
       "id": "PUB015.P1",
       "name": "Emergency",
       "formula": "G(!safe -> off)",
-      "explanation": "Emergency permissive dominates mode and buttons."
+      "explanation": "Emergency permissive dominates mode and buttons.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
     },
     {
       "id": "PUB015.P2",
       "name": "Manual toggle",
       "formula": "G((toggle -> changed) & (held -> same))",
-      "explanation": "A held button cannot repeatedly toggle; applies independently to all five buttons."
+      "explanation": "A held button cannot repeatedly toggle; applies independently to all five buttons.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
     },
     {
       "id": "PUB015.P3",
       "name": "First fill threshold",
       "formula": "G(toB -> B)",
-      "explanation": "A closes and B opens at or above 50cm."
+      "explanation": "A closes and B opens at or above 50cm.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
     },
     {
       "id": "PUB015.P4",
       "name": "Two-material branch",
       "formula": "G(toMix -> Mix)",
-      "explanation": "The two-material branch skips C."
+      "explanation": "The two-material branch skips C.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
     },
     {
       "id": "PUB015.P5",
       "name": "Three-material branch",
       "formula": "G((toC -> C) & (fromC -> Mix))",
-      "explanation": "C fills to 100cm before mixing."
+      "explanation": "C fills to 100cm before mixing.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
     },
     {
       "id": "PUB015.P6",
       "name": "Mix completion",
       "formula": "G(mixed -> Drain)",
-      "explanation": "Mix completion stops mixing and opens D."
+      "explanation": "Mix completion stops mixing and opens D.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
     },
     {
       "id": "PUB015.V2.COMPLETE",
       "formula": "G(CompleteBehaviorV2)",
-      "explanation": "The complete per-invocation relation defined in specification_contract.normative_completion; requires explicit encoding before model checking."
+      "explanation": "Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
     }
   ],
   "tests": [
@@ -930,13 +967,159 @@
       ]
     }
   ],
-  "specification_version": "2.0-review-corrections-20261106",
+  "specification_version": "2.1-normalized-20261111",
   "specification_contract": {
     "observation": "I[k] is sampled before execution; O[k] is observed after execution. Initial conditions apply before invocation zero.",
-    "normative_completion": "按优先级急停→模式变化→正常分支明确复位当拍是否抑制按钮；随后为五个手动输出逐一写XOR上升沿方程，所有按钮历史每拍更新。自动给完整IDLE/FILL_A/FILL_B/FILL_C/MIX/DRAIN转移表，输出由转移后阶段唯一决定。独立定义processMode批次固定或采样锁存。",
-    "history_binding": "Every previous-output name refers to the preceding observed output with the declared initial value. Previous-input memories update on EVERY invocation, including reset, invalid input, stop and mode change. Reference phase/history is independently advanced from sampled inputs by the stated transition rules, never supplied by the candidate.",
-    "evaluation_scope": "Properties include interpreted data predicates. No claim of export to a model checker or completed formal proof.",
+    "normative_completion": "令(Sref[k+1], E[k])=T_PUB015(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\n五按钮及autoStart历史初值FALSE、每拍更新。急停优先，其次已建立模式的变化；二者清阶段/五锁存且当拍全关。手动逐项latchAfter=latchBefore XOR buttonRise。自动IDLE遇autoStartRise进A，A液位>=50进B，B>=80按批次processMode进C或MIX，C>=100进MIX，MIX完成进DRAIN；每拍一阶，DRAIN保持至复位条件。五输出对应转移后A/B/C/DRAIN/MIX。批次模式在活动批次内固定。",
+    "history_binding": "I, O and Sref namespaces, initialization and updates are defined in normalized_specification.observation, history_bindings and reference_state_initial. Candidate output never drives Sref.",
+    "evaluation_scope": "Versioned executable scan predicate plus LTL over interpreted predicates. No native checker encoding or completed formal proof is claimed.",
     "review_source": "docs/规约逐题审查_20261106/PUB015.md",
-    "executable_monitor": "plc_agent.process_contracts.ProcessContract:PUB015"
+    "executable_monitor": "plc_agent.process_contracts.ProcessContract:PUB015",
+    "transition_binding": "Use normalized_specification.transition and exact pinned source snapshots."
+  },
+  "normalized_specification": {
+    "schema_version": 1,
+    "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+    "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
+    "candidate_formal_verification": "UNVERIFIED",
+    "initial_observed": {
+      "valveARun": false,
+      "valveBRun": false,
+      "valveCRun": false,
+      "valveDRun": false,
+      "mixMotorRun": false
+    },
+    "reference_state_initial": {
+      "class": "ScanContract",
+      "state": {
+        "task_id": "PUB015",
+        "array_contract": null,
+        "process_contract": {
+          "class": "ProcessContract",
+          "state": {
+            "task_id": "PUB015",
+            "phase": 0,
+            "mode": null,
+            "previous": {},
+            "latches": [
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            "batch_mode": null,
+            "route": null,
+            "index": 0,
+            "station": 1,
+            "target": 1,
+            "temperature": 0.0,
+            "arm_mode": null,
+            "arm_step": 0,
+            "step_index": 1,
+            "step_busy": false,
+            "prev_start": false
+          }
+        },
+        "timed_contract": null,
+        "data_contract": null,
+        "reference": null,
+        "phase": 0,
+        "previous_mode": null,
+        "clock": 0.0,
+        "heat_start": null,
+        "protection_start": null,
+        "demand": false
+      }
+    },
+    "transition": {
+      "entrypoint": "plc_agent.normalized_spec.reference_step(task, reference, deepCopy(I[k]), dt_ms[k])",
+      "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('PUB015'); constructed once per independent case, current state is Sref[k].",
+      "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
+      "module_sha256": {
+        "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
+        "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
+        "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
+        "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
+        "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+        "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
+        "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+      },
+      "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
+      "frozen_sources": "dataset/specifications/normalized_transition_v1"
+    },
+    "constrained_observed_fields": [
+      "mixMotorRun",
+      "valveARun",
+      "valveBRun",
+      "valveCRun",
+      "valveDRun"
+    ],
+    "unconstrained_representation_fields": [],
+    "comparison": {
+      "integer_boolean": "exact type and value; no tolerance",
+      "float": "finite; abs error<=1e-5; dictionary/list shape and non-float values exact",
+      "PUB008": "only successfully converted channels[j].outputValue: abs<=1e-5 OR rel<=2e-6; all preserved/config fields exact",
+      "PUB017": "Successful deletion constrains recipeID=0; other fields of that deleted slot are unconstrained for the deletion scan. Subsequent no-write scans preserve the sampled actual representation. This observer history is separate from the logical reference database.",
+      "TIME_LTIME": "exact integer nanoseconds after IEC literal parsing",
+      "implementation": "plc_agent.normalized_spec.NormalizedScanMonitor.step with output_matches (pinned sources); observer histories never drive the independent logical reference"
+    },
+    "observation": {
+      "I[k]": "deep-copied inputs immediately before invocation k",
+      "O[k]": "actual outputs immediately after invocation k, supplied by independent execution backend",
+      "Sref[k]": "independent reference state BEFORE k; unrelated to similarly named candidate variables",
+      "initial": "fresh instance BEFORE invocation 0; never substituted by O[0]",
+      "X": "next scan-sequence position; argument must be Boolean, not a numeric term",
+      "time": "dt_ms is observed elapsed time; public timers use physical time, SELF Tick/count timers use logical scans"
+    },
+    "history_bindings": {},
+    "auxiliary_state_bindings": {
+      "Spre": "Sref[k], before the invocation; initialized by reference_state_initial",
+      "Spost": "Sref[k+1], after exactly one pinned transition on I[k]",
+      "first": "k=0 (first invocation); distinct from the pre-invocation initial observation",
+      "pre-output": "actual O[k-1] for OUTPUT (explicit history initial where declared); I[k] for caller-owned IN_OUT",
+      "previous-input": "I[k-1] for k>=1; edge memory for BOOL requests initially FALSE and updated after EVERY invocation",
+      "reference_warning": "Spre/Spost predicates are input-driven ghosts, not evidence that candidate internals match. Conclusions about the candidate must constrain actual O.",
+      "phase": {
+        "pre": "Spre.process_contract.phase",
+        "post": "Spost.process_contract.phase",
+        "enum": {
+          "0": "IDLE",
+          "1": "FILL_A",
+          "2": "FILL_B",
+          "3": "FILL_C",
+          "4": "MIX",
+          "5": "DRAIN"
+        },
+        "initial": 0
+      },
+      "modeChanged": "Spre.process_contract.mode is not None AND Spre.process_contract.mode != I[k].opeMode"
+    },
+    "finite_conjunctions": {},
+    "reference_state_rule": "Initial state is the serialized constructor above; all fields update solely through the pinned transition. Ghost phase/history/queue are names for this state, not observed candidate state.",
+    "primitives": {
+      "bitwise": "DWORD AND/NOT and popcount operate on unsigned 32-bit values; complement is masked by 0xFFFFFFFF.",
+      "time_literals": "IEC TIME/LTIME literals are exact integer durations in nanoseconds.",
+      "observed_arrays": "All IN_OUT inputs are snapshots before invocation; outputs are independently acquired after invocation. Physical bounds map by ordinal, never share another array lower bound.",
+      "boolean_next": "X takes a Boolean formula. Numeric history transport is bit-expanded for DWORD; Boolean histories use equivalence.",
+      "time_progress": "Timed eventuality clauses explicitly require G(F(TimeTick)); TimeTick denotes crossing a new integer-ms boundary. Finite observations cannot establish this premise."
+    },
+    "assumptions": [
+      "All manual buttons use rising-edge independent toggles. Edge history updates during emergency stop so held buttons cannot restart outputs on recovery.",
+      "Emergency stop resets all manual latches and automatic state. A fresh autoStart edge is required to restart.",
+      "Changing operation mode clears old latches and sequence.",
+      "autoStart is a rising edge accepted in IDLE; processMode stays fixed during the batch.",
+      "Thresholds are >=50, >=80 and >=100 cm. One logical phase transition occurs per invocation.",
+      "Valve D stays open after discharge is initiated until emergency stop or mode reset; no drain-complete signal is supplied.",
+      "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+      "V2 mode-change priority: emergency stop first; then a change of mode after the first invocation clears sequence/latches and suppresses commands for that invocation; edge memories still update. The first invocation establishes the selected mode and executes normally. New commands are accepted on subsequent invocations subject to their edge rules."
+    ],
+    "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
+    "limitations": [
+      "No ST-to-model translation or infinite-trace proof is implemented here.",
+      "Focused legacy LTL predicates still require backend lowering; normalization is not model-checker acceptance.",
+      "Finite matching cannot establish liveness or validate runtime provenance."
+    ],
+    "rules_zh": "五按钮及autoStart历史初值FALSE、每拍更新。急停优先，其次已建立模式的变化；二者清阶段/五锁存且当拍全关。手动逐项latchAfter=latchBefore XOR buttonRise。自动IDLE遇autoStartRise进A，A液位>=50进B，B>=80按批次processMode进C或MIX，C>=100进MIX，MIX完成进DRAIN；每拍一阶，DRAIN保持至复位条件。五输出对应转移后A/B/C/DRAIN/MIX。批次模式在活动批次内固定。"
   }
 }

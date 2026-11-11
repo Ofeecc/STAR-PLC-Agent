@@ -1,0 +1,481 @@
+{
+  "schema_version": 1,
+  "id": "SELF011",
+  "kind": "self_built",
+  "title": "Single cycle actuator handshakes with one transition per scan",
+  "difficulty": "hard",
+  "provenance": {
+    "source_type": "independent_synthesis",
+    "source_file": "scripts/build_self_dataset.py",
+    "source_index": 11,
+    "adaptation": "Independently specified for this project; no public task was copied. The coding assistant chose the state variables, priority order and fixed scan traces, then reviewed the traces against a separate Python transition implementation.",
+    "rationale": "An assembly fixture coordinates an extending slide and a clamp using explicit completion handshakes, allowing deterministic commissioning tests.",
+    "review": "Assistant consistency review of initialization, simultaneous commands, retained state and recovery boundaries; independent Python oracle checked against manual expected traces. Not an industrial safety certification or external expert review."
+  },
+  "requirements": "Use IDLE, EXTEND, CLAMP, RELEASE, RETRACT and DONE states, initially IDLE. Stop or Reset immediately returns IDLE. Start is accepted in IDLE only if RetractDone indicates the home position. Then enter EXTEND; ExtendDone enters CLAMP, ClampDone enters RELEASE, ReleaseDone enters RETRACT, and RetractDone enters DONE. Execute at most one transition per scan, so even all feedbacks TRUE cannot skip a state. DONE holds until Reset or Stop. Each of Extend, Clamp, Release and Retract is TRUE exactly in its corresponding post-transition state. Busy is TRUE in those four action states; Done is TRUE only in DONE. Start during Busy or DONE is ignored.",
+  "scenario": "An assembly fixture coordinates an extending slide and a clamp using explicit completion handshakes, allowing deterministic commissioning tests.",
+  "interface": [
+    {
+      "direction": "INPUT",
+      "name": "Start",
+      "type": "BOOL",
+      "description": "Begin one fixture cycle"
+    },
+    {
+      "direction": "INPUT",
+      "name": "Stop",
+      "type": "BOOL",
+      "description": "Abort fixture cycle"
+    },
+    {
+      "direction": "INPUT",
+      "name": "Reset",
+      "type": "BOOL",
+      "description": "Clear cycle state"
+    },
+    {
+      "direction": "INPUT",
+      "name": "ExtendDone",
+      "type": "BOOL",
+      "description": "Extension completion handshake"
+    },
+    {
+      "direction": "INPUT",
+      "name": "ClampDone",
+      "type": "BOOL",
+      "description": "Clamp completion handshake"
+    },
+    {
+      "direction": "INPUT",
+      "name": "ReleaseDone",
+      "type": "BOOL",
+      "description": "Release completion handshake"
+    },
+    {
+      "direction": "INPUT",
+      "name": "RetractDone",
+      "type": "BOOL",
+      "description": "Retracted home handshake"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Extend",
+      "type": "BOOL",
+      "description": "Slide extend command"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Clamp",
+      "type": "BOOL",
+      "description": "Clamp command"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Release",
+      "type": "BOOL",
+      "description": "Release command"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Retract",
+      "type": "BOOL",
+      "description": "Slide retract command"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Busy",
+      "type": "BOOL",
+      "description": "An action state is active"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Done",
+      "type": "BOOL",
+      "description": "Cycle completed"
+    }
+  ],
+  "initial_conditions": {
+    "state": "IDLE",
+    "all_commands": false
+  },
+  "scan_semantics": "At scan k, sample every input once, read retained pre-state q[k], execute one transition, and observe outputs O[k] at the end of that same scan. Updated state becomes q[k+1]. Reset the instance before each test. Step 0 executes normally; initial conditions describe pre-state, not an extra delayed scan. All timing in this task is explicitly counted in invocations, not wall time.",
+  "safety_priority": [
+    "Stop or Reset overrides all transitions",
+    "At most one state transition per invocation"
+  ],
+  "assumptions": [
+    "Completion inputs are handshake states; no mechanical safety certification is implied.",
+    "No timeout is included; an absent handshake intentionally stalls the current action.",
+    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+  ],
+  "atomic_propositions": {
+    "Start": "Begin one fixture cycle Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "Stop": "Abort fixture cycle Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "Reset": "Clear cycle state Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "ExtendDone": "Extension completion handshake Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "ClampDone": "Clamp completion handshake Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "ReleaseDone": "Release completion handshake Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "RetractDone": "Retracted home handshake Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "Extend": "Slide extend command Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "Clamp": "Clamp command Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "Release": "Release command Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "Retract": "Slide retract command Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "Busy": "An action state is active Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "Done": "Cycle completed Boolean names are propositions; numeric names appear only inside defined predicates.",
+    "first": "True only on the first invocation after resetting the FB instance.",
+    "qIdle": "Pre-state IDLE.",
+    "qExtend": "Pre-state EXTEND.",
+    "qClamp": "Pre-state CLAMP.",
+    "qRelease": "Pre-state RELEASE.",
+    "qRetract": "Pre-state RETRACT.",
+    "qDone": "Pre-state DONE.",
+    "normal": "!Stop & !Reset.",
+    "oneAction": "At most one of Extend, Clamp, Release, Retract is TRUE.",
+    "CompleteBehaviorV2": "Every observed OUTPUT equals the output of the independent deterministic transition in specification_contract, initialized and advanced exactly as transition_binding specifies."
+  },
+  "ltl": [
+    {
+      "id": "P1",
+      "formula": "G(oneAction)",
+      "explanation": "Action commands never overlap."
+    },
+    {
+      "id": "P2",
+      "formula": "G((Stop | Reset) -> (!Busy & !Done & !Extend & !Clamp & !Release & !Retract))",
+      "explanation": "Abort clears every command immediately."
+    },
+    {
+      "id": "P3",
+      "formula": "G((normal & qIdle & Start & RetractDone) -> Extend)",
+      "explanation": "Home-qualified Start enters only the first action."
+    },
+    {
+      "id": "P4",
+      "formula": "G((normal & qExtend & ExtendDone) -> Clamp)",
+      "explanation": "Extension completion enters clamp."
+    },
+    {
+      "id": "P5",
+      "formula": "G((normal & qClamp & ClampDone) -> Release)",
+      "explanation": "Clamp completion enters release."
+    },
+    {
+      "id": "P6",
+      "formula": "G((normal & qRelease & ReleaseDone) -> Retract)",
+      "explanation": "Release completion enters retract."
+    },
+    {
+      "id": "P7",
+      "formula": "G((normal & qRetract & RetractDone) -> Done)",
+      "explanation": "Home arrival completes the cycle."
+    },
+    {
+      "id": "P8",
+      "formula": "G((normal & qDone) -> Done)",
+      "explanation": "A completed cycle cannot restart without an explicit clear."
+    },
+    {
+      "id": "P9",
+      "formula": "G((normal & qExtend & !ExtendDone) -> Extend)",
+      "explanation": "The fixture waits for an extension handshake rather than assuming completion."
+    },
+    {
+      "id": "SELF011.V2.COMPLETE",
+      "formula": "G(CompleteBehaviorV2)",
+      "explanation": "The complete per-invocation relation defined in specification_contract.normative_completion; requires explicit encoding before model checking."
+    }
+  ],
+  "tests": [
+    {
+      "id": "handshake",
+      "purpose": "Normal cycle and completion retention",
+      "steps": [
+        {
+          "inputs": {
+            "Start": true,
+            "Stop": false,
+            "Reset": false,
+            "ExtendDone": false,
+            "ClampDone": false,
+            "ReleaseDone": false,
+            "RetractDone": false
+          },
+          "expected": {
+            "Extend": false,
+            "Clamp": false,
+            "Release": false,
+            "Retract": false,
+            "Busy": false,
+            "Done": false
+          }
+        },
+        {
+          "inputs": {
+            "Start": true,
+            "Stop": false,
+            "Reset": false,
+            "ExtendDone": false,
+            "ClampDone": false,
+            "ReleaseDone": false,
+            "RetractDone": true
+          },
+          "expected": {
+            "Extend": true,
+            "Clamp": false,
+            "Release": false,
+            "Retract": false,
+            "Busy": true,
+            "Done": false
+          }
+        },
+        {
+          "inputs": {
+            "Start": false,
+            "Stop": false,
+            "Reset": false,
+            "ExtendDone": false,
+            "ClampDone": false,
+            "ReleaseDone": false,
+            "RetractDone": false
+          },
+          "expected": {
+            "Extend": true,
+            "Clamp": false,
+            "Release": false,
+            "Retract": false,
+            "Busy": true,
+            "Done": false
+          }
+        },
+        {
+          "inputs": {
+            "Start": false,
+            "Stop": false,
+            "Reset": false,
+            "ExtendDone": true,
+            "ClampDone": false,
+            "ReleaseDone": false,
+            "RetractDone": false
+          },
+          "expected": {
+            "Extend": false,
+            "Clamp": true,
+            "Release": false,
+            "Retract": false,
+            "Busy": true,
+            "Done": false
+          }
+        },
+        {
+          "inputs": {
+            "Start": false,
+            "Stop": false,
+            "Reset": false,
+            "ExtendDone": false,
+            "ClampDone": true,
+            "ReleaseDone": false,
+            "RetractDone": false
+          },
+          "expected": {
+            "Extend": false,
+            "Clamp": false,
+            "Release": true,
+            "Retract": false,
+            "Busy": true,
+            "Done": false
+          }
+        },
+        {
+          "inputs": {
+            "Start": false,
+            "Stop": false,
+            "Reset": false,
+            "ExtendDone": false,
+            "ClampDone": false,
+            "ReleaseDone": true,
+            "RetractDone": false
+          },
+          "expected": {
+            "Extend": false,
+            "Clamp": false,
+            "Release": false,
+            "Retract": true,
+            "Busy": true,
+            "Done": false
+          }
+        },
+        {
+          "inputs": {
+            "Start": false,
+            "Stop": false,
+            "Reset": false,
+            "ExtendDone": false,
+            "ClampDone": false,
+            "ReleaseDone": false,
+            "RetractDone": true
+          },
+          "expected": {
+            "Extend": false,
+            "Clamp": false,
+            "Release": false,
+            "Retract": false,
+            "Busy": false,
+            "Done": true
+          }
+        },
+        {
+          "inputs": {
+            "Start": true,
+            "Stop": false,
+            "Reset": false,
+            "ExtendDone": false,
+            "ClampDone": false,
+            "ReleaseDone": false,
+            "RetractDone": false
+          },
+          "expected": {
+            "Extend": false,
+            "Clamp": false,
+            "Release": false,
+            "Retract": false,
+            "Busy": false,
+            "Done": true
+          }
+        },
+        {
+          "inputs": {
+            "Start": false,
+            "Stop": false,
+            "Reset": true,
+            "ExtendDone": false,
+            "ClampDone": false,
+            "ReleaseDone": false,
+            "RetractDone": false
+          },
+          "expected": {
+            "Extend": false,
+            "Clamp": false,
+            "Release": false,
+            "Retract": false,
+            "Busy": false,
+            "Done": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "single_transition",
+      "purpose": "All handshakes cannot skip states; Stop aborts",
+      "steps": [
+        {
+          "inputs": {
+            "Start": true,
+            "Stop": false,
+            "Reset": false,
+            "ExtendDone": true,
+            "ClampDone": true,
+            "ReleaseDone": true,
+            "RetractDone": true
+          },
+          "expected": {
+            "Extend": true,
+            "Clamp": false,
+            "Release": false,
+            "Retract": false,
+            "Busy": true,
+            "Done": false
+          }
+        },
+        {
+          "inputs": {
+            "Start": true,
+            "Stop": false,
+            "Reset": false,
+            "ExtendDone": true,
+            "ClampDone": true,
+            "ReleaseDone": true,
+            "RetractDone": true
+          },
+          "expected": {
+            "Extend": false,
+            "Clamp": true,
+            "Release": false,
+            "Retract": false,
+            "Busy": true,
+            "Done": false
+          }
+        },
+        {
+          "inputs": {
+            "Start": true,
+            "Stop": false,
+            "Reset": false,
+            "ExtendDone": true,
+            "ClampDone": true,
+            "ReleaseDone": true,
+            "RetractDone": true
+          },
+          "expected": {
+            "Extend": false,
+            "Clamp": false,
+            "Release": true,
+            "Retract": false,
+            "Busy": true,
+            "Done": false
+          }
+        },
+        {
+          "inputs": {
+            "Start": true,
+            "Stop": true,
+            "Reset": false,
+            "ExtendDone": true,
+            "ClampDone": true,
+            "ReleaseDone": true,
+            "RetractDone": true
+          },
+          "expected": {
+            "Extend": false,
+            "Clamp": false,
+            "Release": false,
+            "Retract": false,
+            "Busy": false,
+            "Done": false
+          }
+        },
+        {
+          "inputs": {
+            "Start": true,
+            "Stop": false,
+            "Reset": true,
+            "ExtendDone": true,
+            "ClampDone": true,
+            "ReleaseDone": true,
+            "RetractDone": true
+          },
+          "expected": {
+            "Extend": false,
+            "Clamp": false,
+            "Release": false,
+            "Retract": false,
+            "Busy": false,
+            "Done": false
+          }
+        }
+      ]
+    }
+  ],
+  "specification_version": "2.0-review-corrections-20261106",
+  "specification_contract": {
+    "observation": "I[k] is sampled before execution; O[k] is observed after execution. Initial conditions apply before invocation zero.",
+    "normative_completion": "给六态总转移：Stop或Reset→IDLE；IDLE满足Start且RetractDone→EXTEND；四动作各匹配反馈→下一态，否则保持；DONE保持。Extend/Clamp/Release/Retract分别↔postState对应动作；Busy↔四动作之一；Done↔postState=DONE；初始IDLE。",
+    "history_binding": "Every previous-output name refers to the preceding observed output with the declared initial value. Previous-input memories update on EVERY invocation, including reset, invalid input, stop and mode change. Reference phase/history is independently advanced from sampled inputs by the stated transition rules, never supplied by the candidate.",
+    "evaluation_scope": "Properties include interpreted data predicates. No claim of export to a model checker or completed formal proof.",
+    "review_source": "docs/规约逐题审查_20261106/SELF011.md",
+    "reference_state_initial": {
+      "mode": 0
+    },
+    "deterministic_transition_python": "    def _SELF011(self, i):\n        mode = self.state.get(\"mode\", 0)\n        if i[\"Stop\"] or i[\"Reset\"]:\n            mode = 0\n        elif mode == 0:\n            if i[\"Start\"] and i[\"RetractDone\"]:\n                mode = 1\n        elif mode in (1, 2, 3, 4):\n            feedback = (\"ExtendDone\", \"ClampDone\", \"ReleaseDone\", \"RetractDone\")[mode - 1]\n            if i[feedback]:\n                mode += 1\n        self.state[\"mode\"] = mode\n        return {\"Extend\": mode == 1, \"Clamp\": mode == 2, \"Release\": mode == 3,\n                \"Retract\": mode == 4, \"Busy\": 1 <= mode <= 4, \"Done\": mode == 5}\n",
+    "transition_binding": "Initialize an independent reference state with reference_state_initial. For every sampled input execute the listed deterministic transition once; require EVERY actual OUTPUT to equal its returned value. Do not update this reference state from candidate outputs. This defines the complete scan relation; it is not evidence of ST execution."
+  }
+}

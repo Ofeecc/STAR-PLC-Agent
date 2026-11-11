@@ -20,7 +20,7 @@ Initial state:
 }
 ```
 
-### T1 
+### T1
 
 Full bottle cycle and stable completion
 
@@ -245,7 +245,7 @@ Full bottle cycle and stable completion
 ```
 
 
-### T2 
+### T2
 
 Out-of-order confirmations cannot skip phases
 
@@ -401,7 +401,7 @@ Initial state:
 }
 ```
 
-### T1 
+### T1
 
 No change, mixed edges, full width and bit 31
 
@@ -596,7 +596,7 @@ No change, mixed edges, full width and bit 31
 ```
 
 
-### T2 
+### T2
 
 First nonzero invocation is compared with initialized zero
 
@@ -639,6 +639,49 @@ First nonzero invocation is compared with initialized zero
 ```
 
 
+### V2_data_contract_boundaries
+
+Independently calculated edge/history/parser boundary regression
+
+**Step 0**.
+
+```json
+{
+  "inputs": {
+    "value": 2863311530
+  },
+  "expected": {
+    "hasChanged": true,
+    "hasRisingEdges": true,
+    "risingBits": 2863311530,
+    "noOfRisingBits": 16,
+    "hasFallingEdges": false,
+    "fallingBits": 0,
+    "noOfFallingBits": 0
+  }
+}
+```
+
+**Step 1**.
+
+```json
+{
+  "inputs": {
+    "value": 1431655765
+  },
+  "expected": {
+    "hasChanged": true,
+    "hasRisingEdges": true,
+    "risingBits": 1431655765,
+    "noOfRisingBits": 16,
+    "hasFallingEdges": true,
+    "fallingBits": 2863311530,
+    "noOfFallingBits": 16
+  }
+}
+```
+
+
 ## PUB003 Alarm Handling
 
 Scan convention: At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, outputs O[k] are observed after execution, and q[k+1] is the updated state. Each test creates a fresh FB instance before step 0. An initialized instance has not yet executed a scan. Timer elapsed time is zero on the first eligible sampled invocation; dt_ms is elapsed wall time since the previous invocation, not automatically a synthetic input to the FB. No unobserved past input stability is assumed. All sequences here are expected values.
@@ -654,7 +697,7 @@ Initial state:
 }
 ```
 
-### T1 
+### T1
 
 Strict high and low hysteresis boundaries
 
@@ -830,7 +873,7 @@ Strict high and low hysteresis boundaries
 ```
 
 
-### T2 
+### T2
 
 Configuration priority, output retention and recovery
 
@@ -911,6 +954,125 @@ Configuration priority, output retention and recovery
 ```
 
 
+### V2_data_contract_boundaries
+
+Independently calculated edge/history/parser boundary regression
+
+**Step 0**.
+
+```json
+{
+  "inputs": {
+    "Value": 101,
+    "hiLevel": 100,
+    "loLevel": 0,
+    "hystWindow": 90
+  },
+  "expected": {
+    "hiAlarm": true,
+    "loAlarm": false,
+    "error": false,
+    "status": 0
+  }
+}
+```
+
+**Step 1**.
+
+```json
+{
+  "inputs": {
+    "Value": 50,
+    "hiLevel": 100,
+    "loLevel": 0,
+    "hystWindow": 90
+  },
+  "expected": {
+    "hiAlarm": true,
+    "loAlarm": false,
+    "error": false,
+    "status": 0
+  }
+}
+```
+
+**Step 2**.
+
+```json
+{
+  "inputs": {
+    "Value": 50,
+    "hiLevel": 100,
+    "loLevel": 100,
+    "hystWindow": 90
+  },
+  "expected": {
+    "hiAlarm": true,
+    "loAlarm": false,
+    "error": true,
+    "status": 32769
+  }
+}
+```
+
+**Step 3**.
+
+```json
+{
+  "inputs": {
+    "Value": 10,
+    "hiLevel": 100,
+    "loLevel": 0,
+    "hystWindow": 90
+  },
+  "expected": {
+    "hiAlarm": true,
+    "loAlarm": false,
+    "error": false,
+    "status": 0
+  }
+}
+```
+
+**Step 4**.
+
+```json
+{
+  "inputs": {
+    "Value": 9,
+    "hiLevel": 100,
+    "loLevel": 0,
+    "hystWindow": 90
+  },
+  "expected": {
+    "hiAlarm": false,
+    "loAlarm": false,
+    "error": false,
+    "status": 0
+  }
+}
+```
+
+**Step 5**.
+
+```json
+{
+  "inputs": {
+    "Value": -1,
+    "hiLevel": 100,
+    "loLevel": 0,
+    "hystWindow": 90
+  },
+  "expected": {
+    "hiAlarm": false,
+    "loAlarm": true,
+    "error": false,
+    "status": 0
+  }
+}
+```
+
+
 ## PUB004 Jam Pump Debouncing and Runtime Maintenance
 
 Scan convention: At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, outputs O[k] are observed after execution, and q[k+1] is the updated state. Each test creates a fresh FB instance before step 0. An initialized instance has not yet executed a scan. Timer elapsed time is zero on the first eligible sampled invocation; dt_ms is elapsed wall time since the previous invocation, not automatically a synthetic input to the FB. No unobserved past input stability is assumed. All sequences here are expected values.
@@ -926,7 +1088,7 @@ Initial state:
 }
 ```
 
-### T1 
+### T1
 
 Qualification boundary, accumulation, stop retention and restart
 
@@ -1102,7 +1264,7 @@ Qualification boundary, accumulation, stop retention and restart
 ```
 
 
-### T2 
+### T2
 
 E-stop clears incomplete debounce and completed permission
 
@@ -1240,7 +1402,7 @@ E-stop clears incomplete debounce and completed permission
 ```
 
 
-### T3 
+### T3
 
 Long-duration maintenance arithmetic boundary
 
@@ -1323,6 +1485,106 @@ notes: This expected trace contains a genuine 500-hour elapsed interval matching
 ```
 
 
+### V2_permit_loss_at_deadline
+
+Permission loss at the exact deadline wins; recovery starts a fresh full interval, even after a long gap.
+
+**Step 0**; elapsed interval `0 ms`.
+
+```json
+{
+  "inputs": {
+    "VISCOSITY_OK": true,
+    "PASTE_E_STOP_NC": true,
+    "DebounceTime": "T#1s",
+    "CycleTime": "T#100ms"
+  },
+  "expected": {
+    "VFD_RUN": false,
+    "PUMP_RUNTIME_ACC": "LTIME#0ms",
+    "PUMP_MAINT_DUE": false
+  },
+  "dt_ms": 0
+}
+```
+
+**Step 1**; elapsed interval `1000 ms`.
+
+```json
+{
+  "inputs": {
+    "VISCOSITY_OK": true,
+    "PASTE_E_STOP_NC": false,
+    "DebounceTime": "T#1s",
+    "CycleTime": "T#100ms"
+  },
+  "expected": {
+    "VFD_RUN": false,
+    "PUMP_RUNTIME_ACC": "LTIME#0ms",
+    "PUMP_MAINT_DUE": false
+  },
+  "dt_ms": 1000
+}
+```
+
+**Step 2**; elapsed interval `2000 ms`.
+
+```json
+{
+  "inputs": {
+    "VISCOSITY_OK": true,
+    "PASTE_E_STOP_NC": true,
+    "DebounceTime": "T#1s",
+    "CycleTime": "T#100ms"
+  },
+  "expected": {
+    "VFD_RUN": false,
+    "PUMP_RUNTIME_ACC": "LTIME#0ms",
+    "PUMP_MAINT_DUE": false
+  },
+  "dt_ms": 2000
+}
+```
+
+**Step 3**; elapsed interval `999 ms`.
+
+```json
+{
+  "inputs": {
+    "VISCOSITY_OK": true,
+    "PASTE_E_STOP_NC": true,
+    "DebounceTime": "T#1s",
+    "CycleTime": "T#100ms"
+  },
+  "expected": {
+    "VFD_RUN": false,
+    "PUMP_RUNTIME_ACC": "LTIME#0ms",
+    "PUMP_MAINT_DUE": false
+  },
+  "dt_ms": 999
+}
+```
+
+**Step 4**; elapsed interval `1 ms`.
+
+```json
+{
+  "inputs": {
+    "VISCOSITY_OK": true,
+    "PASTE_E_STOP_NC": true,
+    "DebounceTime": "T#1s",
+    "CycleTime": "T#100ms"
+  },
+  "expected": {
+    "VFD_RUN": true,
+    "PUMP_RUNTIME_ACC": "LTIME#100ms",
+    "PUMP_MAINT_DUE": false
+  },
+  "dt_ms": 1
+}
+```
+
+
 ## PUB005 Weld Gap Alarm and Startup Inhibition
 
 Scan convention: At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, outputs O[k] are observed after execution, and q[k+1] is the updated state. Each test creates a fresh FB instance before step 0. An initialized instance has not yet executed a scan. Timer elapsed time is zero on the first eligible sampled invocation; dt_ms is elapsed wall time since the previous invocation, not automatically a synthetic input to the FB. No unobserved past input stability is assumed. All sequences here are expected values.
@@ -1338,7 +1600,7 @@ Initial state:
 }
 ```
 
-### T1 
+### T1
 
 Initialization excludes gap timing and debounce starts at 5s
 
@@ -1445,7 +1707,7 @@ Initialization excludes gap timing and debounce starts at 5s
 ```
 
 
-### T2 
+### T2
 
 E-stop suppresses startup and normal alerts without restarting inhibition
 
@@ -1600,7 +1862,7 @@ Initial state:
 }
 ```
 
-### T1 
+### T1
 
 Exact delay threshold, sustained operation and second counted start
 
@@ -1733,7 +1995,7 @@ Exact delay threshold, sustained operation and second counted start
 ```
 
 
-### T2 
+### T2
 
 Emergency stop discards partial and completed delay
 
@@ -1850,6 +2112,91 @@ Emergency stop discards partial and completed delay
 ```
 
 
+### V2_permit_loss_at_deadline
+
+Permission loss at the exact deadline wins; recovery starts a fresh full interval, even after a long gap.
+
+**Step 0**; elapsed interval `0 ms`.
+
+```json
+{
+  "inputs": {
+    "DO_LOW": true,
+    "AERATION_E_STOP_NC": true
+  },
+  "expected": {
+    "BLOWER_RUN": false,
+    "AERATION_BLOWER_CYCLE_COUNT": 0
+  },
+  "dt_ms": 0
+}
+```
+
+**Step 1**; elapsed interval `5000 ms`.
+
+```json
+{
+  "inputs": {
+    "DO_LOW": true,
+    "AERATION_E_STOP_NC": false
+  },
+  "expected": {
+    "BLOWER_RUN": false,
+    "AERATION_BLOWER_CYCLE_COUNT": 0
+  },
+  "dt_ms": 5000
+}
+```
+
+**Step 2**; elapsed interval `10000 ms`.
+
+```json
+{
+  "inputs": {
+    "DO_LOW": true,
+    "AERATION_E_STOP_NC": true
+  },
+  "expected": {
+    "BLOWER_RUN": false,
+    "AERATION_BLOWER_CYCLE_COUNT": 0
+  },
+  "dt_ms": 10000
+}
+```
+
+**Step 3**; elapsed interval `4999 ms`.
+
+```json
+{
+  "inputs": {
+    "DO_LOW": true,
+    "AERATION_E_STOP_NC": true
+  },
+  "expected": {
+    "BLOWER_RUN": false,
+    "AERATION_BLOWER_CYCLE_COUNT": 0
+  },
+  "dt_ms": 4999
+}
+```
+
+**Step 4**; elapsed interval `1 ms`.
+
+```json
+{
+  "inputs": {
+    "DO_LOW": true,
+    "AERATION_E_STOP_NC": true
+  },
+  "expected": {
+    "BLOWER_RUN": true,
+    "AERATION_BLOWER_CYCLE_COUNT": 1
+  },
+  "dt_ms": 1
+}
+```
+
+
 ## PUB007 Multi-Pump Switching Control System
 
 Scan convention: At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, outputs O[k] are observed after execution, and q[k+1] is the updated state. Each test creates a fresh FB instance before step 0. An initialized instance has not yet executed a scan. Timer elapsed time is zero on the first eligible sampled invocation; dt_ms is elapsed wall time since the previous invocation, not automatically a synthetic input to the FB. No unobserved past input stability is assumed. All sequences here are expected values.
@@ -1863,7 +2210,7 @@ Initial state:
 }
 ```
 
-### T1 
+### T1
 
 Manual latching, read-only fields and simultaneous stop/start
 
@@ -2072,7 +2419,7 @@ Manual latching, read-only fields and simultaneous stop/start
 ```
 
 
-### T2 
+### T2
 
 Automatic top-three selection and deterministic ties
 
@@ -2281,6 +2628,283 @@ Automatic top-three selection and deterministic ties
 ```
 
 
+### V2_pump_reselection_history
+
+Ties, changed priorities without start, reselection and simultaneous stop/start.
+
+**Step 0**.
+
+```json
+{
+  "inputs": {
+    "mode": true,
+    "start": true,
+    "stop": false,
+    "pumpGroup": [
+      {
+        "priority": 1,
+        "selection": false,
+        "RunComd": false
+      },
+      {
+        "priority": 1,
+        "selection": false,
+        "RunComd": false
+      },
+      {
+        "priority": 1,
+        "selection": false,
+        "RunComd": false
+      },
+      {
+        "priority": 1,
+        "selection": false,
+        "RunComd": false
+      },
+      {
+        "priority": 1,
+        "selection": false,
+        "RunComd": false
+      }
+    ]
+  },
+  "expected": {
+    "pumpGroup": [
+      {
+        "priority": 1,
+        "selection": false,
+        "RunComd": true
+      },
+      {
+        "priority": 1,
+        "selection": false,
+        "RunComd": true
+      },
+      {
+        "priority": 1,
+        "selection": false,
+        "RunComd": true
+      },
+      {
+        "priority": 1,
+        "selection": false,
+        "RunComd": false
+      },
+      {
+        "priority": 1,
+        "selection": false,
+        "RunComd": false
+      }
+    ]
+  }
+}
+```
+
+**Step 1**.
+
+```json
+{
+  "inputs": {
+    "mode": true,
+    "start": false,
+    "stop": false,
+    "pumpGroup": [
+      {
+        "priority": 1,
+        "selection": false,
+        "RunComd": true
+      },
+      {
+        "priority": 2,
+        "selection": false,
+        "RunComd": true
+      },
+      {
+        "priority": 3,
+        "selection": false,
+        "RunComd": true
+      },
+      {
+        "priority": 4,
+        "selection": false,
+        "RunComd": false
+      },
+      {
+        "priority": 5,
+        "selection": false,
+        "RunComd": false
+      }
+    ]
+  },
+  "expected": {
+    "pumpGroup": [
+      {
+        "priority": 1,
+        "selection": false,
+        "RunComd": true
+      },
+      {
+        "priority": 2,
+        "selection": false,
+        "RunComd": true
+      },
+      {
+        "priority": 3,
+        "selection": false,
+        "RunComd": true
+      },
+      {
+        "priority": 4,
+        "selection": false,
+        "RunComd": false
+      },
+      {
+        "priority": 5,
+        "selection": false,
+        "RunComd": false
+      }
+    ]
+  }
+}
+```
+
+**Step 2**.
+
+```json
+{
+  "inputs": {
+    "mode": true,
+    "start": true,
+    "stop": false,
+    "pumpGroup": [
+      {
+        "priority": 1,
+        "selection": false,
+        "RunComd": true
+      },
+      {
+        "priority": 2,
+        "selection": false,
+        "RunComd": true
+      },
+      {
+        "priority": 3,
+        "selection": false,
+        "RunComd": true
+      },
+      {
+        "priority": 4,
+        "selection": false,
+        "RunComd": false
+      },
+      {
+        "priority": 5,
+        "selection": false,
+        "RunComd": false
+      }
+    ]
+  },
+  "expected": {
+    "pumpGroup": [
+      {
+        "priority": 1,
+        "selection": false,
+        "RunComd": false
+      },
+      {
+        "priority": 2,
+        "selection": false,
+        "RunComd": false
+      },
+      {
+        "priority": 3,
+        "selection": false,
+        "RunComd": true
+      },
+      {
+        "priority": 4,
+        "selection": false,
+        "RunComd": true
+      },
+      {
+        "priority": 5,
+        "selection": false,
+        "RunComd": true
+      }
+    ]
+  }
+}
+```
+
+**Step 3**.
+
+```json
+{
+  "inputs": {
+    "mode": true,
+    "start": true,
+    "stop": true,
+    "pumpGroup": [
+      {
+        "priority": 1,
+        "selection": false,
+        "RunComd": false
+      },
+      {
+        "priority": 1,
+        "selection": false,
+        "RunComd": false
+      },
+      {
+        "priority": 1,
+        "selection": false,
+        "RunComd": true
+      },
+      {
+        "priority": 1,
+        "selection": false,
+        "RunComd": true
+      },
+      {
+        "priority": 1,
+        "selection": false,
+        "RunComd": true
+      }
+    ]
+  },
+  "expected": {
+    "pumpGroup": [
+      {
+        "priority": 1,
+        "selection": false,
+        "RunComd": false
+      },
+      {
+        "priority": 1,
+        "selection": false,
+        "RunComd": false
+      },
+      {
+        "priority": 1,
+        "selection": false,
+        "RunComd": false
+      },
+      {
+        "priority": 1,
+        "selection": false,
+        "RunComd": false
+      },
+      {
+        "priority": 1,
+        "selection": false,
+        "RunComd": false
+      }
+    ]
+  }
+}
+```
+
+
 ## PUB008 Analog Batch Processing
 
 Scan convention: At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, outputs O[k] are observed after execution, and q[k+1] is the updated state. Each test creates a fresh FB instance before step 0. An initialized instance has not yet executed a scan. Timer elapsed time is zero on the first eligible sampled invocation; dt_ms is elapsed wall time since the previous invocation, not automatically a synthetic input to the FB. No unobserved past input stability is assumed. All sequences here are expected values.
@@ -2293,7 +2917,7 @@ Initial state:
 }
 ```
 
-### T1 
+### T1
 
 Unipolar and bipolar endpoints, midpoint and temperature modes
 
@@ -2468,7 +3092,7 @@ tolerance: {
 ```
 
 
-### T2 
+### T2
 
 Disabled channel, invalid mode priority, invalid limits and count truncation
 
@@ -2593,7 +3217,7 @@ Disabled channel, invalid mode priority, invalid limits and count truncation
 ```
 
 
-### T3 
+### T3
 
 count zero preserves every value and negative raw extrapolates
 
@@ -2678,6 +3302,74 @@ count zero preserves every value and negative raw extrapolates
 ```
 
 
+### V2_unequal_arrays_wide_arithmetic
+
+Unequal lengths and distinct lower bounds; preserve skipped channel; avoid INT intermediate overflow.
+
+array_lower_bounds: {
+  "analogValues": -3,
+  "channels": 9
+}
+
+**Step 0**.
+
+```json
+{
+  "inputs": {
+    "count": 1,
+    "analogValues": [
+      32767
+    ],
+    "channels": [
+      {
+        "enable": true,
+        "hiLIM": 27648.0,
+        "loLIM": -27648.0,
+        "bipolar": true,
+        "measuringMode": 0,
+        "retVal": 7,
+        "outputValue": -999.0
+      },
+      {
+        "enable": true,
+        "hiLIM": 27648.0,
+        "loLIM": -27648.0,
+        "bipolar": true,
+        "measuringMode": 0,
+        "retVal": 7,
+        "outputValue": 33.0
+      }
+    ]
+  },
+  "expected": {
+    "analogValues": [
+      32767
+    ],
+    "channels": [
+      {
+        "enable": true,
+        "hiLIM": 27648.0,
+        "loLIM": -27648.0,
+        "bipolar": true,
+        "measuringMode": 0,
+        "retVal": 0,
+        "outputValue": 32767.0
+      },
+      {
+        "enable": true,
+        "hiLIM": 27648.0,
+        "loLIM": -27648.0,
+        "bipolar": true,
+        "measuringMode": 0,
+        "retVal": 7,
+        "outputValue": 33.0
+      }
+    ]
+  }
+}
+```
+
+
 ## PUB009 Calculate Moving Average
 
 Scan convention: At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, outputs O[k] are observed after execution, and q[k+1] is the updated state. Each test creates a fresh FB instance before step 0. An initialized instance has not yet executed a scan. Timer elapsed time is zero on the first eligible sampled invocation; dt_ms is elapsed wall time since the previous invocation, not automatically a synthetic input to the FB. No unobserved past input stability is assumed. All sequences here are expected values.
@@ -2695,7 +3387,7 @@ Initial state:
 }
 ```
 
-### T1 
+### T1
 
 Cyclic warm-up, sliding replacement and reset priority
 
@@ -2820,7 +3512,7 @@ Cyclic warm-up, sliding replacement and reset priority
 ```
 
 
-### T2 
+### T2
 
 Rising edge only, held trigger, window change and invalid bounds
 
@@ -3010,6 +3702,151 @@ tolerance: {
 ```
 
 
+### V2_data_contract_boundaries
+
+Independently calculated edge/history/parser boundary regression
+
+**Step 0**.
+
+```json
+{
+  "inputs": {
+    "cyclicExecution": false,
+    "trigger": true,
+    "value": 8,
+    "windowSize": 2,
+    "reset": false
+  },
+  "expected": {
+    "average": 8,
+    "windowSizeReached": false,
+    "error": false,
+    "status": 0
+  }
+}
+```
+
+**Step 1**.
+
+```json
+{
+  "inputs": {
+    "cyclicExecution": false,
+    "trigger": false,
+    "value": 8,
+    "windowSize": 2,
+    "reset": false
+  },
+  "expected": {
+    "average": 8,
+    "windowSizeReached": false,
+    "error": false,
+    "status": 0
+  }
+}
+```
+
+**Step 2**.
+
+```json
+{
+  "inputs": {
+    "cyclicExecution": false,
+    "trigger": true,
+    "value": 99,
+    "windowSize": 0,
+    "reset": false
+  },
+  "expected": {
+    "average": 8,
+    "windowSizeReached": false,
+    "error": true,
+    "status": 33280
+  }
+}
+```
+
+**Step 3**.
+
+```json
+{
+  "inputs": {
+    "cyclicExecution": false,
+    "trigger": true,
+    "value": 100,
+    "windowSize": 2,
+    "reset": false
+  },
+  "expected": {
+    "average": 8,
+    "windowSizeReached": false,
+    "error": false,
+    "status": 0
+  }
+}
+```
+
+**Step 4**.
+
+```json
+{
+  "inputs": {
+    "cyclicExecution": false,
+    "trigger": false,
+    "value": 8,
+    "windowSize": 2,
+    "reset": false
+  },
+  "expected": {
+    "average": 8,
+    "windowSizeReached": false,
+    "error": false,
+    "status": 0
+  }
+}
+```
+
+**Step 5**.
+
+```json
+{
+  "inputs": {
+    "cyclicExecution": false,
+    "trigger": true,
+    "value": 4,
+    "windowSize": 2,
+    "reset": false
+  },
+  "expected": {
+    "average": 6,
+    "windowSizeReached": true,
+    "error": false,
+    "status": 0
+  }
+}
+```
+
+**Step 6**.
+
+```json
+{
+  "inputs": {
+    "cyclicExecution": false,
+    "trigger": false,
+    "value": 8,
+    "windowSize": 3,
+    "reset": false
+  },
+  "expected": {
+    "average": 0,
+    "windowSizeReached": false,
+    "error": false,
+    "status": 0
+  }
+}
+```
+
+
 ## PUB010 Temperature Logic Control
 
 Scan convention: At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, outputs O[k] are observed after execution, and q[k+1] is the updated state. Each test creates a fresh FB instance before step 0. An initialized instance has not yet executed a scan. Timer elapsed time is zero on the first eligible sampled invocation; dt_ms is elapsed wall time since the previous invocation, not automatically a synthetic input to the FB. No unobserved past input stability is assumed. All sequences here are expected values.
@@ -3027,7 +3864,7 @@ Initial state:
 }
 ```
 
-### T1 
+### T1
 
 Heating threshold, cooldown boundary and safe restart
 
@@ -3146,7 +3983,7 @@ Heating threshold, cooldown boundary and safe restart
 ```
 
 
-### T2 
+### T2
 
 Sensor faults, valid endpoint values and equality retention
 
@@ -3284,7 +4121,7 @@ Sensor faults, valid endpoint values and equality retention
 ```
 
 
-### T3 
+### T3
 
 Fault during protection cannot clear the cooldown
 
@@ -3380,6 +4217,68 @@ Fault during protection cannot clear the cooldown
     "HeaterOutput": true
   },
   "dt_ms": 1000
+}
+```
+
+
+### V2_omission_regression
+
+Reject the concrete wrong behavior documented in the 2026-11-06 specification review.
+
+**Step 0**; elapsed interval `0 ms`.
+
+```json
+{
+  "inputs": {
+    "TemperatureSensorInput": 40.0,
+    "SetTemperature": 30.0
+  },
+  "expected": {
+    "CurrentTemperature": 40.0,
+    "SetTempDisplay": 30.0,
+    "HeaterStatus": false,
+    "OverheatProtection": false,
+    "HeaterOutput": false
+  },
+  "dt_ms": 0
+}
+```
+
+**Step 1**; elapsed interval `100 ms`.
+
+```json
+{
+  "inputs": {
+    "TemperatureSensorInput": 40.0,
+    "SetTemperature": 30.0
+  },
+  "expected": {
+    "CurrentTemperature": 40.0,
+    "SetTempDisplay": 30.0,
+    "HeaterStatus": false,
+    "OverheatProtection": false,
+    "HeaterOutput": false
+  },
+  "dt_ms": 100
+}
+```
+
+**Step 2**; elapsed interval `100 ms`.
+
+```json
+{
+  "inputs": {
+    "TemperatureSensorInput": 40.0,
+    "SetTemperature": 30.0
+  },
+  "expected": {
+    "CurrentTemperature": 40.0,
+    "SetTempDisplay": 30.0,
+    "HeaterStatus": false,
+    "OverheatProtection": false,
+    "HeaterOutput": false
+  },
+  "dt_ms": 100
 }
 ```
 
@@ -3752,6 +4651,80 @@ Out-of-order confirmations cannot start the route.
   },
   "expected": {
     "MotorForward": false
+  }
+}
+```
+
+
+### V2_omission_regression
+
+Reject the concrete wrong behavior documented in the 2026-11-06 specification review.
+
+**Step 0**.
+
+```json
+{
+  "inputs": {
+    "Mode": true,
+    "ForwardButton": false,
+    "ReverseButton": false,
+    "SensorA": true,
+    "SensorB": false,
+    "SensorC": false,
+    "ButtonA": true,
+    "ButtonB": false,
+    "ButtonC": false
+  },
+  "expected": {
+    "MotorForward": true,
+    "MotorReverse": false,
+    "CompletionLight": false
+  }
+}
+```
+
+**Step 1**.
+
+```json
+{
+  "inputs": {
+    "Mode": true,
+    "ForwardButton": false,
+    "ReverseButton": false,
+    "SensorA": true,
+    "SensorB": false,
+    "SensorC": false,
+    "ButtonA": true,
+    "ButtonB": false,
+    "ButtonC": false
+  },
+  "expected": {
+    "MotorForward": true,
+    "MotorReverse": false,
+    "CompletionLight": false
+  }
+}
+```
+
+**Step 2**.
+
+```json
+{
+  "inputs": {
+    "Mode": true,
+    "ForwardButton": false,
+    "ReverseButton": false,
+    "SensorA": true,
+    "SensorB": false,
+    "SensorC": false,
+    "ButtonA": true,
+    "ButtonB": false,
+    "ButtonC": false
+  },
+  "expected": {
+    "MotorForward": true,
+    "MotorReverse": false,
+    "CompletionLight": false
   }
 }
 ```
@@ -4562,6 +5535,96 @@ Check delay boundary, loss, full restart, Night override.
 ```
 
 
+### V2_permit_loss_at_deadline
+
+Permission loss at the exact deadline wins; recovery starts a fresh full interval, even after a long gap.
+
+**Step 0**; elapsed interval `0 ms`.
+
+```json
+{
+  "inputs": {
+    "OCCUPANCY_DETECTED": true,
+    "ENERGY_SAVING_MODE": false,
+    "HVAC_MODE_SELECTOR": 0
+  },
+  "expected": {
+    "SUPPLY_FAN_RUN": false,
+    "TEMP_SETPOINT_ADJUST": 0
+  },
+  "dt_ms": 0
+}
+```
+
+**Step 1**; elapsed interval `30000 ms`.
+
+```json
+{
+  "inputs": {
+    "OCCUPANCY_DETECTED": true,
+    "ENERGY_SAVING_MODE": false,
+    "HVAC_MODE_SELECTOR": 3
+  },
+  "expected": {
+    "SUPPLY_FAN_RUN": false,
+    "TEMP_SETPOINT_ADJUST": 4
+  },
+  "dt_ms": 30000
+}
+```
+
+**Step 2**; elapsed interval `60000 ms`.
+
+```json
+{
+  "inputs": {
+    "OCCUPANCY_DETECTED": true,
+    "ENERGY_SAVING_MODE": false,
+    "HVAC_MODE_SELECTOR": 0
+  },
+  "expected": {
+    "SUPPLY_FAN_RUN": false,
+    "TEMP_SETPOINT_ADJUST": 0
+  },
+  "dt_ms": 60000
+}
+```
+
+**Step 3**; elapsed interval `29999 ms`.
+
+```json
+{
+  "inputs": {
+    "OCCUPANCY_DETECTED": true,
+    "ENERGY_SAVING_MODE": false,
+    "HVAC_MODE_SELECTOR": 0
+  },
+  "expected": {
+    "SUPPLY_FAN_RUN": false,
+    "TEMP_SETPOINT_ADJUST": 0
+  },
+  "dt_ms": 29999
+}
+```
+
+**Step 4**; elapsed interval `1 ms`.
+
+```json
+{
+  "inputs": {
+    "OCCUPANCY_DETECTED": true,
+    "ENERGY_SAVING_MODE": false,
+    "HVAC_MODE_SELECTOR": 0
+  },
+  "expected": {
+    "SUPPLY_FAN_RUN": true,
+    "TEMP_SETPOINT_ADJUST": 0
+  },
+  "dt_ms": 1
+}
+```
+
+
 ## PUB014 IPv4 Parsing with Format and Range Checks
 
 Scan convention: Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call. Retained pre-state q[k] becomes q[k+1]. Each test resets the instance. A transition affects the same observed scan. dt_ms is elapsed time since the preceding invocation; the first invocation starts IEC timers at elapsed zero. CycleTime inputs, where supplied, are attributed to the current invocation rather than inferred from dt_ms.
@@ -4823,6 +5886,63 @@ Malformed and overflowing segments clear a previous valid result.
 {
   "inputs": {
     "ipText": "999999999999999999999.2.3.4"
+  },
+  "expected": {
+    "ipValue": 0
+  }
+}
+```
+
+
+### V2_data_contract_boundaries
+
+Independently calculated edge/history/parser boundary regression
+
+**Step 0**.
+
+```json
+{
+  "inputs": {
+    "ipText": "+1.2.3.4"
+  },
+  "expected": {
+    "ipValue": 0
+  }
+}
+```
+
+**Step 1**.
+
+```json
+{
+  "inputs": {
+    "ipText": "1.2.3.4\n"
+  },
+  "expected": {
+    "ipValue": 0
+  }
+}
+```
+
+**Step 2**.
+
+```json
+{
+  "inputs": {
+    "ipText": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001.2.3.4"
+  },
+  "expected": {
+    "ipValue": 16909060
+  }
+}
+```
+
+**Step 3**.
+
+```json
+{
+  "inputs": {
+    "ipText": "1.2.3.4294967296"
   },
   "expected": {
     "ipValue": 0
@@ -5457,6 +6577,281 @@ Skipped thresholds advance and emergency cancels the active cycle.
 ```
 
 
+### V2_process_history_regression
+
+Mode/edge reset, repeated station or prior-batch retained setpoint regression.
+
+**Step 0**.
+
+```json
+{
+  "inputs": {
+    "estop": true,
+    "opeMode": false,
+    "valveAStart": false,
+    "valveBStart": true,
+    "valveCStart": false,
+    "valveDStart": false,
+    "mixMotorStart": false,
+    "autoStart": false,
+    "processMode": false,
+    "levelSensor": 0,
+    "mixMotorComplete": false
+  },
+  "expected": {
+    "valveARun": false,
+    "valveBRun": true,
+    "valveCRun": false,
+    "valveDRun": false,
+    "mixMotorRun": false
+  }
+}
+```
+
+**Step 1**.
+
+```json
+{
+  "inputs": {
+    "estop": true,
+    "opeMode": false,
+    "valveAStart": false,
+    "valveBStart": true,
+    "valveCStart": false,
+    "valveDStart": false,
+    "mixMotorStart": false,
+    "autoStart": false,
+    "processMode": false,
+    "levelSensor": 0,
+    "mixMotorComplete": false
+  },
+  "expected": {
+    "valveARun": false,
+    "valveBRun": true,
+    "valveCRun": false,
+    "valveDRun": false,
+    "mixMotorRun": false
+  }
+}
+```
+
+**Step 2**.
+
+```json
+{
+  "inputs": {
+    "estop": true,
+    "opeMode": true,
+    "valveAStart": false,
+    "valveBStart": false,
+    "valveCStart": false,
+    "valveDStart": false,
+    "mixMotorStart": false,
+    "autoStart": true,
+    "processMode": false,
+    "levelSensor": 0,
+    "mixMotorComplete": false
+  },
+  "expected": {
+    "valveARun": false,
+    "valveBRun": false,
+    "valveCRun": false,
+    "valveDRun": false,
+    "mixMotorRun": false
+  }
+}
+```
+
+**Step 3**.
+
+```json
+{
+  "inputs": {
+    "estop": true,
+    "opeMode": true,
+    "valveAStart": false,
+    "valveBStart": false,
+    "valveCStart": false,
+    "valveDStart": false,
+    "mixMotorStart": false,
+    "autoStart": true,
+    "processMode": false,
+    "levelSensor": 0,
+    "mixMotorComplete": false
+  },
+  "expected": {
+    "valveARun": false,
+    "valveBRun": false,
+    "valveCRun": false,
+    "valveDRun": false,
+    "mixMotorRun": false
+  }
+}
+```
+
+**Step 4**.
+
+```json
+{
+  "inputs": {
+    "estop": true,
+    "opeMode": true,
+    "valveAStart": false,
+    "valveBStart": false,
+    "valveCStart": false,
+    "valveDStart": false,
+    "mixMotorStart": false,
+    "autoStart": false,
+    "processMode": false,
+    "levelSensor": 0,
+    "mixMotorComplete": false
+  },
+  "expected": {
+    "valveARun": false,
+    "valveBRun": false,
+    "valveCRun": false,
+    "valveDRun": false,
+    "mixMotorRun": false
+  }
+}
+```
+
+**Step 5**.
+
+```json
+{
+  "inputs": {
+    "estop": true,
+    "opeMode": true,
+    "valveAStart": false,
+    "valveBStart": false,
+    "valveCStart": false,
+    "valveDStart": false,
+    "mixMotorStart": false,
+    "autoStart": true,
+    "processMode": false,
+    "levelSensor": 0,
+    "mixMotorComplete": false
+  },
+  "expected": {
+    "valveARun": true,
+    "valveBRun": false,
+    "valveCRun": false,
+    "valveDRun": false,
+    "mixMotorRun": false
+  }
+}
+```
+
+**Step 6**.
+
+```json
+{
+  "inputs": {
+    "estop": true,
+    "opeMode": true,
+    "valveAStart": false,
+    "valveBStart": false,
+    "valveCStart": false,
+    "valveDStart": false,
+    "mixMotorStart": false,
+    "autoStart": false,
+    "processMode": false,
+    "levelSensor": 50,
+    "mixMotorComplete": false
+  },
+  "expected": {
+    "valveARun": false,
+    "valveBRun": true,
+    "valveCRun": false,
+    "valveDRun": false,
+    "mixMotorRun": false
+  }
+}
+```
+
+**Step 7**.
+
+```json
+{
+  "inputs": {
+    "estop": true,
+    "opeMode": true,
+    "valveAStart": false,
+    "valveBStart": false,
+    "valveCStart": false,
+    "valveDStart": false,
+    "mixMotorStart": false,
+    "autoStart": false,
+    "processMode": false,
+    "levelSensor": 80,
+    "mixMotorComplete": false
+  },
+  "expected": {
+    "valveARun": false,
+    "valveBRun": false,
+    "valveCRun": false,
+    "valveDRun": false,
+    "mixMotorRun": true
+  }
+}
+```
+
+**Step 8**.
+
+```json
+{
+  "inputs": {
+    "estop": true,
+    "opeMode": true,
+    "valveAStart": false,
+    "valveBStart": false,
+    "valveCStart": false,
+    "valveDStart": false,
+    "mixMotorStart": false,
+    "autoStart": false,
+    "processMode": false,
+    "levelSensor": 0,
+    "mixMotorComplete": true
+  },
+  "expected": {
+    "valveARun": false,
+    "valveBRun": false,
+    "valveCRun": false,
+    "valveDRun": true,
+    "mixMotorRun": false
+  }
+}
+```
+
+**Step 9**.
+
+```json
+{
+  "inputs": {
+    "estop": true,
+    "opeMode": true,
+    "valveAStart": false,
+    "valveBStart": false,
+    "valveCStart": false,
+    "valveDStart": false,
+    "mixMotorStart": false,
+    "autoStart": false,
+    "processMode": false,
+    "levelSensor": 0,
+    "mixMotorComplete": false
+  },
+  "expected": {
+    "valveARun": false,
+    "valveBRun": false,
+    "valveCRun": false,
+    "valveDRun": true,
+    "mixMotorRun": false
+  }
+}
+```
+
+
 ## PUB016 Flexible Processing Control
 
 Scan convention: Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call. Retained pre-state q[k] becomes q[k+1]. Each test resets the instance. A transition affects the same observed scan. dt_ms is elapsed time since the preceding invocation; the first invocation starts IEC timers at elapsed zero. CycleTime inputs, where supplied, are attributed to the current invocation rather than inferred from dt_ms.
@@ -6070,6 +7465,308 @@ A held completion cannot skip a repeated processing operation.
   "expected": {
     "conveyorRight": true,
     "conveyorLeft": false
+  }
+}
+```
+
+
+### V2_process_history_regression
+
+Mode/edge reset, repeated station or prior-batch retained setpoint regression.
+
+**Step 0**.
+
+```json
+{
+  "inputs": {
+    "processLength": 3,
+    "sensor1": true,
+    "sensor2": false,
+    "sensor3": false,
+    "sensor4": false,
+    "sensor5": false,
+    "station1Start": true,
+    "station2Complete": false,
+    "station3Complete": false,
+    "station4Complete": false,
+    "processSequence": [
+      2,
+      2,
+      5,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "expected": {
+    "conveyorLeft": false,
+    "conveyorRight": true
+  }
+}
+```
+
+**Step 1**.
+
+```json
+{
+  "inputs": {
+    "processLength": 3,
+    "sensor1": false,
+    "sensor2": true,
+    "sensor3": false,
+    "sensor4": false,
+    "sensor5": false,
+    "station1Start": false,
+    "station2Complete": true,
+    "station3Complete": false,
+    "station4Complete": false,
+    "processSequence": [
+      2,
+      2,
+      5,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "expected": {
+    "conveyorLeft": false,
+    "conveyorRight": false
+  }
+}
+```
+
+**Step 2**.
+
+```json
+{
+  "inputs": {
+    "processLength": 3,
+    "sensor1": false,
+    "sensor2": true,
+    "sensor3": false,
+    "sensor4": false,
+    "sensor5": false,
+    "station1Start": false,
+    "station2Complete": true,
+    "station3Complete": false,
+    "station4Complete": false,
+    "processSequence": [
+      2,
+      2,
+      5,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "expected": {
+    "conveyorLeft": false,
+    "conveyorRight": false
+  }
+}
+```
+
+**Step 3**.
+
+```json
+{
+  "inputs": {
+    "processLength": 3,
+    "sensor1": false,
+    "sensor2": true,
+    "sensor3": false,
+    "sensor4": false,
+    "sensor5": false,
+    "station1Start": false,
+    "station2Complete": false,
+    "station3Complete": false,
+    "station4Complete": false,
+    "processSequence": [
+      2,
+      2,
+      5,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "expected": {
+    "conveyorLeft": false,
+    "conveyorRight": false
+  }
+}
+```
+
+**Step 4**.
+
+```json
+{
+  "inputs": {
+    "processLength": 3,
+    "sensor1": false,
+    "sensor2": true,
+    "sensor3": false,
+    "sensor4": false,
+    "sensor5": false,
+    "station1Start": false,
+    "station2Complete": true,
+    "station3Complete": false,
+    "station4Complete": false,
+    "processSequence": [
+      2,
+      2,
+      5,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "expected": {
+    "conveyorLeft": false,
+    "conveyorRight": false
+  }
+}
+```
+
+**Step 5**.
+
+```json
+{
+  "inputs": {
+    "processLength": 3,
+    "sensor1": false,
+    "sensor2": true,
+    "sensor3": false,
+    "sensor4": false,
+    "sensor5": false,
+    "station1Start": false,
+    "station2Complete": true,
+    "station3Complete": false,
+    "station4Complete": false,
+    "processSequence": [
+      2,
+      2,
+      5,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "expected": {
+    "conveyorLeft": false,
+    "conveyorRight": false
+  }
+}
+```
+
+**Step 6**.
+
+```json
+{
+  "inputs": {
+    "processLength": 3,
+    "sensor1": false,
+    "sensor2": true,
+    "sensor3": false,
+    "sensor4": false,
+    "sensor5": false,
+    "station1Start": false,
+    "station2Complete": false,
+    "station3Complete": false,
+    "station4Complete": false,
+    "processSequence": [
+      2,
+      2,
+      5,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "expected": {
+    "conveyorLeft": false,
+    "conveyorRight": false
+  }
+}
+```
+
+**Step 7**.
+
+```json
+{
+  "inputs": {
+    "processLength": 3,
+    "sensor1": false,
+    "sensor2": true,
+    "sensor3": false,
+    "sensor4": false,
+    "sensor5": false,
+    "station1Start": false,
+    "station2Complete": true,
+    "station3Complete": false,
+    "station4Complete": false,
+    "processSequence": [
+      2,
+      2,
+      5,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "expected": {
+    "conveyorLeft": false,
+    "conveyorRight": true
+  }
+}
+```
+
+**Step 8**.
+
+```json
+{
+  "inputs": {
+    "processLength": 3,
+    "sensor1": false,
+    "sensor2": false,
+    "sensor3": false,
+    "sensor4": false,
+    "sensor5": true,
+    "station1Start": false,
+    "station2Complete": false,
+    "station3Complete": false,
+    "station4Complete": false,
+    "processSequence": [
+      2,
+      2,
+      5,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "expected": {
+    "conveyorLeft": false,
+    "conveyorRight": false
   }
 }
 ```
@@ -11679,6 +13376,459 @@ Out-of-order completions do not move an idle product.
 ```
 
 
+### V2_process_history_regression
+
+Mode/edge reset, repeated station or prior-batch retained setpoint regression.
+
+**Step 0**.
+
+```json
+{
+  "inputs": {
+    "Mode": true,
+    "ForwardButton": false,
+    "ReverseButton": false,
+    "SensorFeed": true,
+    "SensorWash": false,
+    "SensorWeight": false,
+    "SensorFiring": false,
+    "SensorOutput": false,
+    "washComplete": false,
+    "weightComplete": false,
+    "weight": 0,
+    "firingComplete": false
+  },
+  "expected": {
+    "MotorForward": true,
+    "MotorReverse": false,
+    "kick": false,
+    "CompletionLight": false,
+    "firingTemp": 0
+  }
+}
+```
+
+**Step 1**.
+
+```json
+{
+  "inputs": {
+    "Mode": true,
+    "ForwardButton": false,
+    "ReverseButton": false,
+    "SensorFeed": false,
+    "SensorWash": true,
+    "SensorWeight": false,
+    "SensorFiring": false,
+    "SensorOutput": false,
+    "washComplete": true,
+    "weightComplete": false,
+    "weight": 0,
+    "firingComplete": false
+  },
+  "expected": {
+    "MotorForward": false,
+    "MotorReverse": false,
+    "kick": false,
+    "CompletionLight": false,
+    "firingTemp": 0
+  }
+}
+```
+
+**Step 2**.
+
+```json
+{
+  "inputs": {
+    "Mode": true,
+    "ForwardButton": false,
+    "ReverseButton": false,
+    "SensorFeed": false,
+    "SensorWash": true,
+    "SensorWeight": false,
+    "SensorFiring": false,
+    "SensorOutput": false,
+    "washComplete": true,
+    "weightComplete": false,
+    "weight": 0,
+    "firingComplete": false
+  },
+  "expected": {
+    "MotorForward": true,
+    "MotorReverse": false,
+    "kick": false,
+    "CompletionLight": false,
+    "firingTemp": 0
+  }
+}
+```
+
+**Step 3**.
+
+```json
+{
+  "inputs": {
+    "Mode": true,
+    "ForwardButton": false,
+    "ReverseButton": false,
+    "SensorFeed": false,
+    "SensorWash": false,
+    "SensorWeight": true,
+    "SensorFiring": false,
+    "SensorOutput": false,
+    "washComplete": false,
+    "weightComplete": false,
+    "weight": 0,
+    "firingComplete": false
+  },
+  "expected": {
+    "MotorForward": false,
+    "MotorReverse": false,
+    "kick": false,
+    "CompletionLight": false,
+    "firingTemp": 0
+  }
+}
+```
+
+**Step 4**.
+
+```json
+{
+  "inputs": {
+    "Mode": true,
+    "ForwardButton": false,
+    "ReverseButton": false,
+    "SensorFeed": false,
+    "SensorWash": false,
+    "SensorWeight": true,
+    "SensorFiring": false,
+    "SensorOutput": false,
+    "washComplete": false,
+    "weightComplete": true,
+    "weight": 150,
+    "firingComplete": false
+  },
+  "expected": {
+    "MotorForward": true,
+    "MotorReverse": false,
+    "kick": false,
+    "CompletionLight": false,
+    "firingTemp": 525
+  }
+}
+```
+
+**Step 5**.
+
+```json
+{
+  "inputs": {
+    "Mode": true,
+    "ForwardButton": false,
+    "ReverseButton": false,
+    "SensorFeed": false,
+    "SensorWash": false,
+    "SensorWeight": false,
+    "SensorFiring": true,
+    "SensorOutput": false,
+    "washComplete": false,
+    "weightComplete": false,
+    "weight": 0,
+    "firingComplete": false
+  },
+  "expected": {
+    "MotorForward": false,
+    "MotorReverse": false,
+    "kick": false,
+    "CompletionLight": false,
+    "firingTemp": 525
+  }
+}
+```
+
+**Step 6**.
+
+```json
+{
+  "inputs": {
+    "Mode": true,
+    "ForwardButton": false,
+    "ReverseButton": false,
+    "SensorFeed": false,
+    "SensorWash": false,
+    "SensorWeight": false,
+    "SensorFiring": true,
+    "SensorOutput": false,
+    "washComplete": false,
+    "weightComplete": false,
+    "weight": 0,
+    "firingComplete": true
+  },
+  "expected": {
+    "MotorForward": true,
+    "MotorReverse": false,
+    "kick": false,
+    "CompletionLight": false,
+    "firingTemp": 525
+  }
+}
+```
+
+**Step 7**.
+
+```json
+{
+  "inputs": {
+    "Mode": true,
+    "ForwardButton": false,
+    "ReverseButton": false,
+    "SensorFeed": false,
+    "SensorWash": false,
+    "SensorWeight": false,
+    "SensorFiring": false,
+    "SensorOutput": true,
+    "washComplete": false,
+    "weightComplete": false,
+    "weight": 0,
+    "firingComplete": false
+  },
+  "expected": {
+    "MotorForward": false,
+    "MotorReverse": false,
+    "kick": false,
+    "CompletionLight": true,
+    "firingTemp": 525
+  }
+}
+```
+
+**Step 8**.
+
+```json
+{
+  "inputs": {
+    "Mode": true,
+    "ForwardButton": false,
+    "ReverseButton": false,
+    "SensorFeed": false,
+    "SensorWash": false,
+    "SensorWeight": false,
+    "SensorFiring": false,
+    "SensorOutput": false,
+    "washComplete": false,
+    "weightComplete": false,
+    "weight": 0,
+    "firingComplete": false
+  },
+  "expected": {
+    "MotorForward": false,
+    "MotorReverse": false,
+    "kick": false,
+    "CompletionLight": false,
+    "firingTemp": 525
+  }
+}
+```
+
+**Step 9**.
+
+```json
+{
+  "inputs": {
+    "Mode": true,
+    "ForwardButton": false,
+    "ReverseButton": false,
+    "SensorFeed": true,
+    "SensorWash": false,
+    "SensorWeight": false,
+    "SensorFiring": false,
+    "SensorOutput": false,
+    "washComplete": false,
+    "weightComplete": false,
+    "weight": 0,
+    "firingComplete": false
+  },
+  "expected": {
+    "MotorForward": true,
+    "MotorReverse": false,
+    "kick": false,
+    "CompletionLight": false,
+    "firingTemp": 525
+  }
+}
+```
+
+**Step 10**.
+
+```json
+{
+  "inputs": {
+    "Mode": true,
+    "ForwardButton": false,
+    "ReverseButton": false,
+    "SensorFeed": false,
+    "SensorWash": true,
+    "SensorWeight": false,
+    "SensorFiring": false,
+    "SensorOutput": false,
+    "washComplete": false,
+    "weightComplete": false,
+    "weight": 0,
+    "firingComplete": false
+  },
+  "expected": {
+    "MotorForward": false,
+    "MotorReverse": false,
+    "kick": false,
+    "CompletionLight": false,
+    "firingTemp": 525
+  }
+}
+```
+
+**Step 11**.
+
+```json
+{
+  "inputs": {
+    "Mode": true,
+    "ForwardButton": false,
+    "ReverseButton": false,
+    "SensorFeed": false,
+    "SensorWash": true,
+    "SensorWeight": false,
+    "SensorFiring": false,
+    "SensorOutput": false,
+    "washComplete": true,
+    "weightComplete": false,
+    "weight": 0,
+    "firingComplete": false
+  },
+  "expected": {
+    "MotorForward": true,
+    "MotorReverse": false,
+    "kick": false,
+    "CompletionLight": false,
+    "firingTemp": 525
+  }
+}
+```
+
+**Step 12**.
+
+```json
+{
+  "inputs": {
+    "Mode": true,
+    "ForwardButton": false,
+    "ReverseButton": false,
+    "SensorFeed": false,
+    "SensorWash": false,
+    "SensorWeight": true,
+    "SensorFiring": false,
+    "SensorOutput": false,
+    "washComplete": false,
+    "weightComplete": false,
+    "weight": 0,
+    "firingComplete": false
+  },
+  "expected": {
+    "MotorForward": false,
+    "MotorReverse": false,
+    "kick": false,
+    "CompletionLight": false,
+    "firingTemp": 525
+  }
+}
+```
+
+**Step 13**.
+
+```json
+{
+  "inputs": {
+    "Mode": true,
+    "ForwardButton": false,
+    "ReverseButton": false,
+    "SensorFeed": false,
+    "SensorWash": false,
+    "SensorWeight": true,
+    "SensorFiring": false,
+    "SensorOutput": false,
+    "washComplete": false,
+    "weightComplete": true,
+    "weight": 99.9,
+    "firingComplete": false
+  },
+  "expected": {
+    "MotorForward": false,
+    "MotorReverse": false,
+    "kick": true,
+    "CompletionLight": false,
+    "firingTemp": 525
+  }
+}
+```
+
+**Step 14**.
+
+```json
+{
+  "inputs": {
+    "Mode": true,
+    "ForwardButton": false,
+    "ReverseButton": false,
+    "SensorFeed": false,
+    "SensorWash": false,
+    "SensorWeight": true,
+    "SensorFiring": false,
+    "SensorOutput": false,
+    "washComplete": false,
+    "weightComplete": false,
+    "weight": 0,
+    "firingComplete": false
+  },
+  "expected": {
+    "MotorForward": false,
+    "MotorReverse": false,
+    "kick": true,
+    "CompletionLight": false,
+    "firingTemp": 525
+  }
+}
+```
+
+**Step 15**.
+
+```json
+{
+  "inputs": {
+    "Mode": true,
+    "ForwardButton": false,
+    "ReverseButton": false,
+    "SensorFeed": false,
+    "SensorWash": false,
+    "SensorWeight": false,
+    "SensorFiring": false,
+    "SensorOutput": false,
+    "washComplete": false,
+    "weightComplete": false,
+    "weight": 0,
+    "firingComplete": false
+  },
+  "expected": {
+    "MotorForward": false,
+    "MotorReverse": false,
+    "kick": false,
+    "CompletionLight": false,
+    "firingTemp": 525
+  }
+}
+```
+
+
 ## SELF001 Guarded motor with retained run command
 
 Scan convention: At scan k, sample every input once, read retained pre-state q[k], execute one transition, and observe outputs O[k] at the end of that same scan. Updated state becomes q[k+1]. Reset the instance before each test. Step 0 executes normally; initial conditions describe pre-state, not an extra delayed scan. All timing in this task is explicitly counted in invocations, not wall time.
@@ -11691,7 +13841,7 @@ Initial state:
 }
 ```
 
-### latch 
+### latch
 
 Initialize, start, hold and stop
 
@@ -11771,7 +13921,7 @@ Initialize, start, hold and stop
 ```
 
 
-### priority 
+### priority
 
 Simultaneous requests and guard recovery
 
@@ -11865,7 +14015,7 @@ Initial state:
 }
 ```
 
-### reverse 
+### reverse
 
 Direct reversal and held reverse request
 
@@ -11966,7 +14116,7 @@ Direct reversal and held reverse request
 ```
 
 
-### ambiguous 
+### ambiguous
 
 Both buttons and Stop override direction
 
@@ -12048,7 +14198,7 @@ Initial state:
 }
 ```
 
-### reset_restart 
+### reset_restart
 
 Power-up inhibition, reset, run and emergency stop
 
@@ -12155,7 +14305,7 @@ Power-up inhibition, reset, run and emergency stop
 ```
 
 
-### invalid_reset 
+### invalid_reset
 
 Held Start and Stop block reset
 
@@ -12228,6 +14378,79 @@ Held Start and Stop block reset
 ```
 
 
+### V2_omission_regression
+
+Reject the concrete wrong behavior documented in the 2026-11-06 specification review.
+
+**Step 0**.
+
+```json
+{
+  "inputs": {
+    "Start": false,
+    "Stop": false,
+    "EStopNC": true,
+    "Reset": true
+  },
+  "expected": {
+    "Run": false,
+    "ResetRequired": false
+  }
+}
+```
+
+**Step 1**.
+
+```json
+{
+  "inputs": {
+    "Start": true,
+    "Stop": false,
+    "EStopNC": true,
+    "Reset": false
+  },
+  "expected": {
+    "Run": true,
+    "ResetRequired": false
+  }
+}
+```
+
+**Step 2**.
+
+```json
+{
+  "inputs": {
+    "Start": false,
+    "Stop": false,
+    "EStopNC": true,
+    "Reset": false
+  },
+  "expected": {
+    "Run": true,
+    "ResetRequired": false
+  }
+}
+```
+
+**Step 3**.
+
+```json
+{
+  "inputs": {
+    "Start": false,
+    "Stop": false,
+    "EStopNC": true,
+    "Reset": false
+  },
+  "expected": {
+    "Run": true,
+    "ResetRequired": false
+  }
+}
+```
+
+
 ## SELF004 Pallet indexing with a latched jam fault
 
 Scan convention: At scan k, sample every input once, read retained pre-state q[k], execute one transition, and observe outputs O[k] at the end of that same scan. Updated state becomes q[k+1]. Reset the instance before each test. Step 0 executes normally; initial conditions describe pre-state, not an extra delayed scan. All timing in this task is explicitly counted in invocations, not wall time.
@@ -12243,7 +14466,7 @@ Initial state:
 }
 ```
 
-### index 
+### index
 
 One pallet and retained completion
 
@@ -12343,7 +14566,7 @@ One pallet and retained completion
 ```
 
 
-### jam 
+### jam
 
 Jam priority, retained fault and safe reset
 
@@ -12475,7 +14698,7 @@ Initial state:
 }
 ```
 
-### cycle 
+### cycle
 
 Full phase duration boundaries and pause
 
@@ -12488,10 +14711,10 @@ Full phase duration boundaries and pause
     "Tick": true
   },
   "expected": {
-    "Phase": 0,
     "Red": true,
     "Green": false,
-    "Amber": false
+    "Amber": false,
+    "Phase": 0
   }
 }
 ```
@@ -12505,6 +14728,9 @@ Full phase duration boundaries and pause
     "Tick": false
   },
   "expected": {
+    "Red": true,
+    "Green": false,
+    "Amber": false,
     "Phase": 0
   }
 }
@@ -12519,6 +14745,9 @@ Full phase duration boundaries and pause
     "Tick": true
   },
   "expected": {
+    "Red": false,
+    "Green": true,
+    "Amber": false,
     "Phase": 1
   }
 }
@@ -12533,6 +14762,9 @@ Full phase duration boundaries and pause
     "Tick": true
   },
   "expected": {
+    "Red": false,
+    "Green": true,
+    "Amber": false,
     "Phase": 1
   }
 }
@@ -12547,6 +14779,9 @@ Full phase duration boundaries and pause
     "Tick": true
   },
   "expected": {
+    "Red": false,
+    "Green": true,
+    "Amber": false,
     "Phase": 1
   }
 }
@@ -12561,6 +14796,9 @@ Full phase duration boundaries and pause
     "Tick": true
   },
   "expected": {
+    "Red": false,
+    "Green": false,
+    "Amber": true,
     "Phase": 2
   }
 }
@@ -12575,13 +14813,16 @@ Full phase duration boundaries and pause
     "Tick": true
   },
   "expected": {
+    "Red": true,
+    "Green": false,
+    "Amber": false,
     "Phase": 0
   }
 }
 ```
 
 
-### disable 
+### disable
 
 Disable clears elapsed tick progress
 
@@ -12594,6 +14835,9 @@ Disable clears elapsed tick progress
     "Tick": true
   },
   "expected": {
+    "Red": true,
+    "Green": false,
+    "Amber": false,
     "Phase": 0
   }
 }
@@ -12608,6 +14852,9 @@ Disable clears elapsed tick progress
     "Tick": true
   },
   "expected": {
+    "Red": false,
+    "Green": true,
+    "Amber": false,
     "Phase": 1
   }
 }
@@ -12622,8 +14869,10 @@ Disable clears elapsed tick progress
     "Tick": true
   },
   "expected": {
-    "Phase": 0,
-    "Red": true
+    "Red": true,
+    "Green": false,
+    "Amber": false,
+    "Phase": 0
   }
 }
 ```
@@ -12637,6 +14886,9 @@ Disable clears elapsed tick progress
     "Tick": true
   },
   "expected": {
+    "Red": true,
+    "Green": false,
+    "Amber": false,
     "Phase": 0
   }
 }
@@ -12651,6 +14903,9 @@ Disable clears elapsed tick progress
     "Tick": true
   },
   "expected": {
+    "Red": false,
+    "Green": true,
+    "Amber": false,
     "Phase": 1
   }
 }
@@ -12669,7 +14924,7 @@ Initial state:
 }
 ```
 
-### hysteresis 
+### hysteresis
 
 Fill cycle across both switching thresholds
 
@@ -12754,7 +15009,7 @@ Fill cycle across both switching thresholds
 ```
 
 
-### fault_inhibit 
+### fault_inhibit
 
 Invalid switch pair and inhibit recovery
 
@@ -12853,7 +15108,7 @@ Initial state:
 }
 ```
 
-### alternate 
+### alternate
 
 Served episodes alternate preference
 
@@ -12935,6 +15190,8 @@ Served episodes alternate preference
     "FaultB": false
   },
   "expected": {
+    "PumpA": false,
+    "PumpB": false,
     "LeadA": false
   }
 }
@@ -12967,13 +15224,15 @@ Served episodes alternate preference
     "FaultB": false
   },
   "expected": {
+    "PumpA": false,
+    "PumpB": false,
     "LeadA": true
   }
 }
 ```
 
 
-### fallback 
+### fallback
 
 Fault fallback, unserved episode and recovery
 
@@ -13004,6 +15263,8 @@ Fault fallback, unserved episode and recovery
     "FaultB": true
   },
   "expected": {
+    "PumpA": false,
+    "PumpB": false,
     "LeadA": true
   }
 }
@@ -13053,7 +15314,65 @@ Fault fallback, unserved episode and recovery
     "FaultB": true
   },
   "expected": {
+    "PumpA": false,
+    "PumpB": false,
     "LeadA": false
+  }
+}
+```
+
+
+### V2_omission_regression
+
+Reject the concrete wrong behavior documented in the 2026-11-06 specification review.
+
+**Step 0**.
+
+```json
+{
+  "inputs": {
+    "Demand": true,
+    "FaultA": true,
+    "FaultB": false
+  },
+  "expected": {
+    "PumpA": false,
+    "PumpB": true,
+    "LeadA": true
+  }
+}
+```
+
+**Step 1**.
+
+```json
+{
+  "inputs": {
+    "Demand": true,
+    "FaultA": true,
+    "FaultB": false
+  },
+  "expected": {
+    "PumpA": false,
+    "PumpB": true,
+    "LeadA": true
+  }
+}
+```
+
+**Step 2**.
+
+```json
+{
+  "inputs": {
+    "Demand": true,
+    "FaultA": true,
+    "FaultB": false
+  },
+  "expected": {
+    "PumpA": false,
+    "PumpB": true,
+    "LeadA": true
   }
 }
 ```
@@ -13072,7 +15391,7 @@ Initial state:
 }
 ```
 
-### delay 
+### delay
 
 Three scans qualify, hold saturates, trip clears
 
@@ -13086,8 +15405,8 @@ Three scans qualify, hold saturates, trip clears
     "Preset": 3
   },
   "expected": {
-    "Count": 1,
-    "Ready": false
+    "Ready": false,
+    "Count": 1
   }
 }
 ```
@@ -13102,8 +15421,8 @@ Three scans qualify, hold saturates, trip clears
     "Preset": 3
   },
   "expected": {
-    "Count": 2,
-    "Ready": false
+    "Ready": false,
+    "Count": 2
   }
 }
 ```
@@ -13118,8 +15437,8 @@ Three scans qualify, hold saturates, trip clears
     "Preset": 3
   },
   "expected": {
-    "Count": 3,
-    "Ready": true
+    "Ready": true,
+    "Count": 3
   }
 }
 ```
@@ -13134,8 +15453,8 @@ Three scans qualify, hold saturates, trip clears
     "Preset": 3
   },
   "expected": {
-    "Count": 3,
-    "Ready": true
+    "Ready": true,
+    "Count": 3
   }
 }
 ```
@@ -13150,8 +15469,8 @@ Three scans qualify, hold saturates, trip clears
     "Preset": 3
   },
   "expected": {
-    "Count": 0,
-    "Ready": false
+    "Ready": false,
+    "Count": 0
   }
 }
 ```
@@ -13166,14 +15485,14 @@ Three scans qualify, hold saturates, trip clears
     "Preset": 3
   },
   "expected": {
-    "Count": 1,
-    "Ready": false
+    "Ready": false,
+    "Count": 1
   }
 }
 ```
 
 
-### bounds 
+### bounds
 
 Invalid presets and immediate reduced threshold
 
@@ -13187,8 +15506,8 @@ Invalid presets and immediate reduced threshold
     "Preset": 0
   },
   "expected": {
-    "Count": 0,
-    "Ready": false
+    "Ready": false,
+    "Count": 0
   }
 }
 ```
@@ -13203,8 +15522,8 @@ Invalid presets and immediate reduced threshold
     "Preset": 6
   },
   "expected": {
-    "Count": 0,
-    "Ready": false
+    "Ready": false,
+    "Count": 0
   }
 }
 ```
@@ -13219,8 +15538,8 @@ Invalid presets and immediate reduced threshold
     "Preset": 5
   },
   "expected": {
-    "Count": 1,
-    "Ready": false
+    "Ready": false,
+    "Count": 1
   }
 }
 ```
@@ -13235,8 +15554,8 @@ Invalid presets and immediate reduced threshold
     "Preset": 1
   },
   "expected": {
-    "Count": 1,
-    "Ready": true
+    "Ready": true,
+    "Count": 1
   }
 }
 ```
@@ -13251,8 +15570,8 @@ Invalid presets and immediate reduced threshold
     "Preset": 5
   },
   "expected": {
-    "Count": 0,
-    "Ready": false
+    "Ready": false,
+    "Count": 0
   }
 }
 ```
@@ -13271,7 +15590,7 @@ Initial state:
 }
 ```
 
-### edges 
+### edges
 
 Held pulses count once and target saturates
 
@@ -13303,7 +15622,8 @@ Held pulses count once and target saturates
   },
   "expected": {
     "Count": 1,
-    "Complete": false
+    "Complete": false,
+    "Error": false
   }
 }
 ```
@@ -13319,7 +15639,8 @@ Held pulses count once and target saturates
   },
   "expected": {
     "Count": 1,
-    "Complete": false
+    "Complete": false,
+    "Error": false
   }
 }
 ```
@@ -13334,7 +15655,9 @@ Held pulses count once and target saturates
     "Target": 2
   },
   "expected": {
-    "Count": 1
+    "Count": 1,
+    "Complete": false,
+    "Error": false
   }
 }
 ```
@@ -13350,7 +15673,8 @@ Held pulses count once and target saturates
   },
   "expected": {
     "Count": 2,
-    "Complete": true
+    "Complete": true,
+    "Error": false
   }
 }
 ```
@@ -13366,7 +15690,8 @@ Held pulses count once and target saturates
   },
   "expected": {
     "Count": 2,
-    "Complete": true
+    "Complete": true,
+    "Error": false
   }
 }
 ```
@@ -13382,13 +15707,14 @@ Held pulses count once and target saturates
   },
   "expected": {
     "Count": 2,
-    "Complete": true
+    "Complete": true,
+    "Error": false
   }
 }
 ```
 
 
-### reset_edge 
+### reset_edge
 
 Reset while pulse is high suppresses phantom count
 
@@ -13420,7 +15746,8 @@ Reset while pulse is high suppresses phantom count
   },
   "expected": {
     "Count": 0,
-    "Complete": false
+    "Complete": false,
+    "Error": false
   }
 }
 ```
@@ -13435,7 +15762,9 @@ Reset while pulse is high suppresses phantom count
     "Target": 1
   },
   "expected": {
-    "Count": 0
+    "Count": 0,
+    "Complete": false,
+    "Error": false
   }
 }
 ```
@@ -13451,7 +15780,8 @@ Reset while pulse is high suppresses phantom count
   },
   "expected": {
     "Count": 1,
-    "Complete": true
+    "Complete": true,
+    "Error": false
   }
 }
 ```
@@ -13505,7 +15835,7 @@ Initial state:
 }
 ```
 
-### annunciate 
+### annunciate
 
 Acknowledge, fault clear and new event
 
@@ -13612,7 +15942,7 @@ Acknowledge, fault clear and new event
 ```
 
 
-### reset_priority 
+### reset_priority
 
 Present fault blocks reset; removed fault reset wins
 
@@ -13668,6 +15998,62 @@ Present fault blocks reset; removed fault reset wins
 ```
 
 
+### V2_omission_regression
+
+Reject the concrete wrong behavior documented in the 2026-11-06 specification review.
+
+**Step 0**.
+
+```json
+{
+  "inputs": {
+    "Fault": true,
+    "Ack": false,
+    "Reset": true
+  },
+  "expected": {
+    "Alarm": true,
+    "Acknowledged": false,
+    "Horn": true
+  }
+}
+```
+
+**Step 1**.
+
+```json
+{
+  "inputs": {
+    "Fault": true,
+    "Ack": true,
+    "Reset": true
+  },
+  "expected": {
+    "Alarm": true,
+    "Acknowledged": true,
+    "Horn": false
+  }
+}
+```
+
+**Step 2**.
+
+```json
+{
+  "inputs": {
+    "Fault": true,
+    "Ack": true,
+    "Reset": true
+  },
+  "expected": {
+    "Alarm": true,
+    "Acknowledged": true,
+    "Horn": false
+  }
+}
+```
+
+
 ## SELF011 Single cycle actuator handshakes with one transition per scan
 
 Scan convention: At scan k, sample every input once, read retained pre-state q[k], execute one transition, and observe outputs O[k] at the end of that same scan. Updated state becomes q[k+1]. Reset the instance before each test. Step 0 executes normally; initial conditions describe pre-state, not an extra delayed scan. All timing in this task is explicitly counted in invocations, not wall time.
@@ -13681,7 +16067,7 @@ Initial state:
 }
 ```
 
-### handshake 
+### handshake
 
 Normal cycle and completion retention
 
@@ -13699,6 +16085,10 @@ Normal cycle and completion retention
     "RetractDone": false
   },
   "expected": {
+    "Extend": false,
+    "Clamp": false,
+    "Release": false,
+    "Retract": false,
     "Busy": false,
     "Done": false
   }
@@ -13720,6 +16110,9 @@ Normal cycle and completion retention
   },
   "expected": {
     "Extend": true,
+    "Clamp": false,
+    "Release": false,
+    "Retract": false,
     "Busy": true,
     "Done": false
   }
@@ -13740,7 +16133,12 @@ Normal cycle and completion retention
     "RetractDone": false
   },
   "expected": {
-    "Extend": true
+    "Extend": true,
+    "Clamp": false,
+    "Release": false,
+    "Retract": false,
+    "Busy": true,
+    "Done": false
   }
 }
 ```
@@ -13760,7 +16158,11 @@ Normal cycle and completion retention
   },
   "expected": {
     "Extend": false,
-    "Clamp": true
+    "Clamp": true,
+    "Release": false,
+    "Retract": false,
+    "Busy": true,
+    "Done": false
   }
 }
 ```
@@ -13779,8 +16181,12 @@ Normal cycle and completion retention
     "RetractDone": false
   },
   "expected": {
+    "Extend": false,
     "Clamp": false,
-    "Release": true
+    "Release": true,
+    "Retract": false,
+    "Busy": true,
+    "Done": false
   }
 }
 ```
@@ -13799,8 +16205,12 @@ Normal cycle and completion retention
     "RetractDone": false
   },
   "expected": {
+    "Extend": false,
+    "Clamp": false,
     "Release": false,
-    "Retract": true
+    "Retract": true,
+    "Busy": true,
+    "Done": false
   }
 }
 ```
@@ -13819,6 +16229,9 @@ Normal cycle and completion retention
     "RetractDone": true
   },
   "expected": {
+    "Extend": false,
+    "Clamp": false,
+    "Release": false,
     "Retract": false,
     "Busy": false,
     "Done": true
@@ -13840,6 +16253,10 @@ Normal cycle and completion retention
     "RetractDone": false
   },
   "expected": {
+    "Extend": false,
+    "Clamp": false,
+    "Release": false,
+    "Retract": false,
     "Busy": false,
     "Done": true
   }
@@ -13860,6 +16277,10 @@ Normal cycle and completion retention
     "RetractDone": false
   },
   "expected": {
+    "Extend": false,
+    "Clamp": false,
+    "Release": false,
+    "Retract": false,
     "Busy": false,
     "Done": false
   }
@@ -13867,7 +16288,7 @@ Normal cycle and completion retention
 ```
 
 
-### single_transition 
+### single_transition
 
 All handshakes cannot skip states; Stop aborts
 
@@ -13888,7 +16309,9 @@ All handshakes cannot skip states; Stop aborts
     "Extend": true,
     "Clamp": false,
     "Release": false,
-    "Retract": false
+    "Retract": false,
+    "Busy": true,
+    "Done": false
   }
 }
 ```
@@ -13908,7 +16331,11 @@ All handshakes cannot skip states; Stop aborts
   },
   "expected": {
     "Extend": false,
-    "Clamp": true
+    "Clamp": true,
+    "Release": false,
+    "Retract": false,
+    "Busy": true,
+    "Done": false
   }
 }
 ```
@@ -13927,8 +16354,12 @@ All handshakes cannot skip states; Stop aborts
     "RetractDone": true
   },
   "expected": {
+    "Extend": false,
     "Clamp": false,
-    "Release": true
+    "Release": true,
+    "Retract": false,
+    "Busy": true,
+    "Done": false
   }
 }
 ```
@@ -13971,6 +16402,10 @@ All handshakes cannot skip states; Stop aborts
     "RetractDone": true
   },
   "expected": {
+    "Extend": false,
+    "Clamp": false,
+    "Release": false,
+    "Retract": false,
     "Busy": false,
     "Done": false
   }
@@ -13992,7 +16427,7 @@ Initial state:
 }
 ```
 
-### exhaustion 
+### exhaustion
 
 Two automatic retries then third fault locks
 
@@ -14044,6 +16479,7 @@ Two automatic retries then third fault locks
   },
   "expected": {
     "Run": false,
+    "Locked": false,
     "Attempts": 0
   }
 }
@@ -14061,6 +16497,7 @@ Two automatic retries then third fault locks
   },
   "expected": {
     "Run": true,
+    "Locked": false,
     "Attempts": 1
   }
 }
@@ -14078,6 +16515,7 @@ Two automatic retries then third fault locks
   },
   "expected": {
     "Run": false,
+    "Locked": false,
     "Attempts": 1
   }
 }
@@ -14095,6 +16533,7 @@ Two automatic retries then third fault locks
   },
   "expected": {
     "Run": false,
+    "Locked": false,
     "Attempts": 1
   }
 }
@@ -14112,6 +16551,7 @@ Two automatic retries then third fault locks
   },
   "expected": {
     "Run": true,
+    "Locked": false,
     "Attempts": 2
   }
 }
@@ -14190,7 +16630,7 @@ Two automatic retries then third fault locks
 ```
 
 
-### dwell_interrupt 
+### dwell_interrupt
 
 Fault interrupts healthy dwell; Stop aborts wait
 
@@ -14206,6 +16646,7 @@ Fault interrupts healthy dwell; Stop aborts wait
   },
   "expected": {
     "Run": true,
+    "Locked": false,
     "Attempts": 0
   }
 }
@@ -14223,6 +16664,7 @@ Fault interrupts healthy dwell; Stop aborts wait
   },
   "expected": {
     "Run": false,
+    "Locked": false,
     "Attempts": 0
   }
 }
@@ -14239,7 +16681,9 @@ Fault interrupts healthy dwell; Stop aborts wait
     "Reset": false
   },
   "expected": {
-    "Run": false
+    "Run": false,
+    "Locked": false,
+    "Attempts": 0
   }
 }
 ```
@@ -14255,7 +16699,9 @@ Fault interrupts healthy dwell; Stop aborts wait
     "Reset": false
   },
   "expected": {
-    "Run": false
+    "Run": false,
+    "Locked": false,
+    "Attempts": 0
   }
 }
 ```
@@ -14271,7 +16717,9 @@ Fault interrupts healthy dwell; Stop aborts wait
     "Reset": false
   },
   "expected": {
-    "Run": false
+    "Run": false,
+    "Locked": false,
+    "Attempts": 0
   }
 }
 ```
@@ -14288,6 +16736,7 @@ Fault interrupts healthy dwell; Stop aborts wait
   },
   "expected": {
     "Run": true,
+    "Locked": false,
     "Attempts": 1
   }
 }
@@ -14305,6 +16754,7 @@ Fault interrupts healthy dwell; Stop aborts wait
   },
   "expected": {
     "Run": false,
+    "Locked": false,
     "Attempts": 1
   }
 }
@@ -14322,6 +16772,7 @@ Fault interrupts healthy dwell; Stop aborts wait
   },
   "expected": {
     "Run": false,
+    "Locked": false,
     "Attempts": 1
   }
 }
@@ -14339,7 +16790,67 @@ Fault interrupts healthy dwell; Stop aborts wait
   },
   "expected": {
     "Run": false,
+    "Locked": false,
     "Attempts": 1
+  }
+}
+```
+
+
+### V2_omission_regression
+
+Reject the concrete wrong behavior documented in the 2026-11-06 specification review.
+
+**Step 0**.
+
+```json
+{
+  "inputs": {
+    "Start": true,
+    "Stop": false,
+    "Fault": false,
+    "Reset": false
+  },
+  "expected": {
+    "Run": true,
+    "Locked": false,
+    "Attempts": 0
+  }
+}
+```
+
+**Step 1**.
+
+```json
+{
+  "inputs": {
+    "Start": false,
+    "Stop": false,
+    "Fault": false,
+    "Reset": false
+  },
+  "expected": {
+    "Run": true,
+    "Locked": false,
+    "Attempts": 0
+  }
+}
+```
+
+**Step 2**.
+
+```json
+{
+  "inputs": {
+    "Start": false,
+    "Stop": false,
+    "Fault": false,
+    "Reset": false
+  },
+  "expected": {
+    "Run": true,
+    "Locked": false,
+    "Attempts": 0
   }
 }
 ```

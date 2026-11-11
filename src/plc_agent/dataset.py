@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import Counter
+import re
 
 from .common import ROOT, digest, read_json
 
@@ -21,6 +22,18 @@ def validate(tasks):
         errors.extend(f"{tid}: missing {k}" for k in required - task.keys())
         if not task.get("ltl") or not task.get("tests"):
             errors.append(f"{tid}: needs LTL and functional tests")
+        if task.get('specification_version','').startswith('2.1-normalized'):
+            normalized=task.get('normalized_specification',{})
+            if normalized.get('status')!='NORMALIZED_PENDING_HUMAN_REVIEW':
+                errors.append(f'{tid}: missing normalized definition/review boundary')
+            if normalized.get('candidate_formal_verification')!='UNVERIFIED':
+                errors.append(f'{tid}: normalization must not certify candidate ST')
+            for prop in task.get('ltl',[]):
+                formula=prop['formula']
+                if 'forall' in formula or re.search(r'X\([^()]*\)\s*(?:=|<(?!->)|>|\+)',formula):
+                    errors.append(f'{tid}/{prop["id"]}: non-Boolean next or unexpanded quantifier')
+            if not normalized.get('transition',{}).get('module_sha256'):
+                errors.append(f'{tid}: unpinned transition definition')
         names = [v["name"].casefold() for v in task.get("interface", [])]
         if len(names) != len(set(names)):
             errors.append(f"{tid}: duplicate case-insensitive IEC identifiers")
@@ -43,7 +56,9 @@ def validate(tasks):
             "test_cases": sum(len(t.get("tests", [])) for t in tasks),
             "test_steps": sum(len(c["steps"]) for t in tasks for c in t.get("tests", [])),
             "ltl_properties": sum(len(t.get("ltl", [])) for t in tasks),
-            "dataset_sha256": digest(tasks), "errors": errors}
+            "dataset_sha256": digest(tasks), "errors": errors,
+            "normalized_tasks":sum('normalized_specification' in t for t in tasks),
+            "normalization_is_formal_proof":False}
 
 def public_coverage(tasks, source):
     expected = [x["en"] for group in ("easy", "medium", "hard") for x in source[group]]

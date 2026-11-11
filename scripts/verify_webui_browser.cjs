@@ -4,14 +4,14 @@ const fs=require('node:fs');
 const path=require('node:path');
 const assert=require('node:assert/strict');
 (async()=>{
-  const output=path.resolve('results/raw/ui_localization_20261111');fs.mkdirSync(output,{recursive:true});
+  const output=path.resolve(process.env.PLC_UI_CHECK_OUTPUT||'results/raw/ui_localization_20261111');fs.mkdirSync(output,{recursive:true});
   const browser=await chromium.launch({channel:'msedge',headless:true});
   try{
     const page=await browser.newPage({viewport:{width:1440,height:1000}});
     const errors=[];page.on('pageerror',e=>errors.push(e.message));
     await page.route('**/api/evaluate',route=>route.abort());
     await page.route('**/api/check-reference-model',route=>route.abort());
-    await page.goto('http://127.0.0.1:8765/?task=PUB001&scope=all');
+    await page.goto((process.env.PLC_UI_CHECK_URL||'http://127.0.0.1:8765')+'/?task=PUB001&scope=all');
     await page.waitForFunction(()=>gCurrentTask?.task.id==='PUB001');
     assert.equal(await page.locator('#language-select').inputValue(),'zh');
     assert.equal(await page.locator('.pilot-card').count(),32);

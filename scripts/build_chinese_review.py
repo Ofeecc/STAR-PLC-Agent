@@ -226,6 +226,20 @@ def main():
                 if p['formula']=='G(CompleteBehaviorV2)':
                     props[p['id']]={'formula':p['formula'],'description':'每次调用的全部输出与保留历史必须满足完整行为关系；具体转移规则见上方完整规约。','review':'CompleteBehaviorV2是解释性复合谓词；必须显式展开并绑定实际候选输出后才能模型检查，不能把名称当成已完成证明。'}
             row={'id':tid,'title_zh':title,'translation_zh':translation,'assumptions_zh':assumptions,'review_points_zh':notes,'properties_zh':props}
+        # Rebind editorial translations to the versioned normalized definitions.
+        for prop in task['ltl']:
+            item=row['properties_zh'][prop['id']]
+            changed=item['formula']!=prop['formula']
+            item['formula']=prop['formula']
+            if prop['formula']=='G(CompleteBehaviorV2)':
+                item['description']='每拍将独立参考转移的期望结果与候选实际输出逐项比较；转移、初值、数值比较和不约束字段均有固定定义。'
+                item['review']='这是已定义的扫描谓词；仍待人工合理性审核，不代表已完成ST模型转换或无限时序证明。'
+            elif tid=='PUB002' and prop['id']=='P6':
+                item['description']='对DWORD的0～31位逐位比较：本拍输入位等价于下一拍输入历史位。X只作用于布尔位命题，前值初始全0。'
+            elif tid=='PUB009' and prop['id']=='P6':
+                item['description']='本拍布尔trigger等价于下一拍布尔previousTrigger；非法窗、复位等分支也必须更新输入历史。'
+            if changed:
+                item['review']+=' 本轮公式已规范化，请重新核对含义；量化按绑定长度有限展开。'
         pin_text=INTERFACES[tid].split('|')
         test_text=TESTS[tid].split('|')
         assert len(pin_text)==len(task['interface']),tid
@@ -243,6 +257,9 @@ def main():
         rows.append(row)
     output={'version':'2026-11-11','description':'Display-only Chinese translations, not new benchmark requirements or completed human approval.', 'dataset_sha256':before,'tasks':rows}
     write_json(ROOT/'configs/task_review_zh.json',output)
+    # Keep the original six-task entry point current as well.
+    write_json(ROOT/'configs/pilot_review.json',{'description':'六题规范化审核材料；仍待人工确认，不是形式证明。',
+        'tasks':[r for tid in pilot for r in rows if r['id']==tid]})
     assert digest(load_tasks())==before,'Benchmark inputs unexpectedly changed'
     print(f"Built {len(rows)} task reviews, {sum(len(r['properties_zh']) for r in rows)} property descriptions, all interfaces and fixed-test labels; dataset unchanged.")
 

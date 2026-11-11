@@ -3,38 +3,38 @@ This document is generated from the task JSON files. It records requirements, pr
 Regenerate after a deliberate dataset revision with `python scripts/build_dataset_docs.py`, then prepare a new campaign when the frozen hash has changed.
 | ID | Origin | Difficulty | Title | LTL properties | Cases | Scan observations |
 | --- | --- | --- | --- | ---: | ---: | ---: |
-| PUB001 | public | easy | Automated Filling Line Control | 10 | 2 | 16 |
-| PUB002 | public | easy | Dual-Word Edge Detection | 6 | 2 | 12 |
-| PUB003 | public | easy | Alarm Handling | 9 | 2 | 13 |
-| PUB004 | public | easy | Jam Pump Debouncing and Runtime Maintenance | 7 | 3 | 20 |
-| PUB005 | public | easy | Weld Gap Alarm and Startup Inhibition | 5 | 2 | 14 |
-| PUB006 | public | easy | Aeration Blower Delayed Start | 5 | 2 | 15 |
-| PUB007 | public | medium | Multi-Pump Switching Control System | 5 | 2 | 6 |
-| PUB008 | public | medium | Analog Batch Processing | 8 | 3 | 4 |
-| PUB009 | public | medium | Calculate Moving Average | 7 | 2 | 15 |
-| PUB010 | public | medium | Temperature Logic Control | 8 | 3 | 18 |
-| PUB011 | public | medium | Automated Production Line Control | 6 | 3 | 16 |
-| PUB012 | public | medium | Slab Thickness Alarm and Fault History | 6 | 3 | 25 |
-| PUB013 | public | medium | Office HVAC Multi-mode Energy-Saving Control | 6 | 2 | 15 |
-| PUB014 | public | medium | IPv4 Parsing with Format and Range Checks | 3 | 2 | 19 |
-| PUB015 | public | hard | Material Proportioning Process Control | 6 | 3 | 22 |
-| PUB016 | public | hard | Flexible Processing Control | 6 | 3 | 18 |
-| PUB017 | public | hard | Recipe Management System | 6 | 3 | 48 |
-| PUB018 | public | hard | FIFO First-In-First-Out Queue | 5 | 3 | 34 |
-| PUB019 | public | hard | Mechanical Arm Control | 9 | 5 | 45 |
-| PUB020 | public | hard | Production Control | 9 | 7 | 59 |
-| SELF001 | self_built | easy | Guarded motor with retained run command | 5 | 2 | 10 |
-| SELF002 | self_built | medium | Reversing jog drive with a neutral scan | 6 | 2 | 10 |
-| SELF003 | self_built | medium | Emergency stop reset with restart inhibition | 6 | 2 | 10 |
-| SELF004 | self_built | medium | Pallet indexing with a latched jam fault | 7 | 2 | 11 |
-| SELF005 | self_built | medium | Three phase signal with externally clocked durations | 7 | 2 | 12 |
-| SELF006 | self_built | easy | Tank filling with hysteresis and sensor inconsistency | 5 | 2 | 10 |
-| SELF007 | self_built | medium | Duty standby alternation with healthy pump fallback | 7 | 2 | 12 |
-| SELF008 | self_built | easy | Consecutive scan qualification with an immediate trip | 5 | 2 | 11 |
-| SELF009 | self_built | easy | Rising edge batch counter with reset sampling | 5 | 2 | 13 |
-| SELF010 | self_built | medium | Latched alarm with acknowledgment and reannunciation | 6 | 2 | 9 |
-| SELF011 | self_built | hard | Single cycle actuator handshakes with one transition per scan | 9 | 2 | 14 |
-| SELF012 | self_built | hard | Bounded automatic fault retries with a recovery dwell | 7 | 2 | 20 |
+| PUB001 | public | easy | Automated Filling Line Control | 11 | 2 | 16 |
+| PUB002 | public | easy | Dual-Word Edge Detection | 7 | 3 | 14 |
+| PUB003 | public | easy | Alarm Handling | 10 | 3 | 19 |
+| PUB004 | public | easy | Jam Pump Debouncing and Runtime Maintenance | 8 | 4 | 25 |
+| PUB005 | public | easy | Weld Gap Alarm and Startup Inhibition | 6 | 2 | 14 |
+| PUB006 | public | easy | Aeration Blower Delayed Start | 6 | 3 | 20 |
+| PUB007 | public | medium | Multi-Pump Switching Control System | 6 | 3 | 10 |
+| PUB008 | public | medium | Analog Batch Processing | 9 | 4 | 5 |
+| PUB009 | public | medium | Calculate Moving Average | 8 | 3 | 22 |
+| PUB010 | public | medium | Temperature Logic Control | 10 | 4 | 21 |
+| PUB011 | public | medium | Automated Production Line Control | 7 | 4 | 19 |
+| PUB012 | public | medium | Slab Thickness Alarm and Fault History | 7 | 3 | 25 |
+| PUB013 | public | medium | Office HVAC Multi-mode Energy-Saving Control | 7 | 3 | 20 |
+| PUB014 | public | medium | IPv4 Parsing with Format and Range Checks | 4 | 3 | 23 |
+| PUB015 | public | hard | Material Proportioning Process Control | 7 | 4 | 32 |
+| PUB016 | public | hard | Flexible Processing Control | 7 | 4 | 27 |
+| PUB017 | public | hard | Recipe Management System | 7 | 3 | 48 |
+| PUB018 | public | hard | FIFO First-In-First-Out Queue | 6 | 3 | 34 |
+| PUB019 | public | hard | Mechanical Arm Control | 10 | 5 | 45 |
+| PUB020 | public | hard | Production Control | 10 | 8 | 75 |
+| SELF001 | self_built | easy | Guarded motor with retained run command | 6 | 2 | 10 |
+| SELF002 | self_built | medium | Reversing jog drive with a neutral scan | 7 | 2 | 10 |
+| SELF003 | self_built | medium | Emergency stop reset with restart inhibition | 9 | 3 | 14 |
+| SELF004 | self_built | medium | Pallet indexing with a latched jam fault | 8 | 2 | 11 |
+| SELF005 | self_built | medium | Three phase signal with externally clocked durations | 8 | 2 | 12 |
+| SELF006 | self_built | easy | Tank filling with hysteresis and sensor inconsistency | 6 | 2 | 10 |
+| SELF007 | self_built | medium | Duty standby alternation with healthy pump fallback | 10 | 3 | 15 |
+| SELF008 | self_built | easy | Consecutive scan qualification with an immediate trip | 6 | 2 | 11 |
+| SELF009 | self_built | easy | Rising edge batch counter with reset sampling | 6 | 2 | 13 |
+| SELF010 | self_built | medium | Latched alarm with acknowledgment and reannunciation | 7 | 3 | 12 |
+| SELF011 | self_built | hard | Single cycle actuator handshakes with one transition per scan | 10 | 2 | 14 |
+| SELF012 | self_built | hard | Bounded automatic fault retries with a recovery dwell | 8 | 3 | 23 |
 
 ## PUB001 Automated Filling Line Control
 
@@ -138,17 +138,154 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 - Confirmation inputs are level sampled. A held confirmation can complete its relevant phase on a later scan, but cannot skip several phases in one scan.
 - finishedButton resets only the completed phase. A bottle still present can start a new cleaning cycle on the following idle scan.
 - For the progress property, future confirmations are ordered and sustained until their matching phase accepts them. Unordered one-scan pulses do not imply completion.
+- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
 
-- `phase`: Ghost pre-scan state 0 idle, 1 cleaning, 2 filling, 3 capping, 4 packing, 5 complete; phase is updated once per scan.
-- `oneHotOutputs`: At most one of Pump_Motor, Filling_Valve, Capping_Machine, Packing_Machine, Completion_Light is TRUE.
-- `init`: Before the first scan, phase=0 and all outputs FALSE.
+- `phase`: Spre.phase (0..5); phase at the next LTL position is this scan's Spost.phase
+- `oneHotOutputs`: sum(int(O[k][n]) for n in [Pump_Motor,Filling_Valve,Capping_Machine,Packing_Machine,Completion_Light]) <= 1
+- `init`: At the separate pre-invocation initial observation: Spre.phase=0 AND each actual listed initial output is FALSE
 - `all variable names`: The identically named sampled input or end-of-scan output in interface.
+- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_PUB001(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+参考阶段q初值0。事件按q选bottleSensor、cleaningConfirmButton、fillingConfirmButton、cappingConfirmButton、packingConfirmButton、finishedButton；选中事件真则qAfter=(q+1)%6，否则qAfter=q。五个期望输出依次为qAfter=1、2、3、4、5，每拍只选择旧q的一个分支。
+- `bottleSensor`: I[k].bottleSensor: sampled input (BOOL).
+- `cleaningConfirmButton`: I[k].cleaningConfirmButton: sampled input (BOOL).
+- `fillingConfirmButton`: I[k].fillingConfirmButton: sampled input (BOOL).
+- `cappingConfirmButton`: I[k].cappingConfirmButton: sampled input (BOOL).
+- `packingConfirmButton`: I[k].packingConfirmButton: sampled input (BOOL).
+- `finishedButton`: I[k].finishedButton: sampled input (BOOL).
+- `Pump_Motor`: O[k].Pump_Motor: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `Filling_Valve`: O[k].Filling_Valve: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `Capping_Machine`: O[k].Capping_Machine: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `Packing_Machine`: O[k].Packing_Machine: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `Completion_Light`: O[k].Completion_Light: independently observed post-scan candidate value (BOOL); never defined as expected output.
 
 ### LTL properties
 
-**P1** 
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+
+### Normalized state, observation and predicate definitions
+
+```json
+{
+  "schema_version": 1,
+  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
+  "candidate_formal_verification": "UNVERIFIED",
+  "initial_observed": {
+    "Pump_Motor": false,
+    "Filling_Valve": false,
+    "Capping_Machine": false,
+    "Packing_Machine": false,
+    "Completion_Light": false
+  },
+  "reference_state_initial": {
+    "class": "ScanContract",
+    "state": {
+      "task_id": "PUB001",
+      "array_contract": null,
+      "process_contract": null,
+      "timed_contract": null,
+      "data_contract": null,
+      "reference": null,
+      "phase": 0,
+      "previous_mode": null,
+      "clock": 0.0,
+      "heat_start": null,
+      "protection_start": null,
+      "demand": false
+    }
+  },
+  "transition": {
+    "entrypoint": "plc_agent.normalized_spec.reference_step(task, reference, deepCopy(I[k]), dt_ms[k])",
+    "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('PUB001'); constructed once per independent case, current state is Sref[k].",
+    "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
+    "module_sha256": {
+      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
+      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
+      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
+      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
+      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
+      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+    },
+    "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
+    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+  },
+  "constrained_observed_fields": [
+    "Capping_Machine",
+    "Completion_Light",
+    "Filling_Valve",
+    "Packing_Machine",
+    "Pump_Motor"
+  ],
+  "unconstrained_representation_fields": [],
+  "comparison": {
+    "integer_boolean": "exact type and value; no tolerance",
+    "float": "finite; abs error<=1e-5; dictionary/list shape and non-float values exact",
+    "PUB008": "only successfully converted channels[j].outputValue: abs<=1e-5 OR rel<=2e-6; all preserved/config fields exact",
+    "PUB017": "Successful deletion constrains recipeID=0; other fields of that deleted slot are unconstrained for the deletion scan. Subsequent no-write scans preserve the sampled actual representation. This observer history is separate from the logical reference database.",
+    "TIME_LTIME": "exact integer nanoseconds after IEC literal parsing",
+    "implementation": "plc_agent.normalized_spec.NormalizedScanMonitor.step with output_matches (pinned sources); observer histories never drive the independent logical reference"
+  },
+  "observation": {
+    "I[k]": "deep-copied inputs immediately before invocation k",
+    "O[k]": "actual outputs immediately after invocation k, supplied by independent execution backend",
+    "Sref[k]": "independent reference state BEFORE k; unrelated to similarly named candidate variables",
+    "initial": "fresh instance BEFORE invocation 0; never substituted by O[0]",
+    "X": "next scan-sequence position; argument must be Boolean, not a numeric term",
+    "time": "dt_ms is observed elapsed time; public timers use physical time, SELF Tick/count timers use logical scans"
+  },
+  "history_bindings": {},
+  "auxiliary_state_bindings": {
+    "Spre": "Sref[k], before the invocation; initialized by reference_state_initial",
+    "Spost": "Sref[k+1], after exactly one pinned transition on I[k]",
+    "first": "k=0 (first invocation); distinct from the pre-invocation initial observation",
+    "pre-output": "actual O[k-1] for OUTPUT (explicit history initial where declared); I[k] for caller-owned IN_OUT",
+    "previous-input": "I[k-1] for k>=1; edge memory for BOOL requests initially FALSE and updated after EVERY invocation",
+    "reference_warning": "Spre/Spost predicates are input-driven ghosts, not evidence that candidate internals match. Conclusions about the candidate must constrain actual O.",
+    "phase": {
+      "pre": "Spre.phase",
+      "post": "Spost.phase",
+      "enum": {
+        "0": "IDLE",
+        "1": "CLEANING",
+        "2": "FILLING",
+        "3": "CAPPING",
+        "4": "PACKING",
+        "5": "COMPLETE"
+      },
+      "initial": 0
+    }
+  },
+  "finite_conjunctions": {},
+  "reference_state_rule": "Initial state is the serialized constructor above; all fields update solely through the pinned transition. Ghost phase/history/queue are names for this state, not observed candidate state.",
+  "primitives": {
+    "bitwise": "DWORD AND/NOT and popcount operate on unsigned 32-bit values; complement is masked by 0xFFFFFFFF.",
+    "time_literals": "IEC TIME/LTIME literals are exact integer durations in nanoseconds.",
+    "observed_arrays": "All IN_OUT inputs are snapshots before invocation; outputs are independently acquired after invocation. Physical bounds map by ordinal, never share another array lower bound.",
+    "boolean_next": "X takes a Boolean formula. Numeric history transport is bit-expanded for DWORD; Boolean histories use equivalence.",
+    "time_progress": "Timed eventuality clauses explicitly require G(F(TimeTick)); TimeTick denotes crossing a new integer-ms boundary. Finite observations cannot establish this premise."
+  },
+  "assumptions": [
+    "The five process actuators are mutually exclusive; each completed phase switches off its actuator when the next starts.",
+    "One phase transition at most is allowed per scan. Confirmation signals outside their active phase are ignored.",
+    "Confirmation inputs are level sampled. A held confirmation can complete its relevant phase on a later scan, but cannot skip several phases in one scan.",
+    "finishedButton resets only the completed phase. A bottle still present can start a new cleaning cycle on the following idle scan.",
+    "For the progress property, future confirmations are ordered and sustained until their matching phase accepts them. Unordered one-scan pulses do not imply completion.",
+    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+  ],
+  "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
+  "limitations": [
+    "No ST-to-model translation or infinite-trace proof is implemented here.",
+    "Focused legacy LTL predicates still require backend lowering; normalization is not model-checker acceptance.",
+    "Finite matching cannot establish liveness or validate runtime provenance."
+  ],
+  "rules_zh": "参考阶段q初值0。事件按q选bottleSensor、cleaningConfirmButton、fillingConfirmButton、cappingConfirmButton、packingConfirmButton、finishedButton；选中事件真则qAfter=(q+1)%6，否则qAfter=q。五个期望输出依次为qAfter=1、2、3、4、5，每拍只选择旧q的一个分支。"
+}
+```
+
+**P1**
 
 ```text
 init
@@ -156,7 +293,7 @@ init
 
 A fresh instance is idle with outputs off before first execution.
 
-**P2** 
+**P2**
 
 ```text
 G(oneHotOutputs)
@@ -164,7 +301,7 @@ G(oneHotOutputs)
 
 No two processing stages are energized together.
 
-**P3** 
+**P3**
 
 ```text
 G((phase=0 & bottleSensor) -> (Pump_Motor & X(phase=1)))
@@ -172,7 +309,7 @@ G((phase=0 & bottleSensor) -> (Pump_Motor & X(phase=1)))
 
 Bottle detection starts cleaning in the same scan.
 
-**P4** 
+**P4**
 
 ```text
 G((phase=1 & cleaningConfirmButton) -> (Filling_Valve & X(phase=2)))
@@ -180,7 +317,7 @@ G((phase=1 & cleaningConfirmButton) -> (Filling_Valve & X(phase=2)))
 
 A phase-specific confirmation advances exactly one stage.
 
-**P5** 
+**P5**
 
 ```text
 G((phase=2 & fillingConfirmButton) -> (Capping_Machine & X(phase=3)))
@@ -188,7 +325,7 @@ G((phase=2 & fillingConfirmButton) -> (Capping_Machine & X(phase=3)))
 
 A phase-specific confirmation advances exactly one stage.
 
-**P6** 
+**P6**
 
 ```text
 G((phase=3 & cappingConfirmButton) -> (Packing_Machine & X(phase=4)))
@@ -196,7 +333,7 @@ G((phase=3 & cappingConfirmButton) -> (Packing_Machine & X(phase=4)))
 
 A phase-specific confirmation advances exactly one stage.
 
-**P7** 
+**P7**
 
 ```text
 G((phase=4 & packingConfirmButton) -> (Completion_Light & X(phase=5)))
@@ -204,7 +341,7 @@ G((phase=4 & packingConfirmButton) -> (Completion_Light & X(phase=5)))
 
 A phase-specific confirmation advances exactly one stage.
 
-**P8** 
+**P8**
 
 ```text
 G((phase=5 & !finishedButton) -> (Completion_Light & X(phase=5)))
@@ -212,7 +349,7 @@ G((phase=5 & !finishedButton) -> (Completion_Light & X(phase=5)))
 
 Completion persists until pickup is confirmed.
 
-**P9** 
+**P9**
 
 ```text
 G((phase=5 & finishedButton) -> (!Completion_Light & X(phase=0)))
@@ -220,13 +357,21 @@ G((phase=5 & finishedButton) -> (!Completion_Light & X(phase=0)))
 
 Pickup confirmation rearms the line.
 
-**P10** 
+**P10**
 
 ```text
 G((phase=1 & G((phase=1) -> F(cleaningConfirmButton)) & G((phase=2) -> F(fillingConfirmButton)) & G((phase=3) -> F(cappingConfirmButton)) & G((phase=4) -> F(packingConfirmButton))) -> F(Completion_Light))
 ```
 
 Conditional progress: from cleaning, if every active phase eventually receives its matching confirmation, completion eventually occurs.
+
+**PUB001.V2.COMPLETE**
+
+```text
+G(CompleteBehaviorV2)
+```
+
+Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
 
 ### Fixed test index
 
@@ -324,18 +469,298 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 
 - The previous DWORD is initialized to DWORD#0. Therefore nonzero bits on the first scan count as rising edges.
 - Bitwise complement is restricted to 32 bits; counts range from 0 through 32.
+- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
 
-- `prev`: Ghost pre-scan previous DWORD; initialized to zero.
-- `risingBits`: End-of-scan mask value & NOT prev, restricted to DWORD width.
-- `fallingBits`: End-of-scan mask prev & NOT value, restricted to DWORD width.
+- `prev`: {"kind": "previous_sampled_input", "source": "I[k-1].value", "initial": 0, "update": "After EVERY scan k, including invalid/reset/stop, store I[k].value"}
+- `risingBits`: O[k].risingBits: independently observed post-scan candidate value (DWORD); never defined as expected output.
+- `fallingBits`: O[k].fallingBits: independently observed post-scan candidate value (DWORD); never defined as expected output.
 - `popcount`: Number of set bits in the unsigned 32-bit argument.
 - `other interface names`: Identically named sampled inputs or observed outputs.
+- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_PUB002(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+prev初值DWORD#0。rise=value & (~prev & 0xFFFFFFFF)，fall=prev & (~value & 0xFFFFFFFF)。两个掩码、popcount、掩码非零标志和value!=prev标志分别与实际七个输出比较；prevAfter=value，每次调用更新一次。
+- `ValueBit0`: Boolean ((I[k].value >> 0) & 1) = 1, unsigned DWORD width 32.
+- `PrevBit0`: Boolean ((inputMemory.prev[k] >> 0) & 1) = 1; prev[0]=0; prev[k+1]=I[k].value.
+- `ValueBit1`: Boolean ((I[k].value >> 1) & 1) = 1, unsigned DWORD width 32.
+- `PrevBit1`: Boolean ((inputMemory.prev[k] >> 1) & 1) = 1; prev[0]=0; prev[k+1]=I[k].value.
+- `ValueBit2`: Boolean ((I[k].value >> 2) & 1) = 1, unsigned DWORD width 32.
+- `PrevBit2`: Boolean ((inputMemory.prev[k] >> 2) & 1) = 1; prev[0]=0; prev[k+1]=I[k].value.
+- `ValueBit3`: Boolean ((I[k].value >> 3) & 1) = 1, unsigned DWORD width 32.
+- `PrevBit3`: Boolean ((inputMemory.prev[k] >> 3) & 1) = 1; prev[0]=0; prev[k+1]=I[k].value.
+- `ValueBit4`: Boolean ((I[k].value >> 4) & 1) = 1, unsigned DWORD width 32.
+- `PrevBit4`: Boolean ((inputMemory.prev[k] >> 4) & 1) = 1; prev[0]=0; prev[k+1]=I[k].value.
+- `ValueBit5`: Boolean ((I[k].value >> 5) & 1) = 1, unsigned DWORD width 32.
+- `PrevBit5`: Boolean ((inputMemory.prev[k] >> 5) & 1) = 1; prev[0]=0; prev[k+1]=I[k].value.
+- `ValueBit6`: Boolean ((I[k].value >> 6) & 1) = 1, unsigned DWORD width 32.
+- `PrevBit6`: Boolean ((inputMemory.prev[k] >> 6) & 1) = 1; prev[0]=0; prev[k+1]=I[k].value.
+- `ValueBit7`: Boolean ((I[k].value >> 7) & 1) = 1, unsigned DWORD width 32.
+- `PrevBit7`: Boolean ((inputMemory.prev[k] >> 7) & 1) = 1; prev[0]=0; prev[k+1]=I[k].value.
+- `ValueBit8`: Boolean ((I[k].value >> 8) & 1) = 1, unsigned DWORD width 32.
+- `PrevBit8`: Boolean ((inputMemory.prev[k] >> 8) & 1) = 1; prev[0]=0; prev[k+1]=I[k].value.
+- `ValueBit9`: Boolean ((I[k].value >> 9) & 1) = 1, unsigned DWORD width 32.
+- `PrevBit9`: Boolean ((inputMemory.prev[k] >> 9) & 1) = 1; prev[0]=0; prev[k+1]=I[k].value.
+- `ValueBit10`: Boolean ((I[k].value >> 10) & 1) = 1, unsigned DWORD width 32.
+- `PrevBit10`: Boolean ((inputMemory.prev[k] >> 10) & 1) = 1; prev[0]=0; prev[k+1]=I[k].value.
+- `ValueBit11`: Boolean ((I[k].value >> 11) & 1) = 1, unsigned DWORD width 32.
+- `PrevBit11`: Boolean ((inputMemory.prev[k] >> 11) & 1) = 1; prev[0]=0; prev[k+1]=I[k].value.
+- `ValueBit12`: Boolean ((I[k].value >> 12) & 1) = 1, unsigned DWORD width 32.
+- `PrevBit12`: Boolean ((inputMemory.prev[k] >> 12) & 1) = 1; prev[0]=0; prev[k+1]=I[k].value.
+- `ValueBit13`: Boolean ((I[k].value >> 13) & 1) = 1, unsigned DWORD width 32.
+- `PrevBit13`: Boolean ((inputMemory.prev[k] >> 13) & 1) = 1; prev[0]=0; prev[k+1]=I[k].value.
+- `ValueBit14`: Boolean ((I[k].value >> 14) & 1) = 1, unsigned DWORD width 32.
+- `PrevBit14`: Boolean ((inputMemory.prev[k] >> 14) & 1) = 1; prev[0]=0; prev[k+1]=I[k].value.
+- `ValueBit15`: Boolean ((I[k].value >> 15) & 1) = 1, unsigned DWORD width 32.
+- `PrevBit15`: Boolean ((inputMemory.prev[k] >> 15) & 1) = 1; prev[0]=0; prev[k+1]=I[k].value.
+- `ValueBit16`: Boolean ((I[k].value >> 16) & 1) = 1, unsigned DWORD width 32.
+- `PrevBit16`: Boolean ((inputMemory.prev[k] >> 16) & 1) = 1; prev[0]=0; prev[k+1]=I[k].value.
+- `ValueBit17`: Boolean ((I[k].value >> 17) & 1) = 1, unsigned DWORD width 32.
+- `PrevBit17`: Boolean ((inputMemory.prev[k] >> 17) & 1) = 1; prev[0]=0; prev[k+1]=I[k].value.
+- `ValueBit18`: Boolean ((I[k].value >> 18) & 1) = 1, unsigned DWORD width 32.
+- `PrevBit18`: Boolean ((inputMemory.prev[k] >> 18) & 1) = 1; prev[0]=0; prev[k+1]=I[k].value.
+- `ValueBit19`: Boolean ((I[k].value >> 19) & 1) = 1, unsigned DWORD width 32.
+- `PrevBit19`: Boolean ((inputMemory.prev[k] >> 19) & 1) = 1; prev[0]=0; prev[k+1]=I[k].value.
+- `ValueBit20`: Boolean ((I[k].value >> 20) & 1) = 1, unsigned DWORD width 32.
+- `PrevBit20`: Boolean ((inputMemory.prev[k] >> 20) & 1) = 1; prev[0]=0; prev[k+1]=I[k].value.
+- `ValueBit21`: Boolean ((I[k].value >> 21) & 1) = 1, unsigned DWORD width 32.
+- `PrevBit21`: Boolean ((inputMemory.prev[k] >> 21) & 1) = 1; prev[0]=0; prev[k+1]=I[k].value.
+- `ValueBit22`: Boolean ((I[k].value >> 22) & 1) = 1, unsigned DWORD width 32.
+- `PrevBit22`: Boolean ((inputMemory.prev[k] >> 22) & 1) = 1; prev[0]=0; prev[k+1]=I[k].value.
+- `ValueBit23`: Boolean ((I[k].value >> 23) & 1) = 1, unsigned DWORD width 32.
+- `PrevBit23`: Boolean ((inputMemory.prev[k] >> 23) & 1) = 1; prev[0]=0; prev[k+1]=I[k].value.
+- `ValueBit24`: Boolean ((I[k].value >> 24) & 1) = 1, unsigned DWORD width 32.
+- `PrevBit24`: Boolean ((inputMemory.prev[k] >> 24) & 1) = 1; prev[0]=0; prev[k+1]=I[k].value.
+- `ValueBit25`: Boolean ((I[k].value >> 25) & 1) = 1, unsigned DWORD width 32.
+- `PrevBit25`: Boolean ((inputMemory.prev[k] >> 25) & 1) = 1; prev[0]=0; prev[k+1]=I[k].value.
+- `ValueBit26`: Boolean ((I[k].value >> 26) & 1) = 1, unsigned DWORD width 32.
+- `PrevBit26`: Boolean ((inputMemory.prev[k] >> 26) & 1) = 1; prev[0]=0; prev[k+1]=I[k].value.
+- `ValueBit27`: Boolean ((I[k].value >> 27) & 1) = 1, unsigned DWORD width 32.
+- `PrevBit27`: Boolean ((inputMemory.prev[k] >> 27) & 1) = 1; prev[0]=0; prev[k+1]=I[k].value.
+- `ValueBit28`: Boolean ((I[k].value >> 28) & 1) = 1, unsigned DWORD width 32.
+- `PrevBit28`: Boolean ((inputMemory.prev[k] >> 28) & 1) = 1; prev[0]=0; prev[k+1]=I[k].value.
+- `ValueBit29`: Boolean ((I[k].value >> 29) & 1) = 1, unsigned DWORD width 32.
+- `PrevBit29`: Boolean ((inputMemory.prev[k] >> 29) & 1) = 1; prev[0]=0; prev[k+1]=I[k].value.
+- `ValueBit30`: Boolean ((I[k].value >> 30) & 1) = 1, unsigned DWORD width 32.
+- `PrevBit30`: Boolean ((inputMemory.prev[k] >> 30) & 1) = 1; prev[0]=0; prev[k+1]=I[k].value.
+- `ValueBit31`: Boolean ((I[k].value >> 31) & 1) = 1, unsigned DWORD width 32.
+- `PrevBit31`: Boolean ((inputMemory.prev[k] >> 31) & 1) = 1; prev[0]=0; prev[k+1]=I[k].value.
+- `value`: I[k].value: sampled input (DWORD).
+- `hasChanged`: O[k].hasChanged: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `hasRisingEdges`: O[k].hasRisingEdges: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `noOfRisingBits`: O[k].noOfRisingBits: independently observed post-scan candidate value (USINT); never defined as expected output.
+- `hasFallingEdges`: O[k].hasFallingEdges: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `noOfFallingBits`: O[k].noOfFallingBits: independently observed post-scan candidate value (USINT); never defined as expected output.
 
 ### LTL properties
 
-**P1** 
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+
+### Normalized state, observation and predicate definitions
+
+```json
+{
+  "schema_version": 1,
+  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
+  "candidate_formal_verification": "UNVERIFIED",
+  "initial_observed": {
+    "risingBits": 0,
+    "fallingBits": 0,
+    "noOfRisingBits": 0,
+    "noOfFallingBits": 0,
+    "hasChanged": false,
+    "hasRisingEdges": false,
+    "hasFallingEdges": false
+  },
+  "reference_state_initial": {
+    "class": "ScanContract",
+    "state": {
+      "task_id": "PUB002",
+      "array_contract": null,
+      "process_contract": null,
+      "timed_contract": null,
+      "data_contract": {
+        "class": "DataContract",
+        "state": {
+          "task_id": "PUB002",
+          "previous": 0,
+          "high": false,
+          "low": false,
+          "trigger": false,
+          "window": null,
+          "history": [],
+          "average": 0.0,
+          "reached": false,
+          "recipes": [
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            }
+          ],
+          "last_query": {
+            "recipeID": 0,
+            "ingredientType": 0,
+            "ingredientRatio": 0.0,
+            "productionTemperature": 0.0
+          },
+          "prev_add": false,
+          "prev_delete": false,
+          "prev_modify": false,
+          "prev_query": false,
+          "recipes_initialized": false,
+          "queue": [],
+          "prev_enq": false,
+          "prev_deq": false
+        }
+      },
+      "reference": null,
+      "phase": 0,
+      "previous_mode": null,
+      "clock": 0.0,
+      "heat_start": null,
+      "protection_start": null,
+      "demand": false
+    }
+  },
+  "transition": {
+    "entrypoint": "plc_agent.normalized_spec.reference_step(task, reference, deepCopy(I[k]), dt_ms[k])",
+    "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('PUB002'); constructed once per independent case, current state is Sref[k].",
+    "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
+    "module_sha256": {
+      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
+      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
+      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
+      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
+      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
+      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+    },
+    "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
+    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+  },
+  "constrained_observed_fields": [
+    "fallingBits",
+    "hasChanged",
+    "hasFallingEdges",
+    "hasRisingEdges",
+    "noOfFallingBits",
+    "noOfRisingBits",
+    "risingBits"
+  ],
+  "unconstrained_representation_fields": [],
+  "comparison": {
+    "integer_boolean": "exact type and value; no tolerance",
+    "float": "finite; abs error<=1e-5; dictionary/list shape and non-float values exact",
+    "PUB008": "only successfully converted channels[j].outputValue: abs<=1e-5 OR rel<=2e-6; all preserved/config fields exact",
+    "PUB017": "Successful deletion constrains recipeID=0; other fields of that deleted slot are unconstrained for the deletion scan. Subsequent no-write scans preserve the sampled actual representation. This observer history is separate from the logical reference database.",
+    "TIME_LTIME": "exact integer nanoseconds after IEC literal parsing",
+    "implementation": "plc_agent.normalized_spec.NormalizedScanMonitor.step with output_matches (pinned sources); observer histories never drive the independent logical reference"
+  },
+  "observation": {
+    "I[k]": "deep-copied inputs immediately before invocation k",
+    "O[k]": "actual outputs immediately after invocation k, supplied by independent execution backend",
+    "Sref[k]": "independent reference state BEFORE k; unrelated to similarly named candidate variables",
+    "initial": "fresh instance BEFORE invocation 0; never substituted by O[0]",
+    "X": "next scan-sequence position; argument must be Boolean, not a numeric term",
+    "time": "dt_ms is observed elapsed time; public timers use physical time, SELF Tick/count timers use logical scans"
+  },
+  "history_bindings": {
+    "prev": {
+      "kind": "previous_sampled_input",
+      "source": "I[k-1].value",
+      "initial": 0,
+      "update": "After EVERY scan k, including invalid/reset/stop, store I[k].value"
+    }
+  },
+  "auxiliary_state_bindings": {
+    "Spre": "Sref[k], before the invocation; initialized by reference_state_initial",
+    "Spost": "Sref[k+1], after exactly one pinned transition on I[k]",
+    "first": "k=0 (first invocation); distinct from the pre-invocation initial observation",
+    "pre-output": "actual O[k-1] for OUTPUT (explicit history initial where declared); I[k] for caller-owned IN_OUT",
+    "previous-input": "I[k-1] for k>=1; edge memory for BOOL requests initially FALSE and updated after EVERY invocation",
+    "reference_warning": "Spre/Spost predicates are input-driven ghosts, not evidence that candidate internals match. Conclusions about the candidate must constrain actual O."
+  },
+  "finite_conjunctions": {},
+  "reference_state_rule": "Initial state is the serialized constructor above; all fields update solely through the pinned transition. Ghost phase/history/queue are names for this state, not observed candidate state.",
+  "primitives": {
+    "bitwise": "DWORD AND/NOT and popcount operate on unsigned 32-bit values; complement is masked by 0xFFFFFFFF.",
+    "time_literals": "IEC TIME/LTIME literals are exact integer durations in nanoseconds.",
+    "observed_arrays": "All IN_OUT inputs are snapshots before invocation; outputs are independently acquired after invocation. Physical bounds map by ordinal, never share another array lower bound.",
+    "boolean_next": "X takes a Boolean formula. Numeric history transport is bit-expanded for DWORD; Boolean histories use equivalence.",
+    "time_progress": "Timed eventuality clauses explicitly require G(F(TimeTick)); TimeTick denotes crossing a new integer-ms boundary. Finite observations cannot establish this premise."
+  },
+  "assumptions": [
+    "The previous DWORD is initialized to DWORD#0. Therefore nonzero bits on the first scan count as rising edges.",
+    "Bitwise complement is restricted to 32 bits; counts range from 0 through 32.",
+    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+  ],
+  "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
+  "limitations": [
+    "No ST-to-model translation or infinite-trace proof is implemented here.",
+    "Focused legacy LTL predicates still require backend lowering; normalization is not model-checker acceptance.",
+    "Finite matching cannot establish liveness or validate runtime provenance."
+  ],
+  "rules_zh": "prev初值DWORD#0。rise=value & (~prev & 0xFFFFFFFF)，fall=prev & (~value & 0xFFFFFFFF)。两个掩码、popcount、掩码非零标志和value!=prev标志分别与实际七个输出比较；prevAfter=value，每次调用更新一次。"
+}
+```
+
+**P1**
 
 ```text
 G(risingBits = (value AND NOT prev))
@@ -343,7 +768,7 @@ G(risingBits = (value AND NOT prev))
 
 The rising mask identifies only 0-to-1 bits.
 
-**P2** 
+**P2**
 
 ```text
 G(fallingBits = (prev AND NOT value))
@@ -351,7 +776,7 @@ G(fallingBits = (prev AND NOT value))
 
 The falling mask identifies only 1-to-0 bits.
 
-**P3** 
+**P3**
 
 ```text
 G((risingBits AND fallingBits)=0)
@@ -359,7 +784,7 @@ G((risingBits AND fallingBits)=0)
 
 A bit cannot rise and fall in one scan.
 
-**P4** 
+**P4**
 
 ```text
 G((noOfRisingBits=popcount(risingBits)) & (noOfFallingBits=popcount(fallingBits)))
@@ -367,7 +792,7 @@ G((noOfRisingBits=popcount(risingBits)) & (noOfFallingBits=popcount(fallingBits)
 
 Both counts equal their mask population.
 
-**P5** 
+**P5**
 
 ```text
 G((hasRisingEdges <-> risingBits<>0) & (hasFallingEdges <-> fallingBits<>0) & (hasChanged <-> value<>prev))
@@ -375,13 +800,21 @@ G((hasRisingEdges <-> risingBits<>0) & (hasFallingEdges <-> fallingBits<>0) & (h
 
 Flags match masks and value changes.
 
-**P6** 
+**P6**
 
 ```text
-G(X(prev)=value)
+G((ValueBit0 <-> X(PrevBit0)) & (ValueBit1 <-> X(PrevBit1)) & (ValueBit2 <-> X(PrevBit2)) & (ValueBit3 <-> X(PrevBit3)) & (ValueBit4 <-> X(PrevBit4)) & (ValueBit5 <-> X(PrevBit5)) & (ValueBit6 <-> X(PrevBit6)) & (ValueBit7 <-> X(PrevBit7)) & (ValueBit8 <-> X(PrevBit8)) & (ValueBit9 <-> X(PrevBit9)) & (ValueBit10 <-> X(PrevBit10)) & (ValueBit11 <-> X(PrevBit11)) & (ValueBit12 <-> X(PrevBit12)) & (ValueBit13 <-> X(PrevBit13)) & (ValueBit14 <-> X(PrevBit14)) & (ValueBit15 <-> X(PrevBit15)) & (ValueBit16 <-> X(PrevBit16)) & (ValueBit17 <-> X(PrevBit17)) & (ValueBit18 <-> X(PrevBit18)) & (ValueBit19 <-> X(PrevBit19)) & (ValueBit20 <-> X(PrevBit20)) & (ValueBit21 <-> X(PrevBit21)) & (ValueBit22 <-> X(PrevBit22)) & (ValueBit23 <-> X(PrevBit23)) & (ValueBit24 <-> X(PrevBit24)) & (ValueBit25 <-> X(PrevBit25)) & (ValueBit26 <-> X(PrevBit26)) & (ValueBit27 <-> X(PrevBit27)) & (ValueBit28 <-> X(PrevBit28)) & (ValueBit29 <-> X(PrevBit29)) & (ValueBit30 <-> X(PrevBit30)) & (ValueBit31 <-> X(PrevBit31)))
 ```
 
-The current value is the next scan history.
+For every bit b=0..31, the next sampled-input memory bit equals the current value bit. X applies only to a Boolean proposition; memory is initialized to DWORD#0.
+
+**PUB002.V2.COMPLETE**
+
+```text
+G(CompleteBehaviorV2)
+```
+
+Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
 
 ### Fixed test index
 
@@ -389,6 +822,7 @@ The current value is the next scan history.
 | --- | --- | ---: |
 | T1 | No change, mixed edges, full width and bit 31 | 10 |
 | T2 | First nonzero invocation is compared with initialized zero | 2 |
+| V2_data_contract_boundaries | Independently calculated edge/history/parser boundary regression | 2 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -483,20 +917,241 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 - Threshold comparisons are strict as written. Equality with trigger or release thresholds retains the previous alarm value.
 - Invalid configuration returns early, preserving alarm outputs. error and status are recalculated each scan; valid configuration clears them.
 - loLevel>=hiLevel takes priority over the hysteresis-width error. hystWindow is assumed nonnegative; negative values are outside the defined input domain.
+- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- Floating-point inputs and intermediate reference arithmetic are finite. Existing fixed traces retain their declared absolute tolerance; claims do not extend to arbitrary magnitudes without a separately specified numeric error policy.
 
 ### Atomic propositions and monitor predicates
 
 - `badRange`: loLevel >= hiLevel
 - `badWindow`: hystWindow >= hiLevel-loLevel
 - `valid`: !badRange & !badWindow & hystWindow>=0
-- `hiPrev`: Pre-scan retained hiAlarm
-- `loPrev`: Pre-scan retained loAlarm
+- `hiPrev`: {"kind": "previous_observed_output", "source": "O[k-1].hiAlarm", "initial": false, "update": "After comparing scan k, store ACTUAL O[k].hiAlarm; never write into reference state."}
+- `loPrev`: {"kind": "previous_observed_output", "source": "O[k-1].loAlarm", "initial": false, "update": "After comparing scan k, store ACTUAL O[k].loAlarm; never write into reference state."}
 - `sameAlarms`: hiAlarm=hiPrev & loAlarm=loPrev
 - `interface names`: Identically named sampled input or observed output.
+- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_PUB003(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+四个REAL参数先按IEEE binary32舍入且有限，hystWindow>=0。lo>=hi时报8001，否则width>=real32(hi-lo)时报8002；错误时参考高低报警保持。有效时高报警由value>hi置真、value<real32(hi-width)置假、其余保持；低报警由value<lo置真、value>real32(lo+width)置假、其余保持。初值均FALSE。
+- `Value`: I[k].Value: sampled input (REAL).
+- `hiLevel`: I[k].hiLevel: sampled input (REAL).
+- `loLevel`: I[k].loLevel: sampled input (REAL).
+- `hystWindow`: I[k].hystWindow: sampled input (REAL).
+- `hiAlarm`: O[k].hiAlarm: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `loAlarm`: O[k].loAlarm: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `error`: O[k].error: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `status`: O[k].status: independently observed post-scan candidate value (WORD); never defined as expected output.
 
 ### LTL properties
 
-**P1** 
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+
+### Normalized state, observation and predicate definitions
+
+```json
+{
+  "schema_version": 1,
+  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
+  "candidate_formal_verification": "UNVERIFIED",
+  "initial_observed": {
+    "hiAlarm": false,
+    "loAlarm": false,
+    "error": false,
+    "status": 0
+  },
+  "reference_state_initial": {
+    "class": "ScanContract",
+    "state": {
+      "task_id": "PUB003",
+      "array_contract": null,
+      "process_contract": null,
+      "timed_contract": null,
+      "data_contract": {
+        "class": "DataContract",
+        "state": {
+          "task_id": "PUB003",
+          "previous": 0,
+          "high": false,
+          "low": false,
+          "trigger": false,
+          "window": null,
+          "history": [],
+          "average": 0.0,
+          "reached": false,
+          "recipes": [
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            }
+          ],
+          "last_query": {
+            "recipeID": 0,
+            "ingredientType": 0,
+            "ingredientRatio": 0.0,
+            "productionTemperature": 0.0
+          },
+          "prev_add": false,
+          "prev_delete": false,
+          "prev_modify": false,
+          "prev_query": false,
+          "recipes_initialized": false,
+          "queue": [],
+          "prev_enq": false,
+          "prev_deq": false
+        }
+      },
+      "reference": null,
+      "phase": 0,
+      "previous_mode": null,
+      "clock": 0.0,
+      "heat_start": null,
+      "protection_start": null,
+      "demand": false
+    }
+  },
+  "transition": {
+    "entrypoint": "plc_agent.normalized_spec.reference_step(task, reference, deepCopy(I[k]), dt_ms[k])",
+    "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('PUB003'); constructed once per independent case, current state is Sref[k].",
+    "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
+    "module_sha256": {
+      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
+      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
+      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
+      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
+      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
+      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+    },
+    "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
+    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+  },
+  "constrained_observed_fields": [
+    "error",
+    "hiAlarm",
+    "loAlarm",
+    "status"
+  ],
+  "unconstrained_representation_fields": [],
+  "comparison": {
+    "integer_boolean": "exact type and value; no tolerance",
+    "float": "finite; abs error<=1e-5; dictionary/list shape and non-float values exact",
+    "PUB008": "only successfully converted channels[j].outputValue: abs<=1e-5 OR rel<=2e-6; all preserved/config fields exact",
+    "PUB017": "Successful deletion constrains recipeID=0; other fields of that deleted slot are unconstrained for the deletion scan. Subsequent no-write scans preserve the sampled actual representation. This observer history is separate from the logical reference database.",
+    "TIME_LTIME": "exact integer nanoseconds after IEC literal parsing",
+    "implementation": "plc_agent.normalized_spec.NormalizedScanMonitor.step with output_matches (pinned sources); observer histories never drive the independent logical reference"
+  },
+  "observation": {
+    "I[k]": "deep-copied inputs immediately before invocation k",
+    "O[k]": "actual outputs immediately after invocation k, supplied by independent execution backend",
+    "Sref[k]": "independent reference state BEFORE k; unrelated to similarly named candidate variables",
+    "initial": "fresh instance BEFORE invocation 0; never substituted by O[0]",
+    "X": "next scan-sequence position; argument must be Boolean, not a numeric term",
+    "time": "dt_ms is observed elapsed time; public timers use physical time, SELF Tick/count timers use logical scans"
+  },
+  "history_bindings": {
+    "hiPrev": {
+      "kind": "previous_observed_output",
+      "source": "O[k-1].hiAlarm",
+      "initial": false,
+      "update": "After comparing scan k, store ACTUAL O[k].hiAlarm; never write into reference state."
+    },
+    "loPrev": {
+      "kind": "previous_observed_output",
+      "source": "O[k-1].loAlarm",
+      "initial": false,
+      "update": "After comparing scan k, store ACTUAL O[k].loAlarm; never write into reference state."
+    }
+  },
+  "auxiliary_state_bindings": {
+    "Spre": "Sref[k], before the invocation; initialized by reference_state_initial",
+    "Spost": "Sref[k+1], after exactly one pinned transition on I[k]",
+    "first": "k=0 (first invocation); distinct from the pre-invocation initial observation",
+    "pre-output": "actual O[k-1] for OUTPUT (explicit history initial where declared); I[k] for caller-owned IN_OUT",
+    "previous-input": "I[k-1] for k>=1; edge memory for BOOL requests initially FALSE and updated after EVERY invocation",
+    "reference_warning": "Spre/Spost predicates are input-driven ghosts, not evidence that candidate internals match. Conclusions about the candidate must constrain actual O."
+  },
+  "finite_conjunctions": {},
+  "reference_state_rule": "Initial state is the serialized constructor above; all fields update solely through the pinned transition. Ghost phase/history/queue are names for this state, not observed candidate state.",
+  "primitives": {
+    "bitwise": "DWORD AND/NOT and popcount operate on unsigned 32-bit values; complement is masked by 0xFFFFFFFF.",
+    "time_literals": "IEC TIME/LTIME literals are exact integer durations in nanoseconds.",
+    "observed_arrays": "All IN_OUT inputs are snapshots before invocation; outputs are independently acquired after invocation. Physical bounds map by ordinal, never share another array lower bound.",
+    "boolean_next": "X takes a Boolean formula. Numeric history transport is bit-expanded for DWORD; Boolean histories use equivalence.",
+    "time_progress": "Timed eventuality clauses explicitly require G(F(TimeTick)); TimeTick denotes crossing a new integer-ms boundary. Finite observations cannot establish this premise."
+  },
+  "assumptions": [
+    "Threshold comparisons are strict as written. Equality with trigger or release thresholds retains the previous alarm value.",
+    "Invalid configuration returns early, preserving alarm outputs. error and status are recalculated each scan; valid configuration clears them.",
+    "loLevel>=hiLevel takes priority over the hysteresis-width error. hystWindow is assumed nonnegative; negative values are outside the defined input domain.",
+    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "Floating-point inputs and intermediate reference arithmetic are finite. Existing fixed traces retain their declared absolute tolerance; claims do not extend to arbitrary magnitudes without a separately specified numeric error policy."
+  ],
+  "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
+  "limitations": [
+    "No ST-to-model translation or infinite-trace proof is implemented here.",
+    "Focused legacy LTL predicates still require backend lowering; normalization is not model-checker acceptance.",
+    "Finite matching cannot establish liveness or validate runtime provenance."
+  ],
+  "rules_zh": "四个REAL参数先按IEEE binary32舍入且有限，hystWindow>=0。lo>=hi时报8001，否则width>=real32(hi-lo)时报8002；错误时参考高低报警保持。有效时高报警由value>hi置真、value<real32(hi-width)置假、其余保持；低报警由value<lo置真、value>real32(lo+width)置假、其余保持。初值均FALSE。"
+}
+```
+
+**P1**
 
 ```text
 G(badRange -> (error & status=16#8001 & sameAlarms))
@@ -504,7 +1159,7 @@ G(badRange -> (error & status=16#8001 & sameAlarms))
 
 Invalid limits take priority and leave alarms unchanged.
 
-**P2** 
+**P2**
 
 ```text
 G((!badRange & badWindow) -> (error & status=16#8002 & sameAlarms))
@@ -512,7 +1167,7 @@ G((!badRange & badWindow) -> (error & status=16#8002 & sameAlarms))
 
 The hysteresis range must be smaller than the limit separation.
 
-**P3** 
+**P3**
 
 ```text
 G(valid -> (!error & status=0))
@@ -520,7 +1175,7 @@ G(valid -> (!error & status=0))
 
 Valid input clears transient configuration errors.
 
-**P4** 
+**P4**
 
 ```text
 G((valid & Value>hiLevel) -> hiAlarm)
@@ -528,7 +1183,7 @@ G((valid & Value>hiLevel) -> hiAlarm)
 
 A high excursion activates the high alarm.
 
-**P5** 
+**P5**
 
 ```text
 G((valid & Value<hiLevel-hystWindow) -> !hiAlarm)
@@ -536,7 +1191,7 @@ G((valid & Value<hiLevel-hystWindow) -> !hiAlarm)
 
 Below the strict release boundary, high alarm clears.
 
-**P6** 
+**P6**
 
 ```text
 G((valid & hiLevel-hystWindow<=Value & Value<=hiLevel) -> (hiAlarm=hiPrev))
@@ -544,7 +1199,7 @@ G((valid & hiLevel-hystWindow<=Value & Value<=hiLevel) -> (hiAlarm=hiPrev))
 
 The high hysteresis band retains history.
 
-**P7** 
+**P7**
 
 ```text
 G((valid & Value<loLevel) -> loAlarm)
@@ -552,7 +1207,7 @@ G((valid & Value<loLevel) -> loAlarm)
 
 A low excursion activates the low alarm.
 
-**P8** 
+**P8**
 
 ```text
 G((valid & Value>loLevel+hystWindow) -> !loAlarm)
@@ -560,7 +1215,7 @@ G((valid & Value>loLevel+hystWindow) -> !loAlarm)
 
 Above the strict low release boundary, low alarm clears.
 
-**P9** 
+**P9**
 
 ```text
 G((valid & loLevel<=Value & Value<=loLevel+hystWindow) -> (loAlarm=loPrev))
@@ -568,12 +1223,21 @@ G((valid & loLevel<=Value & Value<=loLevel+hystWindow) -> (loAlarm=loPrev))
 
 The low hysteresis band retains history.
 
+**PUB003.V2.COMPLETE**
+
+```text
+G(CompleteBehaviorV2)
+```
+
+Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
+
 ### Fixed test index
 
 | Case | Purpose | Steps |
 | --- | --- | ---: |
 | T1 | Strict high and low hysteresis boundaries | 9 |
 | T2 | Configuration priority, output retention and recovery | 4 |
+| V2_data_contract_boundaries | Independently calculated edge/history/parser boundary regression | 6 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -668,18 +1332,179 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 - An E-stop resets debounce validity as well as incomplete timing, so re-enabling requires a full new qualification.
 - At each invocation, add the supplied CycleTime to the LTIME accumulator iff the end-of-scan VFD_RUN is TRUE. Do not use TIME for the 500-hour accumulator.
 - PUMP_MAINT_DUE is a level comparison accumulated runtime>=500h and has no reset input. Its threshold case is specified but is not a short practical runtime test.
+- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- DebounceTime is a strictly positive constant throughout each test case. Dynamic changes are outside this benchmark domain. Time must advance for eventual-start properties.
 
 ### Atomic propositions and monitor predicates
 
 - `permit`: VISCOSITY_OK & PASTE_E_STOP_NC
 - `qualified`: Continuous permitted raw TRUE duration >= DebounceTime, with first sampled TRUE at elapsed zero.
-- `accPrev`: Pre-scan PUMP_RUNTIME_ACC as nonnegative LTIME.
-- `accNext`: End-of-scan PUMP_RUNTIME_ACC.
+- `accPrev`: {"kind": "previous_observed_output", "source": "O[k-1].PUMP_RUNTIME_ACC", "initial": "LTIME#0ns", "update": "After comparing scan k, store ACTUAL O[k].PUMP_RUNTIME_ACC; never write into reference state."}
+- `accNext`: O[k].PUMP_RUNTIME_ACC, actual post-scan LTIME; never reference accumulator.
 - `interface names`: Identically named sampled input or end-of-scan output.
+- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_PUB004(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+物理采样时钟首拍0、以后累加dt_ms。permit=VISCOSITY_OK & PASTE_E_STOP_NC；首次permit真时记录起点，假时清起点，run=permit且年龄>=固定正DebounceTime。acc初值0；accAfter=accBefore+(run?CycleTime:0)，CycleTime先解释为纳秒；maint=accAfter>=500h。累计域0..2^63-1纳秒。
+- `TimeTick`: Boolean: floor(t[k]/1ms)>floor(t[k-1]/1ms), with t[0]=0, TimeTick[0]=FALSE, t[k]=sum(dt_ms[1..k]). G(F(TimeTick)) states unbounded physical time progress; merely positive dt is insufficient.
+- `VISCOSITY_OK`: I[k].VISCOSITY_OK: sampled input (BOOL).
+- `PASTE_E_STOP_NC`: I[k].PASTE_E_STOP_NC: sampled input (BOOL).
+- `DebounceTime`: I[k].DebounceTime: sampled input (TIME).
+- `CycleTime`: I[k].CycleTime: sampled input (TIME).
+- `VFD_RUN`: O[k].VFD_RUN: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `PUMP_MAINT_DUE`: O[k].PUMP_MAINT_DUE: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `PUMP_RUNTIME_ACC`: O[k].PUMP_RUNTIME_ACC: independently observed post-scan candidate value (LTIME); never defined as expected output.
 
 ### LTL properties
 
-**P1** 
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+
+### Normalized state, observation and predicate definitions
+
+```json
+{
+  "schema_version": 1,
+  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
+  "candidate_formal_verification": "UNVERIFIED",
+  "initial_observed": {
+    "VFD_RUN": false,
+    "PUMP_RUNTIME_ACC": "LTIME#0ns",
+    "PUMP_MAINT_DUE": false
+  },
+  "reference_state_initial": {
+    "class": "ScanContract",
+    "state": {
+      "task_id": "PUB004",
+      "array_contract": null,
+      "process_contract": null,
+      "timed_contract": {
+        "class": "TimedContract",
+        "state": {
+          "task_id": "PUB004",
+          "clock": {
+            "decimal": "0"
+          },
+          "first": true,
+          "since": null,
+          "debounce": null,
+          "runtime": 0,
+          "count": 0,
+          "previous_run": false,
+          "previous_fault": false,
+          "history": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      },
+      "data_contract": null,
+      "reference": null,
+      "phase": 0,
+      "previous_mode": null,
+      "clock": 0.0,
+      "heat_start": null,
+      "protection_start": null,
+      "demand": false
+    }
+  },
+  "transition": {
+    "entrypoint": "plc_agent.normalized_spec.reference_step(task, reference, deepCopy(I[k]), dt_ms[k])",
+    "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('PUB004'); constructed once per independent case, current state is Sref[k].",
+    "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
+    "module_sha256": {
+      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
+      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
+      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
+      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
+      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
+      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+    },
+    "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
+    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+  },
+  "constrained_observed_fields": [
+    "PUMP_MAINT_DUE",
+    "PUMP_RUNTIME_ACC",
+    "VFD_RUN"
+  ],
+  "unconstrained_representation_fields": [],
+  "comparison": {
+    "integer_boolean": "exact type and value; no tolerance",
+    "float": "finite; abs error<=1e-5; dictionary/list shape and non-float values exact",
+    "PUB008": "only successfully converted channels[j].outputValue: abs<=1e-5 OR rel<=2e-6; all preserved/config fields exact",
+    "PUB017": "Successful deletion constrains recipeID=0; other fields of that deleted slot are unconstrained for the deletion scan. Subsequent no-write scans preserve the sampled actual representation. This observer history is separate from the logical reference database.",
+    "TIME_LTIME": "exact integer nanoseconds after IEC literal parsing",
+    "implementation": "plc_agent.normalized_spec.NormalizedScanMonitor.step with output_matches (pinned sources); observer histories never drive the independent logical reference"
+  },
+  "observation": {
+    "I[k]": "deep-copied inputs immediately before invocation k",
+    "O[k]": "actual outputs immediately after invocation k, supplied by independent execution backend",
+    "Sref[k]": "independent reference state BEFORE k; unrelated to similarly named candidate variables",
+    "initial": "fresh instance BEFORE invocation 0; never substituted by O[0]",
+    "X": "next scan-sequence position; argument must be Boolean, not a numeric term",
+    "time": "dt_ms is observed elapsed time; public timers use physical time, SELF Tick/count timers use logical scans"
+  },
+  "history_bindings": {
+    "accPrev": {
+      "kind": "previous_observed_output",
+      "source": "O[k-1].PUMP_RUNTIME_ACC",
+      "initial": "LTIME#0ns",
+      "update": "After comparing scan k, store ACTUAL O[k].PUMP_RUNTIME_ACC; never write into reference state."
+    }
+  },
+  "auxiliary_state_bindings": {
+    "Spre": "Sref[k], before the invocation; initialized by reference_state_initial",
+    "Spost": "Sref[k+1], after exactly one pinned transition on I[k]",
+    "first": "k=0 (first invocation); distinct from the pre-invocation initial observation",
+    "pre-output": "actual O[k-1] for OUTPUT (explicit history initial where declared); I[k] for caller-owned IN_OUT",
+    "previous-input": "I[k-1] for k>=1; edge memory for BOOL requests initially FALSE and updated after EVERY invocation",
+    "reference_warning": "Spre/Spost predicates are input-driven ghosts, not evidence that candidate internals match. Conclusions about the candidate must constrain actual O.",
+    "timing": {
+      "clock": "Spost.timed_contract.clock (exact integer nanoseconds; first invocation 0)",
+      "start": "Spost.timed_contract.since; None means inactive",
+      "qualified": "start is not None AND clock-start >= duration_ns(limit)",
+      "hold": "start is not None AND clock-start < 500000000",
+      "initial_start": null,
+      "initial_clock": 0,
+      "limit": "DebounceTime for PUB004/PUB005, 5000000000ns for PUB006, 30000000000ns for PUB013",
+      "previous_fault": "Spre.timed_contract.previous_fault, initially FALSE; next=THICKNESS_SIGNAL_VALID AND THICKNESS_FAULT",
+      "pre_count": "Spre.timed_contract.count",
+      "pre_history": "Spre.timed_contract.history",
+      "pre_runtime": "Spre.timed_contract.runtime"
+    }
+  },
+  "finite_conjunctions": {},
+  "reference_state_rule": "Initial state is the serialized constructor above; all fields update solely through the pinned transition. Ghost phase/history/queue are names for this state, not observed candidate state.",
+  "primitives": {
+    "bitwise": "DWORD AND/NOT and popcount operate on unsigned 32-bit values; complement is masked by 0xFFFFFFFF.",
+    "time_literals": "IEC TIME/LTIME literals are exact integer durations in nanoseconds.",
+    "observed_arrays": "All IN_OUT inputs are snapshots before invocation; outputs are independently acquired after invocation. Physical bounds map by ordinal, never share another array lower bound.",
+    "boolean_next": "X takes a Boolean formula. Numeric history transport is bit-expanded for DWORD; Boolean histories use equivalence.",
+    "time_progress": "Timed eventuality clauses explicitly require G(F(TimeTick)); TimeTick denotes crossing a new integer-ms boundary. Finite observations cannot establish this premise."
+  },
+  "assumptions": [
+    "DebounceTime and CycleTime are strictly positive. Inputs are held stable between timed test samples.",
+    "Debouncing follows a TON-style clock: elapsed is zero on the first permitted TRUE sample and becomes valid at elapsed>=DebounceTime.",
+    "An E-stop resets debounce validity as well as incomplete timing, so re-enabling requires a full new qualification.",
+    "At each invocation, add the supplied CycleTime to the LTIME accumulator iff the end-of-scan VFD_RUN is TRUE. Do not use TIME for the 500-hour accumulator.",
+    "PUMP_MAINT_DUE is a level comparison accumulated runtime>=500h and has no reset input. Its threshold case is specified but is not a short practical runtime test.",
+    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "DebounceTime is a strictly positive constant throughout each test case. Dynamic changes are outside this benchmark domain. Time must advance for eventual-start properties."
+  ],
+  "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
+  "limitations": [
+    "No ST-to-model translation or infinite-trace proof is implemented here.",
+    "Focused legacy LTL predicates still require backend lowering; normalization is not model-checker acceptance.",
+    "Finite matching cannot establish liveness or validate runtime provenance."
+  ],
+  "rules_zh": "物理采样时钟首拍0、以后累加dt_ms。permit=VISCOSITY_OK & PASTE_E_STOP_NC；首次permit真时记录起点，假时清起点，run=permit且年龄>=固定正DebounceTime。acc初值0；accAfter=accBefore+(run?CycleTime:0)，CycleTime先解释为纳秒；maint=accAfter>=500h。累计域0..2^63-1纳秒。"
+}
+```
+
+**P1**
 
 ```text
 G(VFD_RUN <-> (permit & qualified))
@@ -687,7 +1512,7 @@ G(VFD_RUN <-> (permit & qualified))
 
 The run output follows the qualified permissive.
 
-**P2** 
+**P2**
 
 ```text
 G(!permit -> !VFD_RUN)
@@ -695,7 +1520,7 @@ G(!permit -> !VFD_RUN)
 
 Raw loss or E-stop stops immediately.
 
-**P3** 
+**P3**
 
 ```text
 G((!permit) -> X(!qualified))
@@ -703,7 +1528,7 @@ G((!permit) -> X(!qualified))
 
 A lost permissive clears qualification history; future qualification must be rebuilt.
 
-**P4** 
+**P4**
 
 ```text
 G(VFD_RUN -> accNext=accPrev+TIME_TO_LTIME(CycleTime))
@@ -711,7 +1536,7 @@ G(VFD_RUN -> accNext=accPrev+TIME_TO_LTIME(CycleTime))
 
 Only enabled intervals are accumulated in a long time type.
 
-**P5** 
+**P5**
 
 ```text
 G(!VFD_RUN -> accNext=accPrev)
@@ -719,7 +1544,7 @@ G(!VFD_RUN -> accNext=accPrev)
 
 Stopping retains accumulated service time.
 
-**P6** 
+**P6**
 
 ```text
 G(PUMP_MAINT_DUE <-> accNext>=LTIME#500h)
@@ -727,13 +1552,21 @@ G(PUMP_MAINT_DUE <-> accNext>=LTIME#500h)
 
 Maintenance threshold is 500 hours.
 
-**P7** 
+**P7**
 
 ```text
-G((G(permit) & DebounceTime>TIME#0ms) -> F(VFD_RUN))
+(G(F(TimeTick))) -> (G((G(permit) & DebounceTime>TIME#0ms) -> F(VFD_RUN)))
 ```
 
-A continuously permitted demand eventually starts under advancing time.
+A continuously permitted demand eventually starts under advancing time. Explicit non-Zeno environment premise: physical elapsed time crosses infinitely many 1ms boundaries.
+
+**PUB004.V2.COMPLETE**
+
+```text
+G(CompleteBehaviorV2)
+```
+
+Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
 
 ### Fixed test index
 
@@ -742,6 +1575,7 @@ A continuously permitted demand eventually starts under advancing time.
 | T1 | Qualification boundary, accumulation, stop retention and restart | 9 |
 | T2 | E-stop clears incomplete debounce and completed permission | 7 |
 | T3 | Long-duration maintenance arithmetic boundary | 4 |
+| V2_permit_loss_at_deadline | Permission loss at the exact deadline wins; recovery starts a fresh full interval, even after a long gap. | 5 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -831,16 +1665,165 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 - Weld_Soft_Start_Active reports startup inhibition even during E-stop. E-stop overrides the alert and resets gap timing but does not restart power-up inhibition.
 - At exactly 5 seconds startup inhibition clears. That scan is the first eligible gap sample, with gap elapsed zero; there is no credited debounce time during inhibition.
 - DebounceTime is positive. Alert clears and debounce resets immediately on raw gap FALSE or E-stop.
+- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- DebounceTime is a strictly positive constant throughout each test case. Dynamic changes are outside this benchmark domain. Time must advance for eventual-start properties.
 
 ### Atomic propositions and monitor predicates
 
 - `startup`: Elapsed time since the first invocation is less than 5 seconds.
 - `gapQualified`: Gap_Exceeded has remained TRUE with Weld_E_Stop_NC TRUE and !startup for at least DebounceTime, measured from first eligible invocation.
 - `interface names`: Identically named sampled input or observed output.
+- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_PUB005(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+首拍时钟0；startup=clock<5s，急停不重启此时钟。gapPermit=!startup & Gap_Exceeded & Weld_E_Stop_NC；首次gapPermit真年龄0，假清起点；alarm=gapPermit且年龄>=固定正DebounceTime。两个期望输出为alarm、startup。
+- `TimeTick`: Boolean: floor(t[k]/1ms)>floor(t[k-1]/1ms), with t[0]=0, TimeTick[0]=FALSE, t[k]=sum(dt_ms[1..k]). G(F(TimeTick)) states unbounded physical time progress; merely positive dt is insufficient.
+- `Gap_Exceeded`: I[k].Gap_Exceeded: sampled input (BOOL).
+- `Weld_E_Stop_NC`: I[k].Weld_E_Stop_NC: sampled input (BOOL).
+- `DebounceTime`: I[k].DebounceTime: sampled input (TIME).
+- `Operator_Alert`: O[k].Operator_Alert: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `Weld_Soft_Start_Active`: O[k].Weld_Soft_Start_Active: independently observed post-scan candidate value (BOOL); never defined as expected output.
 
 ### LTL properties
 
-**P1** 
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+
+### Normalized state, observation and predicate definitions
+
+```json
+{
+  "schema_version": 1,
+  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
+  "candidate_formal_verification": "UNVERIFIED",
+  "initial_observed": {
+    "Operator_Alert": false,
+    "Weld_Soft_Start_Active": true
+  },
+  "reference_state_initial": {
+    "class": "ScanContract",
+    "state": {
+      "task_id": "PUB005",
+      "array_contract": null,
+      "process_contract": null,
+      "timed_contract": {
+        "class": "TimedContract",
+        "state": {
+          "task_id": "PUB005",
+          "clock": {
+            "decimal": "0"
+          },
+          "first": true,
+          "since": null,
+          "debounce": null,
+          "runtime": 0,
+          "count": 0,
+          "previous_run": false,
+          "previous_fault": false,
+          "history": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      },
+      "data_contract": null,
+      "reference": null,
+      "phase": 0,
+      "previous_mode": null,
+      "clock": 0.0,
+      "heat_start": null,
+      "protection_start": null,
+      "demand": false
+    }
+  },
+  "transition": {
+    "entrypoint": "plc_agent.normalized_spec.reference_step(task, reference, deepCopy(I[k]), dt_ms[k])",
+    "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('PUB005'); constructed once per independent case, current state is Sref[k].",
+    "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
+    "module_sha256": {
+      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
+      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
+      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
+      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
+      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
+      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+    },
+    "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
+    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+  },
+  "constrained_observed_fields": [
+    "Operator_Alert",
+    "Weld_Soft_Start_Active"
+  ],
+  "unconstrained_representation_fields": [],
+  "comparison": {
+    "integer_boolean": "exact type and value; no tolerance",
+    "float": "finite; abs error<=1e-5; dictionary/list shape and non-float values exact",
+    "PUB008": "only successfully converted channels[j].outputValue: abs<=1e-5 OR rel<=2e-6; all preserved/config fields exact",
+    "PUB017": "Successful deletion constrains recipeID=0; other fields of that deleted slot are unconstrained for the deletion scan. Subsequent no-write scans preserve the sampled actual representation. This observer history is separate from the logical reference database.",
+    "TIME_LTIME": "exact integer nanoseconds after IEC literal parsing",
+    "implementation": "plc_agent.normalized_spec.NormalizedScanMonitor.step with output_matches (pinned sources); observer histories never drive the independent logical reference"
+  },
+  "observation": {
+    "I[k]": "deep-copied inputs immediately before invocation k",
+    "O[k]": "actual outputs immediately after invocation k, supplied by independent execution backend",
+    "Sref[k]": "independent reference state BEFORE k; unrelated to similarly named candidate variables",
+    "initial": "fresh instance BEFORE invocation 0; never substituted by O[0]",
+    "X": "next scan-sequence position; argument must be Boolean, not a numeric term",
+    "time": "dt_ms is observed elapsed time; public timers use physical time, SELF Tick/count timers use logical scans"
+  },
+  "history_bindings": {},
+  "auxiliary_state_bindings": {
+    "Spre": "Sref[k], before the invocation; initialized by reference_state_initial",
+    "Spost": "Sref[k+1], after exactly one pinned transition on I[k]",
+    "first": "k=0 (first invocation); distinct from the pre-invocation initial observation",
+    "pre-output": "actual O[k-1] for OUTPUT (explicit history initial where declared); I[k] for caller-owned IN_OUT",
+    "previous-input": "I[k-1] for k>=1; edge memory for BOOL requests initially FALSE and updated after EVERY invocation",
+    "reference_warning": "Spre/Spost predicates are input-driven ghosts, not evidence that candidate internals match. Conclusions about the candidate must constrain actual O.",
+    "timing": {
+      "clock": "Spost.timed_contract.clock (exact integer nanoseconds; first invocation 0)",
+      "start": "Spost.timed_contract.since; None means inactive",
+      "qualified": "start is not None AND clock-start >= duration_ns(limit)",
+      "hold": "start is not None AND clock-start < 500000000",
+      "initial_start": null,
+      "initial_clock": 0,
+      "limit": "DebounceTime for PUB004/PUB005, 5000000000ns for PUB006, 30000000000ns for PUB013",
+      "previous_fault": "Spre.timed_contract.previous_fault, initially FALSE; next=THICKNESS_SIGNAL_VALID AND THICKNESS_FAULT",
+      "pre_count": "Spre.timed_contract.count",
+      "pre_history": "Spre.timed_contract.history",
+      "pre_runtime": "Spre.timed_contract.runtime"
+    }
+  },
+  "finite_conjunctions": {},
+  "reference_state_rule": "Initial state is the serialized constructor above; all fields update solely through the pinned transition. Ghost phase/history/queue are names for this state, not observed candidate state.",
+  "primitives": {
+    "bitwise": "DWORD AND/NOT and popcount operate on unsigned 32-bit values; complement is masked by 0xFFFFFFFF.",
+    "time_literals": "IEC TIME/LTIME literals are exact integer durations in nanoseconds.",
+    "observed_arrays": "All IN_OUT inputs are snapshots before invocation; outputs are independently acquired after invocation. Physical bounds map by ordinal, never share another array lower bound.",
+    "boolean_next": "X takes a Boolean formula. Numeric history transport is bit-expanded for DWORD; Boolean histories use equivalence.",
+    "time_progress": "Timed eventuality clauses explicitly require G(F(TimeTick)); TimeTick denotes crossing a new integer-ms boundary. Finite observations cannot establish this premise."
+  },
+  "assumptions": [
+    "Power-up inhibition uses a monotonically advancing 5-second timer that starts on the first FB invocation and continues through E-stop.",
+    "Weld_Soft_Start_Active reports startup inhibition even during E-stop. E-stop overrides the alert and resets gap timing but does not restart power-up inhibition.",
+    "At exactly 5 seconds startup inhibition clears. That scan is the first eligible gap sample, with gap elapsed zero; there is no credited debounce time during inhibition.",
+    "DebounceTime is positive. Alert clears and debounce resets immediately on raw gap FALSE or E-stop.",
+    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "DebounceTime is a strictly positive constant throughout each test case. Dynamic changes are outside this benchmark domain. Time must advance for eventual-start properties."
+  ],
+  "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
+  "limitations": [
+    "No ST-to-model translation or infinite-trace proof is implemented here.",
+    "Focused legacy LTL predicates still require backend lowering; normalization is not model-checker acceptance.",
+    "Finite matching cannot establish liveness or validate runtime provenance."
+  ],
+  "rules_zh": "首拍时钟0；startup=clock<5s，急停不重启此时钟。gapPermit=!startup & Gap_Exceeded & Weld_E_Stop_NC；首次gapPermit真年龄0，假清起点；alarm=gapPermit且年龄>=固定正DebounceTime。两个期望输出为alarm、startup。"
+}
+```
+
+**P1**
 
 ```text
 G(Weld_Soft_Start_Active <-> startup)
@@ -848,7 +1831,7 @@ G(Weld_Soft_Start_Active <-> startup)
 
 Soft-start output means only the startup monitoring inhibition interval.
 
-**P2** 
+**P2**
 
 ```text
 G((startup | !Weld_E_Stop_NC | !Gap_Exceeded) -> !Operator_Alert)
@@ -856,7 +1839,7 @@ G((startup | !Weld_E_Stop_NC | !Gap_Exceeded) -> !Operator_Alert)
 
 Startup, E-stop or no gap forces the alarm off.
 
-**P3** 
+**P3**
 
 ```text
 G(Operator_Alert <-> (!startup & Weld_E_Stop_NC & Gap_Exceeded & gapQualified))
@@ -864,7 +1847,7 @@ G(Operator_Alert <-> (!startup & Weld_E_Stop_NC & Gap_Exceeded & gapQualified))
 
 Alarm requires post-startup continuous qualified gap.
 
-**P4** 
+**P4**
 
 ```text
 G((startup | !Weld_E_Stop_NC | !Gap_Exceeded) -> X(!gapQualified))
@@ -872,13 +1855,21 @@ G((startup | !Weld_E_Stop_NC | !Gap_Exceeded) -> X(!gapQualified))
 
 Each suppressing condition clears or blocks gap qualification.
 
-**P5** 
+**P5**
 
 ```text
-G((G(Weld_E_Stop_NC & Gap_Exceeded)) -> F(Operator_Alert))
+(G(F(TimeTick))) -> (G((G(Weld_E_Stop_NC & Gap_Exceeded)) -> F(Operator_Alert)))
 ```
 
-Persistent gap eventually alarms after startup and debounce, assuming advancing time.
+Persistent gap eventually alarms after startup and debounce, assuming advancing time. Explicit non-Zeno environment premise: physical elapsed time crosses infinitely many 1ms boundaries.
+
+**PUB005.V2.COMPLETE**
+
+```text
+G(CompleteBehaviorV2)
+```
+
+Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
 
 ### Fixed test index
 
@@ -969,18 +1960,176 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 - Start delay elapsed is zero at the first sample of DO_LOW & AERATION_E_STOP_NC; run becomes TRUE at elapsed>=5s.
 - Count increments on the same invocation that changes end-of-scan BLOWER_RUN from FALSE to TRUE.
 - Tests stay below UINT overflow; overflow behavior is outside the specified operating domain.
+- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
 
 - `permit`: DO_LOW & AERATION_E_STOP_NC
 - `delayDone`: Permissive has continuously remained true for >=5s after its first sampled TRUE.
-- `runPrev`: Pre-scan retained BLOWER_RUN.
-- `countPrev`: Pre-scan AERATION_BLOWER_CYCLE_COUNT.
+- `runPrev`: {"kind": "previous_observed_output", "source": "O[k-1].BLOWER_RUN", "initial": false, "update": "After comparing scan k, store ACTUAL O[k].BLOWER_RUN; never write into reference state."}
+- `countPrev`: {"kind": "previous_observed_output", "source": "O[k-1].AERATION_BLOWER_CYCLE_COUNT", "initial": 0, "update": "After comparing scan k, store ACTUAL O[k].AERATION_BLOWER_CYCLE_COUNT; never write into reference state."}
 - `interface names`: Identically named sampled input or observed output.
+- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_PUB006(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+permit=DO_LOW & AERATION_E_STOP_NC；首次真年龄0，假清计时；run=permit且年龄>=5s。countAfter=countBefore+int(run & !refRunBefore)，初始count=0/refRun=FALSE；每拍更新refRun。计数域0..65535，越界输入历史不在评测域。
+- `TimeTick`: Boolean: floor(t[k]/1ms)>floor(t[k-1]/1ms), with t[0]=0, TimeTick[0]=FALSE, t[k]=sum(dt_ms[1..k]). G(F(TimeTick)) states unbounded physical time progress; merely positive dt is insufficient.
+- `DO_LOW`: I[k].DO_LOW: sampled input (BOOL).
+- `AERATION_E_STOP_NC`: I[k].AERATION_E_STOP_NC: sampled input (BOOL).
+- `BLOWER_RUN`: O[k].BLOWER_RUN: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `AERATION_BLOWER_CYCLE_COUNT`: O[k].AERATION_BLOWER_CYCLE_COUNT: independently observed post-scan candidate value (UINT); never defined as expected output.
 
 ### LTL properties
 
-**P1** 
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+
+### Normalized state, observation and predicate definitions
+
+```json
+{
+  "schema_version": 1,
+  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
+  "candidate_formal_verification": "UNVERIFIED",
+  "initial_observed": {
+    "BLOWER_RUN": false,
+    "AERATION_BLOWER_CYCLE_COUNT": 0
+  },
+  "reference_state_initial": {
+    "class": "ScanContract",
+    "state": {
+      "task_id": "PUB006",
+      "array_contract": null,
+      "process_contract": null,
+      "timed_contract": {
+        "class": "TimedContract",
+        "state": {
+          "task_id": "PUB006",
+          "clock": {
+            "decimal": "0"
+          },
+          "first": true,
+          "since": null,
+          "debounce": null,
+          "runtime": 0,
+          "count": 0,
+          "previous_run": false,
+          "previous_fault": false,
+          "history": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      },
+      "data_contract": null,
+      "reference": null,
+      "phase": 0,
+      "previous_mode": null,
+      "clock": 0.0,
+      "heat_start": null,
+      "protection_start": null,
+      "demand": false
+    }
+  },
+  "transition": {
+    "entrypoint": "plc_agent.normalized_spec.reference_step(task, reference, deepCopy(I[k]), dt_ms[k])",
+    "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('PUB006'); constructed once per independent case, current state is Sref[k].",
+    "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
+    "module_sha256": {
+      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
+      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
+      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
+      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
+      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
+      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+    },
+    "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
+    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+  },
+  "constrained_observed_fields": [
+    "AERATION_BLOWER_CYCLE_COUNT",
+    "BLOWER_RUN"
+  ],
+  "unconstrained_representation_fields": [],
+  "comparison": {
+    "integer_boolean": "exact type and value; no tolerance",
+    "float": "finite; abs error<=1e-5; dictionary/list shape and non-float values exact",
+    "PUB008": "only successfully converted channels[j].outputValue: abs<=1e-5 OR rel<=2e-6; all preserved/config fields exact",
+    "PUB017": "Successful deletion constrains recipeID=0; other fields of that deleted slot are unconstrained for the deletion scan. Subsequent no-write scans preserve the sampled actual representation. This observer history is separate from the logical reference database.",
+    "TIME_LTIME": "exact integer nanoseconds after IEC literal parsing",
+    "implementation": "plc_agent.normalized_spec.NormalizedScanMonitor.step with output_matches (pinned sources); observer histories never drive the independent logical reference"
+  },
+  "observation": {
+    "I[k]": "deep-copied inputs immediately before invocation k",
+    "O[k]": "actual outputs immediately after invocation k, supplied by independent execution backend",
+    "Sref[k]": "independent reference state BEFORE k; unrelated to similarly named candidate variables",
+    "initial": "fresh instance BEFORE invocation 0; never substituted by O[0]",
+    "X": "next scan-sequence position; argument must be Boolean, not a numeric term",
+    "time": "dt_ms is observed elapsed time; public timers use physical time, SELF Tick/count timers use logical scans"
+  },
+  "history_bindings": {
+    "runPrev": {
+      "kind": "previous_observed_output",
+      "source": "O[k-1].BLOWER_RUN",
+      "initial": false,
+      "update": "After comparing scan k, store ACTUAL O[k].BLOWER_RUN; never write into reference state."
+    },
+    "countPrev": {
+      "kind": "previous_observed_output",
+      "source": "O[k-1].AERATION_BLOWER_CYCLE_COUNT",
+      "initial": 0,
+      "update": "After comparing scan k, store ACTUAL O[k].AERATION_BLOWER_CYCLE_COUNT; never write into reference state."
+    }
+  },
+  "auxiliary_state_bindings": {
+    "Spre": "Sref[k], before the invocation; initialized by reference_state_initial",
+    "Spost": "Sref[k+1], after exactly one pinned transition on I[k]",
+    "first": "k=0 (first invocation); distinct from the pre-invocation initial observation",
+    "pre-output": "actual O[k-1] for OUTPUT (explicit history initial where declared); I[k] for caller-owned IN_OUT",
+    "previous-input": "I[k-1] for k>=1; edge memory for BOOL requests initially FALSE and updated after EVERY invocation",
+    "reference_warning": "Spre/Spost predicates are input-driven ghosts, not evidence that candidate internals match. Conclusions about the candidate must constrain actual O.",
+    "timing": {
+      "clock": "Spost.timed_contract.clock (exact integer nanoseconds; first invocation 0)",
+      "start": "Spost.timed_contract.since; None means inactive",
+      "qualified": "start is not None AND clock-start >= duration_ns(limit)",
+      "hold": "start is not None AND clock-start < 500000000",
+      "initial_start": null,
+      "initial_clock": 0,
+      "limit": "DebounceTime for PUB004/PUB005, 5000000000ns for PUB006, 30000000000ns for PUB013",
+      "previous_fault": "Spre.timed_contract.previous_fault, initially FALSE; next=THICKNESS_SIGNAL_VALID AND THICKNESS_FAULT",
+      "pre_count": "Spre.timed_contract.count",
+      "pre_history": "Spre.timed_contract.history",
+      "pre_runtime": "Spre.timed_contract.runtime"
+    }
+  },
+  "finite_conjunctions": {},
+  "reference_state_rule": "Initial state is the serialized constructor above; all fields update solely through the pinned transition. Ghost phase/history/queue are names for this state, not observed candidate state.",
+  "primitives": {
+    "bitwise": "DWORD AND/NOT and popcount operate on unsigned 32-bit values; complement is masked by 0xFFFFFFFF.",
+    "time_literals": "IEC TIME/LTIME literals are exact integer durations in nanoseconds.",
+    "observed_arrays": "All IN_OUT inputs are snapshots before invocation; outputs are independently acquired after invocation. Physical bounds map by ordinal, never share another array lower bound.",
+    "boolean_next": "X takes a Boolean formula. Numeric history transport is bit-expanded for DWORD; Boolean histories use equivalence.",
+    "time_progress": "Timed eventuality clauses explicitly require G(F(TimeTick)); TimeTick denotes crossing a new integer-ms boundary. Finite observations cannot establish this premise."
+  },
+  "assumptions": [
+    "Start delay elapsed is zero at the first sample of DO_LOW & AERATION_E_STOP_NC; run becomes TRUE at elapsed>=5s.",
+    "Count increments on the same invocation that changes end-of-scan BLOWER_RUN from FALSE to TRUE.",
+    "Tests stay below UINT overflow; overflow behavior is outside the specified operating domain.",
+    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+  ],
+  "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
+  "limitations": [
+    "No ST-to-model translation or infinite-trace proof is implemented here.",
+    "Focused legacy LTL predicates still require backend lowering; normalization is not model-checker acceptance.",
+    "Finite matching cannot establish liveness or validate runtime provenance."
+  ],
+  "rules_zh": "permit=DO_LOW & AERATION_E_STOP_NC；首次真年龄0，假清计时；run=permit且年龄>=5s。countAfter=countBefore+int(run & !refRunBefore)，初始count=0/refRun=FALSE；每拍更新refRun。计数域0..65535，越界输入历史不在评测域。"
+}
+```
+
+**P1**
 
 ```text
 G(BLOWER_RUN <-> (permit & delayDone))
@@ -988,7 +2137,7 @@ G(BLOWER_RUN <-> (permit & delayDone))
 
 Run is enabled only after the full delay.
 
-**P2** 
+**P2**
 
 ```text
 G(!permit -> (!BLOWER_RUN & X(!delayDone)))
@@ -996,7 +2145,7 @@ G(!permit -> (!BLOWER_RUN & X(!delayDone)))
 
 Loss of demand or safety permissive clears run and its timer.
 
-**P3** 
+**P3**
 
 ```text
 G((!runPrev & BLOWER_RUN) -> AERATION_BLOWER_CYCLE_COUNT=countPrev+1)
@@ -1004,7 +2153,7 @@ G((!runPrev & BLOWER_RUN) -> AERATION_BLOWER_CYCLE_COUNT=countPrev+1)
 
 One count per genuine start.
 
-**P4** 
+**P4**
 
 ```text
 G((runPrev | !BLOWER_RUN) -> AERATION_BLOWER_CYCLE_COUNT=countPrev)
@@ -1012,13 +2161,21 @@ G((runPrev | !BLOWER_RUN) -> AERATION_BLOWER_CYCLE_COUNT=countPrev)
 
 No repeated count during continuous operation or stop.
 
-**P5** 
+**P5**
 
 ```text
-G((G(permit)) -> F(BLOWER_RUN))
+(G(F(TimeTick))) -> (G((G(permit)) -> F(BLOWER_RUN)))
 ```
 
-A sustained permitted demand eventually starts under advancing time.
+A sustained permitted demand eventually starts under advancing time. Explicit non-Zeno environment premise: physical elapsed time crosses infinitely many 1ms boundaries.
+
+**PUB006.V2.COMPLETE**
+
+```text
+G(CompleteBehaviorV2)
+```
+
+Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
 
 ### Fixed test index
 
@@ -1026,6 +2183,7 @@ A sustained permitted demand eventually starts under advancing time.
 | --- | --- | ---: |
 | T1 | Exact delay threshold, sustained operation and second counted start | 8 |
 | T2 | Emergency stop discards partial and completed delay | 7 |
+| V2_permit_loss_at_deadline | Permission loss at the exact deadline wins; recovery starts a fresh full interval, even after a long gap. | 5 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -1116,6 +2274,8 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 - A start command selects the running set from current mode/configuration; commands are retained while neither button is TRUE. There is no automatic selection change until another start.
 - Equal priorities are resolved by lower array index first. Selection is ignored in automatic mode.
 - The caller initializes every RunComd FALSE before creating the first operational scan. Only RunComd may be written.
+- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- V2 confirms the existing evaluation policy: start is level-sensitive and reselects each TRUE invocation; without start, mode/selection/priority changes do not reselect. Automatic top-three applies to selection events, not unconditionally to every automatic invocation.
 
 ### Data types
 
@@ -1152,42 +2312,158 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 - `runs[i]`: Post-scan pumpGroup[i].RunComd, for i=1..5.
 - `select[i]`: Sampled pumpGroup[i].selection.
 - `interface names`: Identically named sampled input or output.
+- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_PUB007(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+数组序号j=0..4，对应PLC下标j+1。stop时全部RunComd=FALSE；否则start时手动取selection，自动取按(-priority,j)升序排列的前三项；无start保持采样RunComd。priority和selection实际扫描后必须精确等于采样值。
+- `TopThree1`: (1-1) is in first three ordinal indices of sorted(range(5), key=lambda j: (-I[k].pumpGroup[j].priority,j)).
+- `TopThree2`: (2-1) is in first three ordinal indices of sorted(range(5), key=lambda j: (-I[k].pumpGroup[j].priority,j)).
+- `TopThree3`: (3-1) is in first three ordinal indices of sorted(range(5), key=lambda j: (-I[k].pumpGroup[j].priority,j)).
+- `TopThree4`: (4-1) is in first three ordinal indices of sorted(range(5), key=lambda j: (-I[k].pumpGroup[j].priority,j)).
+- `TopThree5`: (5-1) is in first three ordinal indices of sorted(range(5), key=lambda j: (-I[k].pumpGroup[j].priority,j)).
+- `mode`: I[k].mode: sampled input (BOOL).
+- `start`: I[k].start: sampled input (BOOL).
+- `stop`: I[k].stop: sampled input (BOOL).
+- `pumpGroup`: O[k].pumpGroup: independently observed post-scan candidate value (ARRAY[1..5] OF ST_Pump); never defined as expected output. I[k].pumpGroup denotes separately captured caller value before invocation.
 
 ### LTL properties
 
-**P1** 
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+
+### Normalized state, observation and predicate definitions
+
+```json
+{
+  "schema_version": 1,
+  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
+  "candidate_formal_verification": "UNVERIFIED",
+  "initial_observed": {},
+  "reference_state_initial": {
+    "class": "ScanContract",
+    "state": {
+      "task_id": "PUB007",
+      "array_contract": {
+        "class": "ArrayContract",
+        "state": {
+          "task_id": "PUB007"
+        }
+      },
+      "process_contract": null,
+      "timed_contract": null,
+      "data_contract": null,
+      "reference": null,
+      "phase": 0,
+      "previous_mode": null,
+      "clock": 0.0,
+      "heat_start": null,
+      "protection_start": null,
+      "demand": false
+    }
+  },
+  "transition": {
+    "entrypoint": "plc_agent.normalized_spec.reference_step(task, reference, deepCopy(I[k]), dt_ms[k])",
+    "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('PUB007'); constructed once per independent case, current state is Sref[k].",
+    "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
+    "module_sha256": {
+      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
+      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
+      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
+      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
+      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
+      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+    },
+    "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
+    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+  },
+  "constrained_observed_fields": [
+    "pumpGroup"
+  ],
+  "unconstrained_representation_fields": [],
+  "comparison": {
+    "integer_boolean": "exact type and value; no tolerance",
+    "float": "finite; abs error<=1e-5; dictionary/list shape and non-float values exact",
+    "PUB008": "only successfully converted channels[j].outputValue: abs<=1e-5 OR rel<=2e-6; all preserved/config fields exact",
+    "PUB017": "Successful deletion constrains recipeID=0; other fields of that deleted slot are unconstrained for the deletion scan. Subsequent no-write scans preserve the sampled actual representation. This observer history is separate from the logical reference database.",
+    "TIME_LTIME": "exact integer nanoseconds after IEC literal parsing",
+    "implementation": "plc_agent.normalized_spec.NormalizedScanMonitor.step with output_matches (pinned sources); observer histories never drive the independent logical reference"
+  },
+  "observation": {
+    "I[k]": "deep-copied inputs immediately before invocation k",
+    "O[k]": "actual outputs immediately after invocation k, supplied by independent execution backend",
+    "Sref[k]": "independent reference state BEFORE k; unrelated to similarly named candidate variables",
+    "initial": "fresh instance BEFORE invocation 0; never substituted by O[0]",
+    "X": "next scan-sequence position; argument must be Boolean, not a numeric term",
+    "time": "dt_ms is observed elapsed time; public timers use physical time, SELF Tick/count timers use logical scans"
+  },
+  "history_bindings": {},
+  "auxiliary_state_bindings": {
+    "Spre": "Sref[k], before the invocation; initialized by reference_state_initial",
+    "Spost": "Sref[k+1], after exactly one pinned transition on I[k]",
+    "first": "k=0 (first invocation); distinct from the pre-invocation initial observation",
+    "pre-output": "actual O[k-1] for OUTPUT (explicit history initial where declared); I[k] for caller-owned IN_OUT",
+    "previous-input": "I[k-1] for k>=1; edge memory for BOOL requests initially FALSE and updated after EVERY invocation",
+    "reference_warning": "Spre/Spost predicates are input-driven ghosts, not evidence that candidate internals match. Conclusions about the candidate must constrain actual O."
+  },
+  "finite_conjunctions": {},
+  "reference_state_rule": "Initial state is the serialized constructor above; all fields update solely through the pinned transition. Ghost phase/history/queue are names for this state, not observed candidate state.",
+  "primitives": {
+    "bitwise": "DWORD AND/NOT and popcount operate on unsigned 32-bit values; complement is masked by 0xFFFFFFFF.",
+    "time_literals": "IEC TIME/LTIME literals are exact integer durations in nanoseconds.",
+    "observed_arrays": "All IN_OUT inputs are snapshots before invocation; outputs are independently acquired after invocation. Physical bounds map by ordinal, never share another array lower bound.",
+    "boolean_next": "X takes a Boolean formula. Numeric history transport is bit-expanded for DWORD; Boolean histories use equivalence.",
+    "time_progress": "Timed eventuality clauses explicitly require G(F(TimeTick)); TimeTick denotes crossing a new integer-ms boundary. Finite observations cannot establish this premise."
+  },
+  "assumptions": [
+    "stop has priority over start and clears all five commands.",
+    "A start command selects the running set from current mode/configuration; commands are retained while neither button is TRUE. There is no automatic selection change until another start.",
+    "Equal priorities are resolved by lower array index first. Selection is ignored in automatic mode.",
+    "The caller initializes every RunComd FALSE before creating the first operational scan. Only RunComd may be written.",
+    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "V2 confirms the existing evaluation policy: start is level-sensitive and reselects each TRUE invocation; without start, mode/selection/priority changes do not reselect. Automatic top-three applies to selection events, not unconditionally to every automatic invocation."
+  ],
+  "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
+  "limitations": [
+    "No ST-to-model translation or infinite-trace proof is implemented here.",
+    "Focused legacy LTL predicates still require backend lowering; normalization is not model-checker acceptance.",
+    "Finite matching cannot establish liveness or validate runtime provenance."
+  ],
+  "rules_zh": "数组序号j=0..4，对应PLC下标j+1。stop时全部RunComd=FALSE；否则start时手动取selection，自动取按(-priority,j)升序排列的前三项；无start保持采样RunComd。priority和selection实际扫描后必须精确等于采样值。"
+}
+```
+
+**P1**
 
 ```text
-G(stop -> (forall i in 1..5: !runs[i]))
+G((stop) -> ((!runs[1]) & (!runs[2]) & (!runs[3]) & (!runs[4]) & (!runs[5])))
 ```
 
 Stop de-energizes all pumps.
 
-**P2** 
+**P2**
 
 ```text
-G((!stop & start & !mode) -> (forall i in 1..5: runs[i]=select[i]))
+G((!stop & start & !mode) -> ((runs[1]=select[1]) & (runs[2]=select[2]) & (runs[3]=select[3]) & (runs[4]=select[4]) & (runs[5]=select[5])))
 ```
 
 Manual start uses exactly the selected pumps.
 
-**P3** 
+**P3**
 
 ```text
-G((!stop & start & mode) -> (forall i in 1..5: runs[i]=(i in top3)))
+G((!stop & start & mode) -> (((runs[1] <-> TopThree1)) & ((runs[2] <-> TopThree2)) & ((runs[3] <-> TopThree3)) & ((runs[4] <-> TopThree4)) & ((runs[5] <-> TopThree5))))
 ```
 
 Automatic start runs exactly the highest-priority three.
 
-**P4** 
+**P4**
 
 ```text
-G((!stop & !start) -> (forall i in 1..5: runs[i]=runPrev[i]))
+G((!stop & !start) -> ((runs[1]=runPrev[1]) & (runs[2]=runPrev[2]) & (runs[3]=runPrev[3]) & (runs[4]=runPrev[4]) & (runs[5]=runPrev[5])))
 ```
 
 Start/stop operation latches commands.
 
-**P5** 
+**P5**
 
 ```text
 G(readOnlyPreserved)
@@ -1195,12 +2471,21 @@ G(readOnlyPreserved)
 
 The FB may not modify priorities or selections.
 
+**PUB007.V2.COMPLETE**
+
+```text
+G(CompleteBehaviorV2)
+```
+
+Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
+
 ### Fixed test index
 
 | Case | Purpose | Steps |
 | --- | --- | ---: |
 | T1 | Manual latching, read-only fields and simultaneous stop/start | 3 |
 | T2 | Automatic top-three selection and deterministic ties | 3 |
+| V2_pump_reselection_history | Ties, changed priorities without start, reselection and simultaneous stop/start. | 4 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -1295,6 +2580,9 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 - Invalid measuringMode has priority over invalid hiLIM/loLIM. Limit validation applies to enabled channels in every mode.
 - Scaling extrapolates outside nominal raw range; no saturation is specified.
 - Test metadata array_lower_bounds defines the physical array indices used by the caller. JSON arrays are ordered storage values, not IEC index literals. The caller satisfies count bounds.
+- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- Floating-point inputs and intermediate reference arithmetic are finite. Existing fixed traces retain their declared absolute tolerance; claims do not extend to arbitrary magnitudes without a separately specified numeric error policy.
+- V2 array extension: successful channel outputValue is compared with abs_tol=1e-5 and rel_tol=2e-6. Read-only and skipped/error-preserved fields are exact. This explicitly supersedes uniform absolute tolerance for this task only; both agents receive this policy.
 
 ### Data types
 
@@ -1356,10 +2644,215 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 - `channel output names`: Post-scan fields of the channel at the indicated ordinal position.
 - `sampledOutputValue(j)`: The caller-provided outputValue before this scan.
 - `measuringMode(j)`: The sampled measuringMode configuration for ordinal j.
+- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_PUB008(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+序号j=0..len(channels)-1；仅j<count且enable处理，0<=count<=min两数组长度。非法mode优先报8001，否则hi<=lo报8002，均保留采样outputValue；成功清码，mode0按单极raw/27648或双极(raw+27648)/55296线性映射，mode1/2分别raw/10、raw/100。其他项及配置精确保留，仅成功outputValue使用abs=1e-5、rel=2e-6。
+- `AllChannels_P2`: {"operator": "finite_conjunction", "variable": "j", "lower_inclusive": 0, "upper_exclusive": "len(I[k].channels)", "empty_value": true, "body": "!enabled(j) -> preserved(j)", "instantiation": "For concrete caller binding N, substitute j=0,...,N-1 and join the Boolean bodies with &. N is binding length, never count.", "index_mapping": "j is zero-based ordinal; PLC index is each array own lower bound + j.", "guard": "enabled(j) := j<I[k].count AND I[k].channels[j].enable; short-circuit before raw(j) access.", "numeric_comparison": "Converted outputValue uses the comparison policy; status/config/preserved fields are exact."}
+- `AllChannels_P3`: {"operator": "finite_conjunction", "variable": "j", "lower_inclusive": 0, "upper_exclusive": "len(I[k].channels)", "empty_value": true, "body": "(enabled(j) & !modeOK(j)) -> (retVal(j)=16#8001 & outputValue(j)=sampledOutputValue(j))", "instantiation": "For concrete caller binding N, substitute j=0,...,N-1 and join the Boolean bodies with &. N is binding length, never count.", "index_mapping": "j is zero-based ordinal; PLC index is each array own lower bound + j.", "guard": "enabled(j) := j<I[k].count AND I[k].channels[j].enable; short-circuit before raw(j) access.", "numeric_comparison": "Converted outputValue uses the comparison policy; status/config/preserved fields are exact."}
+- `AllChannels_P4`: {"operator": "finite_conjunction", "variable": "j", "lower_inclusive": 0, "upper_exclusive": "len(I[k].channels)", "empty_value": true, "body": "(enabled(j) & modeOK(j) & !limitsOK(j)) -> (retVal(j)=16#8002 & outputValue(j)=sampledOutputValue(j))", "instantiation": "For concrete caller binding N, substitute j=0,...,N-1 and join the Boolean bodies with &. N is binding length, never count.", "index_mapping": "j is zero-based ordinal; PLC index is each array own lower bound + j.", "guard": "enabled(j) := j<I[k].count AND I[k].channels[j].enable; short-circuit before raw(j) access.", "numeric_comparison": "Converted outputValue uses the comparison policy; status/config/preserved fields are exact."}
+- `AllChannels_P5`: {"operator": "finite_conjunction", "variable": "j", "lower_inclusive": 0, "upper_exclusive": "len(I[k].channels)", "empty_value": true, "body": "(enabled(j) & modeOK(j) & limitsOK(j)) -> retVal(j)=0", "instantiation": "For concrete caller binding N, substitute j=0,...,N-1 and join the Boolean bodies with &. N is binding length, never count.", "index_mapping": "j is zero-based ordinal; PLC index is each array own lower bound + j.", "guard": "enabled(j) := j<I[k].count AND I[k].channels[j].enable; short-circuit before raw(j) access.", "numeric_comparison": "Converted outputValue uses the comparison policy; status/config/preserved fields are exact."}
+- `AllChannels_P6`: {"operator": "finite_conjunction", "variable": "j", "lower_inclusive": 0, "upper_exclusive": "len(I[k].channels)", "empty_value": true, "body": "(enabled(j) & limitsOK(j) & measuringMode(j)=0) -> outputValue(j)=scaled(j)", "instantiation": "For concrete caller binding N, substitute j=0,...,N-1 and join the Boolean bodies with &. N is binding length, never count.", "index_mapping": "j is zero-based ordinal; PLC index is each array own lower bound + j.", "guard": "enabled(j) := j<I[k].count AND I[k].channels[j].enable; short-circuit before raw(j) access.", "numeric_comparison": "Converted outputValue uses the comparison policy; status/config/preserved fields are exact."}
+- `AllChannels_P7`: {"operator": "finite_conjunction", "variable": "j", "lower_inclusive": 0, "upper_exclusive": "len(I[k].channels)", "empty_value": true, "body": "(enabled(j) & limitsOK(j) & measuringMode(j)=1) -> outputValue(j)=raw(j)/10", "instantiation": "For concrete caller binding N, substitute j=0,...,N-1 and join the Boolean bodies with &. N is binding length, never count.", "index_mapping": "j is zero-based ordinal; PLC index is each array own lower bound + j.", "guard": "enabled(j) := j<I[k].count AND I[k].channels[j].enable; short-circuit before raw(j) access.", "numeric_comparison": "Converted outputValue uses the comparison policy; status/config/preserved fields are exact."}
+- `AllChannels_P8`: {"operator": "finite_conjunction", "variable": "j", "lower_inclusive": 0, "upper_exclusive": "len(I[k].channels)", "empty_value": true, "body": "(enabled(j) & limitsOK(j) & measuringMode(j)=2) -> outputValue(j)=raw(j)/100", "instantiation": "For concrete caller binding N, substitute j=0,...,N-1 and join the Boolean bodies with &. N is binding length, never count.", "index_mapping": "j is zero-based ordinal; PLC index is each array own lower bound + j.", "guard": "enabled(j) := j<I[k].count AND I[k].channels[j].enable; short-circuit before raw(j) access.", "numeric_comparison": "Converted outputValue uses the comparison policy; status/config/preserved fields are exact."}
+- `count`: I[k].count: sampled input (DINT).
+- `analogValues`: O[k].analogValues: independently observed post-scan candidate value (ARRAY[*] OF INT); never defined as expected output. I[k].analogValues denotes separately captured caller value before invocation.
+- `channels`: O[k].channels: independently observed post-scan candidate value (ARRAY[*] OF ST_AnalogChannel); never defined as expected output. I[k].channels denotes separately captured caller value before invocation.
 
 ### LTL properties
 
-**P1** 
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+
+### Normalized state, observation and predicate definitions
+
+```json
+{
+  "schema_version": 1,
+  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
+  "candidate_formal_verification": "UNVERIFIED",
+  "initial_observed": {},
+  "reference_state_initial": {
+    "class": "ScanContract",
+    "state": {
+      "task_id": "PUB008",
+      "array_contract": {
+        "class": "ArrayContract",
+        "state": {
+          "task_id": "PUB008"
+        }
+      },
+      "process_contract": null,
+      "timed_contract": null,
+      "data_contract": null,
+      "reference": null,
+      "phase": 0,
+      "previous_mode": null,
+      "clock": 0.0,
+      "heat_start": null,
+      "protection_start": null,
+      "demand": false
+    }
+  },
+  "transition": {
+    "entrypoint": "plc_agent.normalized_spec.reference_step(task, reference, deepCopy(I[k]), dt_ms[k])",
+    "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('PUB008'); constructed once per independent case, current state is Sref[k].",
+    "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
+    "module_sha256": {
+      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
+      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
+      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
+      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
+      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
+      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+    },
+    "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
+    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+  },
+  "constrained_observed_fields": [
+    "analogValues",
+    "channels"
+  ],
+  "unconstrained_representation_fields": [],
+  "comparison": {
+    "integer_boolean": "exact type and value; no tolerance",
+    "float": "finite; abs error<=1e-5; dictionary/list shape and non-float values exact",
+    "PUB008": "only successfully converted channels[j].outputValue: abs<=1e-5 OR rel<=2e-6; all preserved/config fields exact",
+    "PUB017": "Successful deletion constrains recipeID=0; other fields of that deleted slot are unconstrained for the deletion scan. Subsequent no-write scans preserve the sampled actual representation. This observer history is separate from the logical reference database.",
+    "TIME_LTIME": "exact integer nanoseconds after IEC literal parsing",
+    "implementation": "plc_agent.normalized_spec.NormalizedScanMonitor.step with output_matches (pinned sources); observer histories never drive the independent logical reference"
+  },
+  "observation": {
+    "I[k]": "deep-copied inputs immediately before invocation k",
+    "O[k]": "actual outputs immediately after invocation k, supplied by independent execution backend",
+    "Sref[k]": "independent reference state BEFORE k; unrelated to similarly named candidate variables",
+    "initial": "fresh instance BEFORE invocation 0; never substituted by O[0]",
+    "X": "next scan-sequence position; argument must be Boolean, not a numeric term",
+    "time": "dt_ms is observed elapsed time; public timers use physical time, SELF Tick/count timers use logical scans"
+  },
+  "history_bindings": {},
+  "auxiliary_state_bindings": {
+    "Spre": "Sref[k], before the invocation; initialized by reference_state_initial",
+    "Spost": "Sref[k+1], after exactly one pinned transition on I[k]",
+    "first": "k=0 (first invocation); distinct from the pre-invocation initial observation",
+    "pre-output": "actual O[k-1] for OUTPUT (explicit history initial where declared); I[k] for caller-owned IN_OUT",
+    "previous-input": "I[k-1] for k>=1; edge memory for BOOL requests initially FALSE and updated after EVERY invocation",
+    "reference_warning": "Spre/Spost predicates are input-driven ghosts, not evidence that candidate internals match. Conclusions about the candidate must constrain actual O."
+  },
+  "finite_conjunctions": {
+    "AllChannels_P2": {
+      "operator": "finite_conjunction",
+      "variable": "j",
+      "lower_inclusive": 0,
+      "upper_exclusive": "len(I[k].channels)",
+      "empty_value": true,
+      "body": "!enabled(j) -> preserved(j)",
+      "instantiation": "For concrete caller binding N, substitute j=0,...,N-1 and join the Boolean bodies with &. N is binding length, never count.",
+      "index_mapping": "j is zero-based ordinal; PLC index is each array own lower bound + j.",
+      "guard": "enabled(j) := j<I[k].count AND I[k].channels[j].enable; short-circuit before raw(j) access.",
+      "numeric_comparison": "Converted outputValue uses the comparison policy; status/config/preserved fields are exact."
+    },
+    "AllChannels_P3": {
+      "operator": "finite_conjunction",
+      "variable": "j",
+      "lower_inclusive": 0,
+      "upper_exclusive": "len(I[k].channels)",
+      "empty_value": true,
+      "body": "(enabled(j) & !modeOK(j)) -> (retVal(j)=16#8001 & outputValue(j)=sampledOutputValue(j))",
+      "instantiation": "For concrete caller binding N, substitute j=0,...,N-1 and join the Boolean bodies with &. N is binding length, never count.",
+      "index_mapping": "j is zero-based ordinal; PLC index is each array own lower bound + j.",
+      "guard": "enabled(j) := j<I[k].count AND I[k].channels[j].enable; short-circuit before raw(j) access.",
+      "numeric_comparison": "Converted outputValue uses the comparison policy; status/config/preserved fields are exact."
+    },
+    "AllChannels_P4": {
+      "operator": "finite_conjunction",
+      "variable": "j",
+      "lower_inclusive": 0,
+      "upper_exclusive": "len(I[k].channels)",
+      "empty_value": true,
+      "body": "(enabled(j) & modeOK(j) & !limitsOK(j)) -> (retVal(j)=16#8002 & outputValue(j)=sampledOutputValue(j))",
+      "instantiation": "For concrete caller binding N, substitute j=0,...,N-1 and join the Boolean bodies with &. N is binding length, never count.",
+      "index_mapping": "j is zero-based ordinal; PLC index is each array own lower bound + j.",
+      "guard": "enabled(j) := j<I[k].count AND I[k].channels[j].enable; short-circuit before raw(j) access.",
+      "numeric_comparison": "Converted outputValue uses the comparison policy; status/config/preserved fields are exact."
+    },
+    "AllChannels_P5": {
+      "operator": "finite_conjunction",
+      "variable": "j",
+      "lower_inclusive": 0,
+      "upper_exclusive": "len(I[k].channels)",
+      "empty_value": true,
+      "body": "(enabled(j) & modeOK(j) & limitsOK(j)) -> retVal(j)=0",
+      "instantiation": "For concrete caller binding N, substitute j=0,...,N-1 and join the Boolean bodies with &. N is binding length, never count.",
+      "index_mapping": "j is zero-based ordinal; PLC index is each array own lower bound + j.",
+      "guard": "enabled(j) := j<I[k].count AND I[k].channels[j].enable; short-circuit before raw(j) access.",
+      "numeric_comparison": "Converted outputValue uses the comparison policy; status/config/preserved fields are exact."
+    },
+    "AllChannels_P6": {
+      "operator": "finite_conjunction",
+      "variable": "j",
+      "lower_inclusive": 0,
+      "upper_exclusive": "len(I[k].channels)",
+      "empty_value": true,
+      "body": "(enabled(j) & limitsOK(j) & measuringMode(j)=0) -> outputValue(j)=scaled(j)",
+      "instantiation": "For concrete caller binding N, substitute j=0,...,N-1 and join the Boolean bodies with &. N is binding length, never count.",
+      "index_mapping": "j is zero-based ordinal; PLC index is each array own lower bound + j.",
+      "guard": "enabled(j) := j<I[k].count AND I[k].channels[j].enable; short-circuit before raw(j) access.",
+      "numeric_comparison": "Converted outputValue uses the comparison policy; status/config/preserved fields are exact."
+    },
+    "AllChannels_P7": {
+      "operator": "finite_conjunction",
+      "variable": "j",
+      "lower_inclusive": 0,
+      "upper_exclusive": "len(I[k].channels)",
+      "empty_value": true,
+      "body": "(enabled(j) & limitsOK(j) & measuringMode(j)=1) -> outputValue(j)=raw(j)/10",
+      "instantiation": "For concrete caller binding N, substitute j=0,...,N-1 and join the Boolean bodies with &. N is binding length, never count.",
+      "index_mapping": "j is zero-based ordinal; PLC index is each array own lower bound + j.",
+      "guard": "enabled(j) := j<I[k].count AND I[k].channels[j].enable; short-circuit before raw(j) access.",
+      "numeric_comparison": "Converted outputValue uses the comparison policy; status/config/preserved fields are exact."
+    },
+    "AllChannels_P8": {
+      "operator": "finite_conjunction",
+      "variable": "j",
+      "lower_inclusive": 0,
+      "upper_exclusive": "len(I[k].channels)",
+      "empty_value": true,
+      "body": "(enabled(j) & limitsOK(j) & measuringMode(j)=2) -> outputValue(j)=raw(j)/100",
+      "instantiation": "For concrete caller binding N, substitute j=0,...,N-1 and join the Boolean bodies with &. N is binding length, never count.",
+      "index_mapping": "j is zero-based ordinal; PLC index is each array own lower bound + j.",
+      "guard": "enabled(j) := j<I[k].count AND I[k].channels[j].enable; short-circuit before raw(j) access.",
+      "numeric_comparison": "Converted outputValue uses the comparison policy; status/config/preserved fields are exact."
+    }
+  },
+  "reference_state_rule": "Initial state is the serialized constructor above; all fields update solely through the pinned transition. Ghost phase/history/queue are names for this state, not observed candidate state.",
+  "primitives": {
+    "bitwise": "DWORD AND/NOT and popcount operate on unsigned 32-bit values; complement is masked by 0xFFFFFFFF.",
+    "time_literals": "IEC TIME/LTIME literals are exact integer durations in nanoseconds.",
+    "observed_arrays": "All IN_OUT inputs are snapshots before invocation; outputs are independently acquired after invocation. Physical bounds map by ordinal, never share another array lower bound.",
+    "boolean_next": "X takes a Boolean formula. Numeric history transport is bit-expanded for DWORD; Boolean histories use equivalence.",
+    "time_progress": "Timed eventuality clauses explicitly require G(F(TimeTick)); TimeTick denotes crossing a new integer-ms boundary. Finite observations cannot establish this premise."
+  },
+  "assumptions": [
+    "Disabled and out-of-count channels retain both retVal and outputValue.",
+    "Successful enabled conversion sets retVal=0. Invalid channels preserve outputValue while returning the error code.",
+    "Invalid measuringMode has priority over invalid hiLIM/loLIM. Limit validation applies to enabled channels in every mode.",
+    "Scaling extrapolates outside nominal raw range; no saturation is specified.",
+    "Test metadata array_lower_bounds defines the physical array indices used by the caller. JSON arrays are ordered storage values, not IEC index literals. The caller satisfies count bounds.",
+    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "Floating-point inputs and intermediate reference arithmetic are finite. Existing fixed traces retain their declared absolute tolerance; claims do not extend to arbitrary magnitudes without a separately specified numeric error policy.",
+    "V2 array extension: successful channel outputValue is compared with abs_tol=1e-5 and rel_tol=2e-6. Read-only and skipped/error-preserved fields are exact. This explicitly supersedes uniform absolute tolerance for this task only; both agents receive this policy."
+  ],
+  "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
+  "limitations": [
+    "No ST-to-model translation or infinite-trace proof is implemented here.",
+    "Focused legacy LTL predicates still require backend lowering; normalization is not model-checker acceptance.",
+    "Finite matching cannot establish liveness or validate runtime provenance."
+  ],
+  "rules_zh": "序号j=0..len(channels)-1；仅j<count且enable处理，0<=count<=min两数组长度。非法mode优先报8001，否则hi<=lo报8002，均保留采样outputValue；成功清码，mode0按单极raw/27648或双极(raw+27648)/55296线性映射，mode1/2分别raw/10、raw/100。其他项及配置精确保留，仅成功outputValue使用abs=1e-5、rel=2e-6。"
+}
+```
+
+**P1**
 
 ```text
 G(readonlyPreserved)
@@ -1367,61 +2860,69 @@ G(readonlyPreserved)
 
 Input arrays and configuration are never modified.
 
-**P2** 
+**P2**
 
 ```text
-G(forall j: !enabled(j) -> preserved(j))
+G(AllChannels_P2)
 ```
 
 Disabled and unprocessed channels are unchanged.
 
-**P3** 
+**P3**
 
 ```text
-G(forall j: (enabled(j) & !modeOK(j)) -> (retVal(j)=16#8001 & outputValue(j)=sampledOutputValue(j)))
+G(AllChannels_P3)
 ```
 
 Unsupported modes return the defined status without conversion.
 
-**P4** 
+**P4**
 
 ```text
-G(forall j: (enabled(j) & modeOK(j) & !limitsOK(j)) -> (retVal(j)=16#8002 & outputValue(j)=sampledOutputValue(j)))
+G(AllChannels_P4)
 ```
 
 Invalid limits return their status without conversion.
 
-**P5** 
+**P5**
 
 ```text
-G(forall j: (enabled(j) & modeOK(j) & limitsOK(j)) -> retVal(j)=0)
+G(AllChannels_P5)
 ```
 
 Successful enabled channels clear their status.
 
-**P6** 
+**P6**
 
 ```text
-G(forall j: (enabled(j) & limitsOK(j) & measuringMode(j)=0) -> outputValue(j)=scaled(j))
+G(AllChannels_P6)
 ```
 
 Linear scale uses the correct unipolar or bipolar range.
 
-**P7** 
+**P7**
 
 ```text
-G(forall j: (enabled(j) & limitsOK(j) & measuringMode(j)=1) -> outputValue(j)=raw(j)/10)
+G(AllChannels_P7)
 ```
 
 Standard-temperature resolution is one tenth.
 
-**P8** 
+**P8**
 
 ```text
-G(forall j: (enabled(j) & limitsOK(j) & measuringMode(j)=2) -> outputValue(j)=raw(j)/100)
+G(AllChannels_P8)
 ```
 
 Climatic-temperature resolution is one hundredth.
+
+**PUB008.V2.COMPLETE**
+
+```text
+G(CompleteBehaviorV2)
+```
+
+Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
 
 ### Fixed test index
 
@@ -1430,6 +2931,7 @@ Climatic-temperature resolution is one hundredth.
 | T1 | Unipolar and bipolar endpoints, midpoint and temperature modes | 1 |
 | T2 | Disabled channel, invalid mode priority, invalid limits and count truncation | 1 |
 | T3 | count zero preserves every value and negative raw extrapolates | 2 |
+| V2_unequal_arrays_wide_arithmetic | Unequal lengths and distinct lower bounds; preserve skipped channel; avoid INT intermediate overflow. | 1 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -1533,6 +3035,8 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 - Changing a valid windowSize clears history before any same-scan accepted sample. Invalid window sets error/status and does not accept or change history.
 - An invalid-window scan preserves average/windowSizeReached. Returning to a valid window clears error/status. Trigger edge history is updated on every invocation, including reset and invalid-window scans.
 - cyclicExecution accepts exactly one sample per scan and ignores the trigger. windowSizeReached becomes TRUE once the accepted sample count reaches windowSize.
+- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- Floating-point inputs and intermediate reference arithmetic are finite. Existing fixed traces retain their declared absolute tolerance; claims do not extend to arbitrary magnitudes without a separately specified numeric error policy.
 
 ### Atomic propositions and monitor predicates
 
@@ -1546,11 +3050,227 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 - `meanOrZero`: Arithmetic mean for a nonempty list, otherwise zero.
 - `length`: Number of samples in the history list.
 - `windowChanged`: Current valid windowSize differs from the last valid configured size.
-- `previousTrigger`: Pre-scan retained trigger, initialized FALSE.
+- `previousTrigger`: {"kind": "previous_sampled_input", "source": "I[k-1].trigger", "initial": false, "update": "After EVERY scan k, including invalid/reset/stop, store I[k].trigger"}
+- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_PUB009(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+previousTrigger初值FALSE且每次调用后=本拍trigger。valid=1<=windowSize<=100；非法时average/reached保持并报8200。有效窗口首次建立或改变、或reset时清空历史；非reset且cyclicExecution或trigger上升沿时追加value并保留最后windowSize项。average=空则0否则sum/n，reached=(n=windowSize)。初始历史空、average=0、reached=FALSE。
+- `cyclicExecution`: I[k].cyclicExecution: sampled input (BOOL).
+- `trigger`: I[k].trigger: sampled input (BOOL).
+- `value`: I[k].value: sampled input (LREAL).
+- `windowSize`: I[k].windowSize: sampled input (INT).
+- `reset`: I[k].reset: sampled input (BOOL).
+- `average`: O[k].average: independently observed post-scan candidate value (LREAL); never defined as expected output.
+- `windowSizeReached`: O[k].windowSizeReached: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `error`: O[k].error: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `status`: O[k].status: independently observed post-scan candidate value (WORD); never defined as expected output.
 
 ### LTL properties
 
-**P1** 
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+
+### Normalized state, observation and predicate definitions
+
+```json
+{
+  "schema_version": 1,
+  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
+  "candidate_formal_verification": "UNVERIFIED",
+  "initial_observed": {
+    "average": 0.0,
+    "windowSizeReached": false,
+    "error": false,
+    "status": 0
+  },
+  "reference_state_initial": {
+    "class": "ScanContract",
+    "state": {
+      "task_id": "PUB009",
+      "array_contract": null,
+      "process_contract": null,
+      "timed_contract": null,
+      "data_contract": {
+        "class": "DataContract",
+        "state": {
+          "task_id": "PUB009",
+          "previous": 0,
+          "high": false,
+          "low": false,
+          "trigger": false,
+          "window": null,
+          "history": [],
+          "average": 0.0,
+          "reached": false,
+          "recipes": [
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            }
+          ],
+          "last_query": {
+            "recipeID": 0,
+            "ingredientType": 0,
+            "ingredientRatio": 0.0,
+            "productionTemperature": 0.0
+          },
+          "prev_add": false,
+          "prev_delete": false,
+          "prev_modify": false,
+          "prev_query": false,
+          "recipes_initialized": false,
+          "queue": [],
+          "prev_enq": false,
+          "prev_deq": false
+        }
+      },
+      "reference": null,
+      "phase": 0,
+      "previous_mode": null,
+      "clock": 0.0,
+      "heat_start": null,
+      "protection_start": null,
+      "demand": false
+    }
+  },
+  "transition": {
+    "entrypoint": "plc_agent.normalized_spec.reference_step(task, reference, deepCopy(I[k]), dt_ms[k])",
+    "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('PUB009'); constructed once per independent case, current state is Sref[k].",
+    "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
+    "module_sha256": {
+      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
+      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
+      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
+      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
+      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
+      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+    },
+    "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
+    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+  },
+  "constrained_observed_fields": [
+    "average",
+    "error",
+    "status",
+    "windowSizeReached"
+  ],
+  "unconstrained_representation_fields": [],
+  "comparison": {
+    "integer_boolean": "exact type and value; no tolerance",
+    "float": "finite; abs error<=1e-5; dictionary/list shape and non-float values exact",
+    "PUB008": "only successfully converted channels[j].outputValue: abs<=1e-5 OR rel<=2e-6; all preserved/config fields exact",
+    "PUB017": "Successful deletion constrains recipeID=0; other fields of that deleted slot are unconstrained for the deletion scan. Subsequent no-write scans preserve the sampled actual representation. This observer history is separate from the logical reference database.",
+    "TIME_LTIME": "exact integer nanoseconds after IEC literal parsing",
+    "implementation": "plc_agent.normalized_spec.NormalizedScanMonitor.step with output_matches (pinned sources); observer histories never drive the independent logical reference"
+  },
+  "observation": {
+    "I[k]": "deep-copied inputs immediately before invocation k",
+    "O[k]": "actual outputs immediately after invocation k, supplied by independent execution backend",
+    "Sref[k]": "independent reference state BEFORE k; unrelated to similarly named candidate variables",
+    "initial": "fresh instance BEFORE invocation 0; never substituted by O[0]",
+    "X": "next scan-sequence position; argument must be Boolean, not a numeric term",
+    "time": "dt_ms is observed elapsed time; public timers use physical time, SELF Tick/count timers use logical scans"
+  },
+  "history_bindings": {
+    "previousTrigger": {
+      "kind": "previous_sampled_input",
+      "source": "I[k-1].trigger",
+      "initial": false,
+      "update": "After EVERY scan k, including invalid/reset/stop, store I[k].trigger"
+    }
+  },
+  "auxiliary_state_bindings": {
+    "Spre": "Sref[k], before the invocation; initialized by reference_state_initial",
+    "Spost": "Sref[k+1], after exactly one pinned transition on I[k]",
+    "first": "k=0 (first invocation); distinct from the pre-invocation initial observation",
+    "pre-output": "actual O[k-1] for OUTPUT (explicit history initial where declared); I[k] for caller-owned IN_OUT",
+    "previous-input": "I[k-1] for k>=1; edge memory for BOOL requests initially FALSE and updated after EVERY invocation",
+    "reference_warning": "Spre/Spost predicates are input-driven ghosts, not evidence that candidate internals match. Conclusions about the candidate must constrain actual O."
+  },
+  "finite_conjunctions": {},
+  "reference_state_rule": "Initial state is the serialized constructor above; all fields update solely through the pinned transition. Ghost phase/history/queue are names for this state, not observed candidate state.",
+  "primitives": {
+    "bitwise": "DWORD AND/NOT and popcount operate on unsigned 32-bit values; complement is masked by 0xFFFFFFFF.",
+    "time_literals": "IEC TIME/LTIME literals are exact integer durations in nanoseconds.",
+    "observed_arrays": "All IN_OUT inputs are snapshots before invocation; outputs are independently acquired after invocation. Physical bounds map by ordinal, never share another array lower bound.",
+    "boolean_next": "X takes a Boolean formula. Numeric history transport is bit-expanded for DWORD; Boolean histories use equivalence.",
+    "time_progress": "Timed eventuality clauses explicitly require G(F(TimeTick)); TimeTick denotes crossing a new integer-ms boundary. Finite observations cannot establish this premise."
+  },
+  "assumptions": [
+    "During warm-up, average is the mean of the actual accepted samples; zero-filled unused capacity is excluded.",
+    "reset has priority over sampling for a valid window; it clears history and sets average=0 and windowSizeReached=FALSE.",
+    "Changing a valid windowSize clears history before any same-scan accepted sample. Invalid window sets error/status and does not accept or change history.",
+    "An invalid-window scan preserves average/windowSizeReached. Returning to a valid window clears error/status. Trigger edge history is updated on every invocation, including reset and invalid-window scans.",
+    "cyclicExecution accepts exactly one sample per scan and ignores the trigger. windowSizeReached becomes TRUE once the accepted sample count reaches windowSize.",
+    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "Floating-point inputs and intermediate reference arithmetic are finite. Existing fixed traces retain their declared absolute tolerance; claims do not extend to arbitrary magnitudes without a separately specified numeric error policy."
+  ],
+  "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
+  "limitations": [
+    "No ST-to-model translation or infinite-trace proof is implemented here.",
+    "Focused legacy LTL predicates still require backend lowering; normalization is not model-checker acceptance.",
+    "Finite matching cannot establish liveness or validate runtime provenance."
+  ],
+  "rules_zh": "previousTrigger初值FALSE且每次调用后=本拍trigger。valid=1<=windowSize<=100；非法时average/reached保持并报8200。有效窗口首次建立或改变、或reset时清空历史；非reset且cyclicExecution或trigger上升沿时追加value并保留最后windowSize项。average=空则0否则sum/n，reached=(n=windowSize)。初始历史空、average=0、reached=FALSE。"
+}
+```
+
+**P1**
 
 ```text
 G(!valid -> (error & status=16#8200 & unchangedMean))
@@ -1558,7 +3278,7 @@ G(!valid -> (error & status=16#8200 & unchangedMean))
 
 Window bounds are checked without silently accepting data.
 
-**P2** 
+**P2**
 
 ```text
 G(valid -> (!error & status=0))
@@ -1566,7 +3286,7 @@ G(valid -> (!error & status=0))
 
 A valid window clears configuration error.
 
-**P3** 
+**P3**
 
 ```text
 G((valid & reset) -> (average=0 & !windowSizeReached))
@@ -1574,7 +3294,7 @@ G((valid & reset) -> (average=0 & !windowSizeReached))
 
 Reset produces an empty history.
 
-**P4** 
+**P4**
 
 ```text
 G((valid & !reset) -> average=meanOrZero(historyAfter))
@@ -1582,7 +3302,7 @@ G((valid & !reset) -> average=meanOrZero(historyAfter))
 
 The result is the arithmetic mean of the active window or zero when empty.
 
-**P5** 
+**P5**
 
 ```text
 G(valid -> (windowSizeReached <-> length(historyAfter)=windowSize))
@@ -1590,15 +3310,15 @@ G(valid -> (windowSizeReached <-> length(historyAfter)=windowSize))
 
 Full-window indication follows history population.
 
-**P6** 
+**P6**
 
 ```text
-G(X(previousTrigger)=trigger)
+G(trigger <-> X(previousTrigger))
 ```
 
-Rising-edge memory updates even if sampling is inhibited.
+Both operands are Boolean propositions. previousTrigger[0]=FALSE; previousTrigger[k+1]=I[k].trigger on every invocation, including invalid/reset.
 
-**P7** 
+**P7**
 
 ```text
 G((valid & !reset & !cyclicExecution & !triggerRise & !windowChanged) -> unchangedMean)
@@ -1606,12 +3326,21 @@ G((valid & !reset & !cyclicExecution & !triggerRise & !windowChanged) -> unchang
 
 No event means no sample update.
 
+**PUB009.V2.COMPLETE**
+
+```text
+G(CompleteBehaviorV2)
+```
+
+Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
+
 ### Fixed test index
 
 | Case | Purpose | Steps |
 | --- | --- | ---: |
 | T1 | Cyclic warm-up, sliding replacement and reset priority | 6 |
 | T2 | Rising edge only, held trigger, window change and invalid bounds | 9 |
+| V2_data_contract_boundaries | Independently calculated edge/history/parser boundary regression | 7 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -1709,6 +3438,9 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 - Protection is latched for at least 3s from its trip. At elapsed>=3s it may clear and heat can restart in the same scan if the sensor is valid and demand remains.
 - A sensor fault immediately turns heat off and resets continuous-heating time. It does not clear or restart an already active cooldown.
 - The display outputs mirror their corresponding sampled temperature and setpoint even during a fault. HeaterStatus equals HeaterOutput. Inputs are held stable between timed samples.
+- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- V2 evaluation decision: retain the existing >=5s trip threshold as an explicit benchmark interpretation of the source more-than wording; cooldown MUST clear at the first observed elapsed>=3s, though a sensor fault or absent demand still prevents heating. No spontaneous protection is allowed. This benchmark interpretation is not claimed to be instructor clarification.
+- Floating-point inputs and intermediate reference arithmetic are finite. Existing fixed traces retain their declared absolute tolerance; claims do not extend to arbitrary magnitudes without a separately specified numeric error policy.
 
 ### Atomic propositions and monitor predicates
 
@@ -1716,12 +3448,139 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 - `demand`: Ghost retained demand; set below setpoint, clear above, retain at equality.
 - `heatLimitReached`: Continuous energized time has reached 5s, with first energized scan at elapsed zero.
 - `cooldownDone`: At least 3s has elapsed since protection trip.
-- `protectPrev`: Pre-scan retained OverheatProtection.
+- `protectPrev`: {"kind": "previous_observed_output", "source": "O[k-1].OverheatProtection", "initial": false, "update": "After comparing scan k, store ACTUAL O[k].OverheatProtection; never write into reference state."}
 - `interface names`: Identically named sampled input or observed output.
+- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_PUB010(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+时钟由观察dt_ms累加。demand低于设定置真、高于置假、相等保持，初值FALSE。先释放年龄>=3s的旧保护；无旧保护且旧连续加热年龄>=5s则本拍触发保护。heat=传感器0..100有效 & demandAfter & 无保护；首次heat真记录当前时刻，heat假清热起点。显示值取输入；保护输出取保护状态。>=5s是既有评测解释，并非老师额外澄清。
+- `TimeTick`: Boolean: floor(t[k]/1ms)>floor(t[k-1]/1ms), with t[0]=0, TimeTick[0]=FALSE, t[k]=sum(dt_ms[1..k]). G(F(TimeTick)) states unbounded physical time progress; merely positive dt is insufficient.
+- `TemperatureSensorInput`: I[k].TemperatureSensorInput: sampled input (REAL).
+- `SetTemperature`: I[k].SetTemperature: sampled input (REAL).
+- `CurrentTemperature`: O[k].CurrentTemperature: independently observed post-scan candidate value (REAL); never defined as expected output.
+- `SetTempDisplay`: O[k].SetTempDisplay: independently observed post-scan candidate value (REAL); never defined as expected output.
+- `HeaterStatus`: O[k].HeaterStatus: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `OverheatProtection`: O[k].OverheatProtection: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `HeaterOutput`: O[k].HeaterOutput: independently observed post-scan candidate value (BOOL); never defined as expected output.
 
 ### LTL properties
 
-**P1** 
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+
+### Normalized state, observation and predicate definitions
+
+```json
+{
+  "schema_version": 1,
+  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
+  "candidate_formal_verification": "UNVERIFIED",
+  "initial_observed": {
+    "HeaterOutput": false,
+    "HeaterStatus": false,
+    "OverheatProtection": false
+  },
+  "reference_state_initial": {
+    "class": "ScanContract",
+    "state": {
+      "task_id": "PUB010",
+      "array_contract": null,
+      "process_contract": null,
+      "timed_contract": null,
+      "data_contract": null,
+      "reference": null,
+      "phase": 0,
+      "previous_mode": null,
+      "clock": 0.0,
+      "heat_start": null,
+      "protection_start": null,
+      "demand": false
+    }
+  },
+  "transition": {
+    "entrypoint": "plc_agent.normalized_spec.reference_step(task, reference, deepCopy(I[k]), dt_ms[k])",
+    "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('PUB010'); constructed once per independent case, current state is Sref[k].",
+    "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
+    "module_sha256": {
+      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
+      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
+      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
+      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
+      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
+      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+    },
+    "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
+    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+  },
+  "constrained_observed_fields": [
+    "CurrentTemperature",
+    "HeaterOutput",
+    "HeaterStatus",
+    "OverheatProtection",
+    "SetTempDisplay"
+  ],
+  "unconstrained_representation_fields": [],
+  "comparison": {
+    "integer_boolean": "exact type and value; no tolerance",
+    "float": "finite; abs error<=1e-5; dictionary/list shape and non-float values exact",
+    "PUB008": "only successfully converted channels[j].outputValue: abs<=1e-5 OR rel<=2e-6; all preserved/config fields exact",
+    "PUB017": "Successful deletion constrains recipeID=0; other fields of that deleted slot are unconstrained for the deletion scan. Subsequent no-write scans preserve the sampled actual representation. This observer history is separate from the logical reference database.",
+    "TIME_LTIME": "exact integer nanoseconds after IEC literal parsing",
+    "implementation": "plc_agent.normalized_spec.NormalizedScanMonitor.step with output_matches (pinned sources); observer histories never drive the independent logical reference"
+  },
+  "observation": {
+    "I[k]": "deep-copied inputs immediately before invocation k",
+    "O[k]": "actual outputs immediately after invocation k, supplied by independent execution backend",
+    "Sref[k]": "independent reference state BEFORE k; unrelated to similarly named candidate variables",
+    "initial": "fresh instance BEFORE invocation 0; never substituted by O[0]",
+    "X": "next scan-sequence position; argument must be Boolean, not a numeric term",
+    "time": "dt_ms is observed elapsed time; public timers use physical time, SELF Tick/count timers use logical scans"
+  },
+  "history_bindings": {
+    "protectPrev": {
+      "kind": "previous_observed_output",
+      "source": "O[k-1].OverheatProtection",
+      "initial": false,
+      "update": "After comparing scan k, store ACTUAL O[k].OverheatProtection; never write into reference state."
+    }
+  },
+  "auxiliary_state_bindings": {
+    "Spre": "Sref[k], before the invocation; initialized by reference_state_initial",
+    "Spost": "Sref[k+1], after exactly one pinned transition on I[k]",
+    "first": "k=0 (first invocation); distinct from the pre-invocation initial observation",
+    "pre-output": "actual O[k-1] for OUTPUT (explicit history initial where declared); I[k] for caller-owned IN_OUT",
+    "previous-input": "I[k-1] for k>=1; edge memory for BOOL requests initially FALSE and updated after EVERY invocation",
+    "reference_warning": "Spre/Spost predicates are input-driven ghosts, not evidence that candidate internals match. Conclusions about the candidate must constrain actual O."
+  },
+  "finite_conjunctions": {},
+  "reference_state_rule": "Initial state is the serialized constructor above; all fields update solely through the pinned transition. Ghost phase/history/queue are names for this state, not observed candidate state.",
+  "primitives": {
+    "bitwise": "DWORD AND/NOT and popcount operate on unsigned 32-bit values; complement is masked by 0xFFFFFFFF.",
+    "time_literals": "IEC TIME/LTIME literals are exact integer durations in nanoseconds.",
+    "observed_arrays": "All IN_OUT inputs are snapshots before invocation; outputs are independently acquired after invocation. Physical bounds map by ordinal, never share another array lower bound.",
+    "boolean_next": "X takes a Boolean formula. Numeric history transport is bit-expanded for DWORD; Boolean histories use equivalence.",
+    "time_progress": "Timed eventuality clauses explicitly require G(F(TimeTick)); TimeTick denotes crossing a new integer-ms boundary. Finite observations cannot establish this premise."
+  },
+  "assumptions": [
+    "At equality TemperatureSensorInput=SetTemperature, retain the last heat-demand state. On a fresh instance the retained demand is FALSE.",
+    "The prose says \"more than\" a period and gives 5s. The evaluation resolves this to a 5-second threshold: protection trips at continuous heating elapsed>=5s, beginning with elapsed zero at the first energized sample.",
+    "Protection is latched for at least 3s from its trip. At elapsed>=3s it may clear and heat can restart in the same scan if the sensor is valid and demand remains.",
+    "A sensor fault immediately turns heat off and resets continuous-heating time. It does not clear or restart an already active cooldown.",
+    "The display outputs mirror their corresponding sampled temperature and setpoint even during a fault. HeaterStatus equals HeaterOutput. Inputs are held stable between timed samples.",
+    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "V2 evaluation decision: retain the existing >=5s trip threshold as an explicit benchmark interpretation of the source more-than wording; cooldown MUST clear at the first observed elapsed>=3s, though a sensor fault or absent demand still prevents heating. No spontaneous protection is allowed. This benchmark interpretation is not claimed to be instructor clarification.",
+    "Floating-point inputs and intermediate reference arithmetic are finite. Existing fixed traces retain their declared absolute tolerance; claims do not extend to arbitrary magnitudes without a separately specified numeric error policy."
+  ],
+  "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
+  "limitations": [
+    "No ST-to-model translation or infinite-trace proof is implemented here.",
+    "Focused legacy LTL predicates still require backend lowering; normalization is not model-checker acceptance.",
+    "Finite matching cannot establish liveness or validate runtime provenance."
+  ],
+  "rules_zh": "时钟由观察dt_ms累加。demand低于设定置真、高于置假、相等保持，初值FALSE。先释放年龄>=3s的旧保护；无旧保护且旧连续加热年龄>=5s则本拍触发保护。heat=传感器0..100有效 & demandAfter & 无保护；首次heat真记录当前时刻，heat假清热起点。显示值取输入；保护输出取保护状态。>=5s是既有评测解释，并非老师额外澄清。"
+}
+```
+
+**P1**
 
 ```text
 G(sensorFault -> !HeaterOutput)
@@ -1729,7 +3588,7 @@ G(sensorFault -> !HeaterOutput)
 
 Invalid sensor data must never energize the heater.
 
-**P2** 
+**P2**
 
 ```text
 G(OverheatProtection -> !HeaterOutput)
@@ -1737,7 +3596,7 @@ G(OverheatProtection -> !HeaterOutput)
 
 The heater remains off during cooldown.
 
-**P3** 
+**P3**
 
 ```text
 G(HeaterStatus=HeaterOutput)
@@ -1745,7 +3604,7 @@ G(HeaterStatus=HeaterOutput)
 
 The status output reports actual commanded heat.
 
-**P4** 
+**P4**
 
 ```text
 G((CurrentTemperature=TemperatureSensorInput) & (SetTempDisplay=SetTemperature))
@@ -1753,7 +3612,7 @@ G((CurrentTemperature=TemperatureSensorInput) & (SetTempDisplay=SetTemperature))
 
 The displays mirror sampled values.
 
-**P5** 
+**P5**
 
 ```text
 G((!sensorFault & !OverheatProtection & demand & !heatLimitReached) -> HeaterOutput)
@@ -1761,7 +3620,7 @@ G((!sensorFault & !OverheatProtection & demand & !heatLimitReached) -> HeaterOut
 
 A permitted heat demand energizes the heater.
 
-**P6** 
+**P6**
 
 ```text
 G(heatLimitReached -> (OverheatProtection & !HeaterOutput))
@@ -1769,7 +3628,7 @@ G(heatLimitReached -> (OverheatProtection & !HeaterOutput))
 
 The continuous-heating threshold trips protection in the same scan.
 
-**P7** 
+**P7**
 
 ```text
 G((protectPrev & !cooldownDone) -> OverheatProtection)
@@ -1777,13 +3636,29 @@ G((protectPrev & !cooldownDone) -> OverheatProtection)
 
 Protection cannot clear before its cooldown expires.
 
-**P8** 
+**P8**
 
 ```text
-G((OverheatProtection & G(!sensorFault & demand)) -> F(HeaterOutput))
+(G(F(TimeTick))) -> (G((OverheatProtection & G(!sensorFault & demand)) -> F(HeaterOutput)))
 ```
 
-With advancing time and persistent valid demand, heating resumes after finite cooldown.
+With advancing time and persistent valid demand, heating resumes after finite cooldown. Explicit non-Zeno environment premise: physical elapsed time crosses infinitely many 1ms boundaries.
+
+**PUB010.V2.COMPLETE**
+
+```text
+G(CompleteBehaviorV2)
+```
+
+Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
+
+**PUB010.V2.1**
+
+```text
+G((TemperatureSensorInput>SetTemperature) -> !HeaterOutput)
+```
+
+Explicit correction of a demonstrated omission.
 
 ### Fixed test index
 
@@ -1792,6 +3667,7 @@ With advancing time and persistent valid demand, heating resumes after finite co
 | T1 | Heating threshold, cooldown boundary and safe restart | 6 |
 | T2 | Sensor faults, valid endpoint values and equality retention | 7 |
 | T3 | Fault during protection cannot clear the cooldown | 5 |
+| V2_omission_regression | Reject the concrete wrong behavior documented in the 2026-11-06 specification review. | 3 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -1894,6 +3770,7 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - Buttons are level signals accepted only in their corresponding station wait. One phase transition is accepted per call.
 - Entering manual mode clears automatic state and completion; return to automatic waits for A.
 - Only one product is presented; station sensors are not contradictory.
+- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
 
@@ -1906,8 +3783,140 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - `finish`: pre-phase WAIT_C AND SensorC AND ButtonC
 - `light`: CompletionLight
 - `removed`: NOT SensorC
+- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_PUB011(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+参考阶段WAIT_A/MOVE_AB/WAIT_B/MOVE_BC/WAIT_C/DONE初始WAIT_A；按SensorA&ButtonA、SensorB、SensorB&ButtonB、SensorC、SensorC&ButtonC、!SensorC分别推进一阶。手动清参考阶段，正反转分别为ForwardButton&!ReverseButton及反向对称式，灯灭；自动仅移动阶段正转、不反转，DONE且SensorC时灯亮。
+- `Mode`: I[k].Mode: sampled input (BOOL).
+- `ForwardButton`: I[k].ForwardButton: sampled input (BOOL).
+- `ReverseButton`: I[k].ReverseButton: sampled input (BOOL).
+- `SensorA`: I[k].SensorA: sampled input (BOOL).
+- `SensorB`: I[k].SensorB: sampled input (BOOL).
+- `SensorC`: I[k].SensorC: sampled input (BOOL).
+- `ButtonA`: I[k].ButtonA: sampled input (BOOL).
+- `ButtonB`: I[k].ButtonB: sampled input (BOOL).
+- `ButtonC`: I[k].ButtonC: sampled input (BOOL).
+- `MotorForward`: O[k].MotorForward: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `MotorReverse`: O[k].MotorReverse: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `CompletionLight`: O[k].CompletionLight: independently observed post-scan candidate value (BOOL); never defined as expected output.
 
 ### LTL properties
+
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+
+### Normalized state, observation and predicate definitions
+
+```json
+{
+  "schema_version": 1,
+  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
+  "candidate_formal_verification": "UNVERIFIED",
+  "initial_observed": {
+    "MotorForward": false,
+    "MotorReverse": false,
+    "CompletionLight": false
+  },
+  "reference_state_initial": {
+    "class": "ScanContract",
+    "state": {
+      "task_id": "PUB011",
+      "array_contract": null,
+      "process_contract": null,
+      "timed_contract": null,
+      "data_contract": null,
+      "reference": null,
+      "phase": 0,
+      "previous_mode": null,
+      "clock": 0.0,
+      "heat_start": null,
+      "protection_start": null,
+      "demand": false
+    }
+  },
+  "transition": {
+    "entrypoint": "plc_agent.normalized_spec.reference_step(task, reference, deepCopy(I[k]), dt_ms[k])",
+    "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('PUB011'); constructed once per independent case, current state is Sref[k].",
+    "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
+    "module_sha256": {
+      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
+      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
+      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
+      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
+      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
+      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+    },
+    "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
+    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+  },
+  "constrained_observed_fields": [
+    "CompletionLight",
+    "MotorForward",
+    "MotorReverse"
+  ],
+  "unconstrained_representation_fields": [],
+  "comparison": {
+    "integer_boolean": "exact type and value; no tolerance",
+    "float": "finite; abs error<=1e-5; dictionary/list shape and non-float values exact",
+    "PUB008": "only successfully converted channels[j].outputValue: abs<=1e-5 OR rel<=2e-6; all preserved/config fields exact",
+    "PUB017": "Successful deletion constrains recipeID=0; other fields of that deleted slot are unconstrained for the deletion scan. Subsequent no-write scans preserve the sampled actual representation. This observer history is separate from the logical reference database.",
+    "TIME_LTIME": "exact integer nanoseconds after IEC literal parsing",
+    "implementation": "plc_agent.normalized_spec.NormalizedScanMonitor.step with output_matches (pinned sources); observer histories never drive the independent logical reference"
+  },
+  "observation": {
+    "I[k]": "deep-copied inputs immediately before invocation k",
+    "O[k]": "actual outputs immediately after invocation k, supplied by independent execution backend",
+    "Sref[k]": "independent reference state BEFORE k; unrelated to similarly named candidate variables",
+    "initial": "fresh instance BEFORE invocation 0; never substituted by O[0]",
+    "X": "next scan-sequence position; argument must be Boolean, not a numeric term",
+    "time": "dt_ms is observed elapsed time; public timers use physical time, SELF Tick/count timers use logical scans"
+  },
+  "history_bindings": {},
+  "auxiliary_state_bindings": {
+    "Spre": "Sref[k], before the invocation; initialized by reference_state_initial",
+    "Spost": "Sref[k+1], after exactly one pinned transition on I[k]",
+    "first": "k=0 (first invocation); distinct from the pre-invocation initial observation",
+    "pre-output": "actual O[k-1] for OUTPUT (explicit history initial where declared); I[k] for caller-owned IN_OUT",
+    "previous-input": "I[k-1] for k>=1; edge memory for BOOL requests initially FALSE and updated after EVERY invocation",
+    "reference_warning": "Spre/Spost predicates are input-driven ghosts, not evidence that candidate internals match. Conclusions about the candidate must constrain actual O.",
+    "phase": {
+      "pre": "Spre.phase",
+      "post": "Spost.phase",
+      "enum": {
+        "0": "WAIT_A",
+        "1": "MOVE_AB",
+        "2": "WAIT_B",
+        "3": "MOVE_BC",
+        "4": "WAIT_C",
+        "5": "DONE"
+      },
+      "initial": 0
+    }
+  },
+  "finite_conjunctions": {},
+  "reference_state_rule": "Initial state is the serialized constructor above; all fields update solely through the pinned transition. Ghost phase/history/queue are names for this state, not observed candidate state.",
+  "primitives": {
+    "bitwise": "DWORD AND/NOT and popcount operate on unsigned 32-bit values; complement is masked by 0xFFFFFFFF.",
+    "time_literals": "IEC TIME/LTIME literals are exact integer durations in nanoseconds.",
+    "observed_arrays": "All IN_OUT inputs are snapshots before invocation; outputs are independently acquired after invocation. Physical bounds map by ordinal, never share another array lower bound.",
+    "boolean_next": "X takes a Boolean formula. Numeric history transport is bit-expanded for DWORD; Boolean histories use equivalence.",
+    "time_progress": "Timed eventuality clauses explicitly require G(F(TimeTick)); TimeTick denotes crossing a new integer-ms boundary. Finite observations cannot establish this premise."
+  },
+  "assumptions": [
+    "Opposing manual buttons produce neither direction.",
+    "Buttons are level signals accepted only in their corresponding station wait. One phase transition is accepted per call.",
+    "Entering manual mode clears automatic state and completion; return to automatic waits for A.",
+    "Only one product is presented; station sensors are not contradictory.",
+    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+  ],
+  "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
+  "limitations": [
+    "No ST-to-model translation or infinite-trace proof is implemented here.",
+    "Focused legacy LTL predicates still require backend lowering; normalization is not model-checker acceptance.",
+    "Finite matching cannot establish liveness or validate runtime provenance."
+  ],
+  "rules_zh": "参考阶段WAIT_A/MOVE_AB/WAIT_B/MOVE_BC/WAIT_C/DONE初始WAIT_A；按SensorA&ButtonA、SensorB、SensorB&ButtonB、SensorC、SensorC&ButtonC、!SensorC分别推进一阶。手动清参考阶段，正反转分别为ForwardButton&!ReverseButton及反向对称式，灯灭；自动仅移动阶段正转、不反转，DONE且SensorC时灯亮。"
+}
+```
 
 **PUB011.P1** Interlock
 
@@ -1957,6 +3966,14 @@ G(auto & removed -> !light)
 
 Removal clears completion.
 
+**PUB011.V2.COMPLETE**
+
+```text
+G(CompleteBehaviorV2)
+```
+
+Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
+
 ### Fixed test index
 
 | Case | Purpose | Steps |
@@ -1964,6 +3981,7 @@ Removal clears completion.
 | PUB011.T1 | Neutral, forward, reverse, conflicting commands. | 4 |
 | PUB011.T2 | Station waits, retained movement, completion and removal. | 10 |
 | PUB011.T3 | Out-of-order confirmations cannot start the route. | 2 |
+| V2_omission_regression | Reject the concrete wrong behavior documented in the 2026-11-06 specification review. | 3 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -2067,6 +4085,7 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - Invalid input cancels the hold immediately.
 - Positive CycleTime is added on every current qualifying call, including a normal first invocation.
 - UINT/LTIME overflow is outside these bounded cases and requires a separate policy.
+- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
 
@@ -2080,8 +4099,171 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - `normal`: valid AND NOT fault AND CUTTING_RUN
 - `add`: runtime=pre-runtime+CycleTime
 - `same_time`: runtime=pre-runtime
+- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_PUB012(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+validFault=VALID & FAULT，其新上升沿count加1，历史=[FaultTimestamp]+旧历史前4项，并记录hold起点。无效清hold；alarm=valid & (fault或hold年龄<500ms)。valid & !fault & CUTTING_RUN时runtime加CycleTime，否则保持。初始count/runtime=0、历史五个0、previousValidFault=FALSE。计数/累计不得溢出。
+- `THICKNESS_FAULT`: I[k].THICKNESS_FAULT: sampled input (BOOL).
+- `THICKNESS_SIGNAL_VALID`: I[k].THICKNESS_SIGNAL_VALID: sampled input (BOOL).
+- `CUTTING_RUN`: I[k].CUTTING_RUN: sampled input (BOOL).
+- `FaultTimestamp`: I[k].FaultTimestamp: sampled input (DINT).
+- `CycleTime`: I[k].CycleTime: sampled input (TIME).
+- `THICKNESS_ALARM`: O[k].THICKNESS_ALARM: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `Slab_Fault_Counter`: O[k].Slab_Fault_Counter: independently observed post-scan candidate value (UINT); never defined as expected output.
+- `Slab_Runtime_Accumulator`: O[k].Slab_Runtime_Accumulator: independently observed post-scan candidate value (LTIME); never defined as expected output.
+- `Slab_Fault_History`: O[k].Slab_Fault_History: independently observed post-scan candidate value (ARRAY[0..4] OF DINT); never defined as expected output.
+- `count`: O[k].Slab_Fault_Counter
+- `history`: O[k].Slab_Fault_History
+- `runtime`: O[k].Slab_Runtime_Accumulator
 
 ### LTL properties
+
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+
+### Normalized state, observation and predicate definitions
+
+```json
+{
+  "schema_version": 1,
+  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
+  "candidate_formal_verification": "UNVERIFIED",
+  "initial_observed": {
+    "THICKNESS_ALARM": false,
+    "Slab_Fault_Counter": 0,
+    "Slab_Runtime_Accumulator": "LTIME#0ns",
+    "Slab_Fault_History": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "reference_state_initial": {
+    "class": "ScanContract",
+    "state": {
+      "task_id": "PUB012",
+      "array_contract": null,
+      "process_contract": null,
+      "timed_contract": {
+        "class": "TimedContract",
+        "state": {
+          "task_id": "PUB012",
+          "clock": {
+            "decimal": "0"
+          },
+          "first": true,
+          "since": null,
+          "debounce": null,
+          "runtime": 0,
+          "count": 0,
+          "previous_run": false,
+          "previous_fault": false,
+          "history": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      },
+      "data_contract": null,
+      "reference": null,
+      "phase": 0,
+      "previous_mode": null,
+      "clock": 0.0,
+      "heat_start": null,
+      "protection_start": null,
+      "demand": false
+    }
+  },
+  "transition": {
+    "entrypoint": "plc_agent.normalized_spec.reference_step(task, reference, deepCopy(I[k]), dt_ms[k])",
+    "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('PUB012'); constructed once per independent case, current state is Sref[k].",
+    "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
+    "module_sha256": {
+      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
+      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
+      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
+      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
+      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
+      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+    },
+    "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
+    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+  },
+  "constrained_observed_fields": [
+    "Slab_Fault_Counter",
+    "Slab_Fault_History",
+    "Slab_Runtime_Accumulator",
+    "THICKNESS_ALARM"
+  ],
+  "unconstrained_representation_fields": [],
+  "comparison": {
+    "integer_boolean": "exact type and value; no tolerance",
+    "float": "finite; abs error<=1e-5; dictionary/list shape and non-float values exact",
+    "PUB008": "only successfully converted channels[j].outputValue: abs<=1e-5 OR rel<=2e-6; all preserved/config fields exact",
+    "PUB017": "Successful deletion constrains recipeID=0; other fields of that deleted slot are unconstrained for the deletion scan. Subsequent no-write scans preserve the sampled actual representation. This observer history is separate from the logical reference database.",
+    "TIME_LTIME": "exact integer nanoseconds after IEC literal parsing",
+    "implementation": "plc_agent.normalized_spec.NormalizedScanMonitor.step with output_matches (pinned sources); observer histories never drive the independent logical reference"
+  },
+  "observation": {
+    "I[k]": "deep-copied inputs immediately before invocation k",
+    "O[k]": "actual outputs immediately after invocation k, supplied by independent execution backend",
+    "Sref[k]": "independent reference state BEFORE k; unrelated to similarly named candidate variables",
+    "initial": "fresh instance BEFORE invocation 0; never substituted by O[0]",
+    "X": "next scan-sequence position; argument must be Boolean, not a numeric term",
+    "time": "dt_ms is observed elapsed time; public timers use physical time, SELF Tick/count timers use logical scans"
+  },
+  "history_bindings": {},
+  "auxiliary_state_bindings": {
+    "Spre": "Sref[k], before the invocation; initialized by reference_state_initial",
+    "Spost": "Sref[k+1], after exactly one pinned transition on I[k]",
+    "first": "k=0 (first invocation); distinct from the pre-invocation initial observation",
+    "pre-output": "actual O[k-1] for OUTPUT (explicit history initial where declared); I[k] for caller-owned IN_OUT",
+    "previous-input": "I[k-1] for k>=1; edge memory for BOOL requests initially FALSE and updated after EVERY invocation",
+    "reference_warning": "Spre/Spost predicates are input-driven ghosts, not evidence that candidate internals match. Conclusions about the candidate must constrain actual O.",
+    "timing": {
+      "clock": "Spost.timed_contract.clock (exact integer nanoseconds; first invocation 0)",
+      "start": "Spost.timed_contract.since; None means inactive",
+      "qualified": "start is not None AND clock-start >= duration_ns(limit)",
+      "hold": "start is not None AND clock-start < 500000000",
+      "initial_start": null,
+      "initial_clock": 0,
+      "limit": "DebounceTime for PUB004/PUB005, 5000000000ns for PUB006, 30000000000ns for PUB013",
+      "previous_fault": "Spre.timed_contract.previous_fault, initially FALSE; next=THICKNESS_SIGNAL_VALID AND THICKNESS_FAULT",
+      "pre_count": "Spre.timed_contract.count",
+      "pre_history": "Spre.timed_contract.history",
+      "pre_runtime": "Spre.timed_contract.runtime"
+    }
+  },
+  "finite_conjunctions": {},
+  "reference_state_rule": "Initial state is the serialized constructor above; all fields update solely through the pinned transition. Ghost phase/history/queue are names for this state, not observed candidate state.",
+  "primitives": {
+    "bitwise": "DWORD AND/NOT and popcount operate on unsigned 32-bit values; complement is masked by 0xFFFFFFFF.",
+    "time_literals": "IEC TIME/LTIME literals are exact integer durations in nanoseconds.",
+    "observed_arrays": "All IN_OUT inputs are snapshots before invocation; outputs are independently acquired after invocation. Physical bounds map by ordinal, never share another array lower bound.",
+    "boolean_next": "X takes a Boolean formula. Numeric history transport is bit-expanded for DWORD; Boolean histories use equivalence.",
+    "time_progress": "Timed eventuality clauses explicitly require G(F(TimeTick)); TimeTick denotes crossing a new integer-ms boundary. Finite observations cannot establish this premise."
+  },
+  "assumptions": [
+    "The counted signal is valid AND fault; a valid fault after signal loss is a new occurrence.",
+    "Hold starts at elapsed zero on the trigger call and releases at 500ms if the fault is absent. A fresh rising trigger restarts the hold.",
+    "Invalid input cancels the hold immediately.",
+    "Positive CycleTime is added on every current qualifying call, including a normal first invocation.",
+    "UINT/LTIME overflow is outside these bounded cases and requires a separate policy.",
+    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+  ],
+  "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
+  "limitations": [
+    "No ST-to-model translation or infinite-trace proof is implemented here.",
+    "Focused legacy LTL predicates still require backend lowering; normalization is not model-checker acceptance.",
+    "Finite matching cannot establish liveness or validate runtime provenance."
+  ],
+  "rules_zh": "validFault=VALID & FAULT，其新上升沿count加1，历史=[FaultTimestamp]+旧历史前4项，并记录hold起点。无效清hold；alarm=valid & (fault或hold年龄<500ms)。valid & !fault & CUTTING_RUN时runtime加CycleTime，否则保持。初始count/runtime=0、历史五个0、previousValidFault=FALSE。计数/累计不得溢出。"
+}
+```
 
 **PUB012.P1** Signal loss
 
@@ -2130,6 +4312,14 @@ G(valid & !fault & !hold -> !alarm)
 ```
 
 Alarm releases when neither fault nor hold remains.
+
+**PUB012.V2.COMPLETE**
+
+```text
+G(CompleteBehaviorV2)
+```
+
+Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
 
 ### Fixed test index
 
@@ -2225,6 +4415,7 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - Outputs are initialized before the first call, which calculates adjustment immediately.
 - The timer starts at elapsed zero on the first non-Night occupied call. Fan starts at the first observation at or after 30s.
 - dt_ms is actual elapsed time since the preceding call; real runtime timer tests must preserve this timing.
+- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
 
@@ -2243,8 +4434,157 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - `comfort`: mode=1 AND NOT occupancy
 - `one`: adjust=1
 - `economy`: mode=2 AND NOT occupancy
+- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_PUB013(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+mode域0..3；permit=occupied & mode!=3，首次许可年龄0、失去立即清计时；fan=permit且年龄>=30s。adjust=mode3则4，否则有人则0，否则mode0取节能3/普通2、mode1取1、mode2取4。初始化adjust=0与首次调用计算分开。
+- `TimeTick`: Boolean: floor(t[k]/1ms)>floor(t[k-1]/1ms), with t[0]=0, TimeTick[0]=FALSE, t[k]=sum(dt_ms[1..k]). G(F(TimeTick)) states unbounded physical time progress; merely positive dt is insufficient.
+- `OCCUPANCY_DETECTED`: I[k].OCCUPANCY_DETECTED: sampled input (BOOL).
+- `ENERGY_SAVING_MODE`: I[k].ENERGY_SAVING_MODE: sampled input (BOOL).
+- `HVAC_MODE_SELECTOR`: I[k].HVAC_MODE_SELECTOR: sampled input (INT).
+- `SUPPLY_FAN_RUN`: O[k].SUPPLY_FAN_RUN: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `TEMP_SETPOINT_ADJUST`: O[k].TEMP_SETPOINT_ADJUST: independently observed post-scan candidate value (INT); never defined as expected output.
+- `mode`: I[k].HVAC_MODE_SELECTOR
+- `occupancy`: I[k].OCCUPANCY_DETECTED
+- `adjust`: O[k].TEMP_SETPOINT_ADJUST
 
 ### LTL properties
+
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+
+### Normalized state, observation and predicate definitions
+
+```json
+{
+  "schema_version": 1,
+  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
+  "candidate_formal_verification": "UNVERIFIED",
+  "initial_observed": {
+    "SUPPLY_FAN_RUN": false,
+    "TEMP_SETPOINT_ADJUST": 0
+  },
+  "reference_state_initial": {
+    "class": "ScanContract",
+    "state": {
+      "task_id": "PUB013",
+      "array_contract": null,
+      "process_contract": null,
+      "timed_contract": {
+        "class": "TimedContract",
+        "state": {
+          "task_id": "PUB013",
+          "clock": {
+            "decimal": "0"
+          },
+          "first": true,
+          "since": null,
+          "debounce": null,
+          "runtime": 0,
+          "count": 0,
+          "previous_run": false,
+          "previous_fault": false,
+          "history": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      },
+      "data_contract": null,
+      "reference": null,
+      "phase": 0,
+      "previous_mode": null,
+      "clock": 0.0,
+      "heat_start": null,
+      "protection_start": null,
+      "demand": false
+    }
+  },
+  "transition": {
+    "entrypoint": "plc_agent.normalized_spec.reference_step(task, reference, deepCopy(I[k]), dt_ms[k])",
+    "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('PUB013'); constructed once per independent case, current state is Sref[k].",
+    "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
+    "module_sha256": {
+      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
+      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
+      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
+      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
+      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
+      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+    },
+    "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
+    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+  },
+  "constrained_observed_fields": [
+    "SUPPLY_FAN_RUN",
+    "TEMP_SETPOINT_ADJUST"
+  ],
+  "unconstrained_representation_fields": [],
+  "comparison": {
+    "integer_boolean": "exact type and value; no tolerance",
+    "float": "finite; abs error<=1e-5; dictionary/list shape and non-float values exact",
+    "PUB008": "only successfully converted channels[j].outputValue: abs<=1e-5 OR rel<=2e-6; all preserved/config fields exact",
+    "PUB017": "Successful deletion constrains recipeID=0; other fields of that deleted slot are unconstrained for the deletion scan. Subsequent no-write scans preserve the sampled actual representation. This observer history is separate from the logical reference database.",
+    "TIME_LTIME": "exact integer nanoseconds after IEC literal parsing",
+    "implementation": "plc_agent.normalized_spec.NormalizedScanMonitor.step with output_matches (pinned sources); observer histories never drive the independent logical reference"
+  },
+  "observation": {
+    "I[k]": "deep-copied inputs immediately before invocation k",
+    "O[k]": "actual outputs immediately after invocation k, supplied by independent execution backend",
+    "Sref[k]": "independent reference state BEFORE k; unrelated to similarly named candidate variables",
+    "initial": "fresh instance BEFORE invocation 0; never substituted by O[0]",
+    "X": "next scan-sequence position; argument must be Boolean, not a numeric term",
+    "time": "dt_ms is observed elapsed time; public timers use physical time, SELF Tick/count timers use logical scans"
+  },
+  "history_bindings": {},
+  "auxiliary_state_bindings": {
+    "Spre": "Sref[k], before the invocation; initialized by reference_state_initial",
+    "Spost": "Sref[k+1], after exactly one pinned transition on I[k]",
+    "first": "k=0 (first invocation); distinct from the pre-invocation initial observation",
+    "pre-output": "actual O[k-1] for OUTPUT (explicit history initial where declared); I[k] for caller-owned IN_OUT",
+    "previous-input": "I[k-1] for k>=1; edge memory for BOOL requests initially FALSE and updated after EVERY invocation",
+    "reference_warning": "Spre/Spost predicates are input-driven ghosts, not evidence that candidate internals match. Conclusions about the candidate must constrain actual O.",
+    "timing": {
+      "clock": "Spost.timed_contract.clock (exact integer nanoseconds; first invocation 0)",
+      "start": "Spost.timed_contract.since; None means inactive",
+      "qualified": "start is not None AND clock-start >= duration_ns(limit)",
+      "hold": "start is not None AND clock-start < 500000000",
+      "initial_start": null,
+      "initial_clock": 0,
+      "limit": "DebounceTime for PUB004/PUB005, 5000000000ns for PUB006, 30000000000ns for PUB013",
+      "previous_fault": "Spre.timed_contract.previous_fault, initially FALSE; next=THICKNESS_SIGNAL_VALID AND THICKNESS_FAULT",
+      "pre_count": "Spre.timed_contract.count",
+      "pre_history": "Spre.timed_contract.history",
+      "pre_runtime": "Spre.timed_contract.runtime"
+    }
+  },
+  "finite_conjunctions": {},
+  "reference_state_rule": "Initial state is the serialized constructor above; all fields update solely through the pinned transition. Ghost phase/history/queue are names for this state, not observed candidate state.",
+  "primitives": {
+    "bitwise": "DWORD AND/NOT and popcount operate on unsigned 32-bit values; complement is masked by 0xFFFFFFFF.",
+    "time_literals": "IEC TIME/LTIME literals are exact integer durations in nanoseconds.",
+    "observed_arrays": "All IN_OUT inputs are snapshots before invocation; outputs are independently acquired after invocation. Physical bounds map by ordinal, never share another array lower bound.",
+    "boolean_next": "X takes a Boolean formula. Numeric history transport is bit-expanded for DWORD; Boolean histories use equivalence.",
+    "time_progress": "Timed eventuality clauses explicitly require G(F(TimeTick)); TimeTick denotes crossing a new integer-ms boundary. Finite observations cannot establish this premise."
+  },
+  "assumptions": [
+    "Selector values are always 0..3 as required by the official input contract.",
+    "Outputs are initialized before the first call, which calculates adjustment immediately.",
+    "The timer starts at elapsed zero on the first non-Night occupied call. Fan starts at the first observation at or after 30s.",
+    "dt_ms is actual elapsed time since the preceding call; real runtime timer tests must preserve this timing.",
+    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+  ],
+  "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
+  "limitations": [
+    "No ST-to-model translation or infinite-trace proof is implemented here.",
+    "Focused legacy LTL predicates still require backend lowering; normalization is not model-checker acceptance.",
+    "Finite matching cannot establish liveness or validate runtime provenance."
+  ],
+  "rules_zh": "mode域0..3；permit=occupied & mode!=3，首次许可年龄0、失去立即清计时；fan=permit且年龄>=30s。adjust=mode3则4，否则有人则0，否则mode0取节能3/普通2、mode1取1、mode2取4。初始化adjust=0与首次调用计算分开。"
+}
+```
 
 **PUB013.P1** Fan delay
 
@@ -2289,10 +4629,18 @@ Comfort and Economy ignore energy saving.
 **PUB013.P6** Liveness
 
 ```text
-G((G permit) -> F fan)
+(G(F(TimeTick))) -> (G((G permit) -> F fan))
 ```
 
-If permit stays TRUE from any scan onward, the fan eventually runs, assuming continued calls and diverging physical time.
+If permit stays TRUE from any scan onward, the fan eventually runs, assuming continued calls and diverging physical time. Explicit non-Zeno environment premise: physical elapsed time crosses infinitely many 1ms boundaries.
+
+**PUB013.V2.COMPLETE**
+
+```text
+G(CompleteBehaviorV2)
+```
+
+Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
 
 ### Fixed test index
 
@@ -2300,6 +4648,7 @@ If permit stays TRUE from any scan onward, the fan eventually runs, assuming con
 | --- | --- | ---: |
 | PUB013.T1 | Exercise all setback modes and energy saving scope. | 7 |
 | PUB013.T2 | Check delay boundary, loss, full restart, Night override. | 8 |
+| V2_permit_loss_at_deadline | Permission loss at the exact deadline wins; recovery starts a fresh full interval, even after a long gap. | 5 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -2374,16 +4723,210 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - Leading zeros are allowed because the official text requires decimal-digit segments without prohibiting them.
 - Signs, whitespace, hexadecimal notation and embedded nondigits are rejected.
 - Embedded NUL is a PLC string terminator; visible input is constrained to declared STRING capacity.
+- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
 
 - `valid`: exactly four nonempty decimal-digit segments separated by periods, each parsed value 0..255
 - `packed`: ipValue=a*16777216+b*65536+c*256+d for the four parsed octets
 - `zero`: ipValue=0
-- `same_input`: input equals previous scan input (not initial call)
-- `same_output`: output equals previous scan output
+- `same_input`: k>=1 AND I[k].ipText=I[k-1].ipText
+- `same_output`: k>=1 AND O[k].ipValue=O[k-1].ipValue
+- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_PUB014(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+文本取首NUL之前且容量<=254字节。恰四个非空ASCII数字段，每段按a=10*a+digit递推，任何段>255或非数字即非法。允许前导零。合法期望ipValue=((a*256+b)*256+c)*256+d，否则0；无跨拍状态。
+- `ipText`: I[k].ipText: sampled input (STRING(254)).
+- `ipValue`: O[k].ipValue: independently observed post-scan candidate value (UDINT); never defined as expected output.
 
 ### LTL properties
+
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+
+### Normalized state, observation and predicate definitions
+
+```json
+{
+  "schema_version": 1,
+  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
+  "candidate_formal_verification": "UNVERIFIED",
+  "initial_observed": {
+    "ipValue": 0
+  },
+  "reference_state_initial": {
+    "class": "ScanContract",
+    "state": {
+      "task_id": "PUB014",
+      "array_contract": null,
+      "process_contract": null,
+      "timed_contract": null,
+      "data_contract": {
+        "class": "DataContract",
+        "state": {
+          "task_id": "PUB014",
+          "previous": 0,
+          "high": false,
+          "low": false,
+          "trigger": false,
+          "window": null,
+          "history": [],
+          "average": 0.0,
+          "reached": false,
+          "recipes": [
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            }
+          ],
+          "last_query": {
+            "recipeID": 0,
+            "ingredientType": 0,
+            "ingredientRatio": 0.0,
+            "productionTemperature": 0.0
+          },
+          "prev_add": false,
+          "prev_delete": false,
+          "prev_modify": false,
+          "prev_query": false,
+          "recipes_initialized": false,
+          "queue": [],
+          "prev_enq": false,
+          "prev_deq": false
+        }
+      },
+      "reference": null,
+      "phase": 0,
+      "previous_mode": null,
+      "clock": 0.0,
+      "heat_start": null,
+      "protection_start": null,
+      "demand": false
+    }
+  },
+  "transition": {
+    "entrypoint": "plc_agent.normalized_spec.reference_step(task, reference, deepCopy(I[k]), dt_ms[k])",
+    "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('PUB014'); constructed once per independent case, current state is Sref[k].",
+    "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
+    "module_sha256": {
+      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
+      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
+      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
+      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
+      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
+      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+    },
+    "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
+    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+  },
+  "constrained_observed_fields": [
+    "ipValue"
+  ],
+  "unconstrained_representation_fields": [],
+  "comparison": {
+    "integer_boolean": "exact type and value; no tolerance",
+    "float": "finite; abs error<=1e-5; dictionary/list shape and non-float values exact",
+    "PUB008": "only successfully converted channels[j].outputValue: abs<=1e-5 OR rel<=2e-6; all preserved/config fields exact",
+    "PUB017": "Successful deletion constrains recipeID=0; other fields of that deleted slot are unconstrained for the deletion scan. Subsequent no-write scans preserve the sampled actual representation. This observer history is separate from the logical reference database.",
+    "TIME_LTIME": "exact integer nanoseconds after IEC literal parsing",
+    "implementation": "plc_agent.normalized_spec.NormalizedScanMonitor.step with output_matches (pinned sources); observer histories never drive the independent logical reference"
+  },
+  "observation": {
+    "I[k]": "deep-copied inputs immediately before invocation k",
+    "O[k]": "actual outputs immediately after invocation k, supplied by independent execution backend",
+    "Sref[k]": "independent reference state BEFORE k; unrelated to similarly named candidate variables",
+    "initial": "fresh instance BEFORE invocation 0; never substituted by O[0]",
+    "X": "next scan-sequence position; argument must be Boolean, not a numeric term",
+    "time": "dt_ms is observed elapsed time; public timers use physical time, SELF Tick/count timers use logical scans"
+  },
+  "history_bindings": {},
+  "auxiliary_state_bindings": {
+    "Spre": "Sref[k], before the invocation; initialized by reference_state_initial",
+    "Spost": "Sref[k+1], after exactly one pinned transition on I[k]",
+    "first": "k=0 (first invocation); distinct from the pre-invocation initial observation",
+    "pre-output": "actual O[k-1] for OUTPUT (explicit history initial where declared); I[k] for caller-owned IN_OUT",
+    "previous-input": "I[k-1] for k>=1; edge memory for BOOL requests initially FALSE and updated after EVERY invocation",
+    "reference_warning": "Spre/Spost predicates are input-driven ghosts, not evidence that candidate internals match. Conclusions about the candidate must constrain actual O."
+  },
+  "finite_conjunctions": {},
+  "reference_state_rule": "Initial state is the serialized constructor above; all fields update solely through the pinned transition. Ghost phase/history/queue are names for this state, not observed candidate state.",
+  "primitives": {
+    "bitwise": "DWORD AND/NOT and popcount operate on unsigned 32-bit values; complement is masked by 0xFFFFFFFF.",
+    "time_literals": "IEC TIME/LTIME literals are exact integer durations in nanoseconds.",
+    "observed_arrays": "All IN_OUT inputs are snapshots before invocation; outputs are independently acquired after invocation. Physical bounds map by ordinal, never share another array lower bound.",
+    "boolean_next": "X takes a Boolean formula. Numeric history transport is bit-expanded for DWORD; Boolean histories use equivalence.",
+    "time_progress": "Timed eventuality clauses explicitly require G(F(TimeTick)); TimeTick denotes crossing a new integer-ms boundary. Finite observations cannot establish this premise."
+  },
+  "assumptions": [
+    "Leading zeros are allowed because the official text requires decimal-digit segments without prohibiting them.",
+    "Signs, whitespace, hexadecimal notation and embedded nondigits are rejected.",
+    "Embedded NUL is a PLC string terminator; visible input is constrained to declared STRING capacity.",
+    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+  ],
+  "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
+  "limitations": [
+    "No ST-to-model translation or infinite-trace proof is implemented here.",
+    "Focused legacy LTL predicates still require backend lowering; normalization is not model-checker acceptance.",
+    "Finite matching cannot establish liveness or validate runtime provenance."
+  ],
+  "rules_zh": "文本取首NUL之前且容量<=254字节。恰四个非空ASCII数字段，每段按a=10*a+digit递推，任何段>255或非数字即非法。允许前导零。合法期望ipValue=((a*256+b)*256+c)*256+d，否则0；无跨拍状态。"
+}
+```
 
 **PUB014.P1** Valid assembly
 
@@ -2409,12 +4952,21 @@ G(same_input -> same_output)
 
 Repeated strings produce repeated results.
 
+**PUB014.V2.COMPLETE**
+
+```text
+G(CompleteBehaviorV2)
+```
+
+Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
+
 ### Fixed test index
 
 | Case | Purpose | Steps |
 | --- | --- | ---: |
 | PUB014.T1 | Zero, maximum, byte order and decimal leading zeros. | 5 |
 | PUB014.T2 | Malformed and overflowing segments clear a previous valid result. | 14 |
+| V2_data_contract_boundaries | Independently calculated edge/history/parser boundary regression | 4 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -2536,26 +5088,198 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - autoStart is a rising edge accepted in IDLE; processMode stays fixed during the batch.
 - Thresholds are >=50, >=80 and >=100 cm. One logical phase transition occurs per invocation.
 - Valve D stays open after discharge is initiated until emergency stop or mode reset; no drain-complete signal is supplied.
+- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- V2 mode-change priority: emergency stop first; then a change of mode after the first invocation clears sequence/latches and suppresses commands for that invocation; edge memories still update. The first invocation establishes the selected mode and executes normally. New commands are accepted on subsequent invocations subject to their edge rules.
 
 ### Atomic propositions and monitor predicates
 
 - `safe`: estop
 - `off`: all actuator outputs FALSE
-- `toggle`: safe AND NOT opeMode AND rising(valveAStart)
+- `toggle`: No mode change this invocation AND (safe AND NOT opeMode AND rising(valveAStart))
 - `changed`: valveARun=NOT pre-valveARun
 - `held`: safe AND NOT opeMode AND NOT rising(valveAStart) AND no mode change
 - `same`: valveARun=pre-valveARun
-- `toB`: safe AND opeMode AND pre-phase FILL_A AND levelSensor>=50
+- `toB`: No mode change this invocation AND (safe AND opeMode AND pre-phase FILL_A AND levelSensor>=50)
 - `B`: valveBRun only
-- `toMix`: safe AND opeMode AND pre-phase FILL_B AND levelSensor>=80 AND NOT processMode
+- `toMix`: No mode change this invocation AND (safe AND opeMode AND pre-phase FILL_B AND levelSensor>=80 AND NOT processMode)
 - `Mix`: mixMotorRun only
-- `toC`: safe AND opeMode AND pre-phase FILL_B AND levelSensor>=80 AND processMode
+- `toC`: No mode change this invocation AND (safe AND opeMode AND pre-phase FILL_B AND levelSensor>=80 AND processMode)
 - `C`: valveCRun only
-- `fromC`: safe AND opeMode AND pre-phase FILL_C AND levelSensor>=100
-- `mixed`: safe AND opeMode AND pre-phase MIX AND mixMotorComplete
+- `fromC`: No mode change this invocation AND (safe AND opeMode AND pre-phase FILL_C AND levelSensor>=100)
+- `mixed`: No mode change this invocation AND (safe AND opeMode AND pre-phase MIX AND mixMotorComplete)
 - `Drain`: valveDRun only
+- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_PUB015(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+五按钮及autoStart历史初值FALSE、每拍更新。急停优先，其次已建立模式的变化；二者清阶段/五锁存且当拍全关。手动逐项latchAfter=latchBefore XOR buttonRise。自动IDLE遇autoStartRise进A，A液位>=50进B，B>=80按批次processMode进C或MIX，C>=100进MIX，MIX完成进DRAIN；每拍一阶，DRAIN保持至复位条件。五输出对应转移后A/B/C/DRAIN/MIX。批次模式在活动批次内固定。
+- `estop`: I[k].estop: sampled input (BOOL).
+- `opeMode`: I[k].opeMode: sampled input (BOOL).
+- `valveAStart`: I[k].valveAStart: sampled input (BOOL).
+- `valveBStart`: I[k].valveBStart: sampled input (BOOL).
+- `valveCStart`: I[k].valveCStart: sampled input (BOOL).
+- `valveDStart`: I[k].valveDStart: sampled input (BOOL).
+- `mixMotorStart`: I[k].mixMotorStart: sampled input (BOOL).
+- `autoStart`: I[k].autoStart: sampled input (BOOL).
+- `processMode`: I[k].processMode: sampled input (BOOL).
+- `levelSensor`: I[k].levelSensor: sampled input (INT).
+- `mixMotorComplete`: I[k].mixMotorComplete: sampled input (BOOL).
+- `valveARun`: O[k].valveARun: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `valveBRun`: O[k].valveBRun: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `valveCRun`: O[k].valveCRun: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `valveDRun`: O[k].valveDRun: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `mixMotorRun`: O[k].mixMotorRun: independently observed post-scan candidate value (BOOL); never defined as expected output.
 
 ### LTL properties
+
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+
+### Normalized state, observation and predicate definitions
+
+```json
+{
+  "schema_version": 1,
+  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
+  "candidate_formal_verification": "UNVERIFIED",
+  "initial_observed": {
+    "valveARun": false,
+    "valveBRun": false,
+    "valveCRun": false,
+    "valveDRun": false,
+    "mixMotorRun": false
+  },
+  "reference_state_initial": {
+    "class": "ScanContract",
+    "state": {
+      "task_id": "PUB015",
+      "array_contract": null,
+      "process_contract": {
+        "class": "ProcessContract",
+        "state": {
+          "task_id": "PUB015",
+          "phase": 0,
+          "mode": null,
+          "previous": {},
+          "latches": [
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          "batch_mode": null,
+          "route": null,
+          "index": 0,
+          "station": 1,
+          "target": 1,
+          "temperature": 0.0,
+          "arm_mode": null,
+          "arm_step": 0,
+          "step_index": 1,
+          "step_busy": false,
+          "prev_start": false
+        }
+      },
+      "timed_contract": null,
+      "data_contract": null,
+      "reference": null,
+      "phase": 0,
+      "previous_mode": null,
+      "clock": 0.0,
+      "heat_start": null,
+      "protection_start": null,
+      "demand": false
+    }
+  },
+  "transition": {
+    "entrypoint": "plc_agent.normalized_spec.reference_step(task, reference, deepCopy(I[k]), dt_ms[k])",
+    "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('PUB015'); constructed once per independent case, current state is Sref[k].",
+    "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
+    "module_sha256": {
+      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
+      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
+      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
+      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
+      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
+      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+    },
+    "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
+    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+  },
+  "constrained_observed_fields": [
+    "mixMotorRun",
+    "valveARun",
+    "valveBRun",
+    "valveCRun",
+    "valveDRun"
+  ],
+  "unconstrained_representation_fields": [],
+  "comparison": {
+    "integer_boolean": "exact type and value; no tolerance",
+    "float": "finite; abs error<=1e-5; dictionary/list shape and non-float values exact",
+    "PUB008": "only successfully converted channels[j].outputValue: abs<=1e-5 OR rel<=2e-6; all preserved/config fields exact",
+    "PUB017": "Successful deletion constrains recipeID=0; other fields of that deleted slot are unconstrained for the deletion scan. Subsequent no-write scans preserve the sampled actual representation. This observer history is separate from the logical reference database.",
+    "TIME_LTIME": "exact integer nanoseconds after IEC literal parsing",
+    "implementation": "plc_agent.normalized_spec.NormalizedScanMonitor.step with output_matches (pinned sources); observer histories never drive the independent logical reference"
+  },
+  "observation": {
+    "I[k]": "deep-copied inputs immediately before invocation k",
+    "O[k]": "actual outputs immediately after invocation k, supplied by independent execution backend",
+    "Sref[k]": "independent reference state BEFORE k; unrelated to similarly named candidate variables",
+    "initial": "fresh instance BEFORE invocation 0; never substituted by O[0]",
+    "X": "next scan-sequence position; argument must be Boolean, not a numeric term",
+    "time": "dt_ms is observed elapsed time; public timers use physical time, SELF Tick/count timers use logical scans"
+  },
+  "history_bindings": {},
+  "auxiliary_state_bindings": {
+    "Spre": "Sref[k], before the invocation; initialized by reference_state_initial",
+    "Spost": "Sref[k+1], after exactly one pinned transition on I[k]",
+    "first": "k=0 (first invocation); distinct from the pre-invocation initial observation",
+    "pre-output": "actual O[k-1] for OUTPUT (explicit history initial where declared); I[k] for caller-owned IN_OUT",
+    "previous-input": "I[k-1] for k>=1; edge memory for BOOL requests initially FALSE and updated after EVERY invocation",
+    "reference_warning": "Spre/Spost predicates are input-driven ghosts, not evidence that candidate internals match. Conclusions about the candidate must constrain actual O.",
+    "phase": {
+      "pre": "Spre.process_contract.phase",
+      "post": "Spost.process_contract.phase",
+      "enum": {
+        "0": "IDLE",
+        "1": "FILL_A",
+        "2": "FILL_B",
+        "3": "FILL_C",
+        "4": "MIX",
+        "5": "DRAIN"
+      },
+      "initial": 0
+    },
+    "modeChanged": "Spre.process_contract.mode is not None AND Spre.process_contract.mode != I[k].opeMode"
+  },
+  "finite_conjunctions": {},
+  "reference_state_rule": "Initial state is the serialized constructor above; all fields update solely through the pinned transition. Ghost phase/history/queue are names for this state, not observed candidate state.",
+  "primitives": {
+    "bitwise": "DWORD AND/NOT and popcount operate on unsigned 32-bit values; complement is masked by 0xFFFFFFFF.",
+    "time_literals": "IEC TIME/LTIME literals are exact integer durations in nanoseconds.",
+    "observed_arrays": "All IN_OUT inputs are snapshots before invocation; outputs are independently acquired after invocation. Physical bounds map by ordinal, never share another array lower bound.",
+    "boolean_next": "X takes a Boolean formula. Numeric history transport is bit-expanded for DWORD; Boolean histories use equivalence.",
+    "time_progress": "Timed eventuality clauses explicitly require G(F(TimeTick)); TimeTick denotes crossing a new integer-ms boundary. Finite observations cannot establish this premise."
+  },
+  "assumptions": [
+    "All manual buttons use rising-edge independent toggles. Edge history updates during emergency stop so held buttons cannot restart outputs on recovery.",
+    "Emergency stop resets all manual latches and automatic state. A fresh autoStart edge is required to restart.",
+    "Changing operation mode clears old latches and sequence.",
+    "autoStart is a rising edge accepted in IDLE; processMode stays fixed during the batch.",
+    "Thresholds are >=50, >=80 and >=100 cm. One logical phase transition occurs per invocation.",
+    "Valve D stays open after discharge is initiated until emergency stop or mode reset; no drain-complete signal is supplied.",
+    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "V2 mode-change priority: emergency stop first; then a change of mode after the first invocation clears sequence/latches and suppresses commands for that invocation; edge memories still update. The first invocation establishes the selected mode and executes normally. New commands are accepted on subsequent invocations subject to their edge rules."
+  ],
+  "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
+  "limitations": [
+    "No ST-to-model translation or infinite-trace proof is implemented here.",
+    "Focused legacy LTL predicates still require backend lowering; normalization is not model-checker acceptance.",
+    "Finite matching cannot establish liveness or validate runtime provenance."
+  ],
+  "rules_zh": "五按钮及autoStart历史初值FALSE、每拍更新。急停优先，其次已建立模式的变化；二者清阶段/五锁存且当拍全关。手动逐项latchAfter=latchBefore XOR buttonRise。自动IDLE遇autoStartRise进A，A液位>=50进B，B>=80按批次processMode进C或MIX，C>=100进MIX，MIX完成进DRAIN；每拍一阶，DRAIN保持至复位条件。五输出对应转移后A/B/C/DRAIN/MIX。批次模式在活动批次内固定。"
+}
+```
 
 **PUB015.P1** Emergency
 
@@ -2605,6 +5329,14 @@ G(mixed -> Drain)
 
 Mix completion stops mixing and opens D.
 
+**PUB015.V2.COMPLETE**
+
+```text
+G(CompleteBehaviorV2)
+```
+
+Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
+
 ### Fixed test index
 
 | Case | Purpose | Steps |
@@ -2612,6 +5344,7 @@ Mix completion stops mixing and opens D.
 | PUB015.T1 | Held signal, second edge, all actuator requests and emergency. | 7 |
 | PUB015.T2 | Equality thresholds and mixing completion. | 7 |
 | PUB015.T3 | Skipped thresholds advance and emergency cancels the active cycle. | 8 |
+| V2_process_history_regression | Mode/edge reset, repeated station or prior-batch retained setpoint regression. | 10 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -2717,6 +5450,7 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - Destination arrival immediately stops the motor. Completion is accepted only at the current processing wait.
 - Completion signals are rising edges. Consecutive equal stations denote separate processing operations with fresh edges and no conveyor movement.
 - Only one sequence-index advancement occurs per invocation. Station5 arrival returns to idle.
+- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
 
@@ -2733,8 +5467,167 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - `processing`: pre-phase WAIT_PROCESS
 - `completion`: fresh matching processing-complete edge in the current wait
 - `started`: station1Start rising edge accepted with sensor1 in idle
+- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_PUB016(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+活动路线长度1..8，前项为2/3/4且末项5，活动周期内固定。初始IDLE、station=1、index=0。IDLE在station1Start上升沿且sensor1时选择首目标；MOVING到目标后进入WAIT_PROCESS或目标5回IDLE；WAIT_PROCESS仅对应完成新边沿推进index，同站继续等待。输出仅转移后MOVING且未到目标时按target与station方向开启；所有边沿历史逐拍更新。
+- `processLength`: I[k].processLength: sampled input (USINT).
+- `sensor1`: I[k].sensor1: sampled input (BOOL).
+- `sensor2`: I[k].sensor2: sampled input (BOOL).
+- `sensor3`: I[k].sensor3: sampled input (BOOL).
+- `sensor4`: I[k].sensor4: sampled input (BOOL).
+- `sensor5`: I[k].sensor5: sampled input (BOOL).
+- `station1Start`: I[k].station1Start: sampled input (BOOL).
+- `station2Complete`: I[k].station2Complete: sampled input (BOOL).
+- `station3Complete`: I[k].station3Complete: sampled input (BOOL).
+- `station4Complete`: I[k].station4Complete: sampled input (BOOL).
+- `processSequence`: I[k].processSequence: sampled input (ARRAY[1..8] OF USINT).
+- `conveyorLeft`: O[k].conveyorLeft: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `conveyorRight`: O[k].conveyorRight: independently observed post-scan candidate value (BOOL); never defined as expected output.
 
 ### LTL properties
+
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+
+### Normalized state, observation and predicate definitions
+
+```json
+{
+  "schema_version": 1,
+  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
+  "candidate_formal_verification": "UNVERIFIED",
+  "initial_observed": {
+    "conveyorLeft": false,
+    "conveyorRight": false
+  },
+  "reference_state_initial": {
+    "class": "ScanContract",
+    "state": {
+      "task_id": "PUB016",
+      "array_contract": null,
+      "process_contract": {
+        "class": "ProcessContract",
+        "state": {
+          "task_id": "PUB016",
+          "phase": 0,
+          "mode": null,
+          "previous": {},
+          "latches": [
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          "batch_mode": null,
+          "route": null,
+          "index": 0,
+          "station": 1,
+          "target": 1,
+          "temperature": 0.0,
+          "arm_mode": null,
+          "arm_step": 0,
+          "step_index": 1,
+          "step_busy": false,
+          "prev_start": false
+        }
+      },
+      "timed_contract": null,
+      "data_contract": null,
+      "reference": null,
+      "phase": 0,
+      "previous_mode": null,
+      "clock": 0.0,
+      "heat_start": null,
+      "protection_start": null,
+      "demand": false
+    }
+  },
+  "transition": {
+    "entrypoint": "plc_agent.normalized_spec.reference_step(task, reference, deepCopy(I[k]), dt_ms[k])",
+    "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('PUB016'); constructed once per independent case, current state is Sref[k].",
+    "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
+    "module_sha256": {
+      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
+      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
+      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
+      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
+      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
+      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+    },
+    "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
+    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+  },
+  "constrained_observed_fields": [
+    "conveyorLeft",
+    "conveyorRight"
+  ],
+  "unconstrained_representation_fields": [],
+  "comparison": {
+    "integer_boolean": "exact type and value; no tolerance",
+    "float": "finite; abs error<=1e-5; dictionary/list shape and non-float values exact",
+    "PUB008": "only successfully converted channels[j].outputValue: abs<=1e-5 OR rel<=2e-6; all preserved/config fields exact",
+    "PUB017": "Successful deletion constrains recipeID=0; other fields of that deleted slot are unconstrained for the deletion scan. Subsequent no-write scans preserve the sampled actual representation. This observer history is separate from the logical reference database.",
+    "TIME_LTIME": "exact integer nanoseconds after IEC literal parsing",
+    "implementation": "plc_agent.normalized_spec.NormalizedScanMonitor.step with output_matches (pinned sources); observer histories never drive the independent logical reference"
+  },
+  "observation": {
+    "I[k]": "deep-copied inputs immediately before invocation k",
+    "O[k]": "actual outputs immediately after invocation k, supplied by independent execution backend",
+    "Sref[k]": "independent reference state BEFORE k; unrelated to similarly named candidate variables",
+    "initial": "fresh instance BEFORE invocation 0; never substituted by O[0]",
+    "X": "next scan-sequence position; argument must be Boolean, not a numeric term",
+    "time": "dt_ms is observed elapsed time; public timers use physical time, SELF Tick/count timers use logical scans"
+  },
+  "history_bindings": {},
+  "auxiliary_state_bindings": {
+    "Spre": "Sref[k], before the invocation; initialized by reference_state_initial",
+    "Spost": "Sref[k+1], after exactly one pinned transition on I[k]",
+    "first": "k=0 (first invocation); distinct from the pre-invocation initial observation",
+    "pre-output": "actual O[k-1] for OUTPUT (explicit history initial where declared); I[k] for caller-owned IN_OUT",
+    "previous-input": "I[k-1] for k>=1; edge memory for BOOL requests initially FALSE and updated after EVERY invocation",
+    "reference_warning": "Spre/Spost predicates are input-driven ghosts, not evidence that candidate internals match. Conclusions about the candidate must constrain actual O.",
+    "phase": {
+      "pre": "Spre.process_contract.phase",
+      "post": "Spost.process_contract.phase",
+      "enum": {
+        "0": "IDLE",
+        "1": "MOVING",
+        "2": "WAIT_PROCESS"
+      },
+      "initial": 0
+    },
+    "targetStation": "Spre.process_contract.target",
+    "currentStation": "Spre.process_contract.station",
+    "route": "Spre.process_contract.route",
+    "index": "Spre.process_contract.index"
+  },
+  "finite_conjunctions": {},
+  "reference_state_rule": "Initial state is the serialized constructor above; all fields update solely through the pinned transition. Ghost phase/history/queue are names for this state, not observed candidate state.",
+  "primitives": {
+    "bitwise": "DWORD AND/NOT and popcount operate on unsigned 32-bit values; complement is masked by 0xFFFFFFFF.",
+    "time_literals": "IEC TIME/LTIME literals are exact integer durations in nanoseconds.",
+    "observed_arrays": "All IN_OUT inputs are snapshots before invocation; outputs are independently acquired after invocation. Physical bounds map by ordinal, never share another array lower bound.",
+    "boolean_next": "X takes a Boolean formula. Numeric history transport is bit-expanded for DWORD; Boolean histories use equivalence.",
+    "time_progress": "Timed eventuality clauses explicitly require G(F(TimeTick)); TimeTick denotes crossing a new integer-ms boundary. Finite observations cannot establish this premise."
+  },
+  "assumptions": [
+    "The active sequence satisfies the official contract and remains fixed throughout a product cycle.",
+    "station1Start is a rising edge accepted with sensor1 while idle.",
+    "Destination arrival immediately stops the motor. Completion is accepted only at the current processing wait.",
+    "Completion signals are rising edges. Consecutive equal stations denote separate processing operations with fresh edges and no conveyor movement.",
+    "Only one sequence-index advancement occurs per invocation. Station5 arrival returns to idle.",
+    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+  ],
+  "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
+  "limitations": [
+    "No ST-to-model translation or infinite-trace proof is implemented here.",
+    "Focused legacy LTL predicates still require backend lowering; normalization is not model-checker acceptance.",
+    "Finite matching cannot establish liveness or validate runtime provenance."
+  ],
+  "rules_zh": "活动路线长度1..8，前项为2/3/4且末项5，活动周期内固定。初始IDLE、station=1、index=0。IDLE在station1Start上升沿且sensor1时选择首目标；MOVING到目标后进入WAIT_PROCESS或目标5回IDLE；WAIT_PROCESS仅对应完成新边沿推进index，同站继续等待。输出仅转移后MOVING且未到目标时按target与station方向开启；所有边沿历史逐拍更新。"
+}
+```
 
 **PUB016.P1** Interlock
 
@@ -2784,6 +5677,14 @@ The final station completes the sequence.
 
 Under the valid fixed-sequence input contract, eventual external feedback permits every started route to complete.
 
+**PUB016.V2.COMPLETE**
+
+```text
+G(CompleteBehaviorV2)
+```
+
+Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
+
 ### Fixed test index
 
 | Case | Purpose | Steps |
@@ -2791,6 +5692,7 @@ Under the valid fixed-sequence input contract, eventual external feedback permit
 | PUB016.T1 | Follow [4,2,5] and ignore a wrong completion input. | 8 |
 | PUB016.T2 | A one-entry sequence goes directly to output. | 3 |
 | PUB016.T3 | A held completion cannot skip a repeated processing operation. | 7 |
+| V2_process_history_regression | Mode/edge reset, repeated station or prior-batch retained setpoint regression. | 9 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -2979,6 +5881,8 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - Deleting a record clears only its recipeID; its other fields become unconstrained.
 - The caller-owned recipe array is initialized once and persists across steps; do not overwrite it with initial values per scan.
 - Compare REAL values with absolute tolerance 1e-5.
+- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- Floating-point inputs and intermediate reference arithmetic are finite. Existing fixed traces retain their declared absolute tolerance; claims do not extend to arbitrary magnitudes without a separately specified numeric error policy.
 
 ### Supporting types
 
@@ -3078,7 +5982,7 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - `e3`: error AND status=16#8003
 - `e4`: error AND status=16#8004
 - `e5`: error AND status=16#8005
-- `error`: error output
+- `error`: O[k].error: independently observed post-scan candidate value (BOOL); never defined as expected output.
 - `same`: database equals pre-database
 - `add_ok`: rising(addRecipe) AND positive ID absent AND empty slot exists
 - `insert`: lowest-index pre-empty slot equals recipeIn; all other slots unchanged
@@ -3088,8 +5992,242 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - `idle`: no rising request
 - `clear`: NOT error AND status=0 AND NOT recipeAdded AND NOT recipeDeleted AND NOT recipeModified
 - `unique`: all nonzero IDs are pairwise distinct
+- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_PUB017(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+数据库首拍由调用前recipe初始化，之后为跨拍保留存储；非零ID唯一，输入ID正且每拍至多一个请求上升沿。四请求历史初值FALSE、每拍更新。查询缺失8001；新增重复8002优先于满库8003，否则最低空位整体写入；删除缺失8004否则只清ID；修改缺失8005否则整体替换。失败/空闲库保持。三个成功输出是单拍脉冲，成功/空闲error=FALSE/status=0；查询结果仅成功查询时更新，初值零记录。成功删除槽的非ID字段当拍不受约束，此后无覆盖操作时与采样实际值比较保持；不把这些物理表示字段写回参考数据库。
+- `addRecipe`: I[k].addRecipe: sampled input (BOOL).
+- `deleteRecipe`: I[k].deleteRecipe: sampled input (BOOL).
+- `modifyRecipe`: I[k].modifyRecipe: sampled input (BOOL).
+- `queryRecipe`: I[k].queryRecipe: sampled input (BOOL).
+- `recipeIn`: I[k].recipeIn: sampled input (ST_Recipe).
+- `recipeAdded`: O[k].recipeAdded: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `recipeDeleted`: O[k].recipeDeleted: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `recipeModified`: O[k].recipeModified: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `recipeQueryResult`: O[k].recipeQueryResult: independently observed post-scan candidate value (ST_Recipe); never defined as expected output.
+- `status`: O[k].status: independently observed post-scan candidate value (WORD); never defined as expected output.
+- `recipe`: O[k].recipe: independently observed post-scan candidate value (ARRAY[1..10] OF ST_Recipe); never defined as expected output. I[k].recipe denotes separately captured caller value before invocation.
 
 ### LTL properties
+
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+
+### Normalized state, observation and predicate definitions
+
+```json
+{
+  "schema_version": 1,
+  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
+  "candidate_formal_verification": "UNVERIFIED",
+  "initial_observed": {
+    "recipeAdded": false,
+    "recipeDeleted": false,
+    "recipeModified": false,
+    "recipeQueryResult": {
+      "recipeID": 0,
+      "ingredientType": 0,
+      "ingredientRatio": 0.0,
+      "productionTemperature": 0.0
+    },
+    "error": false,
+    "status": 0
+  },
+  "reference_state_initial": {
+    "class": "ScanContract",
+    "state": {
+      "task_id": "PUB017",
+      "array_contract": null,
+      "process_contract": null,
+      "timed_contract": null,
+      "data_contract": {
+        "class": "DataContract",
+        "state": {
+          "task_id": "PUB017",
+          "previous": 0,
+          "high": false,
+          "low": false,
+          "trigger": false,
+          "window": null,
+          "history": [],
+          "average": 0.0,
+          "reached": false,
+          "recipes": [
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            }
+          ],
+          "last_query": {
+            "recipeID": 0,
+            "ingredientType": 0,
+            "ingredientRatio": 0.0,
+            "productionTemperature": 0.0
+          },
+          "prev_add": false,
+          "prev_delete": false,
+          "prev_modify": false,
+          "prev_query": false,
+          "recipes_initialized": false,
+          "queue": [],
+          "prev_enq": false,
+          "prev_deq": false
+        }
+      },
+      "reference": null,
+      "phase": 0,
+      "previous_mode": null,
+      "clock": 0.0,
+      "heat_start": null,
+      "protection_start": null,
+      "demand": false
+    }
+  },
+  "transition": {
+    "entrypoint": "plc_agent.normalized_spec.reference_step(task, reference, deepCopy(I[k]), dt_ms[k])",
+    "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('PUB017'); constructed once per independent case, current state is Sref[k].",
+    "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
+    "module_sha256": {
+      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
+      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
+      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
+      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
+      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
+      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+    },
+    "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
+    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+  },
+  "constrained_observed_fields": [
+    "error",
+    "recipe",
+    "recipeAdded",
+    "recipeDeleted",
+    "recipeModified",
+    "recipeQueryResult",
+    "status"
+  ],
+  "unconstrained_representation_fields": [],
+  "comparison": {
+    "integer_boolean": "exact type and value; no tolerance",
+    "float": "finite; abs error<=1e-5; dictionary/list shape and non-float values exact",
+    "PUB008": "only successfully converted channels[j].outputValue: abs<=1e-5 OR rel<=2e-6; all preserved/config fields exact",
+    "PUB017": "Successful deletion constrains recipeID=0; other fields of that deleted slot are unconstrained for the deletion scan. Subsequent no-write scans preserve the sampled actual representation. This observer history is separate from the logical reference database.",
+    "TIME_LTIME": "exact integer nanoseconds after IEC literal parsing",
+    "implementation": "plc_agent.normalized_spec.NormalizedScanMonitor.step with output_matches (pinned sources); observer histories never drive the independent logical reference"
+  },
+  "observation": {
+    "I[k]": "deep-copied inputs immediately before invocation k",
+    "O[k]": "actual outputs immediately after invocation k, supplied by independent execution backend",
+    "Sref[k]": "independent reference state BEFORE k; unrelated to similarly named candidate variables",
+    "initial": "fresh instance BEFORE invocation 0; never substituted by O[0]",
+    "X": "next scan-sequence position; argument must be Boolean, not a numeric term",
+    "time": "dt_ms is observed elapsed time; public timers use physical time, SELF Tick/count timers use logical scans"
+  },
+  "history_bindings": {},
+  "auxiliary_state_bindings": {
+    "Spre": "Sref[k], before the invocation; initialized by reference_state_initial",
+    "Spost": "Sref[k+1], after exactly one pinned transition on I[k]",
+    "first": "k=0 (first invocation); distinct from the pre-invocation initial observation",
+    "pre-output": "actual O[k-1] for OUTPUT (explicit history initial where declared); I[k] for caller-owned IN_OUT",
+    "previous-input": "I[k-1] for k>=1; edge memory for BOOL requests initially FALSE and updated after EVERY invocation",
+    "reference_warning": "Spre/Spost predicates are input-driven ghosts, not evidence that candidate internals match. Conclusions about the candidate must constrain actual O.",
+    "storage": {
+      "pre_database": "Spre.data_contract.recipes; first invocation uses separately sampled I[0].recipe",
+      "actual_database": "O[k].recipe; preservation compares sampled I[k].recipe",
+      "pre_queue": "Spre.data_contract.queue",
+      "post_queue": "Spost.data_contract.queue",
+      "pre_count": "len(Spre.data_contract.queue)",
+      "capacity": "length of the actual caller buffer binding, fixed per case",
+      "rise": "I[k].request AND NOT corresponding Spre.data_contract.prev_{add/delete/modify/query/enq/deq}",
+      "initial_request_memories": false,
+      "initial_queue": []
+    }
+  },
+  "finite_conjunctions": {},
+  "reference_state_rule": "Initial state is the serialized constructor above; all fields update solely through the pinned transition. Ghost phase/history/queue are names for this state, not observed candidate state.",
+  "primitives": {
+    "bitwise": "DWORD AND/NOT and popcount operate on unsigned 32-bit values; complement is masked by 0xFFFFFFFF.",
+    "time_literals": "IEC TIME/LTIME literals are exact integer durations in nanoseconds.",
+    "observed_arrays": "All IN_OUT inputs are snapshots before invocation; outputs are independently acquired after invocation. Physical bounds map by ordinal, never share another array lower bound.",
+    "boolean_next": "X takes a Boolean formula. Numeric history transport is bit-expanded for DWORD; Boolean histories use equivalence.",
+    "time_progress": "Timed eventuality clauses explicitly require G(F(TimeTick)); TimeTick denotes crossing a new integer-ms boundary. Finite observations cannot establish this premise."
+  },
+  "assumptions": [
+    "At most one request rises per call. Requests use rising edges; simultaneous request priority is unspecified by the source.",
+    "Only positive nonzero IDs are submitted; zero denotes an unused slot.",
+    "Success indicators are one-invocation pulses. error/status clear on idle.",
+    "recipeQueryResult retains the last successful query until another successful query.",
+    "Deleting a record clears only its recipeID; its other fields become unconstrained.",
+    "The caller-owned recipe array is initialized once and persists across steps; do not overwrite it with initial values per scan.",
+    "Compare REAL values with absolute tolerance 1e-5.",
+    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "Floating-point inputs and intermediate reference arithmetic are finite. Existing fixed traces retain their declared absolute tolerance; claims do not extend to arbitrary magnitudes without a separately specified numeric error policy."
+  ],
+  "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
+  "limitations": [
+    "No ST-to-model translation or infinite-trace proof is implemented here.",
+    "Focused legacy LTL predicates still require backend lowering; normalization is not model-checker acceptance.",
+    "Finite matching cannot establish liveness or validate runtime provenance."
+  ],
+  "rules_zh": "数据库首拍由调用前recipe初始化，之后为跨拍保留存储；非零ID唯一，输入ID正且每拍至多一个请求上升沿。四请求历史初值FALSE、每拍更新。查询缺失8001；新增重复8002优先于满库8003，否则最低空位整体写入；删除缺失8004否则只清ID；修改缺失8005否则整体替换。失败/空闲库保持。三个成功输出是单拍脉冲，成功/空闲error=FALSE/status=0；查询结果仅成功查询时更新，初值零记录。成功删除槽的非ID字段当拍不受约束，此后无覆盖操作时与采样实际值比较保持；不把这些物理表示字段写回参考数据库。"
+}
+```
 
 **PUB017.P1** Errors
 
@@ -3138,6 +6276,14 @@ G(unique)
 ```
 
 All operations preserve ID uniqueness from a valid initial database.
+
+**PUB017.V2.COMPLETE**
+
+```text
+G(CompleteBehaviorV2)
+```
+
+Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
 
 ### Fixed test index
 
@@ -3249,6 +6395,7 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - Enqueue and dequeue are never requested together. Reset may coincide with either and wins.
 - Edge memories update during reset; a request held afterward is not another edge.
 - Reset need not clear buffer values. Unused storage arrangement is unconstrained.
+- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Test bindings
 
@@ -3290,7 +6437,7 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 
 ### Atomic propositions and monitor predicates
 
-- `reset`: reset input
+- `reset`: I[k].reset: sampled input (BOOL).
 - `empty`: elementCount=0
 - `ok`: status=0
 - `pop_empty`: NOT reset AND rising(dequeue) AND pre-count=0
@@ -3304,8 +6451,224 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - `popped`: item=pre-front AND post-queue=pre-queue without front AND count=pre-count-1 AND status=0
 - `bounded`: 0<=elementCount<=actual buffer length
 - `idle`: NOT reset AND no request rising edge
+- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_PUB018(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+独立逻辑队列Q初始空、enqPrev/deqPrev=FALSE。reset优先QAfter=[]；否则单个enqueue新沿且未满时追加采样item，满报8002；dequeue新沿且非空时返回旧队首并去首，空报8001；其余状态0。elementCount=|QAfter|；仅成功pop改变实际item，其余等于采样item。buffer物理布局不受约束，其正确性由完整可观察出队行为约束。绑定A容量2、B容量3，其余容量由实际buffer元数据固定。
+- `enqueue`: I[k].enqueue: sampled input (BOOL).
+- `dequeue`: I[k].dequeue: sampled input (BOOL).
+- `elementCount`: O[k].elementCount: independently observed post-scan candidate value (DINT); never defined as expected output.
+- `status`: O[k].status: independently observed post-scan candidate value (WORD); never defined as expected output.
+- `item`: O[k].item: independently observed post-scan candidate value (VARIANT); never defined as expected output. I[k].item denotes separately captured caller value before invocation.
+- `buffer`: O[k].buffer: independently observed post-scan candidate value (VARIANT); never defined as expected output. I[k].buffer denotes separately captured caller value before invocation.
 
 ### LTL properties
+
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+
+### Normalized state, observation and predicate definitions
+
+```json
+{
+  "schema_version": 1,
+  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
+  "candidate_formal_verification": "UNVERIFIED",
+  "initial_observed": {
+    "elementCount": 0,
+    "status": 0
+  },
+  "reference_state_initial": {
+    "class": "ScanContract",
+    "state": {
+      "task_id": "PUB018",
+      "array_contract": null,
+      "process_contract": null,
+      "timed_contract": null,
+      "data_contract": {
+        "class": "DataContract",
+        "state": {
+          "task_id": "PUB018",
+          "previous": 0,
+          "high": false,
+          "low": false,
+          "trigger": false,
+          "window": null,
+          "history": [],
+          "average": 0.0,
+          "reached": false,
+          "recipes": [
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            },
+            {
+              "recipeID": 0,
+              "ingredientType": 0,
+              "ingredientRatio": 0.0,
+              "productionTemperature": 0.0
+            }
+          ],
+          "last_query": {
+            "recipeID": 0,
+            "ingredientType": 0,
+            "ingredientRatio": 0.0,
+            "productionTemperature": 0.0
+          },
+          "prev_add": false,
+          "prev_delete": false,
+          "prev_modify": false,
+          "prev_query": false,
+          "recipes_initialized": false,
+          "queue": [],
+          "prev_enq": false,
+          "prev_deq": false
+        }
+      },
+      "reference": null,
+      "phase": 0,
+      "previous_mode": null,
+      "clock": 0.0,
+      "heat_start": null,
+      "protection_start": null,
+      "demand": false
+    }
+  },
+  "transition": {
+    "entrypoint": "plc_agent.normalized_spec.reference_step(task, reference, deepCopy(I[k]), dt_ms[k])",
+    "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('PUB018'); constructed once per independent case, current state is Sref[k].",
+    "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
+    "module_sha256": {
+      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
+      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
+      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
+      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
+      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
+      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+    },
+    "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
+    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+  },
+  "constrained_observed_fields": [
+    "elementCount",
+    "item",
+    "status"
+  ],
+  "unconstrained_representation_fields": [
+    "buffer"
+  ],
+  "comparison": {
+    "integer_boolean": "exact type and value; no tolerance",
+    "float": "finite; abs error<=1e-5; dictionary/list shape and non-float values exact",
+    "PUB008": "only successfully converted channels[j].outputValue: abs<=1e-5 OR rel<=2e-6; all preserved/config fields exact",
+    "PUB017": "Successful deletion constrains recipeID=0; other fields of that deleted slot are unconstrained for the deletion scan. Subsequent no-write scans preserve the sampled actual representation. This observer history is separate from the logical reference database.",
+    "TIME_LTIME": "exact integer nanoseconds after IEC literal parsing",
+    "implementation": "plc_agent.normalized_spec.NormalizedScanMonitor.step with output_matches (pinned sources); observer histories never drive the independent logical reference"
+  },
+  "observation": {
+    "I[k]": "deep-copied inputs immediately before invocation k",
+    "O[k]": "actual outputs immediately after invocation k, supplied by independent execution backend",
+    "Sref[k]": "independent reference state BEFORE k; unrelated to similarly named candidate variables",
+    "initial": "fresh instance BEFORE invocation 0; never substituted by O[0]",
+    "X": "next scan-sequence position; argument must be Boolean, not a numeric term",
+    "time": "dt_ms is observed elapsed time; public timers use physical time, SELF Tick/count timers use logical scans"
+  },
+  "history_bindings": {},
+  "auxiliary_state_bindings": {
+    "Spre": "Sref[k], before the invocation; initialized by reference_state_initial",
+    "Spost": "Sref[k+1], after exactly one pinned transition on I[k]",
+    "first": "k=0 (first invocation); distinct from the pre-invocation initial observation",
+    "pre-output": "actual O[k-1] for OUTPUT (explicit history initial where declared); I[k] for caller-owned IN_OUT",
+    "previous-input": "I[k-1] for k>=1; edge memory for BOOL requests initially FALSE and updated after EVERY invocation",
+    "reference_warning": "Spre/Spost predicates are input-driven ghosts, not evidence that candidate internals match. Conclusions about the candidate must constrain actual O.",
+    "storage": {
+      "pre_database": "Spre.data_contract.recipes; first invocation uses separately sampled I[0].recipe",
+      "actual_database": "O[k].recipe; preservation compares sampled I[k].recipe",
+      "pre_queue": "Spre.data_contract.queue",
+      "post_queue": "Spost.data_contract.queue",
+      "pre_count": "len(Spre.data_contract.queue)",
+      "capacity": "length of the actual caller buffer binding, fixed per case",
+      "rise": "I[k].request AND NOT corresponding Spre.data_contract.prev_{add/delete/modify/query/enq/deq}",
+      "initial_request_memories": false,
+      "initial_queue": []
+    }
+  },
+  "finite_conjunctions": {},
+  "reference_state_rule": "Initial state is the serialized constructor above; all fields update solely through the pinned transition. Ghost phase/history/queue are names for this state, not observed candidate state.",
+  "primitives": {
+    "bitwise": "DWORD AND/NOT and popcount operate on unsigned 32-bit values; complement is masked by 0xFFFFFFFF.",
+    "time_literals": "IEC TIME/LTIME literals are exact integer durations in nanoseconds.",
+    "observed_arrays": "All IN_OUT inputs are snapshots before invocation; outputs are independently acquired after invocation. Physical bounds map by ordinal, never share another array lower bound.",
+    "boolean_next": "X takes a Boolean formula. Numeric history transport is bit-expanded for DWORD; Boolean histories use equivalence.",
+    "time_progress": "Timed eventuality clauses explicitly require G(F(TimeTick)); TimeTick denotes crossing a new integer-ms boundary. Finite observations cannot establish this premise."
+  },
+  "assumptions": [
+    "The official VARIANT interface is preserved. Native CODESYS compatibility and runtime type/array metadata access remain unverified; never silently replace it by a DINT-only interface.",
+    "Binding A: item DINT, buffer ARRAY[0..1] OF DINT. Binding B: item BOOL, buffer ARRAY[1..3] OF BOOL. Both must run to substantiate genericity.",
+    "Buffer is initialized and bound once per test; its association and contents are not externally overwritten between calls. item is caller-writable every scan.",
+    "Enqueue and dequeue are never requested together. Reset may coincide with either and wins.",
+    "Edge memories update during reset; a request held afterward is not another edge.",
+    "Reset need not clear buffer values. Unused storage arrangement is unconstrained.",
+    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+  ],
+  "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
+  "limitations": [
+    "No ST-to-model translation or infinite-trace proof is implemented here.",
+    "Focused legacy LTL predicates still require backend lowering; normalization is not model-checker acceptance.",
+    "Finite matching cannot establish liveness or validate runtime provenance."
+  ],
+  "rules_zh": "独立逻辑队列Q初始空、enqPrev/deqPrev=FALSE。reset优先QAfter=[]；否则单个enqueue新沿且未满时追加采样item，满报8002；dequeue新沿且非空时返回旧队首并去首，空报8001；其余状态0。elementCount=|QAfter|；仅成功pop改变实际item，其余等于采样item。buffer物理布局不受约束，其正确性由完整可观察出队行为约束。绑定A容量2、B容量3，其余容量由实际buffer元数据固定。"
+}
+```
 
 **PUB018.P1** Reset
 
@@ -3346,6 +6709,14 @@ G(idle -> (ok & same))
 ```
 
 Held levels do not perform another operation.
+
+**PUB018.V2.COMPLETE**
+
+```text
+G(CompleteBehaviorV2)
+```
+
+Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
 
 ### Fixed test index
 
@@ -3504,6 +6875,8 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - Single-step completion switches all outputs off; the next action requires a fresh Start edge on a later scan.
 - Continuous completion of left movement wraps to down in the same scan. Single-cycle completion returns to idle.
 - At the start of a new automatic sequence (action 1, not every individual single step), UpLimitSwitch and LeftLimitSwitch must both be TRUE. Grip and release complete on the supplied feedback switches.
+- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- V2 mode-change priority: emergency stop first; then a change of mode after the first invocation clears sequence/latches and suppresses commands for that invocation; edge memories still update. The first invocation establishes the selected mode and executes normally. New commands are accepted on subsequent invocations subject to their edge rules.
 
 ### Atomic propositions and monitor predicates
 
@@ -3535,8 +6908,208 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - `start`: fresh Start edge in idle with top-left pose and selected automatic mode
 - `started`: post-phase DOWN, busy TRUE
 - `ordered`: the next accepted automatic phase follows DOWN, GRIP, UP1, RIGHT, DOWN2, RELEASE, UP2, LEFT
+- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_PUB019(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+八动作顺序为下/夹/上/右/下/松/上/左。安全失去或无模式全关复位，其次模式变化当拍全关复位；模式选择互斥。手动六命令分别=本按钮 & !反向按钮 & !本限位。单步完成时全关、保存下一步，新Start沿再启动；首步要求上左到位。单周期末回IDLE；连续末回第一步；自动只在本动作匹配限位时推进一阶，输出按转移后动作并由本限位门控。Start历史每拍更新。
+- `modeChanged`: Selected mode differs from previous invocation; FALSE for the first invocation.
+- `ManualMode`: I[k].ManualMode: sampled input (BOOL).
+- `SingleStepMode`: I[k].SingleStepMode: sampled input (BOOL).
+- `SingleCycleMode`: I[k].SingleCycleMode: sampled input (BOOL).
+- `ContinuousMode`: I[k].ContinuousMode: sampled input (BOOL).
+- `EmergencyStop`: I[k].EmergencyStop: sampled input (BOOL).
+- `Start`: I[k].Start: sampled input (BOOL).
+- `DownButton`: I[k].DownButton: sampled input (BOOL).
+- `UpButton`: I[k].UpButton: sampled input (BOOL).
+- `LeftButton`: I[k].LeftButton: sampled input (BOOL).
+- `RightButton`: I[k].RightButton: sampled input (BOOL).
+- `GripButton`: I[k].GripButton: sampled input (BOOL).
+- `ReleaseButton`: I[k].ReleaseButton: sampled input (BOOL).
+- `DownLimitSwitch`: I[k].DownLimitSwitch: sampled input (BOOL).
+- `UpLimitSwitch`: I[k].UpLimitSwitch: sampled input (BOOL).
+- `LeftLimitSwitch`: I[k].LeftLimitSwitch: sampled input (BOOL).
+- `RightLimitSwitch`: I[k].RightLimitSwitch: sampled input (BOOL).
+- `GripLimitSwitch`: I[k].GripLimitSwitch: sampled input (BOOL).
+- `ReleaseLimitSwitch`: I[k].ReleaseLimitSwitch: sampled input (BOOL).
+- `MoveDown`: O[k].MoveDown: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `MoveUp`: O[k].MoveUp: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `MoveLeft`: O[k].MoveLeft: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `MoveRight`: O[k].MoveRight: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `ActivateGrip`: O[k].ActivateGrip: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `ActivateRelease`: O[k].ActivateRelease: independently observed post-scan candidate value (BOOL); never defined as expected output.
 
 ### LTL properties
+
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+
+### Normalized state, observation and predicate definitions
+
+```json
+{
+  "schema_version": 1,
+  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
+  "candidate_formal_verification": "UNVERIFIED",
+  "initial_observed": {
+    "MoveDown": false,
+    "MoveUp": false,
+    "MoveLeft": false,
+    "MoveRight": false,
+    "ActivateGrip": false,
+    "ActivateRelease": false
+  },
+  "reference_state_initial": {
+    "class": "ScanContract",
+    "state": {
+      "task_id": "PUB019",
+      "array_contract": null,
+      "process_contract": {
+        "class": "ProcessContract",
+        "state": {
+          "task_id": "PUB019",
+          "phase": 0,
+          "mode": null,
+          "previous": {},
+          "latches": [
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          "batch_mode": null,
+          "route": null,
+          "index": 0,
+          "station": 1,
+          "target": 1,
+          "temperature": 0.0,
+          "arm_mode": null,
+          "arm_step": 0,
+          "step_index": 1,
+          "step_busy": false,
+          "prev_start": false
+        }
+      },
+      "timed_contract": null,
+      "data_contract": null,
+      "reference": null,
+      "phase": 0,
+      "previous_mode": null,
+      "clock": 0.0,
+      "heat_start": null,
+      "protection_start": null,
+      "demand": false
+    }
+  },
+  "transition": {
+    "entrypoint": "plc_agent.normalized_spec.reference_step(task, reference, deepCopy(I[k]), dt_ms[k])",
+    "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('PUB019'); constructed once per independent case, current state is Sref[k].",
+    "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
+    "module_sha256": {
+      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
+      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
+      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
+      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
+      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
+      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+    },
+    "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
+    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+  },
+  "constrained_observed_fields": [
+    "ActivateGrip",
+    "ActivateRelease",
+    "MoveDown",
+    "MoveLeft",
+    "MoveRight",
+    "MoveUp"
+  ],
+  "unconstrained_representation_fields": [],
+  "comparison": {
+    "integer_boolean": "exact type and value; no tolerance",
+    "float": "finite; abs error<=1e-5; dictionary/list shape and non-float values exact",
+    "PUB008": "only successfully converted channels[j].outputValue: abs<=1e-5 OR rel<=2e-6; all preserved/config fields exact",
+    "PUB017": "Successful deletion constrains recipeID=0; other fields of that deleted slot are unconstrained for the deletion scan. Subsequent no-write scans preserve the sampled actual representation. This observer history is separate from the logical reference database.",
+    "TIME_LTIME": "exact integer nanoseconds after IEC literal parsing",
+    "implementation": "plc_agent.normalized_spec.NormalizedScanMonitor.step with output_matches (pinned sources); observer histories never drive the independent logical reference"
+  },
+  "observation": {
+    "I[k]": "deep-copied inputs immediately before invocation k",
+    "O[k]": "actual outputs immediately after invocation k, supplied by independent execution backend",
+    "Sref[k]": "independent reference state BEFORE k; unrelated to similarly named candidate variables",
+    "initial": "fresh instance BEFORE invocation 0; never substituted by O[0]",
+    "X": "next scan-sequence position; argument must be Boolean, not a numeric term",
+    "time": "dt_ms is observed elapsed time; public timers use physical time, SELF Tick/count timers use logical scans"
+  },
+  "history_bindings": {},
+  "auxiliary_state_bindings": {
+    "Spre": "Sref[k], before the invocation; initialized by reference_state_initial",
+    "Spost": "Sref[k+1], after exactly one pinned transition on I[k]",
+    "first": "k=0 (first invocation); distinct from the pre-invocation initial observation",
+    "pre-output": "actual O[k-1] for OUTPUT (explicit history initial where declared); I[k] for caller-owned IN_OUT",
+    "previous-input": "I[k-1] for k>=1; edge memory for BOOL requests initially FALSE and updated after EVERY invocation",
+    "reference_warning": "Spre/Spost predicates are input-driven ghosts, not evidence that candidate internals match. Conclusions about the candidate must constrain actual O.",
+    "action_index": {
+      "pre_cycle": "Spre.process_contract.arm_step",
+      "pre_single_step": "Spre.process_contract.step_index",
+      "initial_cycle": 0,
+      "initial_single_step": 1,
+      "enum": {
+        "1": "DOWN",
+        "2": "GRIP",
+        "3": "UP1",
+        "4": "RIGHT",
+        "5": "DOWN2",
+        "6": "RELEASE",
+        "7": "UP2",
+        "8": "LEFT"
+      },
+      "feedback": [
+        "DownLimitSwitch",
+        "GripLimitSwitch",
+        "UpLimitSwitch",
+        "RightLimitSwitch",
+        "DownLimitSwitch",
+        "ReleaseLimitSwitch",
+        "UpLimitSwitch",
+        "LeftLimitSwitch"
+      ]
+    },
+    "busy": "SingleStepMode ? Spre.process_contract.step_busy : Spre.process_contract.arm_step != 0",
+    "modeChanged": "Spre.process_contract.arm_mode is not None AND differs from selected input mode (manual/single_step/single_cycle/continuous/None)",
+    "mode_initial": null,
+    "start_memory": "Spre.process_contract.prev_start, initially FALSE; next=I[k].Start"
+  },
+  "finite_conjunctions": {},
+  "reference_state_rule": "Initial state is the serialized constructor above; all fields update solely through the pinned transition. Ghost phase/history/queue are names for this state, not observed candidate state.",
+  "primitives": {
+    "bitwise": "DWORD AND/NOT and popcount operate on unsigned 32-bit values; complement is masked by 0xFFFFFFFF.",
+    "time_literals": "IEC TIME/LTIME literals are exact integer durations in nanoseconds.",
+    "observed_arrays": "All IN_OUT inputs are snapshots before invocation; outputs are independently acquired after invocation. Physical bounds map by ordinal, never share another array lower bound.",
+    "boolean_next": "X takes a Boolean formula. Numeric history transport is bit-expanded for DWORD; Boolean histories use equivalence.",
+    "time_progress": "Timed eventuality clauses explicitly require G(F(TimeTick)); TimeTick denotes crossing a new integer-ms boundary. Finite observations cannot establish this premise."
+  },
+  "assumptions": [
+    "EmergencyStop=FALSE cancels the sequence and outputs; recovery requires a fresh Start edge from a verified top-left pose.",
+    "A Start press is a rising edge. Start edges during an active action are ignored; edge history still updates.",
+    "No selected mode means all commands off and sequence reset. Changing mode also resets the sequence.",
+    "Opposing manual commands on an axis or grip pair are both inhibited. Independent non-opposing actions may run together.",
+    "Manual commands are combinational and stop on their matching limit/feedback. Contradictory limit switches are outside the caller contract.",
+    "Only one phase transition occurs per invocation. In cycle modes, completion feedback switches to the next command in that scan; an already-active next limit suppresses its command but is processed as completion on the next invocation.",
+    "Single-step completion switches all outputs off; the next action requires a fresh Start edge on a later scan.",
+    "Continuous completion of left movement wraps to down in the same scan. Single-cycle completion returns to idle.",
+    "At the start of a new automatic sequence (action 1, not every individual single step), UpLimitSwitch and LeftLimitSwitch must both be TRUE. Grip and release complete on the supplied feedback switches.",
+    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "V2 mode-change priority: emergency stop first; then a change of mode after the first invocation clears sequence/latches and suppresses commands for that invocation; edge memories still update. The first invocation establishes the selected mode and executes normally. New commands are accepted on subsequent invocations subject to their edge rules."
+  ],
+  "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
+  "limitations": [
+    "No ST-to-model translation or infinite-trace proof is implemented here.",
+    "Focused legacy LTL predicates still require backend lowering; normalization is not model-checker acceptance.",
+    "Finite matching cannot establish liveness or validate runtime provenance."
+  ],
+  "rules_zh": "八动作顺序为下/夹/上/右/下/松/上/左。安全失去或无模式全关复位，其次模式变化当拍全关复位；模式选择互斥。手动六命令分别=本按钮 & !反向按钮 & !本限位。单步完成时全关、保存下一步，新Start沿再启动；首步要求上左到位。单周期末回IDLE；连续末回第一步；自动只在本动作匹配限位时推进一阶，输出按转移后动作并由本限位门控。Start历史每拍更新。"
+}
+```
 
 **PUB019.P1** Safety
 
@@ -3557,7 +7130,7 @@ Opposed actuators are never commanded together.
 **PUB019.P3** Manual down
 
 ```text
-G(safe & ManualMode -> (down <-> down_manual))
+G(safe & !modeChanged & ManualMode -> (down <-> down_manual))
 ```
 
 Manual down requires the button and an unreached lower limit.
@@ -3573,7 +7146,7 @@ Every corresponding completion input suppresses its command.
 **PUB019.P5** Step wait
 
 ```text
-G(safe & (step_done | waiting) -> off)
+G(safe & !modeChanged & (step_done | waiting) -> off)
 ```
 
 A completed single step waits for another press.
@@ -3581,7 +7154,7 @@ A completed single step waits for another press.
 **PUB019.P6** Automatic start
 
 ```text
-G(safe & start -> started)
+G(safe & !modeChanged & start -> started)
 ```
 
 A permitted fresh start begins down.
@@ -3597,7 +7170,7 @@ The eight preset actions retain their required order.
 **PUB019.P8** Cycle boundary
 
 ```text
-G(safe -> ((cycle_done -> (idle & off)) & (continuous_done -> begin_next)))
+G((safe & !modeChanged) -> ((cycle_done -> (idle & off)) & (continuous_done -> begin_next)))
 ```
 
 Single-cycle stops; continuous wraps.
@@ -3609,6 +7182,14 @@ Single-cycle stops; continuous wraps.
 ```
 
 With unchanged safe single-cycle mode and eventual matching feedback, every started sequence eventually returns idle.
+
+**PUB019.V2.COMPLETE**
+
+```text
+G(CompleteBehaviorV2)
+```
+
+Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
 
 ### Fixed test index
 
@@ -3742,6 +7323,8 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - A rejected item remains at the weighing station, with kick TRUE, until SensorWeight becomes FALSE. It then returns to WAIT_FEED.
 - firingTemp updates only for accepted weight and retains the last accepted value otherwise. REAL comparisons use absolute tolerance 1e-5.
 - At most one phase transition occurs per invocation. Output arrival sets CompletionLight immediately, removal clears it and resets the route.
+- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- Floating-point inputs and intermediate reference arithmetic are finite. Existing fixed traces retain their declared absolute tolerance; claims do not extend to arbitrary magnitudes without a separately specified numeric error policy.
 
 ### Atomic propositions and monitor predicates
 
@@ -3768,8 +7351,183 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - `processing_wait`: pre-phase is WAIT_WASH, WAIT_WEIGHT or WAIT_FIRING
 - `matching_completion`: matching station sensor and processing completion are TRUE in the corresponding wait
 - `order`: automatic route is FEED, WASH, WEIGHT, FIRING, OUTPUT; rejected weights cannot enter FIRING
+- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_PUB020(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+参考阶段WAIT_FEED→MOVE_WASH→WAIT_WASH→MOVE_WEIGHT→WAIT_WEIGHT→REJECT或MOVE_FIRING→WAIT_FIRING→MOVE_OUTPUT→OUTPUT_DONE；每拍按旧阶段只推进一阶。重量100..200含边界合格，合格温度real32(500+real32(real32(weight-100)*0.5))；不合格保持温度并剔除至SensorWeight假。完成取走后回初始。手动清流程、方向按钮互锁、kick/灯关闭、温度保持。自动仅运输阶段正转、不反转；kick对应REJECT、灯对应OUTPUT_DONE。
+- `Mode`: I[k].Mode: sampled input (BOOL).
+- `ForwardButton`: I[k].ForwardButton: sampled input (BOOL).
+- `ReverseButton`: I[k].ReverseButton: sampled input (BOOL).
+- `SensorFeed`: I[k].SensorFeed: sampled input (BOOL).
+- `SensorWash`: I[k].SensorWash: sampled input (BOOL).
+- `SensorWeight`: I[k].SensorWeight: sampled input (BOOL).
+- `SensorFiring`: I[k].SensorFiring: sampled input (BOOL).
+- `SensorOutput`: I[k].SensorOutput: sampled input (BOOL).
+- `washComplete`: I[k].washComplete: sampled input (BOOL).
+- `weightComplete`: I[k].weightComplete: sampled input (BOOL).
+- `weight`: I[k].weight: sampled input (REAL).
+- `firingComplete`: I[k].firingComplete: sampled input (BOOL).
+- `MotorForward`: O[k].MotorForward: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `MotorReverse`: O[k].MotorReverse: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `kick`: O[k].kick: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `CompletionLight`: O[k].CompletionLight: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `firingTemp`: O[k].firingTemp: independently observed post-scan candidate value (REAL); never defined as expected output.
 
 ### LTL properties
+
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+
+### Normalized state, observation and predicate definitions
+
+```json
+{
+  "schema_version": 1,
+  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
+  "candidate_formal_verification": "UNVERIFIED",
+  "initial_observed": {
+    "MotorForward": false,
+    "MotorReverse": false,
+    "kick": false,
+    "CompletionLight": false,
+    "firingTemp": 0.0
+  },
+  "reference_state_initial": {
+    "class": "ScanContract",
+    "state": {
+      "task_id": "PUB020",
+      "array_contract": null,
+      "process_contract": {
+        "class": "ProcessContract",
+        "state": {
+          "task_id": "PUB020",
+          "phase": 0,
+          "mode": null,
+          "previous": {},
+          "latches": [
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          "batch_mode": null,
+          "route": null,
+          "index": 0,
+          "station": 1,
+          "target": 1,
+          "temperature": 0.0,
+          "arm_mode": null,
+          "arm_step": 0,
+          "step_index": 1,
+          "step_busy": false,
+          "prev_start": false
+        }
+      },
+      "timed_contract": null,
+      "data_contract": null,
+      "reference": null,
+      "phase": 0,
+      "previous_mode": null,
+      "clock": 0.0,
+      "heat_start": null,
+      "protection_start": null,
+      "demand": false
+    }
+  },
+  "transition": {
+    "entrypoint": "plc_agent.normalized_spec.reference_step(task, reference, deepCopy(I[k]), dt_ms[k])",
+    "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('PUB020'); constructed once per independent case, current state is Sref[k].",
+    "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
+    "module_sha256": {
+      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
+      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
+      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
+      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
+      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
+      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+    },
+    "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
+    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+  },
+  "constrained_observed_fields": [
+    "CompletionLight",
+    "MotorForward",
+    "MotorReverse",
+    "firingTemp",
+    "kick"
+  ],
+  "unconstrained_representation_fields": [],
+  "comparison": {
+    "integer_boolean": "exact type and value; no tolerance",
+    "float": "finite; abs error<=1e-5; dictionary/list shape and non-float values exact",
+    "PUB008": "only successfully converted channels[j].outputValue: abs<=1e-5 OR rel<=2e-6; all preserved/config fields exact",
+    "PUB017": "Successful deletion constrains recipeID=0; other fields of that deleted slot are unconstrained for the deletion scan. Subsequent no-write scans preserve the sampled actual representation. This observer history is separate from the logical reference database.",
+    "TIME_LTIME": "exact integer nanoseconds after IEC literal parsing",
+    "implementation": "plc_agent.normalized_spec.NormalizedScanMonitor.step with output_matches (pinned sources); observer histories never drive the independent logical reference"
+  },
+  "observation": {
+    "I[k]": "deep-copied inputs immediately before invocation k",
+    "O[k]": "actual outputs immediately after invocation k, supplied by independent execution backend",
+    "Sref[k]": "independent reference state BEFORE k; unrelated to similarly named candidate variables",
+    "initial": "fresh instance BEFORE invocation 0; never substituted by O[0]",
+    "X": "next scan-sequence position; argument must be Boolean, not a numeric term",
+    "time": "dt_ms is observed elapsed time; public timers use physical time, SELF Tick/count timers use logical scans"
+  },
+  "history_bindings": {},
+  "auxiliary_state_bindings": {
+    "Spre": "Sref[k], before the invocation; initialized by reference_state_initial",
+    "Spost": "Sref[k+1], after exactly one pinned transition on I[k]",
+    "first": "k=0 (first invocation); distinct from the pre-invocation initial observation",
+    "pre-output": "actual O[k-1] for OUTPUT (explicit history initial where declared); I[k] for caller-owned IN_OUT",
+    "previous-input": "I[k-1] for k>=1; edge memory for BOOL requests initially FALSE and updated after EVERY invocation",
+    "reference_warning": "Spre/Spost predicates are input-driven ghosts, not evidence that candidate internals match. Conclusions about the candidate must constrain actual O.",
+    "phase": {
+      "pre": "Spre.process_contract.phase",
+      "post": "Spost.process_contract.phase",
+      "enum": {
+        "0": "WAIT_FEED",
+        "1": "MOVE_TO_WASH",
+        "2": "WAIT_WASH",
+        "3": "MOVE_TO_WEIGHT",
+        "4": "WAIT_WEIGHT",
+        "5": "REJECT",
+        "6": "MOVE_TO_FIRING",
+        "7": "WAIT_FIRING",
+        "8": "MOVE_TO_OUTPUT",
+        "9": "OUTPUT_DONE"
+      },
+      "initial": 0
+    }
+  },
+  "finite_conjunctions": {},
+  "reference_state_rule": "Initial state is the serialized constructor above; all fields update solely through the pinned transition. Ghost phase/history/queue are names for this state, not observed candidate state.",
+  "primitives": {
+    "bitwise": "DWORD AND/NOT and popcount operate on unsigned 32-bit values; complement is masked by 0xFFFFFFFF.",
+    "time_literals": "IEC TIME/LTIME literals are exact integer durations in nanoseconds.",
+    "observed_arrays": "All IN_OUT inputs are snapshots before invocation; outputs are independently acquired after invocation. Physical bounds map by ordinal, never share another array lower bound.",
+    "boolean_next": "X takes a Boolean formula. Numeric history transport is bit-expanded for DWORD; Boolean histories use equivalence.",
+    "time_progress": "Timed eventuality clauses explicitly require G(F(TimeTick)); TimeTick denotes crossing a new integer-ms boundary. Finite observations cannot establish this premise."
+  },
+  "assumptions": [
+    "Manual opposing requests both inhibit the motor. Entering manual clears sequence, kick and completion but retains the last firing setpoint.",
+    "Only one product is processed; the caller does not assert contradictory station sensors.",
+    "Mode changes reset the automatic route to WAIT_FEED. Confirmations are levels accepted only in their corresponding processing wait.",
+    "Arrival has priority; a confirmation already TRUE on the arrival invocation is accepted no earlier than the next invocation.",
+    "A rejected item remains at the weighing station, with kick TRUE, until SensorWeight becomes FALSE. It then returns to WAIT_FEED.",
+    "firingTemp updates only for accepted weight and retains the last accepted value otherwise. REAL comparisons use absolute tolerance 1e-5.",
+    "At most one phase transition occurs per invocation. Output arrival sets CompletionLight immediately, removal clears it and resets the route.",
+    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "Floating-point inputs and intermediate reference arithmetic are finite. Existing fixed traces retain their declared absolute tolerance; claims do not extend to arbitrary magnitudes without a separately specified numeric error policy."
+  ],
+  "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
+  "limitations": [
+    "No ST-to-model translation or infinite-trace proof is implemented here.",
+    "Focused legacy LTL predicates still require backend lowering; normalization is not model-checker acceptance.",
+    "Finite matching cannot establish liveness or validate runtime provenance."
+  ],
+  "rules_zh": "参考阶段WAIT_FEED→MOVE_WASH→WAIT_WASH→MOVE_WEIGHT→WAIT_WEIGHT→REJECT或MOVE_FIRING→WAIT_FIRING→MOVE_OUTPUT→OUTPUT_DONE；每拍按旧阶段只推进一阶。重量100..200含边界合格，合格温度real32(500+real32(real32(weight-100)*0.5))；不合格保持温度并剔除至SensorWeight假。完成取走后回初始。手动清流程、方向按钮互锁、kick/灯关闭、温度保持。自动仅运输阶段正转、不反转；kick对应REJECT、灯对应OUTPUT_DONE。"
+}
+```
 
 **PUB020.P1** Interlock
 
@@ -3843,6 +7601,14 @@ Only the ordered processing route advances qualified products.
 
 With continuing automatic mode, eventual movement/processing feedback and accepted weights, each feed eventually completes.
 
+**PUB020.V2.COMPLETE**
+
+```text
+G(CompleteBehaviorV2)
+```
+
+Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
+
 ### Fixed test index
 
 | Case | Purpose | Steps |
@@ -3854,6 +7620,7 @@ With continuing automatic mode, eventual movement/processing feedback and accept
 | PUB020.T5 | Reject just outside the inclusive limits, retain rejection until removal. | 9 |
 | PUB020.T6 | Reject just outside the inclusive limits, retain rejection until removal. | 9 |
 | PUB020.T7 | Out-of-order completions do not move an idle product. | 4 |
+| V2_process_history_regression | Mode/edge reset, repeated station or prior-batch retained setpoint regression. | 16 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -3911,19 +7678,135 @@ At scan k, sample every input once, read retained pre-state q[k], execute one tr
 ### Explicit assumptions
 
 - Inputs are level-sensitive; no start edge is required.
+- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
 
-- `Start`: Operator start request Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Stop`: Stop request Boolean names are propositions; numeric names appear only inside defined predicates.
-- `GuardClosed`: Door permissive Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Run`: Motor run command Boolean names are propositions; numeric names appear only inside defined predicates.
-- `first`: True only on the first invocation after resetting the FB instance.
-- `qRun`: Run retained from the preceding invocation, initially FALSE.
+- `Start`: I[k].Start: sampled input (BOOL).
+- `Stop`: I[k].Stop: sampled input (BOOL).
+- `GuardClosed`: I[k].GuardClosed: sampled input (BOOL).
+- `Run`: O[k].Run: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `first`: k=0; first invocation, not the pre-invocation observation
+- `qRun`: {"kind": "previous_observed_output", "source": "O[k-1].Run", "initial": false, "update": "After comparing scan k, store ACTUAL O[k].Run; never write into reference state."}
+- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_SELF001(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+r初值FALSE；rAfter=GuardClosed & !Stop & (Start | rBefore)；期望Run=rAfter。
 
 ### LTL properties
 
-**P1** 
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+
+### Normalized state, observation and predicate definitions
+
+```json
+{
+  "schema_version": 1,
+  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
+  "candidate_formal_verification": "UNVERIFIED",
+  "initial_observed": {
+    "Run": false
+  },
+  "reference_state_initial": {
+    "class": "ScanContract",
+    "state": {
+      "task_id": "SELF001",
+      "array_contract": null,
+      "process_contract": null,
+      "timed_contract": null,
+      "data_contract": null,
+      "reference": {
+        "class": "ReferenceController",
+        "state": {
+          "task_id": "SELF001",
+          "state": {
+            "run": false
+          }
+        }
+      },
+      "phase": 0,
+      "previous_mode": null,
+      "clock": 0.0,
+      "heat_start": null,
+      "protection_start": null,
+      "demand": false
+    }
+  },
+  "transition": {
+    "entrypoint": "plc_agent.normalized_spec.reference_step(task, reference, deepCopy(I[k]), dt_ms[k])",
+    "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('SELF001'); constructed once per independent case, current state is Sref[k].",
+    "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
+    "module_sha256": {
+      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
+      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
+      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
+      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
+      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
+      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+    },
+    "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
+    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+  },
+  "constrained_observed_fields": [
+    "Run"
+  ],
+  "unconstrained_representation_fields": [],
+  "comparison": {
+    "integer_boolean": "exact type and value; no tolerance",
+    "float": "finite; abs error<=1e-5; dictionary/list shape and non-float values exact",
+    "PUB008": "only successfully converted channels[j].outputValue: abs<=1e-5 OR rel<=2e-6; all preserved/config fields exact",
+    "PUB017": "Successful deletion constrains recipeID=0; other fields of that deleted slot are unconstrained for the deletion scan. Subsequent no-write scans preserve the sampled actual representation. This observer history is separate from the logical reference database.",
+    "TIME_LTIME": "exact integer nanoseconds after IEC literal parsing",
+    "implementation": "plc_agent.normalized_spec.NormalizedScanMonitor.step with output_matches (pinned sources); observer histories never drive the independent logical reference"
+  },
+  "observation": {
+    "I[k]": "deep-copied inputs immediately before invocation k",
+    "O[k]": "actual outputs immediately after invocation k, supplied by independent execution backend",
+    "Sref[k]": "independent reference state BEFORE k; unrelated to similarly named candidate variables",
+    "initial": "fresh instance BEFORE invocation 0; never substituted by O[0]",
+    "X": "next scan-sequence position; argument must be Boolean, not a numeric term",
+    "time": "dt_ms is observed elapsed time; public timers use physical time, SELF Tick/count timers use logical scans"
+  },
+  "history_bindings": {
+    "qRun": {
+      "kind": "previous_observed_output",
+      "source": "O[k-1].Run",
+      "initial": false,
+      "update": "After comparing scan k, store ACTUAL O[k].Run; never write into reference state."
+    }
+  },
+  "auxiliary_state_bindings": {
+    "Spre": "Sref[k], before the invocation; initialized by reference_state_initial",
+    "Spost": "Sref[k+1], after exactly one pinned transition on I[k]",
+    "first": "k=0 (first invocation); distinct from the pre-invocation initial observation",
+    "pre-output": "actual O[k-1] for OUTPUT (explicit history initial where declared); I[k] for caller-owned IN_OUT",
+    "previous-input": "I[k-1] for k>=1; edge memory for BOOL requests initially FALSE and updated after EVERY invocation",
+    "reference_warning": "Spre/Spost predicates are input-driven ghosts, not evidence that candidate internals match. Conclusions about the candidate must constrain actual O."
+  },
+  "finite_conjunctions": {},
+  "reference_state_rule": "Initial state is the serialized constructor above; all fields update solely through the pinned transition. Ghost phase/history/queue are names for this state, not observed candidate state.",
+  "primitives": {
+    "bitwise": "DWORD AND/NOT and popcount operate on unsigned 32-bit values; complement is masked by 0xFFFFFFFF.",
+    "time_literals": "IEC TIME/LTIME literals are exact integer durations in nanoseconds.",
+    "observed_arrays": "All IN_OUT inputs are snapshots before invocation; outputs are independently acquired after invocation. Physical bounds map by ordinal, never share another array lower bound.",
+    "boolean_next": "X takes a Boolean formula. Numeric history transport is bit-expanded for DWORD; Boolean histories use equivalence.",
+    "time_progress": "Timed eventuality clauses explicitly require G(F(TimeTick)); TimeTick denotes crossing a new integer-ms boundary. Finite observations cannot establish this premise."
+  },
+  "assumptions": [
+    "Inputs are level-sensitive; no start edge is required.",
+    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+  ],
+  "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
+  "limitations": [
+    "No ST-to-model translation or infinite-trace proof is implemented here.",
+    "Focused legacy LTL predicates still require backend lowering; normalization is not model-checker acceptance.",
+    "Finite matching cannot establish liveness or validate runtime provenance."
+  ],
+  "rules_zh": "r初值FALSE；rAfter=GuardClosed & !Stop & (Start | rBefore)；期望Run=rAfter。"
+}
+```
+
+**P1**
 
 ```text
 G(first -> !qRun)
@@ -3931,7 +7814,7 @@ G(first -> !qRun)
 
 The instance starts with no retained run request.
 
-**P2** 
+**P2**
 
 ```text
 G((Stop | !GuardClosed) -> !Run)
@@ -3939,7 +7822,7 @@ G((Stop | !GuardClosed) -> !Run)
 
 Stop and guard override every startup request in the same scan.
 
-**P3** 
+**P3**
 
 ```text
 G((Start & !Stop & GuardClosed) -> Run)
@@ -3947,7 +7830,7 @@ G((Start & !Stop & GuardClosed) -> Run)
 
 A permitted start takes effect at end of the sampled scan.
 
-**P4** 
+**P4**
 
 ```text
 G((!Start & !Stop & GuardClosed) -> (Run <-> qRun))
@@ -3955,13 +7838,21 @@ G((!Start & !Stop & GuardClosed) -> (Run <-> qRun))
 
 Retain the preceding run value without a new command.
 
-**P5** 
+**P5**
 
 ```text
 G(Run -> X(Stop | !GuardClosed | Run))
 ```
 
 Across invocations, run persists unless a higher-priority input intervenes.
+
+**SELF001.V2.COMPLETE**
+
+```text
+G(CompleteBehaviorV2)
+```
+
+Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
 
 ### Fixed test index
 
@@ -4028,23 +7919,146 @@ At scan k, sample every input once, read retained pre-state q[k], execute one tr
 
 ### Explicit assumptions
 
+- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
 
-- `ForwardButton`: Forward jog request Boolean names are propositions; numeric names appear only inside defined predicates.
-- `ReverseButton`: Reverse jog request Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Stop`: Stop request Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Forward`: Forward contactor command Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Reverse`: Reverse contactor command Boolean names are propositions; numeric names appear only inside defined predicates.
-- `first`: True only on the first invocation after resetting the FB instance.
-- `qForward`: Previous scan Forward output; initially FALSE.
-- `qReverse`: Previous scan Reverse output; initially FALSE.
+- `ForwardButton`: I[k].ForwardButton: sampled input (BOOL).
+- `ReverseButton`: I[k].ReverseButton: sampled input (BOOL).
+- `Stop`: I[k].Stop: sampled input (BOOL).
+- `Forward`: O[k].Forward: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `Reverse`: O[k].Reverse: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `first`: k=0; first invocation, not the pre-invocation observation
+- `qForward`: {"kind": "previous_observed_output", "source": "O[k-1].Forward", "initial": false, "update": "After comparing scan k, store ACTUAL O[k].Forward; never write into reference state."}
+- `qReverse`: {"kind": "previous_observed_output", "source": "O[k-1].Reverse", "initial": false, "update": "After comparing scan k, store ACTUAL O[k].Reverse; never write into reference state."}
 - `fwdOnly`: ForwardButton & !ReverseButton & !Stop.
 - `revOnly`: ReverseButton & !ForwardButton & !Stop.
+- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_SELF002(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+d初值0；desired在Stop或两方向按钮相等时为0，否则前进1/后退-1。dAfter在desired!=0且dBefore=-desired时为0，否则desired；Forward=(dAfter=1)，Reverse=(dAfter=-1)。
 
 ### LTL properties
 
-**P1** 
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+
+### Normalized state, observation and predicate definitions
+
+```json
+{
+  "schema_version": 1,
+  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
+  "candidate_formal_verification": "UNVERIFIED",
+  "initial_observed": {
+    "Forward": false,
+    "Reverse": false
+  },
+  "reference_state_initial": {
+    "class": "ScanContract",
+    "state": {
+      "task_id": "SELF002",
+      "array_contract": null,
+      "process_contract": null,
+      "timed_contract": null,
+      "data_contract": null,
+      "reference": {
+        "class": "ReferenceController",
+        "state": {
+          "task_id": "SELF002",
+          "state": {
+            "direction": 0
+          }
+        }
+      },
+      "phase": 0,
+      "previous_mode": null,
+      "clock": 0.0,
+      "heat_start": null,
+      "protection_start": null,
+      "demand": false
+    }
+  },
+  "transition": {
+    "entrypoint": "plc_agent.normalized_spec.reference_step(task, reference, deepCopy(I[k]), dt_ms[k])",
+    "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('SELF002'); constructed once per independent case, current state is Sref[k].",
+    "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
+    "module_sha256": {
+      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
+      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
+      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
+      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
+      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
+      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+    },
+    "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
+    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+  },
+  "constrained_observed_fields": [
+    "Forward",
+    "Reverse"
+  ],
+  "unconstrained_representation_fields": [],
+  "comparison": {
+    "integer_boolean": "exact type and value; no tolerance",
+    "float": "finite; abs error<=1e-5; dictionary/list shape and non-float values exact",
+    "PUB008": "only successfully converted channels[j].outputValue: abs<=1e-5 OR rel<=2e-6; all preserved/config fields exact",
+    "PUB017": "Successful deletion constrains recipeID=0; other fields of that deleted slot are unconstrained for the deletion scan. Subsequent no-write scans preserve the sampled actual representation. This observer history is separate from the logical reference database.",
+    "TIME_LTIME": "exact integer nanoseconds after IEC literal parsing",
+    "implementation": "plc_agent.normalized_spec.NormalizedScanMonitor.step with output_matches (pinned sources); observer histories never drive the independent logical reference"
+  },
+  "observation": {
+    "I[k]": "deep-copied inputs immediately before invocation k",
+    "O[k]": "actual outputs immediately after invocation k, supplied by independent execution backend",
+    "Sref[k]": "independent reference state BEFORE k; unrelated to similarly named candidate variables",
+    "initial": "fresh instance BEFORE invocation 0; never substituted by O[0]",
+    "X": "next scan-sequence position; argument must be Boolean, not a numeric term",
+    "time": "dt_ms is observed elapsed time; public timers use physical time, SELF Tick/count timers use logical scans"
+  },
+  "history_bindings": {
+    "qForward": {
+      "kind": "previous_observed_output",
+      "source": "O[k-1].Forward",
+      "initial": false,
+      "update": "After comparing scan k, store ACTUAL O[k].Forward; never write into reference state."
+    },
+    "qReverse": {
+      "kind": "previous_observed_output",
+      "source": "O[k-1].Reverse",
+      "initial": false,
+      "update": "After comparing scan k, store ACTUAL O[k].Reverse; never write into reference state."
+    }
+  },
+  "auxiliary_state_bindings": {
+    "Spre": "Sref[k], before the invocation; initialized by reference_state_initial",
+    "Spost": "Sref[k+1], after exactly one pinned transition on I[k]",
+    "first": "k=0 (first invocation); distinct from the pre-invocation initial observation",
+    "pre-output": "actual O[k-1] for OUTPUT (explicit history initial where declared); I[k] for caller-owned IN_OUT",
+    "previous-input": "I[k-1] for k>=1; edge memory for BOOL requests initially FALSE and updated after EVERY invocation",
+    "reference_warning": "Spre/Spost predicates are input-driven ghosts, not evidence that candidate internals match. Conclusions about the candidate must constrain actual O."
+  },
+  "finite_conjunctions": {},
+  "reference_state_rule": "Initial state is the serialized constructor above; all fields update solely through the pinned transition. Ghost phase/history/queue are names for this state, not observed candidate state.",
+  "primitives": {
+    "bitwise": "DWORD AND/NOT and popcount operate on unsigned 32-bit values; complement is masked by 0xFFFFFFFF.",
+    "time_literals": "IEC TIME/LTIME literals are exact integer durations in nanoseconds.",
+    "observed_arrays": "All IN_OUT inputs are snapshots before invocation; outputs are independently acquired after invocation. Physical bounds map by ordinal, never share another array lower bound.",
+    "boolean_next": "X takes a Boolean formula. Numeric history transport is bit-expanded for DWORD; Boolean histories use equivalence.",
+    "time_progress": "Timed eventuality clauses explicitly require G(F(TimeTick)); TimeTick denotes crossing a new integer-ms boundary. Finite observations cannot establish this premise."
+  },
+  "assumptions": [
+    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+  ],
+  "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
+  "limitations": [
+    "No ST-to-model translation or infinite-trace proof is implemented here.",
+    "Focused legacy LTL predicates still require backend lowering; normalization is not model-checker acceptance.",
+    "Finite matching cannot establish liveness or validate runtime provenance."
+  ],
+  "rules_zh": "d初值0；desired在Stop或两方向按钮相等时为0，否则前进1/后退-1。dAfter在desired!=0且dBefore=-desired时为0，否则desired；Forward=(dAfter=1)，Reverse=(dAfter=-1)。"
+}
+```
+
+**P1**
 
 ```text
 G(!(Forward & Reverse))
@@ -4052,7 +8066,7 @@ G(!(Forward & Reverse))
 
 Direction outputs are mutually exclusive.
 
-**P2** 
+**P2**
 
 ```text
 G((Stop | (ForwardButton <-> ReverseButton)) -> (!Forward & !Reverse))
@@ -4060,7 +8074,7 @@ G((Stop | (ForwardButton <-> ReverseButton)) -> (!Forward & !Reverse))
 
 Invalid or stopped requests produce neutral.
 
-**P3** 
+**P3**
 
 ```text
 G((fwdOnly & qReverse) -> (!Forward & !Reverse))
@@ -4068,7 +8082,7 @@ G((fwdOnly & qReverse) -> (!Forward & !Reverse))
 
 Reversal from reverse has one neutral output scan.
 
-**P4** 
+**P4**
 
 ```text
 G((revOnly & qForward) -> (!Forward & !Reverse))
@@ -4076,7 +8090,7 @@ G((revOnly & qForward) -> (!Forward & !Reverse))
 
 Reversal from forward has one neutral output scan.
 
-**P5** 
+**P5**
 
 ```text
 G((fwdOnly & !qReverse) -> Forward)
@@ -4084,13 +8098,21 @@ G((fwdOnly & !qReverse) -> Forward)
 
 A permitted forward jog operates immediately.
 
-**P6** 
+**P6**
 
 ```text
 G((revOnly & !qForward) -> Reverse)
 ```
 
 A permitted reverse jog operates immediately.
+
+**SELF002.V2.COMPLETE**
+
+```text
+G(CompleteBehaviorV2)
+```
+
+Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
 
 ### Fixed test index
 
@@ -4158,23 +8180,147 @@ At scan k, sample every input once, read retained pre-state q[k], execute one tr
 
 ### Explicit assumptions
 
+- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
 
-- `Start`: Start request Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Stop`: Normal stop request Boolean names are propositions; numeric names appear only inside defined predicates.
-- `EStopNC`: TRUE means emergency stop released Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Reset`: Reset request Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Run`: Spindle run command Boolean names are propositions; numeric names appear only inside defined predicates.
-- `ResetRequired`: Restart inhibition latch Boolean names are propositions; numeric names appear only inside defined predicates.
-- `first`: True only on the first invocation after resetting the FB instance.
-- `qRequired`: Pre-scan ResetRequired, initially TRUE.
-- `qRun`: Pre-scan Run, initially FALSE.
+- `Start`: I[k].Start: sampled input (BOOL).
+- `Stop`: I[k].Stop: sampled input (BOOL).
+- `EStopNC`: I[k].EStopNC: sampled input (BOOL).
+- `Reset`: I[k].Reset: sampled input (BOOL).
+- `Run`: O[k].Run: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `ResetRequired`: O[k].ResetRequired: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `first`: k=0; first invocation, not the pre-invocation observation
+- `qRequired`: {"kind": "previous_observed_output", "source": "O[k-1].ResetRequired", "initial": true, "update": "After comparing scan k, store ACTUAL O[k].ResetRequired; never write into reference state."}
+- `qRun`: {"kind": "previous_observed_output", "source": "O[k-1].Run", "initial": false, "update": "After comparing scan k, store ACTUAL O[k].Run; never write into reference state."}
 - `validReset`: EStopNC & Reset & !Start & !Stop.
+- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_SELF003(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+required初值TRUE、run初值FALSE。按顺序选择首个分支：!EStopNC置required=TRUE/run=FALSE；旧required真时run=FALSE，仅Reset & !Start & !Stop清required；否则Stop清run、否则Start置run，其余保持。两个实际输出分别比较runAfter、requiredAfter。
 
 ### LTL properties
 
-**P1** 
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+
+### Normalized state, observation and predicate definitions
+
+```json
+{
+  "schema_version": 1,
+  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
+  "candidate_formal_verification": "UNVERIFIED",
+  "initial_observed": {
+    "Run": false,
+    "ResetRequired": true
+  },
+  "reference_state_initial": {
+    "class": "ScanContract",
+    "state": {
+      "task_id": "SELF003",
+      "array_contract": null,
+      "process_contract": null,
+      "timed_contract": null,
+      "data_contract": null,
+      "reference": {
+        "class": "ReferenceController",
+        "state": {
+          "task_id": "SELF003",
+          "state": {
+            "required": true,
+            "run": false
+          }
+        }
+      },
+      "phase": 0,
+      "previous_mode": null,
+      "clock": 0.0,
+      "heat_start": null,
+      "protection_start": null,
+      "demand": false
+    }
+  },
+  "transition": {
+    "entrypoint": "plc_agent.normalized_spec.reference_step(task, reference, deepCopy(I[k]), dt_ms[k])",
+    "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('SELF003'); constructed once per independent case, current state is Sref[k].",
+    "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
+    "module_sha256": {
+      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
+      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
+      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
+      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
+      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
+      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+    },
+    "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
+    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+  },
+  "constrained_observed_fields": [
+    "ResetRequired",
+    "Run"
+  ],
+  "unconstrained_representation_fields": [],
+  "comparison": {
+    "integer_boolean": "exact type and value; no tolerance",
+    "float": "finite; abs error<=1e-5; dictionary/list shape and non-float values exact",
+    "PUB008": "only successfully converted channels[j].outputValue: abs<=1e-5 OR rel<=2e-6; all preserved/config fields exact",
+    "PUB017": "Successful deletion constrains recipeID=0; other fields of that deleted slot are unconstrained for the deletion scan. Subsequent no-write scans preserve the sampled actual representation. This observer history is separate from the logical reference database.",
+    "TIME_LTIME": "exact integer nanoseconds after IEC literal parsing",
+    "implementation": "plc_agent.normalized_spec.NormalizedScanMonitor.step with output_matches (pinned sources); observer histories never drive the independent logical reference"
+  },
+  "observation": {
+    "I[k]": "deep-copied inputs immediately before invocation k",
+    "O[k]": "actual outputs immediately after invocation k, supplied by independent execution backend",
+    "Sref[k]": "independent reference state BEFORE k; unrelated to similarly named candidate variables",
+    "initial": "fresh instance BEFORE invocation 0; never substituted by O[0]",
+    "X": "next scan-sequence position; argument must be Boolean, not a numeric term",
+    "time": "dt_ms is observed elapsed time; public timers use physical time, SELF Tick/count timers use logical scans"
+  },
+  "history_bindings": {
+    "qRun": {
+      "kind": "previous_observed_output",
+      "source": "O[k-1].Run",
+      "initial": false,
+      "update": "After comparing scan k, store ACTUAL O[k].Run; never write into reference state."
+    },
+    "qRequired": {
+      "kind": "previous_observed_output",
+      "source": "O[k-1].ResetRequired",
+      "initial": true,
+      "update": "After comparing scan k, store ACTUAL O[k].ResetRequired; never write into reference state."
+    }
+  },
+  "auxiliary_state_bindings": {
+    "Spre": "Sref[k], before the invocation; initialized by reference_state_initial",
+    "Spost": "Sref[k+1], after exactly one pinned transition on I[k]",
+    "first": "k=0 (first invocation); distinct from the pre-invocation initial observation",
+    "pre-output": "actual O[k-1] for OUTPUT (explicit history initial where declared); I[k] for caller-owned IN_OUT",
+    "previous-input": "I[k-1] for k>=1; edge memory for BOOL requests initially FALSE and updated after EVERY invocation",
+    "reference_warning": "Spre/Spost predicates are input-driven ghosts, not evidence that candidate internals match. Conclusions about the candidate must constrain actual O."
+  },
+  "finite_conjunctions": {},
+  "reference_state_rule": "Initial state is the serialized constructor above; all fields update solely through the pinned transition. Ghost phase/history/queue are names for this state, not observed candidate state.",
+  "primitives": {
+    "bitwise": "DWORD AND/NOT and popcount operate on unsigned 32-bit values; complement is masked by 0xFFFFFFFF.",
+    "time_literals": "IEC TIME/LTIME literals are exact integer durations in nanoseconds.",
+    "observed_arrays": "All IN_OUT inputs are snapshots before invocation; outputs are independently acquired after invocation. Physical bounds map by ordinal, never share another array lower bound.",
+    "boolean_next": "X takes a Boolean formula. Numeric history transport is bit-expanded for DWORD; Boolean histories use equivalence.",
+    "time_progress": "Timed eventuality clauses explicitly require G(F(TimeTick)); TimeTick denotes crossing a new integer-ms boundary. Finite observations cannot establish this premise."
+  },
+  "assumptions": [
+    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+  ],
+  "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
+  "limitations": [
+    "No ST-to-model translation or infinite-trace proof is implemented here.",
+    "Focused legacy LTL predicates still require backend lowering; normalization is not model-checker acceptance.",
+    "Finite matching cannot establish liveness or validate runtime provenance."
+  ],
+  "rules_zh": "required初值TRUE、run初值FALSE。按顺序选择首个分支：!EStopNC置required=TRUE/run=FALSE；旧required真时run=FALSE，仅Reset & !Start & !Stop清required；否则Stop清run、否则Start置run，其余保持。两个实际输出分别比较runAfter、requiredAfter。"
+}
+```
+
+**P1**
 
 ```text
 G(first -> (qRequired & !qRun))
@@ -4182,7 +8328,7 @@ G(first -> (qRequired & !qRun))
 
 A fresh instance requires reset.
 
-**P2** 
+**P2**
 
 ```text
 G(!EStopNC -> (!Run & ResetRequired))
@@ -4190,7 +8336,7 @@ G(!EStopNC -> (!Run & ResetRequired))
 
 Emergency stop forces safe outputs immediately.
 
-**P3** 
+**P3**
 
 ```text
 G(qRequired -> !Run)
@@ -4198,7 +8344,7 @@ G(qRequired -> !Run)
 
 Reset acceptance and motor start cannot share one scan.
 
-**P4** 
+**P4**
 
 ```text
 G((qRequired & EStopNC) -> (ResetRequired <-> !validReset))
@@ -4206,7 +8352,7 @@ G((qRequired & EStopNC) -> (ResetRequired <-> !validReset))
 
 Reset requires released Start and Stop.
 
-**P5** 
+**P5**
 
 ```text
 G((!qRequired & EStopNC & !Stop & Start) -> Run)
@@ -4214,7 +8360,7 @@ G((!qRequired & EStopNC & !Stop & Start) -> Run)
 
 A subsequent permitted start energizes the motor.
 
-**P6** 
+**P6**
 
 ```text
 G((!qRequired & EStopNC & Stop) -> !Run)
@@ -4222,12 +8368,37 @@ G((!qRequired & EStopNC & Stop) -> !Run)
 
 Stop has priority after reset.
 
+**SELF003.V2.COMPLETE**
+
+```text
+G(CompleteBehaviorV2)
+```
+
+Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
+
+**SELF003.V2.1**
+
+```text
+G((!qRequired & EStopNC) -> !ResetRequired)
+```
+
+Explicit correction of a demonstrated omission.
+
+**SELF003.V2.2**
+
+```text
+G((!qRequired & EStopNC & !Stop & !Start) -> (Run <-> qRun))
+```
+
+Explicit correction of a demonstrated omission.
+
 ### Fixed test index
 
 | Case | Purpose | Steps |
 | --- | --- | ---: |
 | reset_restart | Power-up inhibition, reset, run and emergency stop | 6 |
 | invalid_reset | Held Start and Stop block reset | 4 |
+| V2_omission_regression | Reject the concrete wrong behavior documented in the 2026-11-06 specification review. | 4 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -4294,26 +8465,149 @@ At scan k, sample every input once, read retained pre-state q[k], execute one tr
 
 ### Explicit assumptions
 
+- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
 
-- `Start`: Start one pallet Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Stop`: Abort cycle Boolean names are propositions; numeric names appear only inside defined predicates.
-- `AtExit`: Pallet at exit Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Jam`: Jam detected Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Reset`: Clear completion or cleared jam Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Belt`: Conveyor command Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Complete`: Pallet cycle completed Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Fault`: Latched jam fault Boolean names are propositions; numeric names appear only inside defined predicates.
-- `first`: True only on the first invocation after resetting the FB instance.
-- `qIdle`: Pre-state IDLE.
-- `qMoving`: Pre-state MOVING.
-- `qComplete`: Pre-state COMPLETE.
-- `qFault`: Pre-state FAULT.
+- `Start`: I[k].Start: sampled input (BOOL).
+- `Stop`: I[k].Stop: sampled input (BOOL).
+- `AtExit`: I[k].AtExit: sampled input (BOOL).
+- `Jam`: I[k].Jam: sampled input (BOOL).
+- `Reset`: I[k].Reset: sampled input (BOOL).
+- `Belt`: O[k].Belt: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `Complete`: O[k].Complete: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `Fault`: O[k].Fault: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `first`: k=0; first invocation, not the pre-invocation observation
+- `qIdle`: Spre.reference.state.mode=0
+- `qMoving`: Spre.reference.state.mode=1
+- `qComplete`: Spre.reference.state.mode=2
+- `qFault`: Spre.reference.state.mode=3
+- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_SELF004(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+mode初值IDLE。优先Jam→FAULT，其次Reset→IDLE，其次旧FAULT保持，其次Stop→IDLE，其次旧MOVING且AtExit→COMPLETE，其次旧IDLE且Start且!AtExit→MOVING，其余保持。Belt/Complete/Fault分别等价于新mode为MOVING/COMPLETE/FAULT。
 
 ### LTL properties
 
-**P1** 
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+
+### Normalized state, observation and predicate definitions
+
+```json
+{
+  "schema_version": 1,
+  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
+  "candidate_formal_verification": "UNVERIFIED",
+  "initial_observed": {
+    "Belt": false,
+    "Complete": false,
+    "Fault": false
+  },
+  "reference_state_initial": {
+    "class": "ScanContract",
+    "state": {
+      "task_id": "SELF004",
+      "array_contract": null,
+      "process_contract": null,
+      "timed_contract": null,
+      "data_contract": null,
+      "reference": {
+        "class": "ReferenceController",
+        "state": {
+          "task_id": "SELF004",
+          "state": {
+            "mode": 0
+          }
+        }
+      },
+      "phase": 0,
+      "previous_mode": null,
+      "clock": 0.0,
+      "heat_start": null,
+      "protection_start": null,
+      "demand": false
+    }
+  },
+  "transition": {
+    "entrypoint": "plc_agent.normalized_spec.reference_step(task, reference, deepCopy(I[k]), dt_ms[k])",
+    "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('SELF004'); constructed once per independent case, current state is Sref[k].",
+    "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
+    "module_sha256": {
+      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
+      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
+      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
+      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
+      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
+      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+    },
+    "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
+    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+  },
+  "constrained_observed_fields": [
+    "Belt",
+    "Complete",
+    "Fault"
+  ],
+  "unconstrained_representation_fields": [],
+  "comparison": {
+    "integer_boolean": "exact type and value; no tolerance",
+    "float": "finite; abs error<=1e-5; dictionary/list shape and non-float values exact",
+    "PUB008": "only successfully converted channels[j].outputValue: abs<=1e-5 OR rel<=2e-6; all preserved/config fields exact",
+    "PUB017": "Successful deletion constrains recipeID=0; other fields of that deleted slot are unconstrained for the deletion scan. Subsequent no-write scans preserve the sampled actual representation. This observer history is separate from the logical reference database.",
+    "TIME_LTIME": "exact integer nanoseconds after IEC literal parsing",
+    "implementation": "plc_agent.normalized_spec.NormalizedScanMonitor.step with output_matches (pinned sources); observer histories never drive the independent logical reference"
+  },
+  "observation": {
+    "I[k]": "deep-copied inputs immediately before invocation k",
+    "O[k]": "actual outputs immediately after invocation k, supplied by independent execution backend",
+    "Sref[k]": "independent reference state BEFORE k; unrelated to similarly named candidate variables",
+    "initial": "fresh instance BEFORE invocation 0; never substituted by O[0]",
+    "X": "next scan-sequence position; argument must be Boolean, not a numeric term",
+    "time": "dt_ms is observed elapsed time; public timers use physical time, SELF Tick/count timers use logical scans"
+  },
+  "history_bindings": {},
+  "auxiliary_state_bindings": {
+    "Spre": "Sref[k], before the invocation; initialized by reference_state_initial",
+    "Spost": "Sref[k+1], after exactly one pinned transition on I[k]",
+    "first": "k=0 (first invocation); distinct from the pre-invocation initial observation",
+    "pre-output": "actual O[k-1] for OUTPUT (explicit history initial where declared); I[k] for caller-owned IN_OUT",
+    "previous-input": "I[k-1] for k>=1; edge memory for BOOL requests initially FALSE and updated after EVERY invocation",
+    "reference_warning": "Spre/Spost predicates are input-driven ghosts, not evidence that candidate internals match. Conclusions about the candidate must constrain actual O.",
+    "phase": {
+      "pre": "Spre.reference.state.mode",
+      "post": "Spost.reference.state.mode",
+      "enum": {
+        "0": "IDLE",
+        "1": "MOVING",
+        "2": "COMPLETE",
+        "3": "FAULT"
+      },
+      "initial": 0
+    }
+  },
+  "finite_conjunctions": {},
+  "reference_state_rule": "Initial state is the serialized constructor above; all fields update solely through the pinned transition. Ghost phase/history/queue are names for this state, not observed candidate state.",
+  "primitives": {
+    "bitwise": "DWORD AND/NOT and popcount operate on unsigned 32-bit values; complement is masked by 0xFFFFFFFF.",
+    "time_literals": "IEC TIME/LTIME literals are exact integer durations in nanoseconds.",
+    "observed_arrays": "All IN_OUT inputs are snapshots before invocation; outputs are independently acquired after invocation. Physical bounds map by ordinal, never share another array lower bound.",
+    "boolean_next": "X takes a Boolean formula. Numeric history transport is bit-expanded for DWORD; Boolean histories use equivalence.",
+    "time_progress": "Timed eventuality clauses explicitly require G(F(TimeTick)); TimeTick denotes crossing a new integer-ms boundary. Finite observations cannot establish this premise."
+  },
+  "assumptions": [
+    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+  ],
+  "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
+  "limitations": [
+    "No ST-to-model translation or infinite-trace proof is implemented here.",
+    "Focused legacy LTL predicates still require backend lowering; normalization is not model-checker acceptance.",
+    "Finite matching cannot establish liveness or validate runtime provenance."
+  ],
+  "rules_zh": "mode初值IDLE。优先Jam→FAULT，其次Reset→IDLE，其次旧FAULT保持，其次Stop→IDLE，其次旧MOVING且AtExit→COMPLETE，其次旧IDLE且Start且!AtExit→MOVING，其余保持。Belt/Complete/Fault分别等价于新mode为MOVING/COMPLETE/FAULT。"
+}
+```
+
+**P1**
 
 ```text
 G(Jam -> (Fault & !Belt & !Complete))
@@ -4321,7 +8615,7 @@ G(Jam -> (Fault & !Belt & !Complete))
 
 Jam wins over Reset and Start.
 
-**P2** 
+**P2**
 
 ```text
 G((qFault & !Reset) -> Fault)
@@ -4329,7 +8623,7 @@ G((qFault & !Reset) -> Fault)
 
 Fault requires an explicit clear operation.
 
-**P3** 
+**P3**
 
 ```text
 G((!Jam & Reset) -> (!Belt & !Complete & !Fault))
@@ -4337,7 +8631,7 @@ G((!Jam & Reset) -> (!Belt & !Complete & !Fault))
 
 A cleared-jam reset returns IDLE.
 
-**P4** 
+**P4**
 
 ```text
 G((qIdle & !Jam & !Reset & !Stop & Start & !AtExit) -> Belt)
@@ -4345,7 +8639,7 @@ G((qIdle & !Jam & !Reset & !Stop & Start & !AtExit) -> Belt)
 
 A valid idle start moves the pallet.
 
-**P5** 
+**P5**
 
 ```text
 G((qMoving & AtExit & !Jam & !Reset & !Stop) -> (Complete & !Belt))
@@ -4353,7 +8647,7 @@ G((qMoving & AtExit & !Jam & !Reset & !Stop) -> (Complete & !Belt))
 
 Exit arrival stops indexing in the same scan.
 
-**P6** 
+**P6**
 
 ```text
 G(!(Belt & (Complete | Fault)))
@@ -4361,13 +8655,21 @@ G(!(Belt & (Complete | Fault)))
 
 Movement excludes completion and fault outputs.
 
-**P7** 
+**P7**
 
 ```text
 G(Fault -> (G Fault | (Fault U (!Jam & Reset))))
 ```
 
 A latched jam remains until a cleared-jam reset, or forever if no such reset occurs; this does not assume eventual reset.
+
+**SELF004.V2.COMPLETE**
+
+```text
+G(CompleteBehaviorV2)
+```
+
+Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
 
 ### Fixed test index
 
@@ -4435,25 +8737,147 @@ At scan k, sample every input once, read retained pre-state q[k], execute one tr
 
 - A logical tick is not claimed to be a physical second.
 - No opposite road or pedestrian signal is controlled.
+- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
 
-- `Enable`: Enable normal signal cycle Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Tick`: One logical tick on each TRUE invocation Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Red`: Red lamp Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Green`: Green lamp Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Amber`: Amber lamp Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Phase`: Post-scan phase number Boolean names are propositions; numeric names appear only inside defined predicates.
-- `first`: True only on the first invocation after resetting the FB instance.
-- `qRedLast`: Pre-state is RED with one elapsed tick.
-- `qGreenLast`: Pre-state is GREEN with two elapsed ticks.
-- `qAmber`: Pre-state is AMBER.
-- `qPhase`: Pre-state phase number.
-- `oneColor`: Exactly one of Red, Green and Amber is TRUE.
+- `Enable`: I[k].Enable: sampled input (BOOL).
+- `Tick`: I[k].Tick: sampled input (BOOL).
+- `Red`: O[k].Red: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `Green`: O[k].Green: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `Amber`: O[k].Amber: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `Phase`: O[k].Phase: independently observed post-scan candidate value (USINT); never defined as expected output.
+- `first`: k=0; first invocation, not the pre-invocation observation
+- `qRedLast`: Spre.reference.state.phase=0 AND Spre.reference.state.age=1
+- `qGreenLast`: Spre.reference.state.phase=1 AND Spre.reference.state.age=2
+- `qAmber`: Spre.reference.state.phase=2
+- `qPhase`: Spre.reference.state.phase
+- `oneColor`: int(O[k].Red)+int(O[k].Green)+int(O[k].Amber)=1
+- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_SELF005(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+phase=0/age=0初值。!Enable时重置0/0；否则Tick时age加1，到当前phase的阈值(2,3,1)则phase=(phase+1)%3且age=0；其他保持。Red/Green/Amber分别等价于新phase=0/1/2，Phase等于新phase。Tick是逻辑调用计数，不是物理时间。
 
 ### LTL properties
 
-**P1** 
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+
+### Normalized state, observation and predicate definitions
+
+```json
+{
+  "schema_version": 1,
+  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
+  "candidate_formal_verification": "UNVERIFIED",
+  "initial_observed": {},
+  "reference_state_initial": {
+    "class": "ScanContract",
+    "state": {
+      "task_id": "SELF005",
+      "array_contract": null,
+      "process_contract": null,
+      "timed_contract": null,
+      "data_contract": null,
+      "reference": {
+        "class": "ReferenceController",
+        "state": {
+          "task_id": "SELF005",
+          "state": {
+            "phase": 0,
+            "age": 0
+          }
+        }
+      },
+      "phase": 0,
+      "previous_mode": null,
+      "clock": 0.0,
+      "heat_start": null,
+      "protection_start": null,
+      "demand": false
+    }
+  },
+  "transition": {
+    "entrypoint": "plc_agent.normalized_spec.reference_step(task, reference, deepCopy(I[k]), dt_ms[k])",
+    "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('SELF005'); constructed once per independent case, current state is Sref[k].",
+    "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
+    "module_sha256": {
+      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
+      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
+      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
+      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
+      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
+      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+    },
+    "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
+    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+  },
+  "constrained_observed_fields": [
+    "Amber",
+    "Green",
+    "Phase",
+    "Red"
+  ],
+  "unconstrained_representation_fields": [],
+  "comparison": {
+    "integer_boolean": "exact type and value; no tolerance",
+    "float": "finite; abs error<=1e-5; dictionary/list shape and non-float values exact",
+    "PUB008": "only successfully converted channels[j].outputValue: abs<=1e-5 OR rel<=2e-6; all preserved/config fields exact",
+    "PUB017": "Successful deletion constrains recipeID=0; other fields of that deleted slot are unconstrained for the deletion scan. Subsequent no-write scans preserve the sampled actual representation. This observer history is separate from the logical reference database.",
+    "TIME_LTIME": "exact integer nanoseconds after IEC literal parsing",
+    "implementation": "plc_agent.normalized_spec.NormalizedScanMonitor.step with output_matches (pinned sources); observer histories never drive the independent logical reference"
+  },
+  "observation": {
+    "I[k]": "deep-copied inputs immediately before invocation k",
+    "O[k]": "actual outputs immediately after invocation k, supplied by independent execution backend",
+    "Sref[k]": "independent reference state BEFORE k; unrelated to similarly named candidate variables",
+    "initial": "fresh instance BEFORE invocation 0; never substituted by O[0]",
+    "X": "next scan-sequence position; argument must be Boolean, not a numeric term",
+    "time": "dt_ms is observed elapsed time; public timers use physical time, SELF Tick/count timers use logical scans"
+  },
+  "history_bindings": {},
+  "auxiliary_state_bindings": {
+    "Spre": "Sref[k], before the invocation; initialized by reference_state_initial",
+    "Spost": "Sref[k+1], after exactly one pinned transition on I[k]",
+    "first": "k=0 (first invocation); distinct from the pre-invocation initial observation",
+    "pre-output": "actual O[k-1] for OUTPUT (explicit history initial where declared); I[k] for caller-owned IN_OUT",
+    "previous-input": "I[k-1] for k>=1; edge memory for BOOL requests initially FALSE and updated after EVERY invocation",
+    "reference_warning": "Spre/Spost predicates are input-driven ghosts, not evidence that candidate internals match. Conclusions about the candidate must constrain actual O.",
+    "phase": {
+      "pre": "Spre.reference.state.phase",
+      "post": "Spost.reference.state.phase",
+      "enum": {
+        "0": "RED",
+        "1": "GREEN",
+        "2": "AMBER"
+      },
+      "initial": 0
+    }
+  },
+  "finite_conjunctions": {},
+  "reference_state_rule": "Initial state is the serialized constructor above; all fields update solely through the pinned transition. Ghost phase/history/queue are names for this state, not observed candidate state.",
+  "primitives": {
+    "bitwise": "DWORD AND/NOT and popcount operate on unsigned 32-bit values; complement is masked by 0xFFFFFFFF.",
+    "time_literals": "IEC TIME/LTIME literals are exact integer durations in nanoseconds.",
+    "observed_arrays": "All IN_OUT inputs are snapshots before invocation; outputs are independently acquired after invocation. Physical bounds map by ordinal, never share another array lower bound.",
+    "boolean_next": "X takes a Boolean formula. Numeric history transport is bit-expanded for DWORD; Boolean histories use equivalence.",
+    "time_progress": "Timed eventuality clauses explicitly require G(F(TimeTick)); TimeTick denotes crossing a new integer-ms boundary. Finite observations cannot establish this premise."
+  },
+  "assumptions": [
+    "A logical tick is not claimed to be a physical second.",
+    "No opposite road or pedestrian signal is controlled.",
+    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+  ],
+  "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
+  "limitations": [
+    "No ST-to-model translation or infinite-trace proof is implemented here.",
+    "Focused legacy LTL predicates still require backend lowering; normalization is not model-checker acceptance.",
+    "Finite matching cannot establish liveness or validate runtime provenance."
+  ],
+  "rules_zh": "phase=0/age=0初值。!Enable时重置0/0；否则Tick时age加1，到当前phase的阈值(2,3,1)则phase=(phase+1)%3且age=0；其他保持。Red/Green/Amber分别等价于新phase=0/1/2，Phase等于新phase。Tick是逻辑调用计数，不是物理时间。"
+}
+```
+
+**P1**
 
 ```text
 G(oneColor)
@@ -4461,7 +8885,7 @@ G(oneColor)
 
 The lamp encoding is one-hot.
 
-**P2** 
+**P2**
 
 ```text
 G(!Enable -> (Red & !Green & !Amber))
@@ -4469,7 +8893,7 @@ G(!Enable -> (Red & !Green & !Amber))
 
 Disabled operation is a steady red.
 
-**P3** 
+**P3**
 
 ```text
 G((Enable & !Tick) -> (Phase = qPhase))
@@ -4477,7 +8901,7 @@ G((Enable & !Tick) -> (Phase = qPhase))
 
 No tick preserves phase.
 
-**P4** 
+**P4**
 
 ```text
 G((Enable & Tick & qRedLast) -> Green)
@@ -4485,7 +8909,7 @@ G((Enable & Tick & qRedLast) -> Green)
 
 The second red tick enters green.
 
-**P5** 
+**P5**
 
 ```text
 G((Enable & Tick & qGreenLast) -> Amber)
@@ -4493,7 +8917,7 @@ G((Enable & Tick & qGreenLast) -> Amber)
 
 The third green tick enters amber.
 
-**P6** 
+**P6**
 
 ```text
 G((Enable & Tick & qAmber) -> Red)
@@ -4501,13 +8925,21 @@ G((Enable & Tick & qAmber) -> Red)
 
 One amber tick returns red.
 
-**P7** 
+**P7**
 
 ```text
 (G Enable & G(F Tick)) -> (G(F Red) & G(F Green) & G(F Amber))
 ```
 
 Persistent enable plus infinitely many ticks makes every phase recur; finite traces cannot prove this liveness property.
+
+**SELF005.V2.COMPLETE**
+
+```text
+G(CompleteBehaviorV2)
+```
+
+Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
 
 ### Fixed test index
 
@@ -4574,21 +9006,137 @@ At scan k, sample every input once, read retained pre-state q[k], execute one tr
 
 ### Explicit assumptions
 
+- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
 
-- `LowWet`: Water reaches lower switch Boolean names are propositions; numeric names appear only inside defined predicates.
-- `HighWet`: Water reaches upper switch Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Inhibit`: External fill inhibit Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Fill`: Inlet valve command Boolean names are propositions; numeric names appear only inside defined predicates.
-- `SensorFault`: Inconsistent level switches Boolean names are propositions; numeric names appear only inside defined predicates.
-- `first`: True only on the first invocation after resetting the FB instance.
-- `qFill`: Pre-scan retained Fill, initially FALSE.
+- `LowWet`: I[k].LowWet: sampled input (BOOL).
+- `HighWet`: I[k].HighWet: sampled input (BOOL).
+- `Inhibit`: I[k].Inhibit: sampled input (BOOL).
+- `Fill`: O[k].Fill: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `SensorFault`: O[k].SensorFault: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `first`: k=0; first invocation, not the pre-invocation observation
+- `qFill`: {"kind": "previous_observed_output", "source": "O[k-1].Fill", "initial": false, "update": "After comparing scan k, store ACTUAL O[k].Fill; never write into reference state."}
 - `middle`: LowWet & !HighWet.
+- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_SELF006(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+fill初值FALSE；sensorFault=HighWet & !LowWet。sensorFault或Inhibit或HighWet时fillAfter=FALSE，否则!LowWet时TRUE，其余保持；实际Fill/SensorFault分别比较这两个期望值。
 
 ### LTL properties
 
-**P1** 
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+
+### Normalized state, observation and predicate definitions
+
+```json
+{
+  "schema_version": 1,
+  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
+  "candidate_formal_verification": "UNVERIFIED",
+  "initial_observed": {
+    "Fill": false
+  },
+  "reference_state_initial": {
+    "class": "ScanContract",
+    "state": {
+      "task_id": "SELF006",
+      "array_contract": null,
+      "process_contract": null,
+      "timed_contract": null,
+      "data_contract": null,
+      "reference": {
+        "class": "ReferenceController",
+        "state": {
+          "task_id": "SELF006",
+          "state": {
+            "fill": false
+          }
+        }
+      },
+      "phase": 0,
+      "previous_mode": null,
+      "clock": 0.0,
+      "heat_start": null,
+      "protection_start": null,
+      "demand": false
+    }
+  },
+  "transition": {
+    "entrypoint": "plc_agent.normalized_spec.reference_step(task, reference, deepCopy(I[k]), dt_ms[k])",
+    "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('SELF006'); constructed once per independent case, current state is Sref[k].",
+    "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
+    "module_sha256": {
+      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
+      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
+      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
+      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
+      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
+      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+    },
+    "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
+    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+  },
+  "constrained_observed_fields": [
+    "Fill",
+    "SensorFault"
+  ],
+  "unconstrained_representation_fields": [],
+  "comparison": {
+    "integer_boolean": "exact type and value; no tolerance",
+    "float": "finite; abs error<=1e-5; dictionary/list shape and non-float values exact",
+    "PUB008": "only successfully converted channels[j].outputValue: abs<=1e-5 OR rel<=2e-6; all preserved/config fields exact",
+    "PUB017": "Successful deletion constrains recipeID=0; other fields of that deleted slot are unconstrained for the deletion scan. Subsequent no-write scans preserve the sampled actual representation. This observer history is separate from the logical reference database.",
+    "TIME_LTIME": "exact integer nanoseconds after IEC literal parsing",
+    "implementation": "plc_agent.normalized_spec.NormalizedScanMonitor.step with output_matches (pinned sources); observer histories never drive the independent logical reference"
+  },
+  "observation": {
+    "I[k]": "deep-copied inputs immediately before invocation k",
+    "O[k]": "actual outputs immediately after invocation k, supplied by independent execution backend",
+    "Sref[k]": "independent reference state BEFORE k; unrelated to similarly named candidate variables",
+    "initial": "fresh instance BEFORE invocation 0; never substituted by O[0]",
+    "X": "next scan-sequence position; argument must be Boolean, not a numeric term",
+    "time": "dt_ms is observed elapsed time; public timers use physical time, SELF Tick/count timers use logical scans"
+  },
+  "history_bindings": {
+    "qFill": {
+      "kind": "previous_observed_output",
+      "source": "O[k-1].Fill",
+      "initial": false,
+      "update": "After comparing scan k, store ACTUAL O[k].Fill; never write into reference state."
+    }
+  },
+  "auxiliary_state_bindings": {
+    "Spre": "Sref[k], before the invocation; initialized by reference_state_initial",
+    "Spost": "Sref[k+1], after exactly one pinned transition on I[k]",
+    "first": "k=0 (first invocation); distinct from the pre-invocation initial observation",
+    "pre-output": "actual O[k-1] for OUTPUT (explicit history initial where declared); I[k] for caller-owned IN_OUT",
+    "previous-input": "I[k-1] for k>=1; edge memory for BOOL requests initially FALSE and updated after EVERY invocation",
+    "reference_warning": "Spre/Spost predicates are input-driven ghosts, not evidence that candidate internals match. Conclusions about the candidate must constrain actual O."
+  },
+  "finite_conjunctions": {},
+  "reference_state_rule": "Initial state is the serialized constructor above; all fields update solely through the pinned transition. Ghost phase/history/queue are names for this state, not observed candidate state.",
+  "primitives": {
+    "bitwise": "DWORD AND/NOT and popcount operate on unsigned 32-bit values; complement is masked by 0xFFFFFFFF.",
+    "time_literals": "IEC TIME/LTIME literals are exact integer durations in nanoseconds.",
+    "observed_arrays": "All IN_OUT inputs are snapshots before invocation; outputs are independently acquired after invocation. Physical bounds map by ordinal, never share another array lower bound.",
+    "boolean_next": "X takes a Boolean formula. Numeric history transport is bit-expanded for DWORD; Boolean histories use equivalence.",
+    "time_progress": "Timed eventuality clauses explicitly require G(F(TimeTick)); TimeTick denotes crossing a new integer-ms boundary. Finite observations cannot establish this premise."
+  },
+  "assumptions": [
+    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+  ],
+  "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
+  "limitations": [
+    "No ST-to-model translation or infinite-trace proof is implemented here.",
+    "Focused legacy LTL predicates still require backend lowering; normalization is not model-checker acceptance.",
+    "Finite matching cannot establish liveness or validate runtime provenance."
+  ],
+  "rules_zh": "fill初值FALSE；sensorFault=HighWet & !LowWet。sensorFault或Inhibit或HighWet时fillAfter=FALSE，否则!LowWet时TRUE，其余保持；实际Fill/SensorFault分别比较这两个期望值。"
+}
+```
+
+**P1**
 
 ```text
 G(SensorFault <-> (HighWet & !LowWet))
@@ -4596,7 +9144,7 @@ G(SensorFault <-> (HighWet & !LowWet))
 
 Fault exactly identifies inconsistent switches.
 
-**P2** 
+**P2**
 
 ```text
 G((SensorFault | Inhibit | HighWet) -> !Fill)
@@ -4604,7 +9152,7 @@ G((SensorFault | Inhibit | HighWet) -> !Fill)
 
 Inhibit, fault and full tank force shutoff.
 
-**P3** 
+**P3**
 
 ```text
 G((!LowWet & !HighWet & !Inhibit) -> Fill)
@@ -4612,7 +9160,7 @@ G((!LowWet & !HighWet & !Inhibit) -> Fill)
 
 A low tank starts filling.
 
-**P4** 
+**P4**
 
 ```text
 G((middle & !Inhibit) -> (Fill <-> qFill))
@@ -4620,13 +9168,21 @@ G((middle & !Inhibit) -> (Fill <-> qFill))
 
 The middle band retains the prior command.
 
-**P5** 
+**P5**
 
 ```text
 G(first -> !qFill)
 ```
 
 No retained filling command exists on reset.
+
+**SELF006.V2.COMPLETE**
+
+```text
+G(CompleteBehaviorV2)
+```
+
+Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
 
 ### Fixed test index
 
@@ -4695,22 +9251,141 @@ At scan k, sample every input once, read retained pre-state q[k], execute one tr
 
 ### Explicit assumptions
 
+- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
 
-- `Demand`: Sump pumping demand Boolean names are propositions; numeric names appear only inside defined predicates.
-- `FaultA`: Pump A unavailable Boolean names are propositions; numeric names appear only inside defined predicates.
-- `FaultB`: Pump B unavailable Boolean names are propositions; numeric names appear only inside defined predicates.
-- `PumpA`: Pump A run command Boolean names are propositions; numeric names appear only inside defined predicates.
-- `PumpB`: Pump B run command Boolean names are propositions; numeric names appear only inside defined predicates.
-- `LeadA`: TRUE selects A as preferred pump Boolean names are propositions; numeric names appear only inside defined predicates.
-- `first`: True only on the first invocation after resetting the FB instance.
-- `qLeadA`: Pre-scan lead preference, initially TRUE.
-- `completedServed`: Pre-scan Demand was TRUE, current Demand is FALSE and a pump ran in that episode.
+- `Demand`: I[k].Demand: sampled input (BOOL).
+- `FaultA`: I[k].FaultA: sampled input (BOOL).
+- `FaultB`: I[k].FaultB: sampled input (BOOL).
+- `PumpA`: O[k].PumpA: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `PumpB`: O[k].PumpB: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `LeadA`: O[k].LeadA: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `first`: k=0; first invocation, not the pre-invocation observation
+- `qLeadA`: {"kind": "previous_observed_output", "source": "O[k-1].LeadA", "initial": true, "update": "After comparing scan k, store ACTUAL O[k].LeadA; never write into reference state."}
+- `completedServed`: Spre.reference.state.demand AND NOT I[k].Demand AND Spre.reference.state.served
+- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_SELF007(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+leadA=TRUE/served=FALSE/previousDemand=FALSE初值。Demand假时双泵关，仅previousDemand & served时轮换leadA，然后清served；Demand真时由leadA选择无故障主泵，主故障则无故障备用，双故障均关；served累计本需求段任一泵运行。previousDemand每拍=Demand，LeadA比较转移后偏好。
 
 ### LTL properties
 
-**P1** 
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+
+### Normalized state, observation and predicate definitions
+
+```json
+{
+  "schema_version": 1,
+  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
+  "candidate_formal_verification": "UNVERIFIED",
+  "initial_observed": {
+    "LeadA": true
+  },
+  "reference_state_initial": {
+    "class": "ScanContract",
+    "state": {
+      "task_id": "SELF007",
+      "array_contract": null,
+      "process_contract": null,
+      "timed_contract": null,
+      "data_contract": null,
+      "reference": {
+        "class": "ReferenceController",
+        "state": {
+          "task_id": "SELF007",
+          "state": {
+            "lead_a": true,
+            "served": false,
+            "demand": false
+          }
+        }
+      },
+      "phase": 0,
+      "previous_mode": null,
+      "clock": 0.0,
+      "heat_start": null,
+      "protection_start": null,
+      "demand": false
+    }
+  },
+  "transition": {
+    "entrypoint": "plc_agent.normalized_spec.reference_step(task, reference, deepCopy(I[k]), dt_ms[k])",
+    "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('SELF007'); constructed once per independent case, current state is Sref[k].",
+    "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
+    "module_sha256": {
+      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
+      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
+      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
+      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
+      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
+      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+    },
+    "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
+    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+  },
+  "constrained_observed_fields": [
+    "LeadA",
+    "PumpA",
+    "PumpB"
+  ],
+  "unconstrained_representation_fields": [],
+  "comparison": {
+    "integer_boolean": "exact type and value; no tolerance",
+    "float": "finite; abs error<=1e-5; dictionary/list shape and non-float values exact",
+    "PUB008": "only successfully converted channels[j].outputValue: abs<=1e-5 OR rel<=2e-6; all preserved/config fields exact",
+    "PUB017": "Successful deletion constrains recipeID=0; other fields of that deleted slot are unconstrained for the deletion scan. Subsequent no-write scans preserve the sampled actual representation. This observer history is separate from the logical reference database.",
+    "TIME_LTIME": "exact integer nanoseconds after IEC literal parsing",
+    "implementation": "plc_agent.normalized_spec.NormalizedScanMonitor.step with output_matches (pinned sources); observer histories never drive the independent logical reference"
+  },
+  "observation": {
+    "I[k]": "deep-copied inputs immediately before invocation k",
+    "O[k]": "actual outputs immediately after invocation k, supplied by independent execution backend",
+    "Sref[k]": "independent reference state BEFORE k; unrelated to similarly named candidate variables",
+    "initial": "fresh instance BEFORE invocation 0; never substituted by O[0]",
+    "X": "next scan-sequence position; argument must be Boolean, not a numeric term",
+    "time": "dt_ms is observed elapsed time; public timers use physical time, SELF Tick/count timers use logical scans"
+  },
+  "history_bindings": {
+    "qLeadA": {
+      "kind": "previous_observed_output",
+      "source": "O[k-1].LeadA",
+      "initial": true,
+      "update": "After comparing scan k, store ACTUAL O[k].LeadA; never write into reference state."
+    }
+  },
+  "auxiliary_state_bindings": {
+    "Spre": "Sref[k], before the invocation; initialized by reference_state_initial",
+    "Spost": "Sref[k+1], after exactly one pinned transition on I[k]",
+    "first": "k=0 (first invocation); distinct from the pre-invocation initial observation",
+    "pre-output": "actual O[k-1] for OUTPUT (explicit history initial where declared); I[k] for caller-owned IN_OUT",
+    "previous-input": "I[k-1] for k>=1; edge memory for BOOL requests initially FALSE and updated after EVERY invocation",
+    "reference_warning": "Spre/Spost predicates are input-driven ghosts, not evidence that candidate internals match. Conclusions about the candidate must constrain actual O."
+  },
+  "finite_conjunctions": {},
+  "reference_state_rule": "Initial state is the serialized constructor above; all fields update solely through the pinned transition. Ghost phase/history/queue are names for this state, not observed candidate state.",
+  "primitives": {
+    "bitwise": "DWORD AND/NOT and popcount operate on unsigned 32-bit values; complement is masked by 0xFFFFFFFF.",
+    "time_literals": "IEC TIME/LTIME literals are exact integer durations in nanoseconds.",
+    "observed_arrays": "All IN_OUT inputs are snapshots before invocation; outputs are independently acquired after invocation. Physical bounds map by ordinal, never share another array lower bound.",
+    "boolean_next": "X takes a Boolean formula. Numeric history transport is bit-expanded for DWORD; Boolean histories use equivalence.",
+    "time_progress": "Timed eventuality clauses explicitly require G(F(TimeTick)); TimeTick denotes crossing a new integer-ms boundary. Finite observations cannot establish this premise."
+  },
+  "assumptions": [
+    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+  ],
+  "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
+  "limitations": [
+    "No ST-to-model translation or infinite-trace proof is implemented here.",
+    "Focused legacy LTL predicates still require backend lowering; normalization is not model-checker acceptance.",
+    "Finite matching cannot establish liveness or validate runtime provenance."
+  ],
+  "rules_zh": "leadA=TRUE/served=FALSE/previousDemand=FALSE初值。Demand假时双泵关，仅previousDemand & served时轮换leadA，然后清served；Demand真时由leadA选择无故障主泵，主故障则无故障备用，双故障均关；served累计本需求段任一泵运行。previousDemand每拍=Demand，LeadA比较转移后偏好。"
+}
+```
+
+**P1**
 
 ```text
 G(!(PumpA & PumpB))
@@ -4718,7 +9393,7 @@ G(!(PumpA & PumpB))
 
 At most one pump runs.
 
-**P2** 
+**P2**
 
 ```text
 G((!Demand | FaultA) -> !PumpA)
@@ -4726,7 +9401,7 @@ G((!Demand | FaultA) -> !PumpA)
 
 A cannot run without demand or with its fault.
 
-**P3** 
+**P3**
 
 ```text
 G((!Demand | FaultB) -> !PumpB)
@@ -4734,7 +9409,7 @@ G((!Demand | FaultB) -> !PumpB)
 
 B cannot run without demand or with its fault.
 
-**P4** 
+**P4**
 
 ```text
 G((Demand & LeadA & !FaultA) -> PumpA)
@@ -4742,7 +9417,7 @@ G((Demand & LeadA & !FaultA) -> PumpA)
 
 A is selected when it is the healthy lead.
 
-**P5** 
+**P5**
 
 ```text
 G((Demand & !LeadA & !FaultB) -> PumpB)
@@ -4750,7 +9425,7 @@ G((Demand & !LeadA & !FaultB) -> PumpB)
 
 B is selected when it is the healthy lead.
 
-**P6** 
+**P6**
 
 ```text
 G(completedServed -> (LeadA <-> !qLeadA))
@@ -4758,7 +9433,7 @@ G(completedServed -> (LeadA <-> !qLeadA))
 
 Toggle once on a served demand's falling edge.
 
-**P7** 
+**P7**
 
 ```text
 G(!completedServed -> (LeadA <-> qLeadA))
@@ -4766,12 +9441,37 @@ G(!completedServed -> (LeadA <-> qLeadA))
 
 Unserved episodes and held demand preserve preference.
 
+**SELF007.V2.COMPLETE**
+
+```text
+G(CompleteBehaviorV2)
+```
+
+Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
+
+**SELF007.V2.1**
+
+```text
+G((Demand & FaultA & !FaultB) -> PumpB)
+```
+
+Explicit correction of a demonstrated omission.
+
+**SELF007.V2.2**
+
+```text
+G((Demand & FaultB & !FaultA) -> PumpA)
+```
+
+Explicit correction of a demonstrated omission.
+
 ### Fixed test index
 
 | Case | Purpose | Steps |
 | --- | --- | ---: |
 | alternate | Served episodes alternate preference | 7 |
 | fallback | Fault fallback, unserved episode and recovery | 5 |
+| V2_omission_regression | Reject the concrete wrong behavior documented in the 2026-11-06 specification review. | 3 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -4829,23 +9529,140 @@ At scan k, sample every input once, read retained pre-state q[k], execute one tr
 
 ### Explicit assumptions
 
+- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
 
-- `Request`: Raw qualification request Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Trip`: Immediate inhibit Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Preset`: Required consecutive scans, valid 1 through 5 Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Ready`: Qualified request Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Count`: Saturated consecutive scan count Boolean names are propositions; numeric names appear only inside defined predicates.
-- `first`: True only on the first invocation after resetting the FB instance.
+- `Request`: I[k].Request: sampled input (BOOL).
+- `Trip`: I[k].Trip: sampled input (BOOL).
+- `Preset`: I[k].Preset: sampled input (USINT).
+- `Ready`: O[k].Ready: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `Count`: O[k].Count: independently observed post-scan candidate value (USINT); never defined as expected output.
+- `first`: k=0; first invocation, not the pre-invocation observation
 - `invalid`: Preset < 1 or Preset > 5.
 - `qualified`: Count >= Preset and Preset is valid.
-- `qCount`: Pre-scan Count, initially zero.
+- `qCount`: {"kind": "previous_observed_output", "source": "O[k-1].Count", "initial": 0, "update": "After comparing scan k, store ACTUAL O[k].Count; never write into reference state."}
 - `nextCount`: min(qCount+1, Preset) as an integer expression.
+- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_SELF008(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+count初值0；Preset有效域1..5。!Request或Trip或非法Preset时countAfter=0，否则min(countBefore+1,Preset)；Count比较该值，Ready=有效且countAfter>=Preset。
 
 ### LTL properties
 
-**P1** 
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+
+### Normalized state, observation and predicate definitions
+
+```json
+{
+  "schema_version": 1,
+  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
+  "candidate_formal_verification": "UNVERIFIED",
+  "initial_observed": {
+    "Count": 0,
+    "Ready": false
+  },
+  "reference_state_initial": {
+    "class": "ScanContract",
+    "state": {
+      "task_id": "SELF008",
+      "array_contract": null,
+      "process_contract": null,
+      "timed_contract": null,
+      "data_contract": null,
+      "reference": {
+        "class": "ReferenceController",
+        "state": {
+          "task_id": "SELF008",
+          "state": {
+            "count": 0
+          }
+        }
+      },
+      "phase": 0,
+      "previous_mode": null,
+      "clock": 0.0,
+      "heat_start": null,
+      "protection_start": null,
+      "demand": false
+    }
+  },
+  "transition": {
+    "entrypoint": "plc_agent.normalized_spec.reference_step(task, reference, deepCopy(I[k]), dt_ms[k])",
+    "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('SELF008'); constructed once per independent case, current state is Sref[k].",
+    "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
+    "module_sha256": {
+      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
+      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
+      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
+      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
+      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
+      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+    },
+    "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
+    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+  },
+  "constrained_observed_fields": [
+    "Count",
+    "Ready"
+  ],
+  "unconstrained_representation_fields": [],
+  "comparison": {
+    "integer_boolean": "exact type and value; no tolerance",
+    "float": "finite; abs error<=1e-5; dictionary/list shape and non-float values exact",
+    "PUB008": "only successfully converted channels[j].outputValue: abs<=1e-5 OR rel<=2e-6; all preserved/config fields exact",
+    "PUB017": "Successful deletion constrains recipeID=0; other fields of that deleted slot are unconstrained for the deletion scan. Subsequent no-write scans preserve the sampled actual representation. This observer history is separate from the logical reference database.",
+    "TIME_LTIME": "exact integer nanoseconds after IEC literal parsing",
+    "implementation": "plc_agent.normalized_spec.NormalizedScanMonitor.step with output_matches (pinned sources); observer histories never drive the independent logical reference"
+  },
+  "observation": {
+    "I[k]": "deep-copied inputs immediately before invocation k",
+    "O[k]": "actual outputs immediately after invocation k, supplied by independent execution backend",
+    "Sref[k]": "independent reference state BEFORE k; unrelated to similarly named candidate variables",
+    "initial": "fresh instance BEFORE invocation 0; never substituted by O[0]",
+    "X": "next scan-sequence position; argument must be Boolean, not a numeric term",
+    "time": "dt_ms is observed elapsed time; public timers use physical time, SELF Tick/count timers use logical scans"
+  },
+  "history_bindings": {
+    "qCount": {
+      "kind": "previous_observed_output",
+      "source": "O[k-1].Count",
+      "initial": 0,
+      "update": "After comparing scan k, store ACTUAL O[k].Count; never write into reference state."
+    }
+  },
+  "auxiliary_state_bindings": {
+    "Spre": "Sref[k], before the invocation; initialized by reference_state_initial",
+    "Spost": "Sref[k+1], after exactly one pinned transition on I[k]",
+    "first": "k=0 (first invocation); distinct from the pre-invocation initial observation",
+    "pre-output": "actual O[k-1] for OUTPUT (explicit history initial where declared); I[k] for caller-owned IN_OUT",
+    "previous-input": "I[k-1] for k>=1; edge memory for BOOL requests initially FALSE and updated after EVERY invocation",
+    "reference_warning": "Spre/Spost predicates are input-driven ghosts, not evidence that candidate internals match. Conclusions about the candidate must constrain actual O."
+  },
+  "finite_conjunctions": {},
+  "reference_state_rule": "Initial state is the serialized constructor above; all fields update solely through the pinned transition. Ghost phase/history/queue are names for this state, not observed candidate state.",
+  "primitives": {
+    "bitwise": "DWORD AND/NOT and popcount operate on unsigned 32-bit values; complement is masked by 0xFFFFFFFF.",
+    "time_literals": "IEC TIME/LTIME literals are exact integer durations in nanoseconds.",
+    "observed_arrays": "All IN_OUT inputs are snapshots before invocation; outputs are independently acquired after invocation. Physical bounds map by ordinal, never share another array lower bound.",
+    "boolean_next": "X takes a Boolean formula. Numeric history transport is bit-expanded for DWORD; Boolean histories use equivalence.",
+    "time_progress": "Timed eventuality clauses explicitly require G(F(TimeTick)); TimeTick denotes crossing a new integer-ms boundary. Finite observations cannot establish this premise."
+  },
+  "assumptions": [
+    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+  ],
+  "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
+  "limitations": [
+    "No ST-to-model translation or infinite-trace proof is implemented here.",
+    "Focused legacy LTL predicates still require backend lowering; normalization is not model-checker acceptance.",
+    "Finite matching cannot establish liveness or validate runtime provenance."
+  ],
+  "rules_zh": "count初值0；Preset有效域1..5。!Request或Trip或非法Preset时countAfter=0，否则min(countBefore+1,Preset)；Count比较该值，Ready=有效且countAfter>=Preset。"
+}
+```
+
+**P1**
 
 ```text
 G((Trip | !Request | invalid) -> (!Ready & (Count = 0)))
@@ -4853,7 +9670,7 @@ G((Trip | !Request | invalid) -> (!Ready & (Count = 0)))
 
 Every interruption clears qualification immediately.
 
-**P2** 
+**P2**
 
 ```text
 G((Request & !Trip & !invalid) -> (Count = nextCount))
@@ -4861,7 +9678,7 @@ G((Request & !Trip & !invalid) -> (Count = nextCount))
 
 Healthy scans increment and saturate precisely.
 
-**P3** 
+**P3**
 
 ```text
 G(Ready <-> qualified)
@@ -4869,7 +9686,7 @@ G(Ready <-> qualified)
 
 The indication agrees with the post-scan count.
 
-**P4** 
+**P4**
 
 ```text
 G(!invalid -> ((Count >= 0) & (Count <= Preset)))
@@ -4877,13 +9694,21 @@ G(!invalid -> ((Count >= 0) & (Count <= Preset)))
 
 The counter stays within bounds.
 
-**P5** 
+**P5**
 
 ```text
 (G(Request & !Trip & !invalid)) -> F Ready
 ```
 
 A perpetually valid request qualifies within at most five scans, even if valid Preset varies.
+
+**SELF008.V2.COMPLETE**
+
+```text
+G(CompleteBehaviorV2)
+```
+
+Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
 
 ### Fixed test index
 
@@ -4950,25 +9775,149 @@ At scan k, sample every input once, read retained pre-state q[k], execute one tr
 
 ### Explicit assumptions
 
+- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
 
-- `PartPulse`: Part detection level Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Reset`: Reset batch Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Target`: Batch target, valid 1 through 20 Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Count`: Saturated part count Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Complete`: Target reached Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Error`: Invalid target Boolean names are propositions; numeric names appear only inside defined predicates.
-- `first`: True only on the first invocation after resetting the FB instance.
+- `PartPulse`: I[k].PartPulse: sampled input (BOOL).
+- `Reset`: I[k].Reset: sampled input (BOOL).
+- `Target`: I[k].Target: sampled input (USINT).
+- `Count`: O[k].Count: independently observed post-scan candidate value (USINT); never defined as expected output.
+- `Complete`: O[k].Complete: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `Error`: O[k].Error: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `first`: k=0; first invocation, not the pre-invocation observation
 - `invalid`: Target < 1 or Target > 20.
 - `rise`: PartPulse & !qPulse.
-- `qPulse`: Previous scan PartPulse, initially FALSE.
-- `qCount`: Pre-scan Count, initially zero.
+- `qPulse`: {"kind": "previous_sampled_input", "source": "I[k-1].PartPulse", "initial": false, "update": "After EVERY scan k, including invalid/reset/stop, store I[k].PartPulse"}
+- `qCount`: {"kind": "previous_observed_output", "source": "O[k-1].Count", "initial": 0, "update": "After comparing scan k, store ACTUAL O[k].Count; never write into reference state."}
 - `countAfterEdge`: min(qCount + (1 if rise else 0), Target).
+- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_SELF009(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+count=0/pulsePrev=FALSE初值。invalid=Target不在1..20；invalid或Reset时countAfter=0，否则min(countBefore+int(PartPulse & !pulsePrev),Target)。Complete=!invalid & !Reset & countAfter>=Target，Error=invalid；pulsePrev每拍更新为PartPulse。
 
 ### LTL properties
 
-**P1** 
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+
+### Normalized state, observation and predicate definitions
+
+```json
+{
+  "schema_version": 1,
+  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
+  "candidate_formal_verification": "UNVERIFIED",
+  "initial_observed": {
+    "Count": 0
+  },
+  "reference_state_initial": {
+    "class": "ScanContract",
+    "state": {
+      "task_id": "SELF009",
+      "array_contract": null,
+      "process_contract": null,
+      "timed_contract": null,
+      "data_contract": null,
+      "reference": {
+        "class": "ReferenceController",
+        "state": {
+          "task_id": "SELF009",
+          "state": {
+            "count": 0,
+            "pulse": false
+          }
+        }
+      },
+      "phase": 0,
+      "previous_mode": null,
+      "clock": 0.0,
+      "heat_start": null,
+      "protection_start": null,
+      "demand": false
+    }
+  },
+  "transition": {
+    "entrypoint": "plc_agent.normalized_spec.reference_step(task, reference, deepCopy(I[k]), dt_ms[k])",
+    "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('SELF009'); constructed once per independent case, current state is Sref[k].",
+    "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
+    "module_sha256": {
+      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
+      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
+      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
+      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
+      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
+      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+    },
+    "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
+    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+  },
+  "constrained_observed_fields": [
+    "Complete",
+    "Count",
+    "Error"
+  ],
+  "unconstrained_representation_fields": [],
+  "comparison": {
+    "integer_boolean": "exact type and value; no tolerance",
+    "float": "finite; abs error<=1e-5; dictionary/list shape and non-float values exact",
+    "PUB008": "only successfully converted channels[j].outputValue: abs<=1e-5 OR rel<=2e-6; all preserved/config fields exact",
+    "PUB017": "Successful deletion constrains recipeID=0; other fields of that deleted slot are unconstrained for the deletion scan. Subsequent no-write scans preserve the sampled actual representation. This observer history is separate from the logical reference database.",
+    "TIME_LTIME": "exact integer nanoseconds after IEC literal parsing",
+    "implementation": "plc_agent.normalized_spec.NormalizedScanMonitor.step with output_matches (pinned sources); observer histories never drive the independent logical reference"
+  },
+  "observation": {
+    "I[k]": "deep-copied inputs immediately before invocation k",
+    "O[k]": "actual outputs immediately after invocation k, supplied by independent execution backend",
+    "Sref[k]": "independent reference state BEFORE k; unrelated to similarly named candidate variables",
+    "initial": "fresh instance BEFORE invocation 0; never substituted by O[0]",
+    "X": "next scan-sequence position; argument must be Boolean, not a numeric term",
+    "time": "dt_ms is observed elapsed time; public timers use physical time, SELF Tick/count timers use logical scans"
+  },
+  "history_bindings": {
+    "qCount": {
+      "kind": "previous_observed_output",
+      "source": "O[k-1].Count",
+      "initial": 0,
+      "update": "After comparing scan k, store ACTUAL O[k].Count; never write into reference state."
+    },
+    "qPulse": {
+      "kind": "previous_sampled_input",
+      "source": "I[k-1].PartPulse",
+      "initial": false,
+      "update": "After EVERY scan k, including invalid/reset/stop, store I[k].PartPulse"
+    }
+  },
+  "auxiliary_state_bindings": {
+    "Spre": "Sref[k], before the invocation; initialized by reference_state_initial",
+    "Spost": "Sref[k+1], after exactly one pinned transition on I[k]",
+    "first": "k=0 (first invocation); distinct from the pre-invocation initial observation",
+    "pre-output": "actual O[k-1] for OUTPUT (explicit history initial where declared); I[k] for caller-owned IN_OUT",
+    "previous-input": "I[k-1] for k>=1; edge memory for BOOL requests initially FALSE and updated after EVERY invocation",
+    "reference_warning": "Spre/Spost predicates are input-driven ghosts, not evidence that candidate internals match. Conclusions about the candidate must constrain actual O."
+  },
+  "finite_conjunctions": {},
+  "reference_state_rule": "Initial state is the serialized constructor above; all fields update solely through the pinned transition. Ghost phase/history/queue are names for this state, not observed candidate state.",
+  "primitives": {
+    "bitwise": "DWORD AND/NOT and popcount operate on unsigned 32-bit values; complement is masked by 0xFFFFFFFF.",
+    "time_literals": "IEC TIME/LTIME literals are exact integer durations in nanoseconds.",
+    "observed_arrays": "All IN_OUT inputs are snapshots before invocation; outputs are independently acquired after invocation. Physical bounds map by ordinal, never share another array lower bound.",
+    "boolean_next": "X takes a Boolean formula. Numeric history transport is bit-expanded for DWORD; Boolean histories use equivalence.",
+    "time_progress": "Timed eventuality clauses explicitly require G(F(TimeTick)); TimeTick denotes crossing a new integer-ms boundary. Finite observations cannot establish this premise."
+  },
+  "assumptions": [
+    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+  ],
+  "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
+  "limitations": [
+    "No ST-to-model translation or infinite-trace proof is implemented here.",
+    "Focused legacy LTL predicates still require backend lowering; normalization is not model-checker acceptance.",
+    "Finite matching cannot establish liveness or validate runtime provenance."
+  ],
+  "rules_zh": "count=0/pulsePrev=FALSE初值。invalid=Target不在1..20；invalid或Reset时countAfter=0，否则min(countBefore+int(PartPulse & !pulsePrev),Target)。Complete=!invalid & !Reset & countAfter>=Target，Error=invalid；pulsePrev每拍更新为PartPulse。"
+}
+```
+
+**P1**
 
 ```text
 G(Error <-> invalid)
@@ -4976,7 +9925,7 @@ G(Error <-> invalid)
 
 Target validation is exact.
 
-**P2** 
+**P2**
 
 ```text
 G((Reset | invalid) -> ((Count = 0) & !Complete))
@@ -4984,7 +9933,7 @@ G((Reset | invalid) -> ((Count = 0) & !Complete))
 
 Reset or invalid target clears the batch.
 
-**P3** 
+**P3**
 
 ```text
 G((!Reset & !invalid) -> (Count = countAfterEdge))
@@ -4992,7 +9941,7 @@ G((!Reset & !invalid) -> (Count = countAfterEdge))
 
 Only rising edges add an item, with saturation.
 
-**P4** 
+**P4**
 
 ```text
 G((!Reset & !invalid) -> (Complete <-> (Count >= Target)))
@@ -5000,13 +9949,21 @@ G((!Reset & !invalid) -> (Complete <-> (Count >= Target)))
 
 Complete reports the post-scan count.
 
-**P5** 
+**P5**
 
 ```text
-G(PartPulse -> X qPulse)
+G(X(qPulse) <-> PartPulse)
 ```
 
 Edge memory samples the pulse even during reset.
+
+**SELF009.V2.COMPLETE**
+
+```text
+G(CompleteBehaviorV2)
+```
+
+Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
 
 ### Fixed test index
 
@@ -5075,24 +10032,156 @@ At scan k, sample every input once, read retained pre-state q[k], execute one tr
 
 ### Explicit assumptions
 
+- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
 
-- `Fault`: Current fault condition Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Ack`: Acknowledge horn Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Reset`: Clear a removed fault Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Alarm`: Latched visible alarm Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Acknowledged`: Alarm acknowledged Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Horn`: Unacknowledged alarm horn Boolean names are propositions; numeric names appear only inside defined predicates.
-- `first`: True only on the first invocation after resetting the FB instance.
+- `Fault`: I[k].Fault: sampled input (BOOL).
+- `Ack`: I[k].Ack: sampled input (BOOL).
+- `Reset`: I[k].Reset: sampled input (BOOL).
+- `Alarm`: O[k].Alarm: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `Acknowledged`: O[k].Acknowledged: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `Horn`: O[k].Horn: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `first`: k=0; first invocation, not the pre-invocation observation
 - `rise`: Fault & !qFault.
-- `qFault`: Previous Fault sample, initially FALSE.
-- `qAlarm`: Pre-scan Alarm.
-- `qAck`: Pre-scan Acknowledged.
+- `qFault`: {"kind": "previous_sampled_input", "source": "I[k-1].Fault", "initial": false, "update": "After EVERY scan k, including invalid/reset/stop, store I[k].Fault"}
+- `qAlarm`: {"kind": "previous_observed_output", "source": "O[k-1].Alarm", "initial": false, "update": "After comparing scan k, store ACTUAL O[k].Alarm; never write into reference state."}
+- `qAck`: {"kind": "previous_observed_output", "source": "O[k-1].Acknowledged", "initial": false, "update": "After comparing scan k, store ACTUAL O[k].Acknowledged; never write into reference state."}
+- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_SELF010(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+latched/ack/previousFault初值FALSE。Reset & !Fault时清latched/ack；否则Fault时置latched，若Fault新沿清ack、否则Ack置ack；否则旧latched且Ack置ack，其余保持。Alarm=latchedAfter，Acknowledged=ackAfter，Horn=latchedAfter & !ackAfter。previousFault每拍=Fault。
 
 ### LTL properties
 
-**P1** 
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+
+### Normalized state, observation and predicate definitions
+
+```json
+{
+  "schema_version": 1,
+  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
+  "candidate_formal_verification": "UNVERIFIED",
+  "initial_observed": {
+    "Alarm": false,
+    "Acknowledged": false
+  },
+  "reference_state_initial": {
+    "class": "ScanContract",
+    "state": {
+      "task_id": "SELF010",
+      "array_contract": null,
+      "process_contract": null,
+      "timed_contract": null,
+      "data_contract": null,
+      "reference": {
+        "class": "ReferenceController",
+        "state": {
+          "task_id": "SELF010",
+          "state": {
+            "latched": false,
+            "ack": false,
+            "fault": false
+          }
+        }
+      },
+      "phase": 0,
+      "previous_mode": null,
+      "clock": 0.0,
+      "heat_start": null,
+      "protection_start": null,
+      "demand": false
+    }
+  },
+  "transition": {
+    "entrypoint": "plc_agent.normalized_spec.reference_step(task, reference, deepCopy(I[k]), dt_ms[k])",
+    "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('SELF010'); constructed once per independent case, current state is Sref[k].",
+    "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
+    "module_sha256": {
+      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
+      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
+      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
+      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
+      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
+      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+    },
+    "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
+    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+  },
+  "constrained_observed_fields": [
+    "Acknowledged",
+    "Alarm",
+    "Horn"
+  ],
+  "unconstrained_representation_fields": [],
+  "comparison": {
+    "integer_boolean": "exact type and value; no tolerance",
+    "float": "finite; abs error<=1e-5; dictionary/list shape and non-float values exact",
+    "PUB008": "only successfully converted channels[j].outputValue: abs<=1e-5 OR rel<=2e-6; all preserved/config fields exact",
+    "PUB017": "Successful deletion constrains recipeID=0; other fields of that deleted slot are unconstrained for the deletion scan. Subsequent no-write scans preserve the sampled actual representation. This observer history is separate from the logical reference database.",
+    "TIME_LTIME": "exact integer nanoseconds after IEC literal parsing",
+    "implementation": "plc_agent.normalized_spec.NormalizedScanMonitor.step with output_matches (pinned sources); observer histories never drive the independent logical reference"
+  },
+  "observation": {
+    "I[k]": "deep-copied inputs immediately before invocation k",
+    "O[k]": "actual outputs immediately after invocation k, supplied by independent execution backend",
+    "Sref[k]": "independent reference state BEFORE k; unrelated to similarly named candidate variables",
+    "initial": "fresh instance BEFORE invocation 0; never substituted by O[0]",
+    "X": "next scan-sequence position; argument must be Boolean, not a numeric term",
+    "time": "dt_ms is observed elapsed time; public timers use physical time, SELF Tick/count timers use logical scans"
+  },
+  "history_bindings": {
+    "qAlarm": {
+      "kind": "previous_observed_output",
+      "source": "O[k-1].Alarm",
+      "initial": false,
+      "update": "After comparing scan k, store ACTUAL O[k].Alarm; never write into reference state."
+    },
+    "qAck": {
+      "kind": "previous_observed_output",
+      "source": "O[k-1].Acknowledged",
+      "initial": false,
+      "update": "After comparing scan k, store ACTUAL O[k].Acknowledged; never write into reference state."
+    },
+    "qFault": {
+      "kind": "previous_sampled_input",
+      "source": "I[k-1].Fault",
+      "initial": false,
+      "update": "After EVERY scan k, including invalid/reset/stop, store I[k].Fault"
+    }
+  },
+  "auxiliary_state_bindings": {
+    "Spre": "Sref[k], before the invocation; initialized by reference_state_initial",
+    "Spost": "Sref[k+1], after exactly one pinned transition on I[k]",
+    "first": "k=0 (first invocation); distinct from the pre-invocation initial observation",
+    "pre-output": "actual O[k-1] for OUTPUT (explicit history initial where declared); I[k] for caller-owned IN_OUT",
+    "previous-input": "I[k-1] for k>=1; edge memory for BOOL requests initially FALSE and updated after EVERY invocation",
+    "reference_warning": "Spre/Spost predicates are input-driven ghosts, not evidence that candidate internals match. Conclusions about the candidate must constrain actual O."
+  },
+  "finite_conjunctions": {},
+  "reference_state_rule": "Initial state is the serialized constructor above; all fields update solely through the pinned transition. Ghost phase/history/queue are names for this state, not observed candidate state.",
+  "primitives": {
+    "bitwise": "DWORD AND/NOT and popcount operate on unsigned 32-bit values; complement is masked by 0xFFFFFFFF.",
+    "time_literals": "IEC TIME/LTIME literals are exact integer durations in nanoseconds.",
+    "observed_arrays": "All IN_OUT inputs are snapshots before invocation; outputs are independently acquired after invocation. Physical bounds map by ordinal, never share another array lower bound.",
+    "boolean_next": "X takes a Boolean formula. Numeric history transport is bit-expanded for DWORD; Boolean histories use equivalence.",
+    "time_progress": "Timed eventuality clauses explicitly require G(F(TimeTick)); TimeTick denotes crossing a new integer-ms boundary. Finite observations cannot establish this premise."
+  },
+  "assumptions": [
+    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+  ],
+  "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
+  "limitations": [
+    "No ST-to-model translation or infinite-trace proof is implemented here.",
+    "Focused legacy LTL predicates still require backend lowering; normalization is not model-checker acceptance.",
+    "Finite matching cannot establish liveness or validate runtime provenance."
+  ],
+  "rules_zh": "latched/ack/previousFault初值FALSE。Reset & !Fault时清latched/ack；否则Fault时置latched，若Fault新沿清ack、否则Ack置ack；否则旧latched且Ack置ack，其余保持。Alarm=latchedAfter，Acknowledged=ackAfter，Horn=latchedAfter & !ackAfter。previousFault每拍=Fault。"
+}
+```
+
+**P1**
 
 ```text
 G(Horn <-> (Alarm & !Acknowledged))
@@ -5100,7 +10189,7 @@ G(Horn <-> (Alarm & !Acknowledged))
 
 Horn follows the latched acknowledgment state.
 
-**P2** 
+**P2**
 
 ```text
 G(Fault -> Alarm)
@@ -5108,7 +10197,7 @@ G(Fault -> Alarm)
 
 A present fault cannot be reset away.
 
-**P3** 
+**P3**
 
 ```text
 G(rise -> (Alarm & !Acknowledged & Horn))
@@ -5116,7 +10205,7 @@ G(rise -> (Alarm & !Acknowledged & Horn))
 
 Every new event annunciates despite simultaneous Ack.
 
-**P4** 
+**P4**
 
 ```text
 G((Reset & !Fault) -> (!Alarm & !Acknowledged & !Horn))
@@ -5124,7 +10213,7 @@ G((Reset & !Fault) -> (!Alarm & !Acknowledged & !Horn))
 
 Reset clears a removed fault.
 
-**P5** 
+**P5**
 
 ```text
 G((!Fault & !Reset & qAlarm) -> Alarm)
@@ -5132,13 +10221,21 @@ G((!Fault & !Reset & qAlarm) -> Alarm)
 
 Fault disappearance does not clear the visible alarm.
 
-**P6** 
+**P6**
 
 ```text
-G((!rise & !Reset & Ack & qAlarm) -> Acknowledged)
+G((!rise & !(Reset & !Fault) & Ack & qAlarm) -> Acknowledged)
 ```
 
 Acknowledgment silences a retained event.
+
+**SELF010.V2.COMPLETE**
+
+```text
+G(CompleteBehaviorV2)
+```
+
+Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
 
 ### Fixed test index
 
@@ -5146,6 +10243,7 @@ Acknowledgment silences a retained event.
 | --- | --- | ---: |
 | annunciate | Acknowledge, fault clear and new event | 6 |
 | reset_priority | Present fault blocks reset; removed fault reset wins | 3 |
+| V2_omission_regression | Reject the concrete wrong behavior documented in the 2026-11-06 specification review. | 3 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -5214,35 +10312,161 @@ At scan k, sample every input once, read retained pre-state q[k], execute one tr
 
 - Completion inputs are handshake states; no mechanical safety certification is implied.
 - No timeout is included; an absent handshake intentionally stalls the current action.
+- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
 
-- `Start`: Begin one fixture cycle Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Stop`: Abort fixture cycle Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Reset`: Clear cycle state Boolean names are propositions; numeric names appear only inside defined predicates.
-- `ExtendDone`: Extension completion handshake Boolean names are propositions; numeric names appear only inside defined predicates.
-- `ClampDone`: Clamp completion handshake Boolean names are propositions; numeric names appear only inside defined predicates.
-- `ReleaseDone`: Release completion handshake Boolean names are propositions; numeric names appear only inside defined predicates.
-- `RetractDone`: Retracted home handshake Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Extend`: Slide extend command Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Clamp`: Clamp command Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Release`: Release command Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Retract`: Slide retract command Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Busy`: An action state is active Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Done`: Cycle completed Boolean names are propositions; numeric names appear only inside defined predicates.
-- `first`: True only on the first invocation after resetting the FB instance.
-- `qIdle`: Pre-state IDLE.
-- `qExtend`: Pre-state EXTEND.
-- `qClamp`: Pre-state CLAMP.
-- `qRelease`: Pre-state RELEASE.
-- `qRetract`: Pre-state RETRACT.
-- `qDone`: Pre-state DONE.
+- `Start`: I[k].Start: sampled input (BOOL).
+- `Stop`: I[k].Stop: sampled input (BOOL).
+- `Reset`: I[k].Reset: sampled input (BOOL).
+- `ExtendDone`: I[k].ExtendDone: sampled input (BOOL).
+- `ClampDone`: I[k].ClampDone: sampled input (BOOL).
+- `ReleaseDone`: I[k].ReleaseDone: sampled input (BOOL).
+- `RetractDone`: I[k].RetractDone: sampled input (BOOL).
+- `Extend`: O[k].Extend: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `Clamp`: O[k].Clamp: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `Release`: O[k].Release: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `Retract`: O[k].Retract: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `Busy`: O[k].Busy: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `Done`: O[k].Done: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `first`: k=0; first invocation, not the pre-invocation observation
+- `qIdle`: Spre.reference.state.mode=0
+- `qExtend`: Spre.reference.state.mode=1
+- `qClamp`: Spre.reference.state.mode=2
+- `qRelease`: Spre.reference.state.mode=3
+- `qRetract`: Spre.reference.state.mode=4
+- `qDone`: Spre.reference.state.mode=5
 - `normal`: !Stop & !Reset.
-- `oneAction`: At most one of Extend, Clamp, Release, Retract is TRUE.
+- `oneAction`: int(O[k].Extend)+int(O[k].Clamp)+int(O[k].Release)+int(O[k].Retract)<=1
+- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_SELF011(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+mode初值IDLE。Stop或Reset优先回IDLE；IDLE且Start & RetractDone进EXTEND；EXTEND/CLAMP/RELEASE/RETRACT仅各自匹配完成信号推进一阶；DONE保持。四动作输出分别等价于转移后对应阶段，Busy等价于阶段1..4，Done等价于阶段5。
 
 ### LTL properties
 
-**P1** 
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+
+### Normalized state, observation and predicate definitions
+
+```json
+{
+  "schema_version": 1,
+  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
+  "candidate_formal_verification": "UNVERIFIED",
+  "initial_observed": {},
+  "reference_state_initial": {
+    "class": "ScanContract",
+    "state": {
+      "task_id": "SELF011",
+      "array_contract": null,
+      "process_contract": null,
+      "timed_contract": null,
+      "data_contract": null,
+      "reference": {
+        "class": "ReferenceController",
+        "state": {
+          "task_id": "SELF011",
+          "state": {
+            "mode": 0
+          }
+        }
+      },
+      "phase": 0,
+      "previous_mode": null,
+      "clock": 0.0,
+      "heat_start": null,
+      "protection_start": null,
+      "demand": false
+    }
+  },
+  "transition": {
+    "entrypoint": "plc_agent.normalized_spec.reference_step(task, reference, deepCopy(I[k]), dt_ms[k])",
+    "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('SELF011'); constructed once per independent case, current state is Sref[k].",
+    "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
+    "module_sha256": {
+      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
+      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
+      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
+      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
+      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
+      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+    },
+    "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
+    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+  },
+  "constrained_observed_fields": [
+    "Busy",
+    "Clamp",
+    "Done",
+    "Extend",
+    "Release",
+    "Retract"
+  ],
+  "unconstrained_representation_fields": [],
+  "comparison": {
+    "integer_boolean": "exact type and value; no tolerance",
+    "float": "finite; abs error<=1e-5; dictionary/list shape and non-float values exact",
+    "PUB008": "only successfully converted channels[j].outputValue: abs<=1e-5 OR rel<=2e-6; all preserved/config fields exact",
+    "PUB017": "Successful deletion constrains recipeID=0; other fields of that deleted slot are unconstrained for the deletion scan. Subsequent no-write scans preserve the sampled actual representation. This observer history is separate from the logical reference database.",
+    "TIME_LTIME": "exact integer nanoseconds after IEC literal parsing",
+    "implementation": "plc_agent.normalized_spec.NormalizedScanMonitor.step with output_matches (pinned sources); observer histories never drive the independent logical reference"
+  },
+  "observation": {
+    "I[k]": "deep-copied inputs immediately before invocation k",
+    "O[k]": "actual outputs immediately after invocation k, supplied by independent execution backend",
+    "Sref[k]": "independent reference state BEFORE k; unrelated to similarly named candidate variables",
+    "initial": "fresh instance BEFORE invocation 0; never substituted by O[0]",
+    "X": "next scan-sequence position; argument must be Boolean, not a numeric term",
+    "time": "dt_ms is observed elapsed time; public timers use physical time, SELF Tick/count timers use logical scans"
+  },
+  "history_bindings": {},
+  "auxiliary_state_bindings": {
+    "Spre": "Sref[k], before the invocation; initialized by reference_state_initial",
+    "Spost": "Sref[k+1], after exactly one pinned transition on I[k]",
+    "first": "k=0 (first invocation); distinct from the pre-invocation initial observation",
+    "pre-output": "actual O[k-1] for OUTPUT (explicit history initial where declared); I[k] for caller-owned IN_OUT",
+    "previous-input": "I[k-1] for k>=1; edge memory for BOOL requests initially FALSE and updated after EVERY invocation",
+    "reference_warning": "Spre/Spost predicates are input-driven ghosts, not evidence that candidate internals match. Conclusions about the candidate must constrain actual O.",
+    "phase": {
+      "pre": "Spre.reference.state.mode",
+      "post": "Spost.reference.state.mode",
+      "enum": {
+        "0": "IDLE",
+        "1": "EXTEND",
+        "2": "CLAMP",
+        "3": "RELEASE",
+        "4": "RETRACT",
+        "5": "DONE"
+      },
+      "initial": 0
+    }
+  },
+  "finite_conjunctions": {},
+  "reference_state_rule": "Initial state is the serialized constructor above; all fields update solely through the pinned transition. Ghost phase/history/queue are names for this state, not observed candidate state.",
+  "primitives": {
+    "bitwise": "DWORD AND/NOT and popcount operate on unsigned 32-bit values; complement is masked by 0xFFFFFFFF.",
+    "time_literals": "IEC TIME/LTIME literals are exact integer durations in nanoseconds.",
+    "observed_arrays": "All IN_OUT inputs are snapshots before invocation; outputs are independently acquired after invocation. Physical bounds map by ordinal, never share another array lower bound.",
+    "boolean_next": "X takes a Boolean formula. Numeric history transport is bit-expanded for DWORD; Boolean histories use equivalence.",
+    "time_progress": "Timed eventuality clauses explicitly require G(F(TimeTick)); TimeTick denotes crossing a new integer-ms boundary. Finite observations cannot establish this premise."
+  },
+  "assumptions": [
+    "Completion inputs are handshake states; no mechanical safety certification is implied.",
+    "No timeout is included; an absent handshake intentionally stalls the current action.",
+    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+  ],
+  "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
+  "limitations": [
+    "No ST-to-model translation or infinite-trace proof is implemented here.",
+    "Focused legacy LTL predicates still require backend lowering; normalization is not model-checker acceptance.",
+    "Finite matching cannot establish liveness or validate runtime provenance."
+  ],
+  "rules_zh": "mode初值IDLE。Stop或Reset优先回IDLE；IDLE且Start & RetractDone进EXTEND；EXTEND/CLAMP/RELEASE/RETRACT仅各自匹配完成信号推进一阶；DONE保持。四动作输出分别等价于转移后对应阶段，Busy等价于阶段1..4，Done等价于阶段5。"
+}
+```
+
+**P1**
 
 ```text
 G(oneAction)
@@ -5250,7 +10474,7 @@ G(oneAction)
 
 Action commands never overlap.
 
-**P2** 
+**P2**
 
 ```text
 G((Stop | Reset) -> (!Busy & !Done & !Extend & !Clamp & !Release & !Retract))
@@ -5258,7 +10482,7 @@ G((Stop | Reset) -> (!Busy & !Done & !Extend & !Clamp & !Release & !Retract))
 
 Abort clears every command immediately.
 
-**P3** 
+**P3**
 
 ```text
 G((normal & qIdle & Start & RetractDone) -> Extend)
@@ -5266,7 +10490,7 @@ G((normal & qIdle & Start & RetractDone) -> Extend)
 
 Home-qualified Start enters only the first action.
 
-**P4** 
+**P4**
 
 ```text
 G((normal & qExtend & ExtendDone) -> Clamp)
@@ -5274,7 +10498,7 @@ G((normal & qExtend & ExtendDone) -> Clamp)
 
 Extension completion enters clamp.
 
-**P5** 
+**P5**
 
 ```text
 G((normal & qClamp & ClampDone) -> Release)
@@ -5282,7 +10506,7 @@ G((normal & qClamp & ClampDone) -> Release)
 
 Clamp completion enters release.
 
-**P6** 
+**P6**
 
 ```text
 G((normal & qRelease & ReleaseDone) -> Retract)
@@ -5290,7 +10514,7 @@ G((normal & qRelease & ReleaseDone) -> Retract)
 
 Release completion enters retract.
 
-**P7** 
+**P7**
 
 ```text
 G((normal & qRetract & RetractDone) -> Done)
@@ -5298,7 +10522,7 @@ G((normal & qRetract & RetractDone) -> Done)
 
 Home arrival completes the cycle.
 
-**P8** 
+**P8**
 
 ```text
 G((normal & qDone) -> Done)
@@ -5306,13 +10530,21 @@ G((normal & qDone) -> Done)
 
 A completed cycle cannot restart without an explicit clear.
 
-**P9** 
+**P9**
 
 ```text
 G((normal & qExtend & !ExtendDone) -> Extend)
 ```
 
 The fixture waits for an extension handshake rather than assuming completion.
+
+**SELF011.V2.COMPLETE**
+
+```text
+G(CompleteBehaviorV2)
+```
+
+Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
 
 ### Fixed test index
 
@@ -5387,28 +10619,160 @@ At scan k, sample every input once, read retained pre-state q[k], execute one tr
 
 - The fault is an educational process input, not a personnel safety function.
 - Operator stop/start does not restore the automatic retry budget; only accepted Reset does.
+- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
 
-- `Start`: Operator start request Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Stop`: Abort without clearing retry count Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Fault`: Process fault Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Reset`: Clear retry history with Start released Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Run`: Feeder command Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Locked`: Retry exhaustion lockout Boolean names are propositions; numeric names appear only inside defined predicates.
-- `Attempts`: Automatic restarts issued, zero through two Boolean names are propositions; numeric names appear only inside defined predicates.
-- `first`: True only on the first invocation after resetting the FB instance.
-- `qLocked`: Pre-state LOCKED.
-- `qRunning`: Pre-state RUNNING.
-- `qWait`: Pre-state WAIT.
-- `qAttempts`: Pre-scan Attempts, initially zero.
+- `Start`: I[k].Start: sampled input (BOOL).
+- `Stop`: I[k].Stop: sampled input (BOOL).
+- `Fault`: I[k].Fault: sampled input (BOOL).
+- `Reset`: I[k].Reset: sampled input (BOOL).
+- `Run`: O[k].Run: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `Locked`: O[k].Locked: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `Attempts`: O[k].Attempts: independently observed post-scan candidate value (USINT); never defined as expected output.
+- `first`: k=0; first invocation, not the pre-invocation observation
+- `qLocked`: Spre.reference.state.mode=3
+- `qRunning`: Spre.reference.state.mode=1
+- `qWait`: Spre.reference.state.mode=2
+- `qAttempts`: {"kind": "previous_observed_output", "source": "O[k-1].Attempts", "initial": 0, "update": "After comparing scan k, store ACTUAL O[k].Attempts; never write into reference state."}
 - `validReset`: Reset & !Fault & !Start.
-- `retryDue`: qWait & !Fault and one preceding consecutive fault-free WAIT scan.
+- `retryDue`: Spre.reference.state.mode=2 AND NOT I[k].Fault AND Spre.reference.state.free>=1
 - `normal`: !validReset & !Stop.
+- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_SELF012(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+mode=IDLE/attempts=0/free=0初值。优先Reset & !Fault & !Start清全部；其次LOCKED保持；其次Stop回IDLE并清free但保留attempts；RUNNING且Fault转WAIT或已重试2次转LOCKED；WAIT中Fault清free否则加1，free>=2时attempts加1并回RUNNING、free=0；IDLE且Start & !Fault进RUNNING。输出Run/Locked取新mode，Attempts取新attempts。
 
 ### LTL properties
 
-**P1** 
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+
+### Normalized state, observation and predicate definitions
+
+```json
+{
+  "schema_version": 1,
+  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
+  "candidate_formal_verification": "UNVERIFIED",
+  "initial_observed": {
+    "Attempts": 0
+  },
+  "reference_state_initial": {
+    "class": "ScanContract",
+    "state": {
+      "task_id": "SELF012",
+      "array_contract": null,
+      "process_contract": null,
+      "timed_contract": null,
+      "data_contract": null,
+      "reference": {
+        "class": "ReferenceController",
+        "state": {
+          "task_id": "SELF012",
+          "state": {
+            "mode": 0,
+            "attempts": 0,
+            "free": 0
+          }
+        }
+      },
+      "phase": 0,
+      "previous_mode": null,
+      "clock": 0.0,
+      "heat_start": null,
+      "protection_start": null,
+      "demand": false
+    }
+  },
+  "transition": {
+    "entrypoint": "plc_agent.normalized_spec.reference_step(task, reference, deepCopy(I[k]), dt_ms[k])",
+    "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('SELF012'); constructed once per independent case, current state is Sref[k].",
+    "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
+    "module_sha256": {
+      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
+      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
+      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
+      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
+      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
+      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+    },
+    "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
+    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+  },
+  "constrained_observed_fields": [
+    "Attempts",
+    "Locked",
+    "Run"
+  ],
+  "unconstrained_representation_fields": [],
+  "comparison": {
+    "integer_boolean": "exact type and value; no tolerance",
+    "float": "finite; abs error<=1e-5; dictionary/list shape and non-float values exact",
+    "PUB008": "only successfully converted channels[j].outputValue: abs<=1e-5 OR rel<=2e-6; all preserved/config fields exact",
+    "PUB017": "Successful deletion constrains recipeID=0; other fields of that deleted slot are unconstrained for the deletion scan. Subsequent no-write scans preserve the sampled actual representation. This observer history is separate from the logical reference database.",
+    "TIME_LTIME": "exact integer nanoseconds after IEC literal parsing",
+    "implementation": "plc_agent.normalized_spec.NormalizedScanMonitor.step with output_matches (pinned sources); observer histories never drive the independent logical reference"
+  },
+  "observation": {
+    "I[k]": "deep-copied inputs immediately before invocation k",
+    "O[k]": "actual outputs immediately after invocation k, supplied by independent execution backend",
+    "Sref[k]": "independent reference state BEFORE k; unrelated to similarly named candidate variables",
+    "initial": "fresh instance BEFORE invocation 0; never substituted by O[0]",
+    "X": "next scan-sequence position; argument must be Boolean, not a numeric term",
+    "time": "dt_ms is observed elapsed time; public timers use physical time, SELF Tick/count timers use logical scans"
+  },
+  "history_bindings": {
+    "qAttempts": {
+      "kind": "previous_observed_output",
+      "source": "O[k-1].Attempts",
+      "initial": 0,
+      "update": "After comparing scan k, store ACTUAL O[k].Attempts; never write into reference state."
+    }
+  },
+  "auxiliary_state_bindings": {
+    "Spre": "Sref[k], before the invocation; initialized by reference_state_initial",
+    "Spost": "Sref[k+1], after exactly one pinned transition on I[k]",
+    "first": "k=0 (first invocation); distinct from the pre-invocation initial observation",
+    "pre-output": "actual O[k-1] for OUTPUT (explicit history initial where declared); I[k] for caller-owned IN_OUT",
+    "previous-input": "I[k-1] for k>=1; edge memory for BOOL requests initially FALSE and updated after EVERY invocation",
+    "reference_warning": "Spre/Spost predicates are input-driven ghosts, not evidence that candidate internals match. Conclusions about the candidate must constrain actual O.",
+    "phase": {
+      "pre": "Spre.reference.state.mode",
+      "post": "Spost.reference.state.mode",
+      "enum": {
+        "0": "IDLE",
+        "1": "RUNNING",
+        "2": "WAIT",
+        "3": "LOCKED"
+      },
+      "initial": 0
+    }
+  },
+  "finite_conjunctions": {},
+  "reference_state_rule": "Initial state is the serialized constructor above; all fields update solely through the pinned transition. Ghost phase/history/queue are names for this state, not observed candidate state.",
+  "primitives": {
+    "bitwise": "DWORD AND/NOT and popcount operate on unsigned 32-bit values; complement is masked by 0xFFFFFFFF.",
+    "time_literals": "IEC TIME/LTIME literals are exact integer durations in nanoseconds.",
+    "observed_arrays": "All IN_OUT inputs are snapshots before invocation; outputs are independently acquired after invocation. Physical bounds map by ordinal, never share another array lower bound.",
+    "boolean_next": "X takes a Boolean formula. Numeric history transport is bit-expanded for DWORD; Boolean histories use equivalence.",
+    "time_progress": "Timed eventuality clauses explicitly require G(F(TimeTick)); TimeTick denotes crossing a new integer-ms boundary. Finite observations cannot establish this premise."
+  },
+  "assumptions": [
+    "The fault is an educational process input, not a personnel safety function.",
+    "Operator stop/start does not restore the automatic retry budget; only accepted Reset does.",
+    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+  ],
+  "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
+  "limitations": [
+    "No ST-to-model translation or infinite-trace proof is implemented here.",
+    "Focused legacy LTL predicates still require backend lowering; normalization is not model-checker acceptance.",
+    "Finite matching cannot establish liveness or validate runtime provenance."
+  ],
+  "rules_zh": "mode=IDLE/attempts=0/free=0初值。优先Reset & !Fault & !Start清全部；其次LOCKED保持；其次Stop回IDLE并清free但保留attempts；RUNNING且Fault转WAIT或已重试2次转LOCKED；WAIT中Fault清free否则加1，free>=2时attempts加1并回RUNNING、free=0；IDLE且Start & !Fault进RUNNING。输出Run/Locked取新mode，Attempts取新attempts。"
+}
+```
+
+**P1**
 
 ```text
 G(Fault -> !Run)
@@ -5416,7 +10780,7 @@ G(Fault -> !Run)
 
 A present fault cannot command the feeder.
 
-**P2** 
+**P2**
 
 ```text
 G((Attempts >= 0) & (Attempts <= 2))
@@ -5424,7 +10788,7 @@ G((Attempts >= 0) & (Attempts <= 2))
 
 Automatic restart count stays within the budget.
 
-**P3** 
+**P3**
 
 ```text
 G(validReset -> (!Run & !Locked & (Attempts = 0)))
@@ -5432,7 +10796,7 @@ G(validReset -> (!Run & !Locked & (Attempts = 0)))
 
 Accepted reset clears history and leaves the feeder stopped.
 
-**P4** 
+**P4**
 
 ```text
 G((qLocked & !validReset) -> (Locked & !Run))
@@ -5440,7 +10804,7 @@ G((qLocked & !validReset) -> (Locked & !Run))
 
 Lockout requires a safe explicit reset.
 
-**P5** 
+**P5**
 
 ```text
 G((qRunning & Fault & normal & (qAttempts = 2)) -> Locked)
@@ -5448,7 +10812,7 @@ G((qRunning & Fault & normal & (qAttempts = 2)) -> Locked)
 
 Failure after the second retry exhausts the budget.
 
-**P6** 
+**P6**
 
 ```text
 G((retryDue & normal) -> (Run & (Attempts = qAttempts + 1)))
@@ -5456,7 +10820,7 @@ G((retryDue & normal) -> (Run & (Attempts = qAttempts + 1)))
 
 Only the second consecutive healthy WAIT scan restarts.
 
-**P7** 
+**P7**
 
 ```text
 G((qWait & Fault & normal) -> !Run)
@@ -5464,11 +10828,20 @@ G((qWait & Fault & normal) -> !Run)
 
 A fault during recovery clears progress and prevents restart.
 
+**SELF012.V2.COMPLETE**
+
+```text
+G(CompleteBehaviorV2)
+```
+
+Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
+
 ### Fixed test index
 
 | Case | Purpose | Steps |
 | --- | --- | ---: |
 | exhaustion | Two automatic retries then third fault locks | 11 |
 | dwell_interrupt | Fault interrupts healthy dwell; Stop aborts wait | 9 |
+| V2_omission_regression | Reject the concrete wrong behavior documented in the 2026-11-06 specification review. | 3 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
