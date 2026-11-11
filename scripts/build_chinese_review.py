@@ -1,5 +1,6 @@
 """Build display-only Chinese review material without changing benchmark inputs."""
 from copy import deepcopy
+
 from plc_agent.common import ROOT, digest, read_json, write_json
 from plc_agent.dataset import load_tasks
 

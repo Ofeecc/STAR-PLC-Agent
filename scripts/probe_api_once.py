@@ -4,8 +4,8 @@ Without --run this only validates local configuration and prints the request pla
 Use --run --allow-model-api only after the user approves this specific request.
 """
 import argparse
-from dataclasses import replace
 import json
+from dataclasses import replace
 
 from plc_agent.common import ROOT, now, redact, write_json
 from plc_agent.config import Settings

@@ -1,12 +1,14 @@
 """Verify a declaration-only SA0027 exception on a retained candidate, not an Agent score."""
-from copy import deepcopy
-from dataclasses import asdict
 import hashlib
 import re
+from copy import deepcopy
+from dataclasses import asdict
 from pathlib import Path
-from plc_agent.common import ROOT,read_json,write_json,now
-from plc_agent.config import Settings
+
+from plc_agent.common import ROOT, now, read_json, write_json
 from plc_agent.compiler import compile_st
+from plc_agent.config import Settings
+
 
 def main():
     cfg=Settings.load(load_api=False)

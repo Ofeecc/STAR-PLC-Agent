@@ -3,13 +3,13 @@
 Default is a local plan check. --run requires explicit approval for the selected runs.
 """
 import argparse
-from dataclasses import asdict, replace
 import hashlib
 import json
-from pathlib import Path
-import subprocess
 import shutil
+import subprocess
 import time
+from dataclasses import asdict, replace
+from pathlib import Path
 
 from plc_agent.backend import CodesysBackend
 from plc_agent.baseline import run_baseline
@@ -21,7 +21,6 @@ from plc_agent.dataset import load_tasks
 from plc_agent.harness import run_harness
 from plc_agent.llm import ResponsesClient
 from plc_agent.simulation import run_functional
-from plc_agent.task_view import agent_view
 
 SPEC = read_json(ROOT/'configs/pilot_pair.json')
 MODEL = SPEC['model']
