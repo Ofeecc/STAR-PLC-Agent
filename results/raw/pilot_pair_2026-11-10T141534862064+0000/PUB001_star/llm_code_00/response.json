@@ -1,0 +1,100 @@
+{
+  "id": "chatcmpl-20261110141619023129785c14228f5SxA8Vp3N",
+  "object": "response",
+  "created_at": 1794320180,
+  "status": "completed",
+  "instructions": null,
+  "max_output_tokens": 0,
+  "model": "deepseek-v4-1-flash-261017",
+  "output": [
+    {
+      "type": "reasoning",
+      "id": "chatcmpl-20261110141619023129785c14228f5SxA8Vp3N_reasoning_0",
+      "status": "completed",
+      "role": "",
+      "content": null,
+      "summary": [
+        {
+          "type": "summary_text",
+          "text": "We need answer only JSON object with declaration, implementation, supporting_objects. Need implement FB_Task as per interface. Need likely no supporting objects unless define phase enum? Could use INT. Need exact variable names/types. Declaration is \"FUNCTION_BLOCK FB_Task\" followed by VAR sections; omit END_FUNCTION_BLOCK. Need include inputs, outputs, internal phase, nextPhase. Need CODESYS 3.5 ST syntax. Need be careful that outputs in VAR_OUTPUT. Need initial phase=0 and outputs false. Need implementation ST body.\n\nNeed parse spec. Each scan sample inputs once, q pre-scan retained state, outputs observed after execution, q updated state. Our FB should on each call compute nextPhase from current phase and inputs, set outputs based on nextPhase, then phase := nextPhase. Important: outputs should be from nextPhase per architectural plan. LTL P3: phase=0 & bottleSensor -> Pump_Motor & X(phase=1). If pre-scan phase 0, bottle true, nextPhase=1, output Pump true same scan, phase updated to 1. Good.\n\nP4: phase=1 & cleaningConfirm -> Filling_Valve true & X phase=2. Yes.\n\nP5 etc.\n\nP7: phase=4 packing -> Completion_Light true and X phase=5. Yes.\n\nP8 phase=5 & !finished -> Completion_Light true and X phase=5. Yes.\n\nP9 phase=5 & finished -> !Completion_Light & X phase=0. Yes.\n\nP2 oneHot: Outputs derived from nextPhase only one true; but note if nextPhase=5 Completion only. At idle all false. Good.\n\nNeed consider if multiple inputs true: only current phase confirmation matters. Else ignore. We can use CASE phase. Need set nextPhase and outputs. In implementation, should not use outputs before assignment? We assign all outputs every scan. Could set outputs at end based on nextPhase. Simpler: CASE phase OF compute nextPhase only, then assign outputs based on nextPhase, then phase := nextPhase. Need ensure if invalid phase reset to idle? Could ELSE nextPhase := 0; maybe.\n\nNeed declaration includes outputs. Maybe include phase and nextPhase as VAR (internal). Initial values. In CODESYS, `phase : INT := 0;` and `nextPhase : INT := 0;`; outputs : BOOL := FALSE; Inputs no init. Order: VAR_INPUT, VAR_OUTPUT, VAR. Need function block declaration only.\n\nImplementation body:\nCASE phase OF\n    0:\n        IF bottleSensor THEN\n            nextPhase := 1;\n        ELSE\n            nextPhase := 0;\n        END_IF;\n    1:\n        IF cleaningConfirmButton THEN\n            nextPhase := 2;\n        ELSE\n            nextPhase := 1;\n        END_IF;\n...\n    5:\n        IF finishedButton THEN\n            nextPhase := 0;\n        ELSE\n            nextPhase := 5;\n        END_IF;\n    ELSE\n        nextPhase := 0;\nEND_CASE;\n\n// derive outputs from nextPhase; all false then one true\nPump_Motor := (nextPhase = 1);\nFilling_Valve := (nextPhase = 2);\nCapping_Machine := (nextPhase = 3);\nPacking_Machine := (nextPhase = 4);\nCompletion_Light := (nextPhase = 5);\n\nphase := nextPhase;\n\nNeed maybe use `TRUE`/`FALSE` uppercase? CODESYS case insensitive, but use FALSE. Good.\n\nPotential issue: The LTL P2 \"No two processing stages energized together\" maybe includes Completion_Light? Yes oneHotOutputs includes all. Our assignment ensures one-hot.\n\nNeed ensure fresh instance before execution: declaration initializes phase, outputs. If first scan no execution? In PLC, declaration init. Good.\n\nNeed maybe include `nextPhase` internal. Could be `VAR` not output. Fine.\n\nNeed \"supporting_objects\" empty list? The JSON says supporting_objects list. If no helper DUT, use [].\n\nNeed answer only JSON object, no markdown. Ensure valid JSON escaping. Need declaration string with newlines. Could be one string with \\n. Need use exact property names: declaration, implementation, supporting_objects. supporting objects each with name kind declaration implementation return_type for functions. Empty.\n\nNeed consider \"declaration is CODESYS FUNCTION_BLOCK FB_Task followed by all VAR sections; omit END_FUNCTION_BLOCK.\" So declaration string should include `FUNCTION_BLOCK FB_Task` then VAR_INPUT etc but not END_FUNCTION_BLOCK. Good.\n\nNeed maybe no `END_VAR` missing. Include.\n\nLet's craft JSON. Need ensure no comments? Comments okay in ST. But maybe keep clean.\n\nDeclaration:\nFUNCTION_BLOCK FB_Task\nVAR_INPUT\n    bottleSensor : BOOL;\n    cleaningConfirmButton : BOOL;\n    fillingConfirmButton : BOOL;\n    cappingConfirmButton : BOOL;\n    packingConfirmButton : BOOL;\n    finishedButton : BOOL;\nEND_VAR\nVAR_OUTPUT\n    Pump_Motor : BOOL := FALSE;\n    Filling_Valve : BOOL := FALSE;\n    Capping_Machine : BOOL := FALSE;\n    Packing_Machine : BOOL := FALSE;\n    Completion_Light : BOOL := FALSE;\nEND_VAR\nVAR\n    phase : INT := 0;\n    nextPhase : INT := 0;\nEND_VAR\n\nImplementation as above.\n\nNeed maybe \"phase\" is a common reserved? Not reserved. Good.\n\nLet's final."
+        }
+      ],
+      "quality": "",
+      "size": ""
+    },
+    {
+      "type": "message",
+      "id": "chatcmpl-20261110141619023129785c14228f5SxA8Vp3N_msg_0",
+      "status": "completed",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "output_text",
+          "text": "{\n  \"declaration\": \"FUNCTION_BLOCK FB_Task\\nVAR_INPUT\\n    bottleSensor : BOOL;\\n    cleaningConfirmButton : BOOL;\\n    fillingConfirmButton : BOOL;\\n    cappingConfirmButton : BOOL;\\n    packingConfirmButton : BOOL;\\n    finishedButton : BOOL;\\nEND_VAR\\nVAR_OUTPUT\\n    Pump_Motor : BOOL := FALSE;\\n    Filling_Valve : BOOL := FALSE;\\n    Capping_Machine : BOOL := FALSE;\\n    Packing_Machine : BOOL := FALSE;\\n    Completion_Light : BOOL := FALSE;\\nEND_VAR\\nVAR\\n    phase : INT := 0;\\n    nextPhase : INT := 0;\\nEND_VAR\",\n  \"implementation\": \"CASE phase OF\\n    0:\\n        IF bottleSensor THEN\\n            nextPhase := 1;\\n        ELSE\\n            nextPhase := 0;\\n        END_IF;\\n\\n    1:\\n        IF cleaningConfirmButton THEN\\n            nextPhase := 2;\\n        ELSE\\n            nextPhase := 1;\\n        END_IF;\\n\\n    2:\\n        IF fillingConfirmButton THEN\\n            nextPhase := 3;\\n        ELSE\\n            nextPhase := 2;\\n        END_IF;\\n\\n    3:\\n        IF cappingConfirmButton THEN\\n            nextPhase := 4;\\n        ELSE\\n            nextPhase := 3;\\n        END_IF;\\n\\n    4:\\n        IF packingConfirmButton THEN\\n            nextPhase := 5;\\n        ELSE\\n            nextPhase := 4;\\n        END_IF;\\n\\n    5:\\n        IF finishedButton THEN\\n            nextPhase := 0;\\n        ELSE\\n            nextPhase := 5;\\n        END_IF;\\n\\n    ELSE\\n        nextPhase := 0;\\nEND_CASE\\n\\nPump_Motor := (nextPhase = 1);\\nFilling_Valve := (nextPhase = 2);\\nCapping_Machine := (nextPhase = 3);\\nPacking_Machine := (nextPhase = 4);\\nCompletion_Light := (nextPhase = 5);\\n\\nphase := nextPhase;\",\n  \"supporting_objects\": []\n}",
+          "annotations": []
+        }
+      ],
+      "quality": "",
+      "size": ""
+    }
+  ],
+  "parallel_tool_calls": false,
+  "previous_response_id": null,
+  "reasoning": null,
+  "store": false,
+  "temperature": 0,
+  "tool_choice": null,
+  "tools": null,
+  "top_p": 0,
+  "truncation": null,
+  "usage": {
+    "prompt_tokens": 5680,
+    "completion_tokens": 1681,
+    "total_tokens": 7361,
+    "billing_usage": {
+      "source": "oai_chat",
+      "semantic": "openai",
+      "openai_usage": {
+        "prompt_tokens": 5680,
+        "completion_tokens": 1681,
+        "total_tokens": 7361,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "text_tokens": 0,
+          "audio_tokens": 0,
+          "image_tokens": 0
+        },
+        "completion_tokens_details": {
+          "text_tokens": 0,
+          "audio_tokens": 0,
+          "image_tokens": 0,
+          "reasoning_tokens": 1179
+        },
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "input_tokens_details": null,
+        "claude_cache_creation_5_m_tokens": 0,
+        "claude_cache_creation_1_h_tokens": 0
+      }
+    },
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "text_tokens": 0,
+      "audio_tokens": 0,
+      "image_tokens": 0
+    },
+    "completion_tokens_details": {
+      "text_tokens": 0,
+      "audio_tokens": 0,
+      "image_tokens": 0,
+      "reasoning_tokens": 1179
+    },
+    "input_tokens": 5680,
+    "output_tokens": 1681,
+    "input_tokens_details": null,
+    "claude_cache_creation_5_m_tokens": 0,
+    "claude_cache_creation_1_h_tokens": 0
+  },
+  "user": null,
+  "metadata": null
+}

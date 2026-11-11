@@ -1,0 +1,45 @@
+-- Handwritten reference model of PUB001; NOT translated candidate ST.
+-- phase is the retained pre-scan state; outputs below are end-of-scan values.
+-- init in the dataset refers to the FB before execution, not this sampled view.
+MODULE main
+-- Unassigned Boolean state variables model independent sampled inputs each scan.
+VAR
+  bottleSensor : boolean;
+  cleaningConfirmButton : boolean;
+  fillingConfirmButton : boolean;
+  cappingConfirmButton : boolean;
+  packingConfirmButton : boolean;
+  finishedButton : boolean;
+  phase : 0..5;
+DEFINE
+  nextPhase := case
+    phase=0 & bottleSensor : 1;
+    phase=1 & cleaningConfirmButton : 2;
+    phase=2 & fillingConfirmButton : 3;
+    phase=3 & cappingConfirmButton : 4;
+    phase=4 & packingConfirmButton : 5;
+    phase=5 & finishedButton : 0;
+    TRUE : phase;
+  esac;
+  Pump_Motor := FALSE;
+  Filling_Valve := nextPhase=2;
+  Capping_Machine := nextPhase=3;
+  Packing_Machine := nextPhase=4;
+  Completion_Light := nextPhase=5;
+ASSIGN
+  init(phase) := 0;
+  next(phase) := nextPhase;
+-- Safety: at most one output, allowing all off.
+INVARSPEC NAME output_exclusion :=
+  !(Pump_Motor & (Filling_Valve | Capping_Machine | Packing_Machine | Completion_Light)) &
+  !(Filling_Valve & (Capping_Machine | Packing_Machine | Completion_Light)) &
+  !(Capping_Machine & (Packing_Machine | Completion_Light)) &
+  !(Packing_Machine & Completion_Light);
+LTLSPEC NAME start_cleaning := G((phase=0 & bottleSensor) -> (Pump_Motor & X(phase=1)));
+LTLSPEC NAME advance_filling := G((phase=1 & cleaningConfirmButton) -> (Filling_Valve & X(phase=2)));
+LTLSPEC NAME advance_capping := G((phase=2 & fillingConfirmButton) -> (Capping_Machine & X(phase=3)));
+LTLSPEC NAME advance_packing := G((phase=3 & cappingConfirmButton) -> (Packing_Machine & X(phase=4)));
+LTLSPEC NAME signal_complete := G((phase=4 & packingConfirmButton) -> (Completion_Light & X(phase=5)));
+LTLSPEC NAME hold_complete := G((phase=5 & !finishedButton) -> (Completion_Light & X(phase=5)));
+LTLSPEC NAME pickup := G((phase=5 & finishedButton) -> (!Completion_Light & X(phase=0)));
+LTLSPEC NAME conditional_progress := G((phase=1 & G((phase=1) -> F(cleaningConfirmButton)) & G((phase=2) -> F(fillingConfirmButton)) & G((phase=3) -> F(cappingConfirmButton)) & G((phase=4) -> F(packingConfirmButton))) -> F(Completion_Light));

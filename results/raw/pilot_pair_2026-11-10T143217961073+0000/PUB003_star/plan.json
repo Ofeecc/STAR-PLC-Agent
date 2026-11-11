@@ -1,0 +1,158 @@
+{
+  "state_machine": {
+    "states": [
+      {
+        "name": "INIT",
+        "description": "Fresh instance before first scan. Outputs and retained alarm latches use initial_values."
+      },
+      {
+        "name": "VALID",
+        "description": "Configuration is valid. High and low alarm hysteresis logic is processed."
+      },
+      {
+        "name": "ERROR_BAD_RANGE",
+        "description": "loLevel >= hiLevel. error is TRUE, status is 16#8001, and alarm outputs are preserved."
+      },
+      {
+        "name": "ERROR_BAD_WINDOW",
+        "description": "After badRange is excluded, hystWindow >= hiLevel - loLevel. error is TRUE, status is 16#8002, and alarm outputs are preserved."
+      }
+    ],
+    "transitions": [
+      {
+        "from": "ANY",
+        "to": "ERROR_BAD_RANGE",
+        "condition": "loLevel >= hiLevel",
+        "priority": 1,
+        "actions": [
+          "error := TRUE",
+          "status := 16#8001",
+          "preserve hiAlarm previous value",
+          "preserve loAlarm previous value",
+          "return early; no alarm update"
+        ]
+      },
+      {
+        "from": "ANY",
+        "to": "ERROR_BAD_WINDOW",
+        "condition": "loLevel < hiLevel AND hystWindow >= hiLevel - loLevel",
+        "priority": 2,
+        "actions": [
+          "error := TRUE",
+          "status := 16#8002",
+          "preserve hiAlarm previous value",
+          "preserve loAlarm previous value",
+          "return early; no alarm update"
+        ]
+      },
+      {
+        "from": "ANY",
+        "to": "VALID",
+        "condition": "loLevel < hiLevel AND hystWindow < hiLevel - loLevel",
+        "priority": 3,
+        "actions": [
+          "error := FALSE",
+          "status := 0",
+          "process high alarm hysteresis",
+          "process low alarm hysteresis"
+        ]
+      }
+    ],
+    "transition_evaluation_order": [
+      "badRange -> ERROR_BAD_RANGE",
+      "else badWindow -> ERROR_BAD_WINDOW",
+      "else VALID"
+    ],
+    "alarm_latches": {
+      "high": [
+        {
+          "from": "HI_CLEAR",
+          "to": "HI_ACTIVE",
+          "condition": "VALID AND Value > hiLevel",
+          "action": "hiAlarm := TRUE"
+        },
+        {
+          "from": "HI_ACTIVE",
+          "to": "HI_CLEAR",
+          "condition": "VALID AND Value < hiLevel - hystWindow",
+          "action": "hiAlarm := FALSE"
+        },
+        {
+          "from": "ANY",
+          "to": "SELF",
+          "condition": "VALID AND hiLevel - hystWindow <= Value AND Value <= hiLevel",
+          "action": "retain previous hiAlarm"
+        },
+        {
+          "from": "ANY",
+          "to": "SELF",
+          "condition": "invalid configuration",
+          "action": "retain previous hiAlarm"
+        }
+      ],
+      "low": [
+        {
+          "from": "LO_CLEAR",
+          "to": "LO_ACTIVE",
+          "condition": "VALID AND Value < loLevel",
+          "action": "loAlarm := TRUE"
+        },
+        {
+          "from": "LO_ACTIVE",
+          "to": "LO_CLEAR",
+          "condition": "VALID AND Value > loLevel + hystWindow",
+          "action": "loAlarm := FALSE"
+        },
+        {
+          "from": "ANY",
+          "to": "SELF",
+          "condition": "VALID AND loLevel <= Value AND Value <= loLevel + hystWindow",
+          "action": "retain previous loAlarm"
+        },
+        {
+          "from": "ANY",
+          "to": "SELF",
+          "condition": "invalid configuration",
+          "action": "retain previous loAlarm"
+        }
+      ]
+    }
+  },
+  "timer_plan": {
+    "timers": [],
+    "pt_durations": {},
+    "reset_conditions": [],
+    "notes": "No timers are required. Hysteresis is implemented through retained alarm state, not time delays. No PT values and no timer reset conditions apply."
+  },
+  "priorities": {
+    "safety": [
+      "Evaluate configuration validity before updating any alarm output.",
+      "Check badRange, loLevel >= hiLevel, before badWindow, hystWindow >= hiLevel - loLevel.",
+      "On badRange, set error := TRUE, status := 16#8001, preserve hiAlarm and loAlarm, and return early.",
+      "On badWindow after excluding badRange, set error := TRUE, status := 16#8002, preserve hiAlarm and loAlarm, and return early.",
+      "On valid configuration, clear error := FALSE and status := 0 before processing alarm hysteresis.",
+      "Use strict comparisons for alarm trigger and release; equality with a trigger or release threshold retains the previous alarm state.",
+      "No alarm update may occur during an invalid-configuration scan."
+    ],
+    "operational": [
+      "High alarm sets TRUE when valid and Value > hiLevel.",
+      "High alarm sets FALSE when valid and Value < hiLevel - hystWindow.",
+      "High alarm retains its previous value when valid and hiLevel - hystWindow <= Value <= hiLevel.",
+      "Low alarm sets TRUE when valid and Value < loLevel.",
+      "Low alarm sets FALSE when valid and Value > loLevel + hystWindow.",
+      "Low alarm retains its previous value when valid and loLevel <= Value <= loLevel + hystWindow.",
+      "High and low alarm latches are updated independently."
+    ]
+  },
+  "initial_values": {
+    "hiAlarm": false,
+    "loAlarm": false,
+    "error": false,
+    "status": 0,
+    "configuration_state": "INIT",
+    "high_alarm_state": "HI_CLEAR",
+    "low_alarm_state": "LO_CLEAR",
+    "hiPrev": false,
+    "loPrev": false
+  }
+}

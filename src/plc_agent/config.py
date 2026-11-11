@@ -16,6 +16,7 @@ def detect_codesys() -> tuple[str, str]:
     candidates = [
         Path(r"C:\Program Files\CODESYS\CODESYS\Common\CODESYS.exe"),
         Path(r"C:\Program Files (x86)\CODESYS\CODESYS\Common\CODESYS.exe"),
+        Path(r"D:\CODESYS_V3\CODESYS\Common\CODESYS.exe"),
         Path(r"D:\Codesys\CODESYS\Common\CODESYS.exe"),
         Path(r"C:\Codesys\CODESYS\Common\CODESYS.exe"),
     ]
@@ -41,9 +42,9 @@ def detect_codesys() -> tuple[str, str]:
         for prof_dir in (common_dir.parent / "Profiles", common_dir.parent.parent / "Profiles"):
             if prof_dir.is_dir():
                 try:
-                    profiles = sorted(prof_dir.glob("*.profile"), key=lambda p: p.stat().st_mtime, reverse=True)
+                    profiles = sorted([*prof_dir.glob("*.profile"), *prof_dir.glob("*.profile.xml")], key=lambda p: p.stat().st_mtime, reverse=True)
                     if profiles:
-                        found_profile = profiles[0].stem
+                        found_profile = profiles[0].name.removesuffix(".xml").removesuffix(".profile")
                         break
                 except OSError:
                     pass
@@ -60,13 +61,26 @@ class Settings:
     additional_folder: str = ""
     ascii_work_root: str = ""
     compiler_timeout: int = 180
-    llm_timeout: int = 180
-    task_timeout: int = 1500
+    llm_timeout: int = 420
+    task_timeout: int = 2400
     max_repairs: int = 3
     max_simulations: int = 3
     max_llm_calls: int = 9
-    max_output_tokens: int = 8192
+    max_output_tokens: int = 24576
     reasoning_effort: str = "medium"
+    context_window_tokens: int = 131072
+    selftest_max_cases: int = 0
+    selftest_max_steps_per_case: int = 0
+    tester_max_output_tokens: int = 0
+    planner_max_output_tokens: int = 0
+    coder_max_output_tokens: int = 0
+    repair_max_output_tokens: int = 0
+    max_total_tokens: int = 300000
+
+    def output_limit(self, role: str) -> int:
+        if role not in ('planner', 'coder', 'repair', 'tester'):
+            raise ValueError('Unknown agent role: ' + role)
+        return getattr(self, role + '_max_output_tokens') or self.max_output_tokens
 
     def get_ascii_work_root(self) -> Path:
         if self.ascii_work_root:

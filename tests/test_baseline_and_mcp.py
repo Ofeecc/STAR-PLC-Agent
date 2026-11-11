@@ -337,7 +337,8 @@ class BaselineAndMCPTests(unittest.TestCase):
                     for f in forbidden:
                         self.assertNotIn(f, content, f"Forbidden key leaked in workspace file {p}: {f}")
 
-    def test_missing_cli_executables_set_tool_error(self):
+    @__import__("unittest.mock", fromlist=["patch"]).patch("plc_agent.baseline.shutil.which", return_value=None)
+    def test_missing_cli_executables_set_tool_error(self, _which):
         with tempfile.TemporaryDirectory() as tmp:
             ws_codex = Path(tmp) / "ws_codex"
             ws_claude = Path(tmp) / "ws_claude"

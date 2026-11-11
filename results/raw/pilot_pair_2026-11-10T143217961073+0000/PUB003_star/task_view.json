@@ -1,0 +1,137 @@
+{
+  "id": "PUB003",
+  "title": "Alarm Handling",
+  "difficulty": "easy",
+  "requirements": "# Alarm Handling\n\n- **Difficulty:** Easy (easy)\n\n## Requirements\n\nIn industrial automation systems, monitoring the status of equipment is crucial. When equipment parameters exceed the normal range, the system needs to issue an alarm. To avoid frequent triggering of alarms due to minor fluctuations in parameters, an alarm management system with hysteresis function needs to be implemented.\nWhen Value is greater than hiLevel, trigger high alarm hiAlarm.\nWhen Value is less than hiLevel-hystWindow, exit high alarm hiAlarm.\nWhen Value is less than loLevel, trigger low alarm loAlarm.\nWhen Value is greater than loLevel+hystWindow, exit low alarm loAlarm.\nIf loLevel is greater than or equal to hiLevel, output error error=true, status=16#8001, and exit the program\nIf the hysteresis window value hystWindow is greater than or equal to the deviation range between hiLevel and loLevel, output error error=true, status=16#8002\n\n## Interface Definition\n\n| Direction | Variable/Field | Data Type | Description |\n| --- | --- | --- | --- |\n| Input | `Value` | `REAL` | Input value |\n| Input | `hiLevel` | `REAL` | High limit alarm value |\n| Input | `loLevel` | `REAL` | Low limit alarm value |\n| Input | `hystWindow` | `REAL` | Hysteresis window |\n| Output | `hiAlarm` | `BOOL` | High limit alarm |\n| Output | `loAlarm` | `BOOL` | Low limit alarm |\n| Output | `error` | `BOOL` | FALSE: No error occurred;<br>TRUE: Error occurred during execution of FB |\n| Output | `status` | `WORD` | Status code |",
+  "scenario": "In industrial automation systems, monitoring the status of equipment is crucial. When equipment parameters exceed the normal range, the system needs to issue an alarm. To avoid frequent triggering of alarms due to minor fluctuations in parameters, an alarm management system with hysteresis function needs to be implemented.",
+  "interface": [
+    {
+      "direction": "INPUT",
+      "name": "Value",
+      "type": "REAL",
+      "description": "Input value"
+    },
+    {
+      "direction": "INPUT",
+      "name": "hiLevel",
+      "type": "REAL",
+      "description": "High limit alarm value"
+    },
+    {
+      "direction": "INPUT",
+      "name": "loLevel",
+      "type": "REAL",
+      "description": "Low limit alarm value"
+    },
+    {
+      "direction": "INPUT",
+      "name": "hystWindow",
+      "type": "REAL",
+      "description": "Hysteresis window"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "hiAlarm",
+      "type": "BOOL",
+      "description": "High limit alarm"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "loAlarm",
+      "type": "BOOL",
+      "description": "Low limit alarm"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "error",
+      "type": "BOOL",
+      "description": "FALSE: No error occurred;<br>TRUE: Error occurred during execution of FB"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "status",
+      "type": "WORD",
+      "description": "Status code"
+    }
+  ],
+  "initial_conditions": {
+    "hiAlarm": false,
+    "loAlarm": false,
+    "error": false,
+    "status": 0
+  },
+  "scan_semantics": "At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, outputs O[k] are observed after execution, and q[k+1] is the updated state. Each test creates a fresh FB instance before step 0. An initialized instance has not yet executed a scan. Timer elapsed time is zero on the first eligible sampled invocation; dt_ms is elapsed wall time since the previous invocation, not automatically a synthetic input to the FB. No unobserved past input stability is assumed. All sequences here are expected values.",
+  "safety_priority": [
+    "Invalid range is diagnosed before invalid hysteresis width.",
+    "No alarm update is allowed in an invalid-configuration scan."
+  ],
+  "assumptions": [
+    "Threshold comparisons are strict as written. Equality with trigger or release thresholds retains the previous alarm value.",
+    "Invalid configuration returns early, preserving alarm outputs. error and status are recalculated each scan; valid configuration clears them.",
+    "loLevel>=hiLevel takes priority over the hysteresis-width error. hystWindow is assumed nonnegative; negative values are outside the defined input domain.",
+    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "Floating-point inputs and intermediate reference arithmetic are finite. Existing fixed traces retain their declared absolute tolerance; claims do not extend to arbitrary magnitudes without a separately specified numeric error policy."
+  ],
+  "ltl": [
+    {
+      "id": "P1",
+      "formula": "G(badRange -> (error & status=16#8001 & sameAlarms))",
+      "explanation": "Invalid limits take priority and leave alarms unchanged."
+    },
+    {
+      "id": "P2",
+      "formula": "G((!badRange & badWindow) -> (error & status=16#8002 & sameAlarms))",
+      "explanation": "The hysteresis range must be smaller than the limit separation."
+    },
+    {
+      "id": "P3",
+      "formula": "G(valid -> (!error & status=0))",
+      "explanation": "Valid input clears transient configuration errors."
+    },
+    {
+      "id": "P4",
+      "formula": "G((valid & Value>hiLevel) -> hiAlarm)",
+      "explanation": "A high excursion activates the high alarm."
+    },
+    {
+      "id": "P5",
+      "formula": "G((valid & Value<hiLevel-hystWindow) -> !hiAlarm)",
+      "explanation": "Below the strict release boundary, high alarm clears."
+    },
+    {
+      "id": "P6",
+      "formula": "G((valid & hiLevel-hystWindow<=Value & Value<=hiLevel) -> (hiAlarm=hiPrev))",
+      "explanation": "The high hysteresis band retains history."
+    },
+    {
+      "id": "P7",
+      "formula": "G((valid & Value<loLevel) -> loAlarm)",
+      "explanation": "A low excursion activates the low alarm."
+    },
+    {
+      "id": "P8",
+      "formula": "G((valid & Value>loLevel+hystWindow) -> !loAlarm)",
+      "explanation": "Above the strict low release boundary, low alarm clears."
+    },
+    {
+      "id": "P9",
+      "formula": "G((valid & loLevel<=Value & Value<=loLevel+hystWindow) -> (loAlarm=loPrev))",
+      "explanation": "The low hysteresis band retains history."
+    },
+    {
+      "id": "PUB003.V2.COMPLETE",
+      "formula": "G(CompleteBehaviorV2)",
+      "explanation": "The complete per-invocation relation defined in specification_contract.normative_completion; requires explicit encoding before model checking."
+    }
+  ],
+  "atomic_propositions": {
+    "badRange": "loLevel >= hiLevel",
+    "badWindow": "hystWindow >= hiLevel-loLevel",
+    "valid": "!badRange & !badWindow & hystWindow>=0",
+    "hiPrev": "Pre-scan retained hiAlarm",
+    "loPrev": "Pre-scan retained loAlarm",
+    "sameAlarms": "hiAlarm=hiPrev & loAlarm=loPrev",
+    "interface names": "Identically named sampled input or observed output.",
+    "CompleteBehaviorV2": "把有限REAL、hystWindow>=0写为显式环境前提。hiPrev/loPrev绑定上一拍实际输出和初值FALSE，配置无效不更新这两个输出。保留严格>,<及错误码优先级；浮点比较和容差按被检关系分别约定，勿把阈值比较自动放宽。"
+  }
+}

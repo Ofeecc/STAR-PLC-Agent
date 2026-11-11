@@ -1,0 +1,105 @@
+{
+  "id": "chatcmpl-20261110143323671152372c14228f5cRmP2BgA",
+  "object": "response",
+  "created_at": 1794321205,
+  "status": "completed",
+  "instructions": null,
+  "max_output_tokens": 0,
+  "model": "deepseek-v4-1-flash-261017",
+  "output": [
+    {
+      "type": "reasoning",
+      "id": "chatcmpl-20261110143323671152372c14228f5cRmP2BgA_reasoning_0",
+      "status": "completed",
+      "role": "",
+      "content": null,
+      "summary": [
+        {
+          "type": "summary_text",
+          "text": "We need answer only JSON list test cases. Need design two cases max, 8 steps per case. Cover complete normal path and important boundary. Need comply semantics.\n\nWe need generate unit tests for FB. Inputs dict and expected outputs after execution. Initial phase ghost not output listed, only outputs expected. Test steps include inputs and expected outputs. At fresh instance before step 0 outputs all false. At each step we provide sampled inputs, expected outputs after scan. Need cover complete normal path: start idle, bottle sensor -> Pump true, then cleaning confirm -> Filling true, filling confirm -> Capping true, capping confirm -> Packing true, packing confirm -> Completion_Light true, finished -> all off. That's 7 steps. Need understand edge with held button? Confirmation level sampled. If we set cleaningConfirmButton true on step after bottle, phase=1, accept cleaning confirm, output Filling_Valve true, phase becomes 2. But if still held true next scan, phase=2 and cleaningConfirm ignored, fillingConfirm false, output? Current phase actuator only? Let's infer outputs relation per CompleteBehaviorV2: outputs reflect nextPhase: Pump_Motor iff nextPhase=1; Filling_Valve iff nextPhase=2; Capping if 3; Packing if4; Completion if5; else false. Also P3 says when phase=0 & bottleSensor -> Pump_Motor & X(phase=1). At end-of-scan after transition to phase1, Pump_Motor true. P4 phase=1 & cleaningConfirm -> Filling_Valve and X(phase=2). So after cleaning confirm, next phase=2 and output Filling_Valve true same scan. Thus outputs correspond to new phase not old? \"each completed phase switches off actuator when next starts\"; yes output actuator of nextPhase. At idle bottle sensor -> nextPhase 1, Pump on. Then cleaning confirm while phase=1 -> nextPhase 2, Filling on.\n\nNeed be careful if no transition, phase holds and corresponding actuator remains true. For phase 1 with no cleaningConfirm, Pump_Motor true. Phase 2 no fillingConfirm, Filling_Valve true. For phase 5 no finished, Completion_Light true. For phase 0 no bottle, all false.\n\nBoundary important: held confirmations cannot skip and confirmation outside phase ignored. Could test one-step boundary: fresh idle with irrelevant confirm buttons and bottle false should outputs all false; or after cleaning phase, fillingConfirmButton pressed while phase=1 should be ignored, Pump remains true. Or packingConfirmButton held while phase=1 ignored. Also at phase=5, finishedButton reset; if bottleSensor true same scan? Need one phase transition max per scan. At phase 5 finishedButton true -> nextPhase 0, Completion off. If bottleSensor also true, old phase 5 selects finished->0, no bottling in same scan. Following idle scan with bottleSensor still true can start cleaning. This is important boundary. Could fit in second case 8 steps: normal path to completion (6 steps?), then finished+bottle held simultaneously reset only to idle, next scan bottle still true starts cleaning. Need max 8 steps. Let's design case_2 boundary with skip attempt and reset. Need maybe start fresh. Steps:\n1 idle, bottleSensor=true, fillingConfirmButton=true (out-of-phase) expected Pump true only (phase1). This tests out-of-phase ignored and no skip. But if fillingConfirm is held? At step 1 phase=0, bottle true -> nextPhase 1; fillingConfirm out-of-phase ignored. Output Pump true. Good.\n2 phase=1, cleaningConfirmButton=true, cappingConfirmButton=true (future confirm). Expected Filling_Valve true, not Capping. advances to phase2; capping ignored.\n3 phase=2, fillingConfirmButton=true, packingConfirmButton=true. Expected Capping true.\n4 phase=3, cappingConfirmButton=true, finishedButton=true. Expected Packing true; finished ignored.\n5 phase=4, packingConfirmButton=true, finishedButton=true. Expected Completion_Light true.\n6 phase=5, finishedButton=true and bottleSensor=true simultaneously. Expected all outputs false (phase0). Since one transition max, bottle not processed same scan.\n7 phase=0 same bottleSensor=true, no finished. Expected Pump true. This is a nice boundary; 7 steps <=8. It covers held/irrelevant confirmations and one transition per scan. But question asks \"complete normal path and one important boundary\". Case_1 complete normal path simple 7 steps. Case_2 important boundary can be shorter maybe just 4 steps. Need ensure expected values reflect all outputs, all unspecified? Requirements say expected dictionary of expected output variable names and values. We can include only relevant output? Better include all five outputs each step for clarity, compact. Need use variable names exact case. Inputs can include only relevant set? The test harness likely samples unspecified as false? JSON steps inputs dictionary of input variable names and values. To avoid ambiguity include all relevant inputs or all six? Need compact but comprehensive. For each step include all six inputs with booleans to establish levels? Since no unobserved past input stability and level sampled. We should specify all input signals each step? It may be safer: inputs dictionary can include only those we set; but sampled inputs unspecified maybe default false. Yet \"inputs dictionary of input variable names and values\" not necessarily all. Comprehensive tests should specify all six to avoid ambiguous held state. Output budget okay. 2 cases * up to8 steps * 11 fields maybe okay. Need compact JSON. Desired final only JSON.\n\nLet's verify normal path exact expected output transitions.\n\nCase 1 normal complete path:\nFresh.\nStep1 (id step 1) inputs: bottleSensor true, all confirm false. At phase0 nextPhase 1. Outputs: Pump_Motor true, Filling false, Capping false, Packing false, Completion false. expected corresponds after scan.\nStep2: cleaningConfirmButton true, bottleSensor false, others false. Pre-scan phase1. cleaningConfirm accepted -> nextPhase2. Outputs: Pump false, Filling true, Capping false, Packing false, Completion false.\nStep3: fillingConfirm true -> phase3. Outputs Capping true only.\nStep4: cappingConfirm true -> phase4. Outputs Packing true only.\nStep5: packingConfirm true -> phase5. Outputs Completion true only.\nStep6: finishedButton true -> phase0. Outputs all false.\nMaybe one more step to test prepare next? Not needed. Normal path complete. Note if bottleSensor held true from step1? We set false. Fine.\n\nCase2 boundary:\nCould test out-of-phase and reset with bottle simultaneously. Let's craft 7 steps as above. Need check at step6 phase5 with finishedButton true and bottleSensor true. Pre-scan phase5. nextPhase condition: phase=5 & finished ->0 else5. One transition only based on old phase: next=0. Outputs all false. Bottle ignored because old phase 5. Step7 phase0 with bottleSensor true -> phase1 Pump true. Good. This shows \"bottle still present can start new cleaning on following idle scan.\" Since bottleSensor level true step6 and step7, step6 ignored due phase5. Good. We can omit some earlier confirmations? Need get to phase5. Steps1-5 same build with future confirmations. Step1: phase0, bottle true; also set cleaningConfirmButton true? If cleaning confirm pressed while phase0 ignored because old phase 0 and bottle triggers phase1. At step2 if cleaningConfirm still true, could transition to phase2 unintentionally if held. To test out-of-phase, we can set out-of-phase fillingConfirm at step1; no effect. Need not set cleaning until step2. Fine.\nLet's use all inputs each step, but many false.\nStep1: bottleSensor true, fillingConfirmButton true (out-of-phase), cleaning false, capping false, packing false, finished false. Expected Pump true only.\nStep2: bottleSensor false, cleaningConfirm true, cappingConfirm true (future). Expected Filling true only. But cappingConfirm true at phase1 ignored; next phase2. The capping confirm is not current. Good.\nStep3: fillingConfirm true, packingConfirm true. Pre phase2 -> next3. Packing ignored. Expected Capping true only.\nStep4: cappingConfirm true, finishedButton true. Pre phase3 -> next4. finished ignored. Expected Packing true only.\nStep5: packingConfirm true, finishedButton true. Pre phase4 -> next5. finished ignored? At pre phase4, packing accepted -> phase5. finishedButton true is not relevant to old phase4 because packing confirm selected. It cannot also reset in same scan. Expected Completion true. This is important one transition. Step6: finished true, bottle true. Pre phase5 -> next0. Expected all false. Step7: finished false, bottle true -> Pump true. Good.\n\nPotential issue step5: if finished true at phase4, ignored; phase goes 5. Yes.\n\nCheck safety one-hot satisfied each expected only one true.\n\nNeed decide whether include dt_ms. Timer not used. Can omit. Use \"dt_ms\" optional. Omit.\n\nNeed valid JSON array. Each test object id, steps array. Each step has inputs and expected. Need include all outputs in expected. Use compact JSON maybe no whitespace. final must only JSON. Use boolean lowercase.\n\nLet's ensure exactly at most 2 cases, at most 8 steps. Case1 6 steps, Case2 7 steps.\n\nNeed perhaps name id case_1, case_2. Steps can just arrays no id. They asked steps array of steps, each step inputs/expected/dt optional. Fine.\n\nPotential semantics: At step2 in case 1, if cleaningConfirmButton true and current phase=1, expected Filling_Valve true. But what about Pump_Motor? Per P4 no pump. Good. Could there be pump turned off at end of scan. Yes.\n\nLet's consider initial outputs at first scan with bottle true: P3 says (phase=0 & bottleSensor) -> (Pump_Motor & X(phase=1)). It doesn't require pump off before, but initial off. Output after execution Pump true. Good.\n\nFor step6 finishedButton true at phase5: P9 says !Completion_Light & X(phase=0). So Completion false. all others false. Good.\n\nFor case2 Step2: Pre phase1, cleaningConfirm true -> nextPhase2 and Filling_Valve true. cappingConfirm true is held but irrelevant. Yes.\n\nPotential issue \"A held confirmation can complete its relevant phase on a later scan\" means if cappingConfirm true at step2 while phase1 ignored; if held true through step3 phase2? In our step3 we set capping false, so no. Good.\nStep3 sets packingConfirm true while phase2; ignored. Step4 packing false. Good.\nStep4 sets finishedButton true while phase3; ignored. Step5 sets finished true while phase4; packing confirm true; phase4 selects packing -> phase5. Since one branch based on old phase, finished ignored. Good.\nStep6 finished true and bottle true; phase5 selects finished ->0, bottle ignored. Good.\nStep7 bottle true. Great.\n\nCould include expected Pump false etc all.\n\nFinal should be JSON only. Ensure no markdown. Let's produce compact but readable."
+        }
+      ],
+      "quality": "",
+      "size": ""
+    },
+    {
+      "type": "message",
+      "id": "chatcmpl-20261110143323671152372c14228f5cRmP2BgA_msg_0",
+      "status": "completed",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "output_text",
+          "text": "[\n  {\n    \"id\": \"case_1\",\n    \"steps\": [\n      {\n        \"inputs\": {\n          \"bottleSensor\": true,\n          \"cleaningConfirmButton\": false,\n          \"fillingConfirmButton\": false,\n          \"cappingConfirmButton\": false,\n          \"packingConfirmButton\": false,\n          \"finishedButton\": false\n        },\n        \"expected\": {\n          \"Pump_Motor\": true,\n          \"Filling_Valve\": false,\n          \"Capping_Machine\": false,\n          \"Packing_Machine\": false,\n          \"Completion_Light\": false\n        }\n      },\n      {\n        \"inputs\": {\n          \"bottleSensor\": false,\n          \"cleaningConfirmButton\": true,\n          \"fillingConfirmButton\": false,\n          \"cappingConfirmButton\": false,\n          \"packingConfirmButton\": false,\n          \"finishedButton\": false\n        },\n        \"expected\": {\n          \"Pump_Motor\": false,\n          \"Filling_Valve\": true,\n          \"Capping_Machine\": false,\n          \"Packing_Machine\": false,\n          \"Completion_Light\": false\n        }\n      },\n      {\n        \"inputs\": {\n          \"bottleSensor\": false,\n          \"cleaningConfirmButton\": false,\n          \"fillingConfirmButton\": true,\n          \"cappingConfirmButton\": false,\n          \"packingConfirmButton\": false,\n          \"finishedButton\": false\n        },\n        \"expected\": {\n          \"Pump_Motor\": false,\n          \"Filling_Valve\": false,\n          \"Capping_Machine\": true,\n          \"Packing_Machine\": false,\n          \"Completion_Light\": false\n        }\n      },\n      {\n        \"inputs\": {\n          \"bottleSensor\": false,\n          \"cleaningConfirmButton\": false,\n          \"fillingConfirmButton\": false,\n          \"cappingConfirmButton\": true,\n          \"packingConfirmButton\": false,\n          \"finishedButton\": false\n        },\n        \"expected\": {\n          \"Pump_Motor\": false,\n          \"Filling_Valve\": false,\n          \"Capping_Machine\": false,\n          \"Packing_Machine\": true,\n          \"Completion_Light\": false\n        }\n      },\n      {\n        \"inputs\": {\n          \"bottleSensor\": false,\n          \"cleaningConfirmButton\": false,\n          \"fillingConfirmButton\": false,\n          \"cappingConfirmButton\": false,\n          \"packingConfirmButton\": true,\n          \"finishedButton\": false\n        },\n        \"expected\": {\n          \"Pump_Motor\": false,\n          \"Filling_Valve\": false,\n          \"Capping_Machine\": false,\n          \"Packing_Machine\": false,\n          \"Completion_Light\": true\n        }\n      },\n      {\n        \"inputs\": {\n          \"bottleSensor\": false,\n          \"cleaningConfirmButton\": false,\n          \"fillingConfirmButton\": false,\n          \"cappingConfirmButton\": false,\n          \"packingConfirmButton\": false,\n          \"finishedButton\": true\n        },\n        \"expected\": {\n          \"Pump_Motor\": false,\n          \"Filling_Valve\": false,\n          \"Capping_Machine\": false,\n          \"Packing_Machine\": false,\n          \"Completion_Light\": false\n        }\n      }\n    ]\n  },\n  {\n    \"id\": \"case_2\",\n    \"steps\": [\n      {\n        \"inputs\": {\n          \"bottleSensor\": true,\n          \"cleaningConfirmButton\": false,\n          \"fillingConfirmButton\": true,\n          \"cappingConfirmButton\": false,\n          \"packingConfirmButton\": false,\n          \"finishedButton\": false\n        },\n        \"expected\": {\n          \"Pump_Motor\": true,\n          \"Filling_Valve\": false,\n          \"Capping_Machine\": false,\n          \"Packing_Machine\": false,\n          \"Completion_Light\": false\n        }\n      },\n      {\n        \"inputs\": {\n          \"bottleSensor\": false,\n          \"cleaningConfirmButton\": true,\n          \"fillingConfirmButton\": false,\n          \"cappingConfirmButton\": true,\n          \"packingConfirmButton\": false,\n          \"finishedButton\": false\n        },\n        \"expected\": {\n          \"Pump_Motor\": false,\n          \"Filling_Valve\": true,\n          \"Capping_Machine\": false,\n          \"Packing_Machine\": false,\n          \"Completion_Light\": false\n        }\n      },\n      {\n        \"inputs\": {\n          \"bottleSensor\": false,\n          \"cleaningConfirmButton\": false,\n          \"fillingConfirmButton\": true,\n          \"cappingConfirmButton\": false,\n          \"packingConfirmButton\": true,\n          \"finishedButton\": false\n        },\n        \"expected\": {\n          \"Pump_Motor\": false,\n          \"Filling_Valve\": false,\n          \"Capping_Machine\": true,\n          \"Packing_Machine\": false,\n          \"Completion_Light\": false\n        }\n      },\n      {\n        \"inputs\": {\n          \"bottleSensor\": false,\n          \"cleaningConfirmButton\": false,\n          \"fillingConfirmButton\": false,\n          \"cappingConfirmButton\": true,\n          \"packingConfirmButton\": false,\n          \"finishedButton\": true\n        },\n        \"expected\": {\n          \"Pump_Motor\": false,\n          \"Filling_Valve\": false,\n          \"Capping_Machine\": false,\n          \"Packing_Machine\": true,\n          \"Completion_Light\": false\n        }\n      },\n      {\n        \"inputs\": {\n          \"bottleSensor\": false,\n          \"cleaningConfirmButton\": false,\n          \"fillingConfirmButton\": false,\n          \"cappingConfirmButton\": false,\n          \"packingConfirmButton\": true,\n          \"finishedButton\": true\n        },\n        \"expected\": {\n          \"Pump_Motor\": false,\n          \"Filling_Valve\": false,\n          \"Capping_Machine\": false,\n          \"Packing_Machine\": false,\n          \"Completion_Light\": true\n        }\n      },\n      {\n        \"inputs\": {\n          \"bottleSensor\": true,\n          \"cleaningConfirmButton\": false,\n          \"fillingConfirmButton\": false,\n          \"cappingConfirmButton\": false,\n          \"packingConfirmButton\": false,\n          \"finishedButton\": true\n        },\n        \"expected\": {\n          \"Pump_Motor\": false,\n          \"Filling_Valve\": false,\n          \"Capping_Machine\": false,\n          \"Packing_Machine\": false,\n          \"Completion_Light\": false\n        }\n      },\n      {\n        \"inputs\": {\n          \"bottleSensor\": true,\n          \"cleaningConfirmButton\": false,\n          \"fillingConfirmButton\": false,\n          \"cappingConfirmButton\": false,\n          \"packingConfirmButton\": false,\n          \"finishedButton\": false\n        },\n        \"expected\": {\n          \"Pump_Motor\": true,\n          \"Filling_Valve\": false,\n          \"Capping_Machine\": false,\n          \"Packing_Machine\": false,\n          \"Completion_Light\": false\n        }\n      }\n    ]\n  }\n]",
+          "annotations": []
+        }
+      ],
+      "quality": "",
+      "size": ""
+    }
+  ],
+  "parallel_tool_calls": false,
+  "previous_response_id": null,
+  "reasoning": null,
+  "store": false,
+  "temperature": 0,
+  "tool_choice": null,
+  "tools": null,
+  "top_p": 0,
+  "truncation": null,
+  "usage": {
+    "prompt_tokens": 2943,
+    "completion_tokens": 3940,
+    "total_tokens": 6883,
+    "billing_usage": {
+      "source": "oai_chat",
+      "semantic": "openai",
+      "openai_usage": {
+        "prompt_tokens": 2943,
+        "completion_tokens": 3940,
+        "total_tokens": 6883,
+        "prompt_tokens_details": {
+          "cached_tokens": 2816,
+          "text_tokens": 0,
+          "audio_tokens": 0,
+          "image_tokens": 0
+        },
+        "completion_tokens_details": {
+          "text_tokens": 0,
+          "audio_tokens": 0,
+          "image_tokens": 0,
+          "reasoning_tokens": 2415
+        },
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "input_tokens_details": null,
+        "claude_cache_creation_5_m_tokens": 0,
+        "claude_cache_creation_1_h_tokens": 0
+      }
+    },
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "text_tokens": 0,
+      "audio_tokens": 0,
+      "image_tokens": 0
+    },
+    "completion_tokens_details": {
+      "text_tokens": 0,
+      "audio_tokens": 0,
+      "image_tokens": 0,
+      "reasoning_tokens": 2415
+    },
+    "input_tokens": 2943,
+    "output_tokens": 3940,
+    "input_tokens_details": {
+      "cached_tokens": 2816,
+      "text_tokens": 0,
+      "audio_tokens": 0,
+      "image_tokens": 0
+    },
+    "claude_cache_creation_5_m_tokens": 0,
+    "claude_cache_creation_1_h_tokens": 0
+  },
+  "user": null,
+  "metadata": null
+}

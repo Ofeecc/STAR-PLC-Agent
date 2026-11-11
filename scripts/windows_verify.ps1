@@ -76,7 +76,8 @@ if (-not $SkipSmoke) {
     Write-Host "提示: 首次启动 CODESYS 编译约耗时 10-30 秒，请稍候..." -ForegroundColor Gray
     & $pythonExe -X utf8 -m plc_agent.cli compiler-smoke
     if ($LASTEXITCODE -ne 0) {
-        Write-Warning "编译器冒烟测试未完全通过。请排查 CODESYS ScriptEngine 是否激活或模板工程损坏。"
+        Write-Error "真实编译冒烟测试失败，停止后续验收。"
+        exit 1
     } else {
         Write-Host "  -> CODESYS 编译管线与 ScriptEngine 握手验证通过！" -ForegroundColor Green
     }
@@ -85,10 +86,11 @@ if (-not $SkipSmoke) {
 }
 
 # 5. 离线参考实现编译与仿真验证 (0 API Token)
-Write-Host "`n[5/5] 运行离线参考实现仿真验证 (test-reference --task $Task)..." -ForegroundColor Yellow
-& $pythonExe -X utf8 -m plc_agent.cli test-reference --task $Task
+Write-Host "`n[5/5] 运行离线参考实现仿真验证 (test-reference --task $Task --backend codesys)..." -ForegroundColor Yellow
+& $pythonExe -X utf8 -m plc_agent.cli test-reference --task $Task --backend codesys
 if ($LASTEXITCODE -ne 0) {
-    Write-Warning "参考实现仿真测试出现不匹配或中断，请检查上方日志或结果目录。"
+    Write-Error "真实执行测试未通过，停止验收。"
+    exit 1
 } else {
     Write-Host "  -> 任务 $Task 离线参考仿真全覆盖通过！" -ForegroundColor Green
 }

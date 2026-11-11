@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -78,7 +79,10 @@ def export_verification_bundle(task: dict, candidate: dict | str, out_dir: Path 
         "ltl_path": "spec.ltl",
         "properties": formatted_props,
         "atomic_propositions": task.get("atomic_propositions", {}),
-        "tools_supported": ["nuXmv", "UPPAAL", "CBMC"],
+        "tools_supported": [],
+        "encoding_complete": False,
+        "task_sha256": digest(task),
+        "bundle_status": "REQUIRES_PROPERTY_AND_MODEL_ENCODING",
         "created_utc": now(),
     }
     write_json(out_dir / "verification_manifest.json", manifest)
@@ -96,46 +100,38 @@ def import_verification_evidence(bundle_dir: Path | str, evidence_file: Path | s
 
     raw_text = evidence_file.read_text(encoding="utf-8", errors="replace")
     status = "UNKNOWN"
-    details: dict[str, Any] = {}
-
+    data = {}
     try:
-        data = json.loads(raw_text)
-        if isinstance(data, dict):
-            status = data.get("status") or data.get("result") or "UNKNOWN"
-            details = data.get("details", data)
+        parsed = json.loads(raw_text)
+        if isinstance(parsed, dict):
+            data = parsed
     except json.JSONDecodeError:
         pass
-
-    if status == "UNKNOWN":
-        upper = raw_text.upper()
-        if (
-            "COUNTEREXAMPLE" in upper
-            or "TRACE TYPE: COUNTEREXAMPLE" in upper
-            or "IS FALSE" in raw_text.lower()
-            or "VIOLATION" in upper
-            or "VERIFICATION FAILED" in upper
-        ):
-            status = "COUNTEREXAMPLE"
-        elif "UNSAT" in upper:
-            status = "UNSAT"
-        elif (
-            "SAT" in upper
-            or "VERIFIED" in upper
-            or ("IS TRUE" in raw_text.lower() and "IS FALSE" not in raw_text.lower())
-        ):
-            status = "SAT"
-        else:
-            status = "UNKNOWN"
-
-    verified = status in ("SAT", "UNSAT")
-    result: dict[str, Any] = {
-        "task_id": task_id,
-        "source_sha256": manifest.get("source_sha256"),
-        "evidence_file": evidence_file.name,
-        "status": status,
-        "verified": verified,
-        "details": details or {"raw_evidence_snippet": raw_text[:500]},
-        "imported_utc": now(),
+    # Solver SAT/UNSAT has no universal property-validity meaning.
+    reported = str(data.get("status", data.get("result", ""))).upper()
+    truths = re.findall(r"^--\s*specification\s+(?:.+?\s+)?is\s+(true|false)\s*$", raw_text, re.I | re.M)
+    if reported in {"COUNTEREXAMPLE", "FAIL"} or "false" in [v.lower() for v in truths] or re.search(r"trace type:\s*counterexample", raw_text, re.I):
+        status = "COUNTEREXAMPLE"
+    elif reported in {"SAT", "UNSAT"}:
+        status = reported
+    elif truths and all(v.lower() == "true" for v in truths):
+        status = "PROPERTIES_TRUE"
+    elif reported in {"PASS", "VERIFIED"}:
+        status = "REPORTED_PASS"
+    expected_ids = {p["id"] for p in manifest.get("properties", [])}
+    checks = data.get("property_results", {})
+    bound = bool(manifest.get("encoding_complete") is True and expected_ids
+        and data.get("source_sha256") == manifest.get("source_sha256")
+        and data.get("task_sha256") == manifest.get("task_sha256")
+        and data.get("tool") in manifest.get("tools_supported", [])
+        and isinstance(checks, dict) and set(checks) == expected_ids)
+    verified = bool(bound and reported == "PASS" and status != "COUNTEREXAMPLE" and all(v is True for v in checks.values()))
+    result = {
+        "task_id": task_id, "source_sha256": manifest.get("source_sha256"),
+        "evidence_file": evidence_file.name, "status": "PASS" if verified else status,
+        "verified": verified, "evidence_bound": bound,
+        "reason": None if verified else "No complete, encoded and hash-bound property proof",
+        "details": data or {"raw_evidence_snippet": raw_text[:500]}, "imported_utc": now(),
     }
     write_json(bundle_dir / "verification_result.json", result)
     return result

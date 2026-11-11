@@ -268,14 +268,13 @@ def generate_random_cases(
             step: dict[str, Any] = {
                 'inputs': inp,
                 'expected': out,
-                'outputs': out,
             }
             if dt is not None:
                 step['dt_ms'] = dt
             steps.append(step)
 
         # Verifies the generated cases pass check_contract_trace
-        res = check_contract_trace(tid, steps)
+        res = check_contract_trace(tid, [dict(s, outputs=s["expected"]) for s in steps])
         if res.get('status') != 'NO_VIOLATION_IN_OBSERVED_TRACE':
             raise AssertionError(f"Generated case {case_id} failed contract verification: {res.get('violations')}")
 

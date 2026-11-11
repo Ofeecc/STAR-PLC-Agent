@@ -1,8 +1,12 @@
 # PLC Structured Text Coding Agent (STAR v2)
 
-This project implements **STAR v2** (Specification-Targeted Agentic Refinement) and an auditable baseline for generating, compiling, repairing, and formally verifying IEC 61131-3 Structured Text (ST) for industrial PLC environments (CODESYS). The dataset contains all 20 supplied public questions and 12 independently constructed questions (32 tasks total). Every task includes normative specification contracts, scan semantics, formal LTL temporal properties, and fixed expected functional traces.
+This project implements **STAR v2** (Specification-Targeted Agentic Refinement) and an auditable baseline for generating, compiling, repairing, and preparing formal-verification materials for IEC 61131-3 Structured Text (ST) for industrial PLC environments (CODESYS). The dataset contains all 20 supplied public questions and 12 independently constructed questions (32 tasks total). Every task includes normative specification contracts, scan semantics, formal LTL temporal properties, and fixed expected functional traces.
 
 The implementation strictly separates generated-code compilation, compiler infrastructure failures, and functional/formal verification. Compilation success is accepted only from matching CODESYS rebuild evidence, never a process exit code alone. Independent Python scan contracts (`ScanContract`) validate expected sequences across all 32 tasks; they are distinct from real PLC execution.
+
+The local review UI now covers all 32 tasks with Chinese review notes, 244 property explanations and a persistent Chinese/English switch. Use [Chinese review](http://127.0.0.1:8765/?scope=all&lang=zh) or [English presentation](http://127.0.0.1:8765/?scope=all&lang=en) after starting the web server. See [双语审核界面说明](docs/全题库双语审核界面_20261111.md) and [模板库检查与角色token配置](docs/模板库与Token配置建议_20261111.md). Review translations do not modify benchmark inputs or constitute human approval.
+
+Latest changes and their validation scope: [2026-11-11 更新记录](docs/更新记录_20261111.md). The latest local Python suite passed 158 tests, and browser checks covered all 32 tasks and 244 properties in both languages.
 
 ## STAR v2 Architecture
 
@@ -10,15 +14,15 @@ STAR v2 organizes the synthesis and repair loop into five decoupled, auditable p
 
 $$\text{Planner} \longrightarrow \text{Dialect} \longrightarrow \text{Coder} \longrightarrow \text{Tester} \longrightarrow \text{Ratchet}$$
 
-1. **Planner (`normative_completion`)**: Ingests natural-language requirements, interface definitions, initial states, scan semantics, and temporal specifications. Synthesizes a deterministic scan-by-scan input-output contract and state transition system.
+1. **Planner**: Receives the existing task requirements, interface, scan semantics and visible specifications, then produces an architecture plan for code generation.
 2. **Dialect Adapter**: Enforces IEC 61131-3 strict syntax rules, type mappings (`TON`, `TOF`, `VARIANT`, arrays, enums, structs), and vendor-specific profile compatibility without silent type conversions.
 3. **Coder**: Generates clean Structured Text (`FUNCTION_BLOCK FB_Task`) cleanly segregated into interface declarations, implementation body, and supporting objects (DUTs/POUs).
-4. **Tester (Differential Self-Test)**: Differential testing against independent finite-state scan oracles (`ScanContract`), randomized seed-deterministic trace generation, and bounded execution monitors before expensive compiler invocation.
-5. **Ratchet (Lexicographical Monotonic Ratchet)**: Tracks candidate hashes, diagnostic error severities, and passed test counts. Rejects stagnating repairs, prevents regressions, and enforces strict iteration budgets.
+4. **Tester (Differential Self-Test)**: Differential testing against independent finite-state scan oracles (`ScanContract`), randomized seed-deterministic trace generation, and bounded execution monitors after successful compilation.
+5. **Ratchet**: Tracks candidate hashes and passed test counts, detects unchanged repairs, retains the best tested candidate within the current self-test set, and enforces iteration budgets.
 
 ## OS-Agnostic Environment Management with `uv`
 
-The project is fully OS-agnostic and runs across Linux, macOS, and Windows without platform-specific scripts or host-specific drive letters (`C:\`, `D:\`). ASCII path staging is fully automated by the runtime engine (`stage_ascii_workspace` transparently mirrors non-ASCII paths to clean ASCII staging targets for compiler tool safety).
+The Python agent logic can run across operating systems; real CODESYS execution requires Windows and local configuration. ASCII path staging is fully automated by the runtime engine (`stage_ascii_workspace` transparently mirrors non-ASCII paths to clean ASCII staging targets for compiler tool safety).
 
 Initialize and synchronize the environment:
 
@@ -37,6 +41,8 @@ uv run --no-sync python -m unittest discover -s tests -v
 ```
 
 ## Windows + CODESYS Field Testing Guide
+
+Local validation on 2026-11-10: 141 Python tests passed; real compiler smoke passed; SELF001 reference passed 2 cases / 10 steps; a deliberately wrong SELF001 implementation compiled but failed real simulation. See [本机验证与修复记录](docs/本机验证与修复_20261110.md). Real CODESYS runs must execute outside the coding agent's restricted sandbox to avoid APInstaller event-log access errors and Gateway connection failures observed on this machine.
 
 For teammates conducting physical machine tests on Windows with CODESYS installed:
 - 📖 **Comprehensive Step-by-Step Guide**: [docs/windows_field_test_guide.md](docs/windows_field_test_guide.md)
@@ -70,13 +76,13 @@ All operational tasks are unified under the `plc-agent` CLI:
 
 - **Run STAR v2 Agent**:
   ```bash
-  uv run plc-agent run --condition E3 --task-id SELF001
+  uv run plc-agent --allow-model-api run --condition E3 --task-id SELF001
   ```
   Executes the STAR v2 agent on the specified task under experimental condition E3.
 
 - **Run Baseline Agent**:
   ```bash
-  uv run plc-agent run --condition E1 --driver deepseek_harness --task-id SELF001
+  uv run plc-agent --allow-model-api run --condition E1 --driver deepseek_harness --task-id SELF001
   ```
   Executes the comparative baseline agent with identical model parameters and compiler budget.
 
@@ -98,18 +104,18 @@ All operational tasks are unified under the `plc-agent` CLI:
   ```
   Exports formal verification bundles including Structured Text source, LTL temporal specifications (`spec.ltl`), and tool configurations for model checkers (nuXmv, UPPAAL, CBMC).
 
-## Current Evidence & Campaign Outcomes
+## Current execution status
 
-Use the timestamped records in `results/summary/` as the authority. Real CODESYS preflight produced 0, 2 and 0 compiler errors for valid, deliberately invalid and repaired programs. Both selected models have generated and compiled code across all conditions:
+STAR v2 is under local validation. The latest two-task STAR pilot used `deepseek-v4.1-flash-1017` with high reasoning: PUB001 passed real CODESYS compilation and all 2 fixed cases / 16 steps; PUB003 ended with TOOL_ERROR after an SA0027 interface-name collision and an incomplete repair response, with functional testing NOT_RUN. The batch used 6 requests / 49,908 tokens including the failed response. See [raw pilot evidence](results/raw/pilot_pair_2026-11-10T143217961073+0000/) and [updated evidence audit](results/raw/pilot_pair_2026-11-10T143217961073+0000/usage_and_evidence_audit.json). These are two pilot tasks, not a full-dataset campaign or a baseline comparison.
 
-| Condition | Framework | Model ID | First compilation | Final compilation | Actual cases passed/evaluated | Case coverage |
-| --- | --- | --- | ---: | ---: | ---: | ---: |
-| E1 | smolagents 1.26.0 ToolCallingAgent | deepseek-v4.1-flash | 27/32 | 29/32 | 42/45 | 45/81 |
-| E2 | smolagents 1.26.0 ToolCallingAgent | kimi-k3.1-pro | 27/32 | 27/32 | 46/48 | 48/81 |
-| E3 | STAR v2 harness | deepseek-v4.1-flash | 26/32 | 26/32 | 38/38 | 38/81 |
-| E4 | STAR v2 harness | kimi-k3.1-pro | 30/32 | 31/32 | 50/52 | 52/81 |
+A variable-level SA0027 exception compiled a retained PUB003 candidate in a separate probe while another static-analysis rule remained active. This exception is not yet integrated into the agent path. New role-specific output limits and cumulative token accounting have local tests but have not been tried against the paid API. All 32 Chinese review records remain pending human review.
 
-Full analysis is available in [results/analysis/summary.md](results/analysis/summary.md). Final artifacts include the [English report](report/report.pdf), [editable slide deck](presentation/slides.pptx), [speaker notes](presentation/speaker_notes.md), [defense Q&A](presentation/defense_qa.md), and [explanation video](video/explanation.mp4).
+Historical README figures are retained in `docs/historical_readme_results.md` and require original hash-bound logs before reuse.
+The current baseline implementation is a custom tool loop, not smolagents. An established external-agent comparison remains pending.
+Verification export provides draft ST/property materials, not executable models or a completed formal proof.
+The local NuSMV entry point checks supplied SMV models; the included hand-written PUB001 reference is separate from generated ST. Automatic candidate ST-to-SMV translation remains pending, so candidate formal verification remains UNVERIFIED.
+`random-test` generates oracle-labelled inputs; it does not execute candidate ST.
+CODESYS development/runtime integration requires Windows and local compiler/simulator acceptance.
 
 ## Configuration
 
@@ -147,6 +153,8 @@ uv run plc-agent compiler-smoke
 ```
 
 ## Directory Structure
+
+本机新增六题规约中文说明与括号高亮，以及本地 NuSMV SMV 检查入口。手动设置 Static Analysis Light 和检查器覆盖范围见 [静态分析与模型检查使用指南](docs/静态分析与模型检查使用指南.md)，逐条审核材料见 [六题规约中文审核](docs/六题规约中文审核.md)。参考模型的检查结果不代表 Agent 生成 ST 已通过形式验证。
 
 | Directory | Content |
 | --- | --- |

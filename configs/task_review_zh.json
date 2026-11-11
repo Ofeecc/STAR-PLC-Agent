@@ -1,0 +1,2622 @@
+{
+  "version": "2026-11-11",
+  "description": "Display-only Chinese translations, not new benchmark requirements or completed human approval.",
+  "dataset_sha256": "5a055ef40302832b3109187fb1c78dadff2f9aecc454a548007a82ddfa6fc893",
+  "tasks": [
+    {
+      "id": "PUB001",
+      "title_zh": "自动灌装线控制",
+      "translation_zh": "生产线依次完成瓶子的清洗、灌装、旋盖和包装。bottleSensor 检测到瓶子后启动清洗泵并持续工作；操作员按 cleaningConfirmButton 确认清洗完成，启动灌装阀；按 fillingConfirmButton 确认灌装完成，启动旋盖机；按 cappingConfirmButton 确认旋盖完成，启动包装机；按 packingConfirmButton 确认包装完成，点亮完成指示灯。取走瓶子后按 finishedButton，复位指示灯，准备下一轮。",
+      "assumptions_zh": "确认按钮采用电平；每扫描最多推进一个阶段；只响应当前阶段的确认；取瓶复位仅作用于完成阶段；复位后若有瓶信号仍为真，下一拍重新开始。",
+      "coverage_zh": "T1：完整周期与完成保持（10步）。\nT2：乱序确认不能跨阶段（6步）。",
+      "review_points_zh": "建议补充：完成后有瓶信号持续为真的连续两轮测试；全部确认持续为真的逐拍完整轨迹。",
+      "properties_zh": {
+        "P1": {
+          "formula": "init",
+          "description": "初始实例尚未执行扫描时，处于空闲阶段且全部输出关闭。",
+          "review": "只检查初始化；不要误读成运行中永远空闲。"
+        },
+        "P2": {
+          "formula": "G(oneHotOutputs)",
+          "description": "任意扫描中，五个输出最多一个为真，允许全部关闭。",
+          "review": "oneHotOutputs 在此定义为“至多一个”，包括完成灯；核对是否符合组内约定。"
+        },
+        "P3": {
+          "formula": "G((phase=0 & bottleSensor) -> (Pump_Motor & X(phase=1)))",
+          "description": "扫描开始为空闲且检测到瓶子，则本扫描结束启动清洗泵，下一扫描开始处于清洗阶段。",
+          "review": "同时按所有确认按钮也只能走一步；X 修饰阶段，不修饰本拍泵输出。"
+        },
+        "P4": {
+          "formula": "G((phase=1 & cleaningConfirmButton) -> (Filling_Valve & X(phase=2)))",
+          "description": "扫描开始在清洗阶段且清洗确认有效，则本拍打开灌装阀，下拍进入灌装阶段。",
+          "review": "确认采用电平；本条没有单独要求其他输出关闭，需结合 P2 和完整行为。"
+        },
+        "P5": {
+          "formula": "G((phase=2 & fillingConfirmButton) -> (Capping_Machine & X(phase=3)))",
+          "description": "扫描开始在灌装阶段且灌装确认有效，则本拍启动旋盖机，下拍进入旋盖阶段。",
+          "review": "非灌装阶段的该按钮应被忽略；忽略规则由完整行为补足。"
+        },
+        "P6": {
+          "formula": "G((phase=3 & cappingConfirmButton) -> (Packing_Machine & X(phase=4)))",
+          "description": "扫描开始在旋盖阶段且旋盖确认有效，则本拍启动包装机，下拍进入包装阶段。",
+          "review": "核对按钮与设备是否配对，不能跨阶段跳转。"
+        },
+        "P7": {
+          "formula": "G((phase=4 & packingConfirmButton) -> (Completion_Light & X(phase=5)))",
+          "description": "扫描开始在包装阶段且包装确认有效，则本拍点亮完成灯，下拍进入完成阶段。",
+          "review": "包装输出必须关闭，结合完整行为一起审核。"
+        },
+        "P8": {
+          "formula": "G((phase=5 & !finishedButton) -> (Completion_Light & X(phase=5)))",
+          "description": "完成阶段尚未确认取瓶时，本拍完成灯保持亮，下拍仍在完成阶段。",
+          "review": "持续多拍等待，不能自动清灯。"
+        },
+        "P9": {
+          "formula": "G((phase=5 & finishedButton) -> (!Completion_Light & X(phase=0)))",
+          "description": "完成阶段确认取瓶时，本拍关闭完成灯，下拍回到空闲阶段。",
+          "review": "若瓶信号仍为真，重新启动发生在再下一次空闲扫描。"
+        },
+        "P10": {
+          "formula": "G((phase=1 & G((phase=1) -> F(cleaningConfirmButton)) & G((phase=2) -> F(fillingConfirmButton)) & G((phase=3) -> F(cappingConfirmButton)) & G((phase=4) -> F(packingConfirmButton))) -> F(Completion_Light))",
+          "description": "从清洗阶段开始，若今后每个活动阶段最终都得到相应确认，则最终会亮完成灯。",
+          "review": "这是带环境条件的进度要求；操作员永不确认时不要求自动完成。F 不代表限定几拍内。"
+        },
+        "PUB001.V2.COMPLETE": {
+          "formula": "G(CompleteBehaviorV2)",
+          "description": "每次调用都满足完整状态转移及全部输出规则，具体定义见原子命题与完整规约。",
+          "review": "CompleteBehaviorV2 是文字定义的复合谓词，必须展开编码后才能交给模型检查器；不是已验证证明。"
+        }
+      },
+      "interface_zh": {
+        "bottleSensor": "瓶子到位",
+        "cleaningConfirmButton": "清洗完成确认",
+        "fillingConfirmButton": "灌装完成确认",
+        "cappingConfirmButton": "旋盖完成确认",
+        "packingConfirmButton": "包装完成确认",
+        "finishedButton": "取瓶完成复位",
+        "Pump_Motor": "清洗泵电机",
+        "Filling_Valve": "灌装阀",
+        "Capping_Machine": "旋盖机",
+        "Packing_Machine": "包装机",
+        "Completion_Light": "完成灯"
+      },
+      "tests_zh": {
+        "T1": {
+          "name": "完整周期与完成保持",
+          "purpose": "完整周期与完成保持",
+          "source_sha256": "62908f21aee33f5e62837b46a2199c39b69dc639441693282151920b797f1995"
+        },
+        "T2": {
+          "name": "乱序确认不能跨阶段",
+          "purpose": "乱序确认不能跨阶段",
+          "source_sha256": "1878bbef2fd785646e52367f5ecf56681a5ec1c68e8adb7e463c19d3cce962b9"
+        }
+      },
+      "source_task_sha256": "cbe5454bafd3ed0e43d14af7c4ffa64ac311a298744d335e8873454aecb05c9c",
+      "review_status": "PENDING_HUMAN_REVIEW",
+      "material_origin": "GROUP_TRANSLATION_AND_REVIEW_NOT_TEACHER_SPEC",
+      "source_kind": "public",
+      "title_en": "Automated Filling Line Control",
+      "complete_behavior_zh": "独立定义nextPhase：0有瓶→1，否则0；1清洗确认→2，否则1；2灌装确认→3，否则2；3旋盖确认→4，否则3；4包装确认→5，否则4；5取瓶确认→0，否则5。每拍只用旧phase选择一个分支。补G(X(phase)=nextPhase)，并逐一规定Pump_Motor↔nextPhase=1、Filling_Valve↔2、Capping_Machine↔3、Packing_Machine↔4、Completion_Light↔5；其余全部为假。初始phase=0作为独立初值条件。"
+    },
+    {
+      "id": "PUB002",
+      "title_zh": "双字逐位边沿检测",
+      "translation_zh": "每个周期检查32位 DWORD 输入 value 相对上次调用的变化。分别输出是否变化、是否存在上升沿/下降沿、各位上升/下降掩码以及对应位数。某位0→1为上升沿，1→0为下降沿。",
+      "assumptions_zh": "前值初始化为 DWORD#0，因此首次非零输入也计上升沿。取反只在32位内进行，位数范围0～32。",
+      "review_points_zh": "确认首次调用、最高位31、全0/全1切换，以及同拍不同位同时上升下降；不要把整字变化次数当成逐位数量。",
+      "properties_zh": {
+        "P1": {
+          "formula": "G(risingBits = (value AND NOT prev))",
+          "description": "上升沿掩码等于当前值与前值按位取反的按位与。",
+          "review": "确认首次调用、最高位31、全0/全1切换，以及同拍不同位同时上升下降；不要把整字变化次数当成逐位数量。"
+        },
+        "P2": {
+          "formula": "G(fallingBits = (prev AND NOT value))",
+          "description": "下降沿掩码等于前值与当前值按位取反的按位与。",
+          "review": "确认首次调用、最高位31、全0/全1切换，以及同拍不同位同时上升下降；不要把整字变化次数当成逐位数量。"
+        },
+        "P3": {
+          "formula": "G((risingBits AND fallingBits)=0)",
+          "description": "同一位不能在一次调用中既上升又下降。",
+          "review": "确认首次调用、最高位31、全0/全1切换，以及同拍不同位同时上升下降；不要把整字变化次数当成逐位数量。"
+        },
+        "P4": {
+          "formula": "G((noOfRisingBits=popcount(risingBits)) & (noOfFallingBits=popcount(fallingBits)))",
+          "description": "两个边沿计数分别等于相应掩码中1的个数。",
+          "review": "确认首次调用、最高位31、全0/全1切换，以及同拍不同位同时上升下降；不要把整字变化次数当成逐位数量。"
+        },
+        "P5": {
+          "formula": "G((hasRisingEdges <-> risingBits<>0) & (hasFallingEdges <-> fallingBits<>0) & (hasChanged <-> value<>prev))",
+          "description": "上升/下降标志与掩码非零等价；变化标志与当前值不同于前值等价。",
+          "review": "确认首次调用、最高位31、全0/全1切换，以及同拍不同位同时上升下降；不要把整字变化次数当成逐位数量。"
+        },
+        "P6": {
+          "formula": "G(X(prev)=value)",
+          "description": "本拍输入值保存为下拍的前值。",
+          "review": "确认首次调用、最高位31、全0/全1切换，以及同拍不同位同时上升下降；不要把整字变化次数当成逐位数量。"
+        },
+        "PUB002.V2.COMPLETE": {
+          "formula": "G(CompleteBehaviorV2)",
+          "description": "每次调用的全部输出与保留历史必须满足完整行为关系；具体转移规则见上方完整规约。",
+          "review": "CompleteBehaviorV2是解释性复合谓词；必须显式展开并绑定实际候选输出后才能模型检查，不能把名称当成已完成证明。"
+        }
+      },
+      "interface_zh": {
+        "value": "当前32位输入",
+        "hasChanged": "整字是否变化",
+        "hasRisingEdges": "有任一上升沿",
+        "risingBits": "上升沿位掩码",
+        "noOfRisingBits": "上升位数",
+        "hasFallingEdges": "有任一下降沿",
+        "fallingBits": "下降沿位掩码",
+        "noOfFallingBits": "下降位数"
+      },
+      "tests_zh": {
+        "T1": {
+          "name": "不变、混合边沿、全位及最高位",
+          "purpose": "不变、混合边沿、全位及最高位",
+          "source_sha256": "30864371aa76b36a6c43faed519efc34b57d003001f3fac66442093547ad7cae"
+        },
+        "T2": {
+          "name": "首次非零与初始零比较",
+          "purpose": "首次非零与初始零比较",
+          "source_sha256": "46da03014f761bc16acde0ebc609a45baac95c794b8db69bd9ec6970e9681936"
+        },
+        "V2_data_contract_boundaries": {
+          "name": "独立计算的数据边界回归",
+          "purpose": "独立计算的数据边界回归",
+          "source_sha256": "b9f00b0a03d44462092f387d0b2764b5b7bdd996c202fe19c1f684c938d91968"
+        }
+      },
+      "coverage_zh": "T1：不变、混合边沿、全位及最高位（10步）。\nT2：首次非零与初始零比较（2步）。\nV2_data_contract_boundaries：独立计算的数据边界回归（2步）。",
+      "source_task_sha256": "488c5bdcd08ccac11eac73f3c87ab8db5f0a750c6067305a398934ac204acde9",
+      "review_status": "PENDING_HUMAN_REVIEW",
+      "material_origin": "GROUP_TRANSLATION_AND_REVIEW_NOT_TEACHER_SPEC",
+      "source_kind": "public",
+      "title_en": "Dual-Word Edge Detection",
+      "complete_behavior_zh": "明确risingBits/fallingBits始终指实际输出；另定义riseExpected=value & (~prev & 16#FFFFFFFF)、fallExpected=prev & (~value & 16#FFFFFFFF)。比较实际值与期望值；初始prev=0，每拍结束只更新一次prev。计数域0..32，按无符号DWORD处理。"
+    },
+    {
+      "id": "PUB003",
+      "title_zh": "带滞回的报警处理",
+      "translation_zh": "Value > hiLevel 时触发高报警；Value < hiLevel-hystWindow 时解除高报警。Value < loLevel 时触发低报警；Value > loLevel+hystWindow 时解除低报警。loLevel >= hiLevel 时输出 error=TRUE、status=16#8001，并退出；hystWindow >= hiLevel-loLevel 时输出 error=TRUE、status=16#8002。滞回用于避免参数轻微波动引发报警反复切换。",
+      "assumptions_zh": "等于阈值时保持报警；无效配置保留报警输出；8001优先于8002；合法配置恢复时清除错误；负滞回宽度排除在输入域之外。",
+      "coverage_zh": "T1：高低滞回严格边界（9步）。\nT2：错误优先、报警保持与恢复（4步）。\nV2_data_contract_boundaries：独立计算的数据边界回归（6步）。",
+      "review_points_zh": "建议补充：合法动态修改阈值的组合、宽度为零的完整循环；明确负宽度是排除还是报错。",
+      "properties_zh": {
+        "P1": {
+          "formula": "G(badRange -> (error & status=16#8001 & sameAlarms))",
+          "description": "上下限非法时，置 error，status=16#8001，两个报警保持原值。",
+          "review": "同时出现窗口错误时仍以 8001 优先；核对 badRange 定义。"
+        },
+        "P2": {
+          "formula": "G((!badRange & badWindow) -> (error & status=16#8002 & sameAlarms))",
+          "description": "上下限合法但滞回窗口非法时，置 error，status=16#8002，两个报警保持原值。",
+          "review": "核对窗口等于上下限差时是否非法；负宽度的输入域另行确认。"
+        },
+        "P3": {
+          "formula": "G(valid -> (!error & status=0))",
+          "description": "配置合法时，清除 error，status=0。",
+          "review": "先错后对的恢复过程也要满足。"
+        },
+        "P4": {
+          "formula": "G((valid & Value>hiLevel) -> hiAlarm)",
+          "description": "配置合法且 Value 严格大于高阈值时，高报警为真。",
+          "review": "等于高阈值不由本条触发。"
+        },
+        "P5": {
+          "formula": "G((valid & Value<hiLevel-hystWindow) -> !hiAlarm)",
+          "description": "配置合法且 Value 严格小于高阈值减滞回宽度时，高报警为假。",
+          "review": "等于释放边界时保持旧值。"
+        },
+        "P6": {
+          "formula": "G((valid & hiLevel-hystWindow<=Value & Value<=hiLevel) -> (hiAlarm=hiPrev))",
+          "description": "配置合法且 Value 在高报警滞回闭区间内时，高报警等于上拍值。",
+          "review": "两个端点都包含；分别用原来亮与原来灭检查。"
+        },
+        "P7": {
+          "formula": "G((valid & Value<loLevel) -> loAlarm)",
+          "description": "配置合法且 Value 严格小于低阈值时，低报警为真。",
+          "review": "等于低阈值不由本条触发。"
+        },
+        "P8": {
+          "formula": "G((valid & Value>loLevel+hystWindow) -> !loAlarm)",
+          "description": "配置合法且 Value 严格大于低阈值加滞回宽度时，低报警为假。",
+          "review": "等于释放边界时保持旧值。"
+        },
+        "P9": {
+          "formula": "G((valid & loLevel<=Value & Value<=loLevel+hystWindow) -> (loAlarm=loPrev))",
+          "description": "配置合法且 Value 在低报警滞回闭区间内时，低报警等于上拍值。",
+          "review": "两个端点都包含；检查高低报警互不错误覆盖。"
+        },
+        "PUB003.V2.COMPLETE": {
+          "formula": "G(CompleteBehaviorV2)",
+          "description": "每次调用满足完整报警、错误优先级与保持规则。",
+          "review": "需展开 CompleteBehaviorV2；仅写名字不能直接执行验证。"
+        }
+      },
+      "interface_zh": {
+        "Value": "当前测量值",
+        "hiLevel": "高报警阈值",
+        "loLevel": "低报警阈值",
+        "hystWindow": "滞回宽度",
+        "hiAlarm": "高报警",
+        "loAlarm": "低报警",
+        "error": "错误标志",
+        "status": "状态码"
+      },
+      "tests_zh": {
+        "T1": {
+          "name": "高低滞回严格边界",
+          "purpose": "高低滞回严格边界",
+          "source_sha256": "1342d12303099e18b4133a17b420d5747c8010e9ed970384d6d3dd01fe3215ff"
+        },
+        "T2": {
+          "name": "错误优先、报警保持与恢复",
+          "purpose": "错误优先、报警保持与恢复",
+          "source_sha256": "bc49d666d4f6a2b505b6e0237134f5a288a46061a5c70eea729e576e3ab9fb32"
+        },
+        "V2_data_contract_boundaries": {
+          "name": "独立计算的数据边界回归",
+          "purpose": "独立计算的数据边界回归",
+          "source_sha256": "15dd491b7c2ab021b2892a3dc74d15c5af173b1f2afefd778a0ee517f90da72f"
+        }
+      },
+      "source_task_sha256": "45a7d9b930ad33f0fe708aeda1e5017e09cd3d1b4efffaf67f7a873c21db16b9",
+      "review_status": "PENDING_HUMAN_REVIEW",
+      "material_origin": "GROUP_TRANSLATION_AND_REVIEW_NOT_TEACHER_SPEC",
+      "source_kind": "public",
+      "title_en": "Alarm Handling",
+      "complete_behavior_zh": "把有限REAL、hystWindow>=0写为显式环境前提。hiPrev/loPrev绑定上一拍实际输出和初值FALSE，配置无效不更新这两个输出。保留严格>,<及错误码优先级；浮点比较和容差按被检关系分别约定，勿把阈值比较自动放宽。"
+    },
+    {
+      "id": "PUB004",
+      "title_zh": "果酱输送泵去抖与运行维护",
+      "translation_zh": "黏度许可 VISCOSITY_OK 连续为真达到 DebounceTime 后才有效；变假立即失效。常闭急停 PASTE_E_STOP_NC 为真且黏度有效才允许 VFD_RUN。急停立即停泵并清除未完成去抖。仅运行时按本次 CycleTime 累加 LTIME 运行时长；停机保留。累计达到500小时置维护提示，提示不影响运行。上电运行关闭、累计零、维护提示关闭。",
+      "assumptions_zh": "去抖首次许可采样计时为0，达到而非超过阈值时有效；急停连已完成许可也清除，恢复须重新完整计时。CycleTime 与 DebounceTime 均正，每用例内去抖设定固定。按扫描结束的运行输出决定是否累加本次 CycleTime。500小时阈值用长时类型，短测试不等于实际等待500小时。",
+      "review_points_zh": "区分真实 TON 时间与显式 CycleTime 累计；检查许可恰在到期时消失、长间隔恢复、500小时上下边界以及维护提示不参与联锁。",
+      "properties_zh": {
+        "P1": {
+          "formula": "G(VFD_RUN <-> (permit & qualified))",
+          "description": "运行输出当且仅当原始许可和去抖完成同时成立。",
+          "review": "区分真实 TON 时间与显式 CycleTime 累计；检查许可恰在到期时消失、长间隔恢复、500小时上下边界以及维护提示不参与联锁。"
+        },
+        "P2": {
+          "formula": "G(!permit -> !VFD_RUN)",
+          "description": "原始许可失效立即关闭运行输出。",
+          "review": "区分真实 TON 时间与显式 CycleTime 累计；检查许可恰在到期时消失、长间隔恢复、500小时上下边界以及维护提示不参与联锁。"
+        },
+        "P3": {
+          "formula": "G((!permit) -> X(!qualified))",
+          "description": "许可失效清除资格历史，下拍不能沿用原计时结果。",
+          "review": "区分真实 TON 时间与显式 CycleTime 累计；检查许可恰在到期时消失、长间隔恢复、500小时上下边界以及维护提示不参与联锁。"
+        },
+        "P4": {
+          "formula": "G(VFD_RUN -> accNext=accPrev+TIME_TO_LTIME(CycleTime))",
+          "description": "运行时下一累计值等于原累计值加本拍 CycleTime，先转为 LTIME。",
+          "review": "区分真实 TON 时间与显式 CycleTime 累计；检查许可恰在到期时消失、长间隔恢复、500小时上下边界以及维护提示不参与联锁。"
+        },
+        "P5": {
+          "formula": "G(!VFD_RUN -> accNext=accPrev)",
+          "description": "不运行时累计值保持。",
+          "review": "区分真实 TON 时间与显式 CycleTime 累计；检查许可恰在到期时消失、长间隔恢复、500小时上下边界以及维护提示不参与联锁。"
+        },
+        "P6": {
+          "formula": "G(PUMP_MAINT_DUE <-> accNext>=LTIME#500h)",
+          "description": "维护提示当且仅当更新后累计值达到500小时。",
+          "review": "区分真实 TON 时间与显式 CycleTime 累计；检查许可恰在到期时消失、长间隔恢复、500小时上下边界以及维护提示不参与联锁。"
+        },
+        "P7": {
+          "formula": "G((G(permit) & DebounceTime>TIME#0ms) -> F(VFD_RUN))",
+          "description": "若许可从当前起持续成立、去抖时间为正且物理时间持续前进，最终启动。",
+          "review": "区分真实 TON 时间与显式 CycleTime 累计；检查许可恰在到期时消失、长间隔恢复、500小时上下边界以及维护提示不参与联锁。"
+        },
+        "PUB004.V2.COMPLETE": {
+          "formula": "G(CompleteBehaviorV2)",
+          "description": "每次调用的全部输出与保留历史必须满足完整行为关系；具体转移规则见上方完整规约。",
+          "review": "CompleteBehaviorV2是解释性复合谓词；必须显式展开并绑定实际候选输出后才能模型检查，不能把名称当成已完成证明。"
+        }
+      },
+      "interface_zh": {
+        "VISCOSITY_OK": "原始黏度许可",
+        "PASTE_E_STOP_NC": "常闭急停许可，真为正常",
+        "DebounceTime": "连续去抖时间",
+        "CycleTime": "本次调用代表的累计时间",
+        "VFD_RUN": "变频泵运行",
+        "PUMP_MAINT_DUE": "500小时维护到期",
+        "PUMP_RUNTIME_ACC": "长时累计运行时间"
+      },
+      "tests_zh": {
+        "T1": {
+          "name": "资格边界、累计、停机保持及重启",
+          "purpose": "资格边界、累计、停机保持及重启",
+          "source_sha256": "54b23ed02d0f9cf83dae290c03c32ab12635c63f29f5867a88b2af3ca7f6e49c"
+        },
+        "T2": {
+          "name": "急停清未完成和已完成去抖",
+          "purpose": "急停清未完成和已完成去抖",
+          "source_sha256": "9a25a121cd7d3c7e08131c2b9ac1bf370e1e92de99ba25c7f04d4bdba12733bc"
+        },
+        "T3": {
+          "name": "长时维护运算边界",
+          "purpose": "长时维护运算边界",
+          "source_sha256": "d15991b2fdf48c870c283f777cca44a36f11237dea21ef360e4d79429e7db9d2"
+        },
+        "V2_permit_loss_at_deadline": {
+          "name": "到期当拍丢许可及恢复完整重计时",
+          "purpose": "到期当拍丢许可及恢复完整重计时",
+          "source_sha256": "b1b134dd2ef2431a82b4bffb13697c147e9654176b3ea4f64ae685f81e1f7389"
+        }
+      },
+      "coverage_zh": "T1：资格边界、累计、停机保持及重启（9步）。\nT2：急停清未完成和已完成去抖（7步）。\nT3：长时维护运算边界（4步）。\nV2_permit_loss_at_deadline：到期当拍丢许可及恢复完整重计时（5步）。",
+      "source_task_sha256": "5285f4a31fddcb11d582690670b89d89f22bb2cf21f7194c25836314b22fca79",
+      "review_status": "PENDING_HUMAN_REVIEW",
+      "material_origin": "GROUP_TRANSLATION_AND_REVIEW_NOT_TEACHER_SPEC",
+      "source_kind": "public",
+      "title_en": "Jam Pump Debouncing and Runtime Maintenance",
+      "complete_behavior_zh": "明确输入在调用间保持，第一合格采样elapsed=0；丢失permit当拍清计时。选择并注明DebounceTime固定或动态更新规则。把累计写成accAfter=accBefore+(VFD_RUN?TIME_TO_LTIME(CycleTime):0)，并标成离散调用累计口径；约束累计不溢出。维护输出等价于accAfter>=500h。"
+    },
+    {
+      "id": "PUB005",
+      "title_zh": "焊缝间隙报警与启动抑制",
+      "translation_zh": "Gap_Exceeded 表示间隙超过1.5mm。上电先抑制监测5秒：报警关闭、Weld_Soft_Start_Active 为真，间隙去抖不累计。之后间隙连续为真达到 DebounceTime 才报警；间隙消失立即清除报警及去抖。常闭急停为假时优先关闭报警并清除去抖。软启动输出仅指启动监测抑制，不是连续调速。",
+      "assumptions_zh": "5秒计时从首次调用开始，急停期间也继续。急停不重启上电计时，软启动状态仍反映启动区间。恰好5秒解除抑制，该拍为首次可去抖采样，去抖已用时间为0。DebounceTime 为正且用例内固定。",
+      "review_points_zh": "确认抑制期不能偷累计去抖；分别检查抑制中急停、正常报警中急停、抑制结束边界。",
+      "properties_zh": {
+        "P1": {
+          "formula": "G(Weld_Soft_Start_Active <-> startup)",
+          "description": "软启动输出当且仅当处于上电抑制区间。",
+          "review": "确认抑制期不能偷累计去抖；分别检查抑制中急停、正常报警中急停、抑制结束边界。"
+        },
+        "P2": {
+          "formula": "G((startup | !Weld_E_Stop_NC | !Gap_Exceeded) -> !Operator_Alert)",
+          "description": "启动抑制、急停或没有超限间隙，任一成立都必须关闭报警。",
+          "review": "确认抑制期不能偷累计去抖；分别检查抑制中急停、正常报警中急停、抑制结束边界。"
+        },
+        "P3": {
+          "formula": "G(Operator_Alert <-> (!startup & Weld_E_Stop_NC & Gap_Exceeded & gapQualified))",
+          "description": "报警当且仅当抑制结束、急停许可、间隙存在及间隙去抖完成。",
+          "review": "确认抑制期不能偷累计去抖；分别检查抑制中急停、正常报警中急停、抑制结束边界。"
+        },
+        "P4": {
+          "formula": "G((startup | !Weld_E_Stop_NC | !Gap_Exceeded) -> X(!gapQualified))",
+          "description": "任一抑制条件清除或阻止间隙资格，下拍不能沿用完成标志。",
+          "review": "确认抑制期不能偷累计去抖；分别检查抑制中急停、正常报警中急停、抑制结束边界。"
+        },
+        "P5": {
+          "formula": "G((G(Weld_E_Stop_NC & Gap_Exceeded)) -> F(Operator_Alert))",
+          "description": "若急停许可和超限间隙从当前起持续存在、时间持续前进，最终报警。",
+          "review": "确认抑制期不能偷累计去抖；分别检查抑制中急停、正常报警中急停、抑制结束边界。"
+        },
+        "PUB005.V2.COMPLETE": {
+          "formula": "G(CompleteBehaviorV2)",
+          "description": "每次调用的全部输出与保留历史必须满足完整行为关系；具体转移规则见上方完整规约。",
+          "review": "CompleteBehaviorV2是解释性复合谓词；必须显式展开并绑定实际候选输出后才能模型检查，不能把名称当成已完成证明。"
+        }
+      },
+      "interface_zh": {
+        "Gap_Exceeded": "间隙超过1.5mm",
+        "Weld_E_Stop_NC": "常闭急停许可，真为正常",
+        "DebounceTime": "间隙去抖时间",
+        "Operator_Alert": "声光报警",
+        "Weld_Soft_Start_Active": "上电5秒监测抑制状态"
+      },
+      "tests_zh": {
+        "T1": {
+          "name": "初始化不计去抖及5秒边界",
+          "purpose": "初始化不计去抖及5秒边界",
+          "source_sha256": "e10161aaf6175306e486016cb9a3234490f4eb0453f7f9af8cc4ce7d6e99cd08"
+        },
+        "T2": {
+          "name": "急停抑制报警且不重启上电抑制",
+          "purpose": "急停抑制报警且不重启上电抑制",
+          "source_sha256": "373c2efda5cae2ca74d4f3275bb9c1a7a6cf3e587f6f900ac8b85174239b24fc"
+        }
+      },
+      "coverage_zh": "T1：初始化不计去抖及5秒边界（6步）。\nT2：急停抑制报警且不重启上电抑制（8步）。",
+      "source_task_sha256": "9bab2557a0184e2dbed89f3738b37efee8171b0d3b06942e76bd9bb5fe67e5f3",
+      "review_status": "PENDING_HUMAN_REVIEW",
+      "material_origin": "GROUP_TRANSLATION_AND_REVIEW_NOT_TEACHER_SPEC",
+      "source_kind": "public",
+      "title_en": "Weld Gap Alarm and Startup Inhibition",
+      "complete_behavior_zh": "独立保留startupStart与gapStart。上电到时拍才允许首次gap采样，elapsed从0开始；startup或急停或Gap_Exceeded=FALSE立即清gap历史。明确DebounceTime为固定正值，或给出参数改变策略。startup仅代表上电屏蔽，不能被解释为速度斜坡。"
+    },
+    {
+      "id": "PUB006",
+      "title_zh": "曝气鼓风机延时启动",
+      "translation_zh": "低溶解氧需求 DO_LOW 与常闭急停许可同时连续成立5秒后开启鼓风机。需求消失或急停立即停机并复位全部启动计时，下次需求重新等待5秒。只在 BLOWER_RUN 从假变真的实际启动时将 UINT 启动次数加1，连续运行不重复计数。上电运行关闭、次数零；不要求连续调速。",
+      "assumptions_zh": "首次许可采样的已用时间为0；达到5秒的采样启动并同拍计数。测试不越过 UINT 上限，溢出策略另定。",
+      "review_points_zh": "检查4999ms/5000ms、到期当拍急停、连续运行只计一次以及第二次完整启动。",
+      "properties_zh": {
+        "P1": {
+          "formula": "G(BLOWER_RUN <-> (permit & delayDone))",
+          "description": "鼓风机运行当且仅当许可成立且完整延时到期。",
+          "review": "检查4999ms/5000ms、到期当拍急停、连续运行只计一次以及第二次完整启动。"
+        },
+        "P2": {
+          "formula": "G(!permit -> (!BLOWER_RUN & X(!delayDone)))",
+          "description": "许可消失同拍停机，并清除下拍的延时完成状态。",
+          "review": "检查4999ms/5000ms、到期当拍急停、连续运行只计一次以及第二次完整启动。"
+        },
+        "P3": {
+          "formula": "G((!runPrev & BLOWER_RUN) -> AERATION_BLOWER_CYCLE_COUNT=countPrev+1)",
+          "description": "前拍未运行而本拍运行时，启动次数恰加1。",
+          "review": "检查4999ms/5000ms、到期当拍急停、连续运行只计一次以及第二次完整启动。"
+        },
+        "P4": {
+          "formula": "G((runPrev | !BLOWER_RUN) -> AERATION_BLOWER_CYCLE_COUNT=countPrev)",
+          "description": "持续运行或未运行时，启动次数保持。",
+          "review": "检查4999ms/5000ms、到期当拍急停、连续运行只计一次以及第二次完整启动。"
+        },
+        "P5": {
+          "formula": "G((G(permit)) -> F(BLOWER_RUN))",
+          "description": "持续许可且物理时间前进时，最终运行。",
+          "review": "检查4999ms/5000ms、到期当拍急停、连续运行只计一次以及第二次完整启动。"
+        },
+        "PUB006.V2.COMPLETE": {
+          "formula": "G(CompleteBehaviorV2)",
+          "description": "每次调用的全部输出与保留历史必须满足完整行为关系；具体转移规则见上方完整规约。",
+          "review": "CompleteBehaviorV2是解释性复合谓词；必须显式展开并绑定实际候选输出后才能模型检查，不能把名称当成已完成证明。"
+        }
+      },
+      "interface_zh": {
+        "DO_LOW": "溶解氧低的需求",
+        "AERATION_E_STOP_NC": "常闭急停许可，真为正常",
+        "BLOWER_RUN": "鼓风机运行",
+        "AERATION_BLOWER_CYCLE_COUNT": "实际启动次数"
+      },
+      "tests_zh": {
+        "T1": {
+          "name": "5秒边界、持续运行及第二次启动计数",
+          "purpose": "5秒边界、持续运行及第二次启动计数",
+          "source_sha256": "3206176a38d1a54cddd74614cb32a31d3866e0b58c07ac45b734244ecd65d7ab"
+        },
+        "T2": {
+          "name": "急停清部分及完整延时",
+          "purpose": "急停清部分及完整延时",
+          "source_sha256": "6cd4adf8bcc5d7772f29f38577fcc75a67cead6f03222a216b52d8239e3776dd"
+        },
+        "V2_permit_loss_at_deadline": {
+          "name": "到期丢许可及长间隔恢复",
+          "purpose": "到期丢许可及长间隔恢复",
+          "source_sha256": "140a7ed576f48b0107d8ffe81639f509c8940449d60fdb324d9f8082f51d7f39"
+        }
+      },
+      "coverage_zh": "T1：5秒边界、持续运行及第二次启动计数（8步）。\nT2：急停清部分及完整延时（7步）。\nV2_permit_loss_at_deadline：到期丢许可及长间隔恢复（5步）。",
+      "source_task_sha256": "1780d42a219d6537f750c3edf45a780f5859d7735d2d0935ba697f3275e46ff4",
+      "review_status": "PENDING_HUMAN_REVIEW",
+      "material_origin": "GROUP_TRANSLATION_AND_REVIEW_NOT_TEACHER_SPEC",
+      "source_kind": "public",
+      "title_en": "Aeration Blower Delayed Start",
+      "complete_behavior_zh": "将permit连续计时、首次TRUE年龄0、FALSE清零定义成确定时钟状态；运行与permit且elapsed>=5s等价。初始runPrev=FALSE、countPrev=0，每拍更新。加入累计启动次数<65536的评测域或另外约定溢出策略。"
+    },
+    {
+      "id": "PUB007",
+      "title_zh": "多泵切换控制",
+      "translation_zh": "五台泵支持手动和自动模式。手动按各泵 selection 选择；自动按 priority 选择优先级最高的三台，实现三用两备。start 启动所选泵，stop 停止全部泵。pumpGroup 按引用传入，只允许写 RunComd，不改 priority 和 selection。",
+      "assumptions_zh": "stop 优先。start 为电平，每拍为真都按当前配置重选；没有 start 时保留原命令，模式或优先级变化不自动重选。优先级越大越优先，同优先级按较小数组下标优先。调用方初始化运行命令为假。",
+      "review_points_zh": "确认自动恰选三台、同分顺序、手动可选数量、无启动时保持、stop/start 同拍及只读字段保护。",
+      "properties_zh": {
+        "P1": {
+          "formula": "G(stop -> (forall i in 1..5: !runs[i]))",
+          "description": "停止命令关闭全部五台泵。",
+          "review": "确认自动恰选三台、同分顺序、手动可选数量、无启动时保持、stop/start 同拍及只读字段保护。"
+        },
+        "P2": {
+          "formula": "G((!stop & start & !mode) -> (forall i in 1..5: runs[i]=select[i]))",
+          "description": "未停止且手动启动时，每台运行命令恰等于其选择位。",
+          "review": "确认自动恰选三台、同分顺序、手动可选数量、无启动时保持、stop/start 同拍及只读字段保护。"
+        },
+        "P3": {
+          "formula": "G((!stop & start & mode) -> (forall i in 1..5: runs[i]=(i in top3)))",
+          "description": "未停止且自动启动时，运行集合恰为排序后的前三台。",
+          "review": "确认自动恰选三台、同分顺序、手动可选数量、无启动时保持、stop/start 同拍及只读字段保护。"
+        },
+        "P4": {
+          "formula": "G((!stop & !start) -> (forall i in 1..5: runs[i]=runPrev[i]))",
+          "description": "没有停止或启动命令时，保留五台泵的前拍运行命令。",
+          "review": "确认自动恰选三台、同分顺序、手动可选数量、无启动时保持、stop/start 同拍及只读字段保护。"
+        },
+        "P5": {
+          "formula": "G(readOnlyPreserved)",
+          "description": "所有优先级与选择位必须保持调用前值。",
+          "review": "确认自动恰选三台、同分顺序、手动可选数量、无启动时保持、stop/start 同拍及只读字段保护。"
+        },
+        "PUB007.V2.COMPLETE": {
+          "formula": "G(CompleteBehaviorV2)",
+          "description": "每次调用的全部输出与保留历史必须满足完整行为关系；具体转移规则见上方完整规约。",
+          "review": "CompleteBehaviorV2是解释性复合谓词；必须显式展开并绑定实际候选输出后才能模型检查，不能把名称当成已完成证明。"
+        }
+      },
+      "interface_zh": {
+        "mode": "假手动、真自动",
+        "start": "启动或重新选择",
+        "stop": "全部停止",
+        "pumpGroup": "五泵记录，仅RunComd可写"
+      },
+      "tests_zh": {
+        "T1": {
+          "name": "手动保持、只读字段及停启同拍",
+          "purpose": "手动保持、只读字段及停启同拍",
+          "source_sha256": "7c5fe19173cb9c1f4e329c2da5e1a3cbb1a439cb13eaa8e70d5eb911d63c8ba0"
+        },
+        "T2": {
+          "name": "自动前三及同优先级顺序",
+          "purpose": "自动前三及同优先级顺序",
+          "source_sha256": "dc758ffbfc38a477e23707b28d695b6a6a077fae81b24128bbef3fbb7145f253"
+        },
+        "V2_pump_reselection_history": {
+          "name": "优先级变更、无启动保持及重选",
+          "purpose": "优先级变更、无启动保持及重选",
+          "source_sha256": "fbe76b58a8b348876d8d85bd41081503550f891ef4e8362fcb3a098b1e420d3e"
+        }
+      },
+      "coverage_zh": "T1：手动保持、只读字段及停启同拍（3步）。\nT2：自动前三及同优先级顺序（3步）。\nV2_pump_reselection_history：优先级变更、无启动保持及重选（4步）。",
+      "source_task_sha256": "131e208f5f404b493dfe9ef094a26f480c731748fde89dff9d66319c81af2436",
+      "review_status": "PENDING_HUMAN_REVIEW",
+      "material_origin": "GROUP_TRANSLATION_AND_REVIEW_NOT_TEACHER_SPEC",
+      "source_kind": "public",
+      "title_en": "Multi-Pump Switching Control System",
+      "complete_behavior_zh": "明确运行态、启动/停止及重选事件的契约，给出每拍对全部五个RunComd的方程。以排序键(-priority,index)独立算top3，所有priority/selection保持采样值，不允许排序时交换整个结构破坏外部顺序。"
+    },
+    {
+      "id": "PUB008",
+      "title_zh": "模拟量批量转换",
+      "translation_zh": "从两个数组各自下界起按相同序号配对，处理前 count 个通道，count 由调用方保证在0至两数组较小长度内。只读原始数组和通道配置，只写 retVal/outputValue。启用的模式0通道按单极0～27648或双极-27648～27648线性映射至 loLIM～hiLIM；模式1原始值除10，模式2除100。非法模式报16#8001；hiLIM≤loLIM报16#8002，跳过转换。",
+      "assumptions_zh": "禁用及超出 count 的通道两输出保持。错误通道只改错误码、值保持；成功清码。模式错误优先，所有模式都检查上下限。不对超量程原始值饱和。数组可以不同下界、不同长度。成功转换容差 abs=1e-5、rel=2e-6；只读/保持字段精确比较。",
+      "review_points_zh": "检查不同数组下界、count=0、宽类型中间运算、禁用与错误时保持。不要把 JSON 序号当 PLC 实际下标。",
+      "properties_zh": {
+        "P1": {
+          "formula": "G(readonlyPreserved)",
+          "description": "原始输入数组和全部配置字段均不得修改。",
+          "review": "检查不同数组下界、count=0、宽类型中间运算、禁用与错误时保持。不要把 JSON 序号当 PLC 实际下标。"
+        },
+        "P2": {
+          "formula": "G(forall j: !enabled(j) -> preserved(j))",
+          "description": "禁用或未处理通道的返回码与输出值保持调用前值。",
+          "review": "检查不同数组下界、count=0、宽类型中间运算、禁用与错误时保持。不要把 JSON 序号当 PLC 实际下标。"
+        },
+        "P3": {
+          "formula": "G(forall j: (enabled(j) & !modeOK(j)) -> (retVal(j)=16#8001 & outputValue(j)=sampledOutputValue(j)))",
+          "description": "启用但模式非法时返回8001，输出值保持。",
+          "review": "检查不同数组下界、count=0、宽类型中间运算、禁用与错误时保持。不要把 JSON 序号当 PLC 实际下标。"
+        },
+        "P4": {
+          "formula": "G(forall j: (enabled(j) & modeOK(j) & !limitsOK(j)) -> (retVal(j)=16#8002 & outputValue(j)=sampledOutputValue(j)))",
+          "description": "启用、模式合法但上下限非法时返回8002，输出值保持。",
+          "review": "检查不同数组下界、count=0、宽类型中间运算、禁用与错误时保持。不要把 JSON 序号当 PLC 实际下标。"
+        },
+        "P5": {
+          "formula": "G(forall j: (enabled(j) & modeOK(j) & limitsOK(j)) -> retVal(j)=0)",
+          "description": "启用且模式和上下限合法时返回码为0。",
+          "review": "检查不同数组下界、count=0、宽类型中间运算、禁用与错误时保持。不要把 JSON 序号当 PLC 实际下标。"
+        },
+        "P6": {
+          "formula": "G(forall j: (enabled(j) & limitsOK(j) & measuringMode(j)=0) -> outputValue(j)=scaled(j))",
+          "description": "合法模式0使用对应单双极线性换算。",
+          "review": "检查不同数组下界、count=0、宽类型中间运算、禁用与错误时保持。不要把 JSON 序号当 PLC 实际下标。"
+        },
+        "P7": {
+          "formula": "G(forall j: (enabled(j) & limitsOK(j) & measuringMode(j)=1) -> outputValue(j)=raw(j)/10)",
+          "description": "合法模式1输出原始值的十分之一。",
+          "review": "检查不同数组下界、count=0、宽类型中间运算、禁用与错误时保持。不要把 JSON 序号当 PLC 实际下标。"
+        },
+        "P8": {
+          "formula": "G(forall j: (enabled(j) & limitsOK(j) & measuringMode(j)=2) -> outputValue(j)=raw(j)/100)",
+          "description": "合法模式2输出原始值的百分之一。",
+          "review": "检查不同数组下界、count=0、宽类型中间运算、禁用与错误时保持。不要把 JSON 序号当 PLC 实际下标。"
+        },
+        "PUB008.V2.COMPLETE": {
+          "formula": "G(CompleteBehaviorV2)",
+          "description": "每次调用的全部输出与保留历史必须满足完整行为关系；具体转移规则见上方完整规约。",
+          "review": "CompleteBehaviorV2是解释性复合谓词；必须显式展开并绑定实际候选输出后才能模型检查，不能把名称当成已完成证明。"
+        }
+      },
+      "interface_zh": {
+        "count": "转换通道数量",
+        "analogValues": "只读原始模拟量数组",
+        "channels": "通道配置与结果，仅retVal/outputValue可写"
+      },
+      "tests_zh": {
+        "T1": {
+          "name": "单双极端点、中点与温度模式",
+          "purpose": "单双极端点、中点与温度模式",
+          "source_sha256": "3644b3c70a0c76411b35d393fa6f615074ac92f4b8d67105f4fa005caab732b9"
+        },
+        "T2": {
+          "name": "禁用、模式错误优先、上下限及count",
+          "purpose": "禁用、模式错误优先、上下限及count",
+          "source_sha256": "991965c3597e417e9da0fa0ee4e71e90d3701cc918334b8dd2d88fe2a93ffa0c"
+        },
+        "T3": {
+          "name": "count为0保持与负值外推",
+          "purpose": "count为0保持与负值外推",
+          "source_sha256": "a849640c66e7b056f58d9242953677e0f42c8b67280c4e6a81abfa83c4facdac"
+        },
+        "V2_unequal_arrays_wide_arithmetic": {
+          "name": "不同长度下界及宽类型算术",
+          "purpose": "不同长度下界及宽类型算术",
+          "source_sha256": "26ec66b279120c1311858c6e2cf149d28977547f5816f8b4544085bf1fc04bc3"
+        }
+      },
+      "coverage_zh": "T1：单双极端点、中点与温度模式（1步）。\nT2：禁用、模式错误优先、上下限及count（1步）。\nT3：count为0保持与负值外推（2步）。\nV2_unequal_arrays_wide_arithmetic：不同长度下界及宽类型算术（1步）。",
+      "source_task_sha256": "eb667336edded3c6192cbb877395a388f33de9e98ec0defab435c94e580bd599",
+      "review_status": "PENDING_HUMAN_REVIEW",
+      "material_origin": "GROUP_TRANSLATION_AND_REVIEW_NOT_TEACHER_SPEC",
+      "source_kind": "public",
+      "title_en": "Analog Batch Processing",
+      "complete_behavior_zh": "明确j∈[0,len(channels)-1]，转换读取仅在j<count且j<len(analogValues)时，count≤min两长度为环境前提；域外不访问。独立以足够宽的类型算期望；定义转换误差关系，例如与IEC REAL舍入相容的逐输出绝对/相对容差，先固定再评测。"
+    },
+    {
+      "id": "PUB009",
+      "title_zh": "移动平均计算",
+      "translation_zh": "编写功能块，计算连续数据的移动算术平均值，新数据替代最旧数据后重新计算。cyclicExecution=TRUE 时每扫描采集一次；trigger 每次上升沿触发一次采样；reset=TRUE 时重置计算。窗口长度必须为1至100，成功状态为16#0000，越界错误状态为16#8200。",
+      "assumptions_zh": "窗口未满时按实际样本数计算；有效窗口变化清空历史；有效窗口下复位优先于采样；非法窗口保持历史与输出；复位和非法输入期间也更新触发边沿记忆。",
+      "coverage_zh": "T1：周期预热、滑动替换与复位优先（6步）。\nT2：边沿、长按、窗口变化及非法范围（9步）。\nV2_data_contract_boundaries：独立计算的数据边界回归（7步）。",
+      "review_points_zh": "建议补充：合法最大窗口100的填满及第101次替换；大量正负数据的数值误差；复位与非法窗口同时发生的优先级。",
+      "properties_zh": {
+        "P1": {
+          "formula": "G(!valid -> (error & status=16#8200 & unchangedMean))",
+          "description": "窗口无效时，置 error，status=16#8200，平均值和窗口满标志保持原值。",
+          "review": "unchangedMean 明确定义保持这两个输出；内部采样历史是否保持还要检查完整行为。"
+        },
+        "P2": {
+          "formula": "G(valid -> (!error & status=0))",
+          "description": "窗口有效时，清除 error，status=0。",
+          "review": "非法窗口恢复后必须能正常采样。"
+        },
+        "P3": {
+          "formula": "G((valid & reset) -> (average=0 & !windowSizeReached))",
+          "description": "窗口有效且复位时，平均值为0，窗口满标志为假。",
+          "review": "复位优先于本拍采样；非法窗口与复位同时出现的优先级另查完整行为。"
+        },
+        "P4": {
+          "formula": "G((valid & !reset) -> average=meanOrZero(historyAfter))",
+          "description": "窗口有效且未复位时，平均值等于更新后历史的均值；历史为空则为0。",
+          "review": "historyAfter 必须独立定义采样、窗口变化和淘汰规则，不能用输出反定义期望。"
+        },
+        "P5": {
+          "formula": "G(valid -> (windowSizeReached <-> length(historyAfter)=windowSize))",
+          "description": "窗口有效时，窗口满标志当且仅当更新后的历史长度等于窗口长度。",
+          "review": "窗口未满按实际样本数平均；窗口变化后重新累计。"
+        },
+        "P6": {
+          "formula": "G(X(previousTrigger)=trigger)",
+          "description": "下一拍保留的触发历史等于本拍 trigger 输入。",
+          "review": "每拍都更新，包括非法窗口与复位；X 指下一拍。"
+        },
+        "P7": {
+          "formula": "G((valid & !reset & !cyclicExecution & !triggerRise & !windowChanged) -> unchangedMean)",
+          "description": "合法、未复位、非周期模式、没有触发上升沿且窗口未变化时，平均值和窗口满标志保持不变。",
+          "review": "按钮长按只采一次；窗口变化不能误套保持规则。"
+        },
+        "PUB009.V2.COMPLETE": {
+          "formula": "G(CompleteBehaviorV2)",
+          "description": "每次调用满足完整采样、复位、窗口变更、错误与边沿历史规则。",
+          "review": "CompleteBehaviorV2 及历史序列仍需显式建模。"
+        }
+      },
+      "interface_zh": {
+        "cyclicExecution": "周期采样模式",
+        "trigger": "边沿采样触发",
+        "value": "当前样本值",
+        "windowSize": "窗口大小",
+        "reset": "复位",
+        "average": "滑动平均值",
+        "windowSizeReached": "窗口样本已满",
+        "error": "错误标志",
+        "status": "状态码"
+      },
+      "tests_zh": {
+        "T1": {
+          "name": "周期预热、滑动替换与复位优先",
+          "purpose": "周期预热、滑动替换与复位优先",
+          "source_sha256": "0849d047c52e38822f327724fd96a15c701856784cc3eacc7e6af58b0f42e44d"
+        },
+        "T2": {
+          "name": "边沿、长按、窗口变化及非法范围",
+          "purpose": "边沿、长按、窗口变化及非法范围",
+          "source_sha256": "e4f4e7e50559dd921320d84331a1354fd0f080b15c59bca132e3c9f2a1fbb510"
+        },
+        "V2_data_contract_boundaries": {
+          "name": "独立计算的数据边界回归",
+          "purpose": "独立计算的数据边界回归",
+          "source_sha256": "0e702fe3f046e3642ca79e47084b1e6c66c299c185ce3fbf2281a543fef9f32e"
+        }
+      },
+      "source_task_sha256": "9037b779d7bdad8f00281b59c4f4bf3150284d6a1b489631aff350a2129d5205",
+      "review_status": "PENDING_HUMAN_REVIEW",
+      "material_origin": "GROUP_TRANSLATION_AND_REVIEW_NOT_TEACHER_SPEC",
+      "source_kind": "public",
+      "title_en": "Calculate Moving Average",
+      "complete_behavior_zh": "以独立输入历史维护history和lastValidWindow：非法窗不改；首次有效建立窗口；有效窗口变化或reset清空；!reset且cyclicExecution或triggerRise时追加一个样本并截断到窗口长。每拍更新previousTrigger，包括非法和复位拍。average=空则0否则均值，Reached=长度等于窗口。"
+    },
+    {
+      "id": "PUB010",
+      "title_zh": "温度逻辑控制",
+      "translation_zh": "编写功能块，读取温度 TemperatureSensorInput，与 SetTemperature 比较；低于设定值开启加热，高于设定值关闭加热。连续加热超过一定时间（取5秒）触发过热保护并关闭加热器；等待一定时间（取3秒）后才能解除保护。提供当前温度、设定温度、加热器及保护状态显示。温度小于0或大于100判为传感器故障，关闭加热器。",
+      "assumptions_zh": "当前评测将原文“超过5秒”解释为>=5秒；等温保持上次热需求；保护后第一个>=3秒观测点解除，允许同拍重新加热；故障不清除已有冷却保护；计时从首次有效调用的零时刻起算。",
+      "coverage_zh": "T1：加热上限、冷却边界及重启（6步）。\nT2：传感器故障、有效端点及等温保持（7步）。\nT3：保护中故障不清冷却（5步）。\nV2_omission_regression：规约遗漏的具体错误行为回归（3步）。",
+      "review_points_zh": "必须审核：>5秒与>=5秒选择；冷却结束是否同拍重启。真实PLC计时采样/容差尚需验收。规约正文仍留有“选定边界”等编辑性文字，应在确认后改成唯一最终规则。",
+      "properties_zh": {
+        "P1": {
+          "formula": "G(sensorFault -> !HeaterOutput)",
+          "description": "传感器故障时，加热输出必须关闭。",
+          "review": "核对故障范围是温度<0或>100；0和100为有效值。"
+        },
+        "P2": {
+          "formula": "G(OverheatProtection -> !HeaterOutput)",
+          "description": "处于过热保护时，加热输出必须关闭。",
+          "review": "保护输出与实际加热不能同时为真。"
+        },
+        "P3": {
+          "formula": "G(HeaterStatus=HeaterOutput)",
+          "description": "加热状态显示始终等于实际加热输出。",
+          "review": "禁止显示与执行器状态不一致。"
+        },
+        "P4": {
+          "formula": "G((CurrentTemperature=TemperatureSensorInput) & (SetTempDisplay=SetTemperature))",
+          "description": "当前温度显示等于传感器输入，设定显示等于设定温度。",
+          "review": "故障时是否仍直接显示原值，本条表示是。"
+        },
+        "P5": {
+          "formula": "G((!sensorFault & !OverheatProtection & demand & !heatLimitReached) -> HeaterOutput)",
+          "description": "无传感器故障、无保护、有加热需求且未达到连续加热上限时，必须开启加热。",
+          "review": "demand 的等温保持定义与计时边界都需要人工确认。"
+        },
+        "P6": {
+          "formula": "G(heatLimitReached -> (OverheatProtection & !HeaterOutput))",
+          "description": "达到加热时间上限时，开启过热保护并关闭加热。",
+          "review": "当前约定>=5秒；老师“超过5秒”存在边界歧义。"
+        },
+        "P7": {
+          "formula": "G((protectPrev & !cooldownDone) -> OverheatProtection)",
+          "description": "上拍处于保护且冷却尚未完成时，本拍保护必须保持。",
+          "review": "传感器故障不能提前清除保护；冷却时间约定3秒。"
+        },
+        "P8": {
+          "formula": "G((OverheatProtection & G(!sensorFault & demand)) -> F(HeaterOutput))",
+          "description": "保护期间若从当前起始终无故障且持续需要加热，则最终会重新开启加热。",
+          "review": "假设时间持续前进；这条本身不表达精确3秒，也不能排除提前解除。"
+        },
+        "PUB010.V2.COMPLETE": {
+          "formula": "G(CompleteBehaviorV2)",
+          "description": "每次调用满足完整需求、计时、保护和故障优先级规则。",
+          "review": "需展开完整谓词并给出时间模型；真实 PLC 的定时器采样误差另做验收。"
+        },
+        "PUB010.V2.1": {
+          "formula": "G((TemperatureSensorInput>SetTemperature) -> !HeaterOutput)",
+          "description": "传感器温度严格高于设定温度时，始终禁止加热。",
+          "review": "等温行为由需求记忆决定；用于防止错误保持加热。"
+        }
+      },
+      "interface_zh": {
+        "TemperatureSensorInput": "温度传感器输入",
+        "SetTemperature": "设定温度",
+        "CurrentTemperature": "当前温度显示",
+        "SetTempDisplay": "设定温度显示",
+        "HeaterStatus": "加热状态显示",
+        "OverheatProtection": "过热保护状态",
+        "HeaterOutput": "加热执行输出"
+      },
+      "tests_zh": {
+        "T1": {
+          "name": "加热上限、冷却边界及重启",
+          "purpose": "加热上限、冷却边界及重启",
+          "source_sha256": "50985bee525307aeafda0cabe548e8858cf47c603c50aad002b465b4472a76e8"
+        },
+        "T2": {
+          "name": "传感器故障、有效端点及等温保持",
+          "purpose": "传感器故障、有效端点及等温保持",
+          "source_sha256": "e56cf42a333e3b6a9ba316f930c27895edc03619282d2ca40e51045ce617a6fd"
+        },
+        "T3": {
+          "name": "保护中故障不清冷却",
+          "purpose": "保护中故障不清冷却",
+          "source_sha256": "d2afea74d43556bac851d8a8b7b708aab215e768933bb7728a774756e268d04a"
+        },
+        "V2_omission_regression": {
+          "name": "规约遗漏的具体错误行为回归",
+          "purpose": "规约遗漏的具体错误行为回归",
+          "source_sha256": "1d3c467f627157a579ebe418a3a300f14cadfd2f4fd8d590ab3a445b6b5d8509"
+        }
+      },
+      "source_task_sha256": "ba0d88597e989a68b2f7e35c308b423ca81ffdd1f316f57467e42bcde8537a38",
+      "review_status": "PENDING_HUMAN_REVIEW",
+      "material_origin": "GROUP_TRANSLATION_AND_REVIEW_NOT_TEACHER_SPEC",
+      "source_kind": "public",
+      "title_en": "Temperature Logic Control",
+      "complete_behavior_zh": "选定>5s或>=5s边界并解释。先由旧运行区间算heatAgeBeforeDecision/是否到时，再更新保护与冷却，最后规定HeaterOutput↔sensorValid & demandAfter & !protectionAfter；demandAfter为低温置真、高温置假、等温保持。明确冷却第一个>=3秒观测拍是否必须解除，并规定无旧保护且未到限不得自行保护。"
+    },
+    {
+      "id": "PUB011",
+      "title_zh": "三工位自动生产线",
+      "translation_zh": "产品依次经过A、B、C工位。Mode=0手动、1自动。手动正反转按钮控制电机，方向互锁。自动在A检测到产品并确认A加工完成后向B移动；到B停车，确认B完成后向C移动；到C停车，确认C完成后亮完成灯，取走产品后灯灭。",
+      "assumptions_zh": "手动双按钮同时按下时两向均关闭。确认按钮按电平，只在对应等待阶段接受；每拍最多转移一步。进入手动清除自动状态及完成灯，返回自动从A等待。仅一个产品且传感器不矛盾。",
+      "review_points_zh": "确认到位当拍停车，不把同拍已按住的下一确认用于跨级；检查模式切换复位、完成后移除和无关按钮。",
+      "properties_zh": {
+        "PUB011.P1": {
+          "formula": "G(!(fwd & rev))",
+          "description": "正反转输出永不同时为真。",
+          "review": "确认到位当拍停车，不把同拍已按住的下一确认用于跨级；检查模式切换复位、完成后移除和无关按钮。"
+        },
+        "PUB011.P2": {
+          "formula": "G(!auto -> ((fwd <-> mf) & (rev <-> mr)))",
+          "description": "手动输出分别等于只按正转或只按反转按钮的请求。",
+          "review": "确认到位当拍停车，不把同拍已按住的下一确认用于跨级；检查模式切换复位、完成后移除和无关按钮。"
+        },
+        "PUB011.P3": {
+          "formula": "G(auto -> !rev)",
+          "description": "自动模式永不反转。",
+          "review": "确认到位当拍停车，不把同拍已按住的下一确认用于跨级；检查模式切换复位、完成后移除和无关按钮。"
+        },
+        "PUB011.P4": {
+          "formula": "G(auto & arrive -> !fwd)",
+          "description": "自动运输阶段到达目标工位时，本拍停止正转。",
+          "review": "确认到位当拍停车，不把同拍已按住的下一确认用于跨级；检查模式切换复位、完成后移除和无关按钮。"
+        },
+        "PUB011.P5": {
+          "formula": "G(auto & finish -> light)",
+          "description": "自动C工位确认完成时，完成灯亮。",
+          "review": "确认到位当拍停车，不把同拍已按住的下一确认用于跨级；检查模式切换复位、完成后移除和无关按钮。"
+        },
+        "PUB011.P6": {
+          "formula": "G(auto & removed -> !light)",
+          "description": "自动模式产品移除时完成灯关闭。",
+          "review": "确认到位当拍停车，不把同拍已按住的下一确认用于跨级；检查模式切换复位、完成后移除和无关按钮。"
+        },
+        "PUB011.V2.COMPLETE": {
+          "formula": "G(CompleteBehaviorV2)",
+          "description": "每次调用的全部输出与保留历史必须满足完整行为关系；具体转移规则见上方完整规约。",
+          "review": "CompleteBehaviorV2是解释性复合谓词；必须显式展开并绑定实际候选输出后才能模型检查，不能把名称当成已完成证明。"
+        }
+      },
+      "interface_zh": {
+        "Mode": "假手动、真自动",
+        "ForwardButton": "手动正转按钮",
+        "ReverseButton": "手动反转按钮",
+        "SensorA": "A站到位",
+        "SensorB": "B站到位",
+        "SensorC": "C站到位",
+        "ButtonA": "A站加工确认",
+        "ButtonB": "B站加工确认",
+        "ButtonC": "C站加工确认",
+        "MotorForward": "电机正转",
+        "MotorReverse": "电机反转",
+        "CompletionLight": "完成灯"
+      },
+      "tests_zh": {
+        "PUB011.T1": {
+          "name": "手动中立、正反转及冲突",
+          "purpose": "手动中立、正反转及冲突",
+          "source_sha256": "75b4b9f320b71db7c92bd1a6251b221676d424cfb08ceafe02a50b0d8932becb"
+        },
+        "PUB011.T2": {
+          "name": "工位等待、运输保持、完成及取走",
+          "purpose": "工位等待、运输保持、完成及取走",
+          "source_sha256": "d62396b62687b24bbd9cc2c512a819cb35aeae1c48ced731fca98c4424e136c7"
+        },
+        "PUB011.T3": {
+          "name": "乱序按钮无效",
+          "purpose": "乱序按钮无效",
+          "source_sha256": "344be94600c07618dbe4069250db51136bd0ff8f57d69dc675551a4eb099364f"
+        },
+        "V2_omission_regression": {
+          "name": "规约遗漏的具体错误行为回归",
+          "purpose": "规约遗漏的具体错误行为回归",
+          "source_sha256": "f9219ee6d0a2d68c565d8637831fcb2772a170dd3e6cb728372e6e7e20695eac"
+        }
+      },
+      "coverage_zh": "PUB011.T1：手动中立、正反转及冲突（4步）。\nPUB011.T2：工位等待、运输保持、完成及取走（10步）。\nPUB011.T3：乱序按钮无效（2步）。\nV2_omission_regression：规约遗漏的具体错误行为回归（3步）。",
+      "source_task_sha256": "b6664ebd314a4cf8a8339b557050a5366e1f29c423e7f1116711a7542b2aabf2",
+      "review_status": "PENDING_HUMAN_REVIEW",
+      "material_origin": "GROUP_TRANSLATION_AND_REVIEW_NOT_TEACHER_SPEC",
+      "source_kind": "public",
+      "title_en": "Automated Production Line Control",
+      "complete_behavior_zh": "明确WAIT_A→MOVE_AB→WAIT_B→MOVE_BC→WAIT_C→DONE→WAIT_A的输入条件、无触发保持及模式复位。输出按转移后的阶段：仅MOVE_AB/MOVE_BC正转，自动反转恒假；仅DONE且产品未取走灯亮。手动灯灭，正反向按按钮互斥方程。"
+    },
+    {
+      "id": "PUB012",
+      "title_zh": "板坯厚度报警与故障历史",
+      "translation_zh": "监测有效厚度信号的超差故障。有效故障触发报警，报警至少保持500ms；故障持续时继续报警，信号无效立即取消报警。每次有效故障新发生时增加故障次数并记录 FaultTimestamp，历史只保留最近五次且下标0最新。正常、有效、无故障的切割运行才按 CycleTime 累计 LTIME 时长。",
+      "assumptions_zh": "统计边沿取 valid AND fault，所以信号失效后恢复的故障算新发生。保持计时从触发调用的0开始，新边沿重启保持；500ms已到且故障消失才释放。无效输入立即取消保持。正 CycleTime 在首次符合条件的调用也累计。计数和长时类型溢出另定。",
+      "review_points_zh": "检查保持期内信号丢失、新故障延长保持、连续六次故障的历史移位，以及非正常切割时累计保持。",
+      "properties_zh": {
+        "PUB012.P1": {
+          "formula": "G(!valid -> !alarm)",
+          "description": "厚度信号无效立即关闭报警。",
+          "review": "检查保持期内信号丢失、新故障延长保持、连续六次故障的历史移位，以及非正常切割时累计保持。"
+        },
+        "PUB012.P2": {
+          "formula": "G(valid & (fault | hold) -> alarm)",
+          "description": "信号有效且当前故障或最短保持仍有效时，报警开启。",
+          "review": "检查保持期内信号丢失、新故障延长保持、连续六次故障的历史移位，以及非正常切割时累计保持。"
+        },
+        "PUB012.P3": {
+          "formula": "G(rise -> record)",
+          "description": "每个有效故障上升沿都更新计数与有界历史。",
+          "review": "检查保持期内信号丢失、新故障延长保持、连续六次故障的历史移位，以及非正常切割时累计保持。"
+        },
+        "PUB012.P4": {
+          "formula": "G(!rise -> same_stats)",
+          "description": "没有新上升沿时，故障统计保持。",
+          "review": "检查保持期内信号丢失、新故障延长保持、连续六次故障的历史移位，以及非正常切割时累计保持。"
+        },
+        "PUB012.P5": {
+          "formula": "G((normal -> add) & (!normal -> same_time))",
+          "description": "符合正常切割条件时累加时长，否则保留原累计值。",
+          "review": "检查保持期内信号丢失、新故障延长保持、连续六次故障的历史移位，以及非正常切割时累计保持。"
+        },
+        "PUB012.P6": {
+          "formula": "G(valid & !fault & !hold -> !alarm)",
+          "description": "信号有效、无故障且保持已结束时，报警关闭。",
+          "review": "检查保持期内信号丢失、新故障延长保持、连续六次故障的历史移位，以及非正常切割时累计保持。"
+        },
+        "PUB012.V2.COMPLETE": {
+          "formula": "G(CompleteBehaviorV2)",
+          "description": "每次调用的全部输出与保留历史必须满足完整行为关系；具体转移规则见上方完整规约。",
+          "review": "CompleteBehaviorV2是解释性复合谓词；必须显式展开并绑定实际候选输出后才能模型检查，不能把名称当成已完成证明。"
+        }
+      },
+      "interface_zh": {
+        "THICKNESS_FAULT": "厚度超差",
+        "THICKNESS_SIGNAL_VALID": "厚度信号有效",
+        "CUTTING_RUN": "切割正在运行",
+        "FaultTimestamp": "当前故障时间戳（秒）",
+        "CycleTime": "本次累计间隔",
+        "THICKNESS_ALARM": "最短保持500ms的报警",
+        "Slab_Fault_Counter": "故障次数",
+        "Slab_Runtime_Accumulator": "正常切割累计时长",
+        "Slab_Fault_History": "最近五个故障时间戳，下标0最新"
+      },
+      "tests_zh": {
+        "PUB012.T1": {
+          "name": "500ms释放及信号丢失立即抢占",
+          "purpose": "500ms释放及信号丢失立即抢占",
+          "source_sha256": "ecf7dcd4a85c60d07fae6a40a0322024462d0f95a0c3c6af0fcd0615aefdc87e"
+        },
+        "PUB012.T2": {
+          "name": "六次故障保留最近五次",
+          "purpose": "六次故障保留最近五次",
+          "source_sha256": "4d7f37f71780e62e3e312345df3a2c88922727cd2644e9d052278693b33e89fe"
+        },
+        "PUB012.T3": {
+          "name": "仅正常切割累计时间",
+          "purpose": "仅正常切割累计时间",
+          "source_sha256": "9f72a17c4c9cad13c2422d0d14f3d6602e22263ff08840e8151f29888b56966f"
+        }
+      },
+      "coverage_zh": "PUB012.T1：500ms释放及信号丢失立即抢占（7步）。\nPUB012.T2：六次故障保留最近五次（13步）。\nPUB012.T3：仅正常切割累计时间（5步）。",
+      "source_task_sha256": "c0151910c6205b17c0599426996a45f8270f7f89a0e1de68c516ae1c2dfea2a9",
+      "review_status": "PENDING_HUMAN_REVIEW",
+      "material_origin": "GROUP_TRANSLATION_AND_REVIEW_NOT_TEACHER_SPEC",
+      "source_kind": "public",
+      "title_en": "Slab Thickness Alarm and Fault History",
+      "complete_behavior_zh": "用上次有效故障边沿的独立时间戳定义hold，invalid立即清hold，每拍更新validFault历史；FaultTimestamp只是记录数据，不拿它当500ms时钟。计数/数组逐项等于旧值更新，runtime按当前qualifying条件加转换后的CycleTime。"
+    },
+    {
+      "id": "PUB013",
+      "title_zh": "办公楼空调多模式节能",
+      "translation_zh": "模式0自动、1舒适、2经济、3夜间。有人且非夜间连续30秒后启动送风机；无人或进入夜间立即停机并重置计时，恢复重等30秒。自动模式有人调温0℃，无人节能+3℃、普通+2℃；舒适模式有人0℃无人+1℃；经济模式有人0℃无人+4℃；夜间不论有人均+4℃。节能选择只影响自动模式，调整范围±4℃。上电风机关闭、调整0。",
+      "assumptions_zh": "调用方保证模式0～3。上电初值不等于首次调用后的值：首次调用立即按输入计算调整量。首次有人且非夜间采样的计时为0，到达30秒的首次观测启动。",
+      "review_points_zh": "occupied 谓词在P3需排除夜间，避免误读成“夜间有人也0℃”；检查全模式表及30秒边界、夜间抢占与重新计时。",
+      "properties_zh": {
+        "PUB013.P1": {
+          "formula": "G(fan <-> (permit & mature))",
+          "description": "风机当且仅当许可成立且连续30秒延时成熟。",
+          "review": "occupied 谓词在P3需排除夜间，避免误读成“夜间有人也0℃”；检查全模式表及30秒边界、夜间抢占与重新计时。"
+        },
+        "PUB013.P2": {
+          "formula": "G(bounded)",
+          "description": "温度调整始终在规定范围内。",
+          "review": "occupied 谓词在P3需排除夜间，避免误读成“夜间有人也0℃”；检查全模式表及30秒边界、夜间抢占与重新计时。"
+        },
+        "PUB013.P3": {
+          "formula": "G((occupied -> zero) & (night -> four))",
+          "description": "按谓词定义的有人非夜间场景调整0℃；夜间始终+4℃。",
+          "review": "occupied 谓词在P3需排除夜间，避免误读成“夜间有人也0℃”；检查全模式表及30秒边界、夜间抢占与重新计时。"
+        },
+        "PUB013.P4": {
+          "formula": "G((auto_save -> three) & (auto_standard -> two))",
+          "description": "无人自动模式按节能选择分别调整+3℃或+2℃。",
+          "review": "occupied 谓词在P3需排除夜间，避免误读成“夜间有人也0℃”；检查全模式表及30秒边界、夜间抢占与重新计时。"
+        },
+        "PUB013.P5": {
+          "formula": "G((comfort -> one) & (economy -> four))",
+          "description": "无人舒适模式+1℃、无人经济模式+4℃，不受节能选择影响。",
+          "review": "occupied 谓词在P3需排除夜间，避免误读成“夜间有人也0℃”；检查全模式表及30秒边界、夜间抢占与重新计时。"
+        },
+        "PUB013.P6": {
+          "formula": "G((G permit) -> F fan)",
+          "description": "许可从任意扫描起持续成立且调用和时间持续前进，最终送风。",
+          "review": "occupied 谓词在P3需排除夜间，避免误读成“夜间有人也0℃”；检查全模式表及30秒边界、夜间抢占与重新计时。"
+        },
+        "PUB013.V2.COMPLETE": {
+          "formula": "G(CompleteBehaviorV2)",
+          "description": "每次调用的全部输出与保留历史必须满足完整行为关系；具体转移规则见上方完整规约。",
+          "review": "CompleteBehaviorV2是解释性复合谓词；必须显式展开并绑定实际候选输出后才能模型检查，不能把名称当成已完成证明。"
+        }
+      },
+      "interface_zh": {
+        "OCCUPANCY_DETECTED": "检测到有人",
+        "ENERGY_SAVING_MODE": "节能选择，仅自动模式有效",
+        "HVAC_MODE_SELECTOR": "0自动、1舒适、2经济、3夜间",
+        "SUPPLY_FAN_RUN": "送风机运行",
+        "TEMP_SETPOINT_ADJUST": "温度设定调整量（℃）"
+      },
+      "tests_zh": {
+        "PUB013.T1": {
+          "name": "各模式调温表与节能范围",
+          "purpose": "各模式调温表与节能范围",
+          "source_sha256": "06d96fceaf7b2a0003e370cc504d0eb2150edaca8575abdfdecf43309e308d68"
+        },
+        "PUB013.T2": {
+          "name": "30秒边界、需求丢失、重启及夜间抢占",
+          "purpose": "30秒边界、需求丢失、重启及夜间抢占",
+          "source_sha256": "4854c8009120ae11b8371ce3ab8ae31cfab76c4e5de88d75142e7c15a19cf218"
+        },
+        "V2_permit_loss_at_deadline": {
+          "name": "到期丢许可及恢复完整重计时",
+          "purpose": "到期丢许可及恢复完整重计时",
+          "source_sha256": "58e98762f4234bbfaac9c17cc84ef0546f765e66cfa93c5eaada6c82c84914a2"
+        }
+      },
+      "coverage_zh": "PUB013.T1：各模式调温表与节能范围（7步）。\nPUB013.T2：30秒边界、需求丢失、重启及夜间抢占（8步）。\nV2_permit_loss_at_deadline：到期丢许可及恢复完整重计时（5步）。",
+      "source_task_sha256": "811ed8eccea23c8e30c177463efcd520ae92998dcfb322c961eaaeb687de013f",
+      "review_status": "PENDING_HUMAN_REVIEW",
+      "material_origin": "GROUP_TRANSLATION_AND_REVIEW_NOT_TEACHER_SPEC",
+      "source_kind": "public",
+      "title_en": "Office HVAC Multi-mode Energy-Saving Control",
+      "complete_behavior_zh": "补mode=HVAC_MODE_SELECTOR、occupancy=OCCUPANCY_DETECTED、adjust=TEMP_SETPOINT_ADJUST。permit失去时当拍风机关、清计时；再次建立从0算；初始值与第一调用计算分开。活性前提加入实际时间进展。"
+    },
+    {
+      "id": "PUB014",
+      "title_zh": "IPv4字符串解析",
+      "translation_zh": "将点分十进制 IPv4 文本解析为32位无符号数。必须恰有四个非空十进制数字段，各为0～255，第一段放最高8位，第四段最低8位。格式、段数、字符或范围错误时 ipValue=0；合法0.0.0.0也输出0。输入 STRING(254)。",
+      "assumptions_zh": "允许十进制前导零；拒绝正负号、空格、十六进制和夹杂非数字。NUL 为PLC字符串结束符，输入受声明容量限制。每次按当前输入重算，不保留上次合法结果。",
+      "review_points_zh": "检查全零、全255、字节序、前导零、空段、多点、超长数字及先合法后非法；0输出本身不能区分合法全零与解析失败。",
+      "properties_zh": {
+        "PUB014.P1": {
+          "formula": "G(valid -> packed)",
+          "description": "合法输入按网络字节序打包四段。",
+          "review": "检查全零、全255、字节序、前导零、空段、多点、超长数字及先合法后非法；0输出本身不能区分合法全零与解析失败。"
+        },
+        "PUB014.P2": {
+          "formula": "G(!valid -> zero)",
+          "description": "非法输入输出0，不能残留上次值。",
+          "review": "检查全零、全255、字节序、前导零、空段、多点、超长数字及先合法后非法；0输出本身不能区分合法全零与解析失败。"
+        },
+        "PUB014.P3": {
+          "formula": "G(same_input -> same_output)",
+          "description": "相同字符串输入产生相同输出。",
+          "review": "检查全零、全255、字节序、前导零、空段、多点、超长数字及先合法后非法；0输出本身不能区分合法全零与解析失败。"
+        },
+        "PUB014.V2.COMPLETE": {
+          "formula": "G(CompleteBehaviorV2)",
+          "description": "每次调用的全部输出与保留历史必须满足完整行为关系；具体转移规则见上方完整规约。",
+          "review": "CompleteBehaviorV2是解释性复合谓词；必须显式展开并绑定实际候选输出后才能模型检查，不能把名称当成已完成证明。"
+        }
+      },
+      "interface_zh": {
+        "ipText": "点分十进制IPv4文本",
+        "ipValue": "网络字节序32位地址，非法为0"
+      },
+      "tests_zh": {
+        "PUB014.T1": {
+          "name": "全零、最大、字节序和前导零",
+          "purpose": "全零、最大、字节序和前导零",
+          "source_sha256": "51ec636eae80144e7b9969e52501b5c15c04fbf7649e6348054dd88f00b3da71"
+        },
+        "PUB014.T2": {
+          "name": "格式错误及溢出清旧结果",
+          "purpose": "格式错误及溢出清旧结果",
+          "source_sha256": "e8c93db750ad653406a977c336066d7d1fc52197b258f38e071e431d277e8e1f"
+        },
+        "V2_data_contract_boundaries": {
+          "name": "独立计算的数据边界回归",
+          "purpose": "独立计算的数据边界回归",
+          "source_sha256": "911869b84670f30c0549d6efe5d879a79c909351739157321711e00be00fe4ae"
+        }
+      },
+      "coverage_zh": "PUB014.T1：全零、最大、字节序和前导零（5步）。\nPUB014.T2：格式错误及溢出清旧结果（14步）。\nV2_data_contract_boundaries：独立计算的数据边界回归（4步）。",
+      "source_task_sha256": "df8ee75b989a2f755b0347bd6b94f451a60dd2b5c355080c3d2e6f3965de3684",
+      "review_status": "PENDING_HUMAN_REVIEW",
+      "material_origin": "GROUP_TRANSLATION_AND_REVIEW_NOT_TEACHER_SPEC",
+      "source_kind": "public",
+      "title_en": "IPv4 Parsing with Format and Range Checks",
+      "complete_behavior_zh": "给每字符ASCII数字及恰三个点的精确定义；允许任意数量前导零，只要总STRING容量满足。用逐段安全累加a=10*a+d且超255拒绝，合法后以足够宽无符号算术拼接；实际ipValue只作被检输出。"
+    },
+    {
+      "id": "PUB015",
+      "title_zh": "物料配比过程控制",
+      "translation_zh": "混合三种物料并经阀D排出。estop=FALSE 时所有设备立即停止。opeMode=FALSE为手动模式，通过按钮上升沿分别切换阀A/B/C/D和搅拌电机启停；例如阀A按钮第一次上升沿启动、第二次上升沿停止。opeMode=TRUE为自动模式：按autoStart后开启A，液位到50cm切换为B，到80cm关闭B。processMode=FALSE时开始搅拌，完成后关闭搅拌并开启D；processMode=TRUE时先开启C，到100cm关闭C并开始搅拌，完成后开启D，流程结束。",
+      "assumptions_zh": "液位采用>=阈值；急停清空状态；模式切换当拍清空并抑制命令；按钮历史每拍更新；自动启动需新上升沿；批次中processMode固定；D保持开启，直到急停或模式复位。",
+      "coverage_zh": "PUB015.T1：手动长按、新边沿与急停（7步）。\nPUB015.T2：等液位边界及搅拌完成（7步）。\nPUB015.T3：跳过阈值及急停取消周期（8步）。\nV2_process_history_regression：模式和历史记忆回归（10步）。",
+      "review_points_zh": "必须审核：D保持开启是否符合题意；下一批如何启动；模式切换是否必须取消当前流程。建议逐阶段补急停及恢复、每个手动输出独立双沿。",
+      "properties_zh": {
+        "PUB015.P1": {
+          "formula": "G(!safe -> off)",
+          "description": "安全条件不成立时，所有执行器都关闭。",
+          "review": "safe 对应 estop=TRUE；不要误把 estop=FALSE 理解为正常。"
+        },
+        "PUB015.P2": {
+          "formula": "G((toggle -> changed) & (held -> same))",
+          "description": "手动模式下，符合条件的按钮切换事件使对应输出翻转，长按使其保持。",
+          "review": "toggle/held/changed/same 必须逐个执行器定义，包含模式与急停的前置条件。"
+        },
+        "PUB015.P3": {
+          "formula": "G(toB -> B)",
+          "description": "自动流程到达切换B条件时，满足B阶段输出组合。",
+          "review": "B 不是单一原始变量；须核对其含义为关A、开B及其他输出。"
+        },
+        "PUB015.P4": {
+          "formula": "G(toMix -> Mix)",
+          "description": "两物料流程到达搅拌条件时，满足搅拌阶段输出组合。",
+          "review": "液位>=80；两物料模式应跳过C，不能只检查搅拌输出为真。"
+        },
+        "PUB015.P5": {
+          "formula": "G((toC -> C) & (fromC -> Mix))",
+          "description": "三物料流程到达C条件时进入C阶段；完成C条件时进入搅拌阶段。",
+          "review": "分别核对>=80切C、>=100切搅拌以及互锁。"
+        },
+        "PUB015.P6": {
+          "formula": "G(mixed -> Drain)",
+          "description": "搅拌完成条件成立时，满足排料阶段输出组合。",
+          "review": "停止搅拌并打开D；D是否保持开启、下一批如何开始仍需确认。"
+        },
+        "PUB015.V2.COMPLETE": {
+          "formula": "G(CompleteBehaviorV2)",
+          "description": "每次调用满足完整急停、模式切换、手动边沿与自动批次规则。",
+          "review": "完整谓词未展开前不能直接模型检查；批次 processMode 固定是组内假设。"
+        }
+      },
+      "interface_zh": {
+        "estop": "急停许可，真为正常",
+        "opeMode": "手动/自动选择",
+        "valveAStart": "A阀按钮",
+        "valveBStart": "B阀按钮",
+        "valveCStart": "C阀按钮",
+        "valveDStart": "D阀按钮",
+        "mixMotorStart": "搅拌按钮",
+        "autoStart": "自动启动",
+        "processMode": "配料流程选择",
+        "levelSensor": "液位",
+        "mixMotorComplete": "搅拌完成",
+        "valveARun": "A阀运行",
+        "valveBRun": "B阀运行",
+        "valveCRun": "C阀运行",
+        "valveDRun": "D阀运行",
+        "mixMotorRun": "搅拌运行"
+      },
+      "tests_zh": {
+        "PUB015.T1": {
+          "name": "手动长按、新边沿与急停",
+          "purpose": "手动长按、新边沿与急停",
+          "source_sha256": "819aa136a3af52dfdb2d4289dad38b453b8e788492aa2251ff7befd1e4197a0c"
+        },
+        "PUB015.T2": {
+          "name": "等液位边界及搅拌完成",
+          "purpose": "等液位边界及搅拌完成",
+          "source_sha256": "4d04915e825e98793fbb8d0907d3c5d1c349cb2d9ce240c219ea18422fb061c0"
+        },
+        "PUB015.T3": {
+          "name": "跳过阈值及急停取消周期",
+          "purpose": "跳过阈值及急停取消周期",
+          "source_sha256": "2bb643568e9feec9f4d607652dc5615a3a8ed6d82e07d3515801f0dd81b6595b"
+        },
+        "V2_process_history_regression": {
+          "name": "模式和历史记忆回归",
+          "purpose": "模式和历史记忆回归",
+          "source_sha256": "c378e249fdfb6f85d604d3d912fee2a54a65a07964bbdb2bdb31f6bb78cd7dfc"
+        }
+      },
+      "source_task_sha256": "ddec1091e7021fbda62790c7b42b8d8d05dfdf3338ddb225acb224aa7dcd93d0",
+      "review_status": "PENDING_HUMAN_REVIEW",
+      "material_origin": "GROUP_TRANSLATION_AND_REVIEW_NOT_TEACHER_SPEC",
+      "source_kind": "public",
+      "title_en": "Material Proportioning Process Control",
+      "complete_behavior_zh": "按优先级急停→模式变化→正常分支明确复位当拍是否抑制按钮；随后为五个手动输出逐一写XOR上升沿方程，所有按钮历史每拍更新。自动给完整IDLE/FILL_A/FILL_B/FILL_C/MIX/DRAIN转移表，输出由转移后阶段唯一决定。独立定义processMode批次固定或采样锁存。"
+    },
+    {
+      "id": "PUB016",
+      "title_zh": "柔性加工控制",
+      "translation_zh": "五个工作站从左至右编号1至5。1号上料，2至4号加工，5号成品输出。每站有到位传感器，电机可使输送带左右运动。1号检测到原料并按station1Start后，按processSequence第一项送往目标站，到位停车；收到该站加工完成信号后读取下一项，并决定输送方向，直到送至5号。processLength规定有效序列长度1至8，从processSequence[1]开始；最后一项必须为5，其余有效项为2至4，调用方负责提供合法序列。",
+      "assumptions_zh": "路线批次内固定；启动和完成均按上升沿；到位当拍仅停车，不接受同拍完成；重复站点代表两次加工，需两次新完成沿，无须移动；每拍最多推进一项。",
+      "coverage_zh": "PUB016.T1：路线4→2→5及错误完成信号（8步）。\nPUB016.T2：长度1直达输出站（3步）。\nPUB016.T3：重复站点不能被长按跳过（7步）。\nV2_process_history_regression：重复站点和历史回归（9步）。",
+      "review_points_zh": "建议补充：最大长度8、覆盖3号站的完整路线、连续两批；确认到位与完成同拍是否故意忽略。真实数组绑定仍需PLC运行验收。",
+      "properties_zh": {
+        "PUB016.P1": {
+          "formula": "G(!(left & right))",
+          "description": "输送带左转与右转不能同时为真。",
+          "review": "允许两者都为假；检查停车和反向切换。"
+        },
+        "PUB016.P2": {
+          "formula": "G((higher -> (right & !left)) & (lower -> (left & !right)))",
+          "description": "目标在右侧时右转且不左转；目标在左侧时左转且不右转。",
+          "review": "higher/lower 必须限定在正在移动的有效路线阶段，等待加工时不能误启动。"
+        },
+        "PUB016.P3": {
+          "formula": "G(arrive -> stop)",
+          "description": "目标工位到位事件成立时，输送带停止。",
+          "review": "应检查目标工位传感器；其他工位到位信号不能提前停车。"
+        },
+        "PUB016.P4": {
+          "formula": "G(waiting -> stop)",
+          "description": "等待加工完成期间，输送带保持停止。",
+          "review": "到位当拍按当前约定不接受同拍加工完成信号。"
+        },
+        "PUB016.P5": {
+          "formula": "G(out -> (done & stop))",
+          "description": "输出工位到达条件成立时，置完成并停止。",
+          "review": "核对 done 的保持与复位定义；成品输出为路线最后一步。"
+        },
+        "PUB016.P6": {
+          "formula": "(G(moving -> F arrive) & G(processing -> F completion)) -> G(started -> F done)",
+          "description": "若每次移动最终到位且每次加工最终收到完成信号，则每次启动最终完成。",
+          "review": "还依赖合法、固定路线和正确边沿；不能要求没有外部反馈也自动完成。"
+        },
+        "PUB016.V2.COMPLETE": {
+          "formula": "G(CompleteBehaviorV2)",
+          "description": "每次调用满足完整路线、移动、等待、完成边沿与重复站点规则。",
+          "review": "需要展开数组和索引语义；长度1和8、重复站点、3号工位分别审核。"
+        }
+      },
+      "interface_zh": {
+        "processLength": "有效路线长度",
+        "sensor1": "1站到位",
+        "sensor2": "2站到位",
+        "sensor3": "3站到位",
+        "sensor4": "4站到位",
+        "sensor5": "5站到位",
+        "station1Start": "1站启动",
+        "station2Complete": "2站加工完成",
+        "station3Complete": "3站加工完成",
+        "station4Complete": "4站加工完成",
+        "processSequence": "工位路线数组",
+        "conveyorLeft": "输送带左转",
+        "conveyorRight": "输送带右转"
+      },
+      "tests_zh": {
+        "PUB016.T1": {
+          "name": "路线4→2→5及错误完成信号",
+          "purpose": "路线4→2→5及错误完成信号",
+          "source_sha256": "78cbcf05fbab03c1780e70ab86d83fd800147d365c56b9fe401ce52e91fead6f"
+        },
+        "PUB016.T2": {
+          "name": "长度1直达输出站",
+          "purpose": "长度1直达输出站",
+          "source_sha256": "761d14835bbe22ead0e923371bffa99253f366d642a736525255f489bcab1ec0"
+        },
+        "PUB016.T3": {
+          "name": "重复站点不能被长按跳过",
+          "purpose": "重复站点不能被长按跳过",
+          "source_sha256": "fd5e7726fe14e5cd98190a425bcdfc8f5ac70344b366e1e2e0b9e5a70cc23ffb"
+        },
+        "V2_process_history_regression": {
+          "name": "重复站点和历史回归",
+          "purpose": "重复站点和历史回归",
+          "source_sha256": "39ca02240f8bf42789129a4177bba49439e32c0d07d1e043f9abcfce71e5e714"
+        }
+      },
+      "source_task_sha256": "3d8fc47e63a0067a407e5416f07cd3be3e445735ca9a755210f9e9a2f94f3d4d",
+      "review_status": "PENDING_HUMAN_REVIEW",
+      "material_origin": "GROUP_TRANSLATION_AND_REVIEW_NOT_TEACHER_SPEC",
+      "source_kind": "public",
+      "title_en": "Flexible Processing Control",
+      "complete_behavior_zh": "独立维护currentStation、index、target和phase。接受start后index=1，目标为sequence[1]；异站按方向移动，同站进入等待且电机全关。到达加工站进入WAIT_PROCESS；对应完成新边沿才index+1并重新取目标；5站到达回IDLE。无事件保持，一拍最多推进一个index。输出按转移后阶段计算。"
+    },
+    {
+      "id": "PUB017",
+      "title_zh": "配方管理系统",
+      "translation_zh": "数据库为 ARRAY[1..10] OF ST_Recipe，含配方号、原料类型、原料比例和生产温度，编号0表示空位，非零编号不重复。查询不存在报8001；新增重复报8002、库满报8003，否则写最小下标空位；删除不存在报8004，否则将匹配配方号置0；修改不存在报8005，否则整体替换匹配记录。查询成功输出完整记录。",
+      "assumptions_zh": "请求按上升沿，每拍至多一个新请求，不自行定义并发优先级。提交编号为正。成功指示为单拍脉冲；空闲清错误/状态。查询结果保留至下次成功查询。删除仅清ID，槽内其他字段不受约束。调用方数据库跨拍保留；REAL按既定1e-5容差。",
+      "review_points_zh": "检查五个错误码、重复优先于库满、最低空位重用、长按不重复、失败不改库、查询结果保持；error接口也受库命名冲突影响。",
+      "properties_zh": {
+        "PUB017.P1": {
+          "formula": "G((q_missing -> e1) & (a_dup -> e2) & (a_full -> e3) & (d_missing -> e4) & (m_missing -> e5))",
+          "description": "查询缺失、新增重复、新增满库、删除缺失和修改缺失分别返回8001～8005。",
+          "review": "检查五个错误码、重复优先于库满、最低空位重用、长按不重复、失败不改库、查询结果保持；error接口也受库命名冲突影响。"
+        },
+        "PUB017.P2": {
+          "formula": "G(error -> same)",
+          "description": "拒绝操作时数据库所有记录保持。",
+          "review": "检查五个错误码、重复优先于库满、最低空位重用、长按不重复、失败不改库、查询结果保持；error接口也受库命名冲突影响。"
+        },
+        "PUB017.P3": {
+          "formula": "G(add_ok -> (insert & add_success))",
+          "description": "成功新增将完整输入配方写入最低空位并置新增成功。",
+          "review": "检查五个错误码、重复优先于库满、最低空位重用、长按不重复、失败不改库、查询结果保持；error接口也受库命名冲突影响。"
+        },
+        "PUB017.P4": {
+          "formula": "G(query_ok -> result)",
+          "description": "成功查询返回匹配的完整旧记录。",
+          "review": "检查五个错误码、重复优先于库满、最低空位重用、长按不重复、失败不改库、查询结果保持；error接口也受库命名冲突影响。"
+        },
+        "PUB017.P5": {
+          "formula": "G(idle -> clear)",
+          "description": "没有新请求时清错误、状态和三个成功指示。",
+          "review": "检查五个错误码、重复优先于库满、最低空位重用、长按不重复、失败不改库、查询结果保持；error接口也受库命名冲突影响。"
+        },
+        "PUB017.P6": {
+          "formula": "G(unique)",
+          "description": "从合法初始库出发，所有操作保持非零配方号唯一。",
+          "review": "检查五个错误码、重复优先于库满、最低空位重用、长按不重复、失败不改库、查询结果保持；error接口也受库命名冲突影响。"
+        },
+        "PUB017.V2.COMPLETE": {
+          "formula": "G(CompleteBehaviorV2)",
+          "description": "每次调用的全部输出与保留历史必须满足完整行为关系；具体转移规则见上方完整规约。",
+          "review": "CompleteBehaviorV2是解释性复合谓词；必须显式展开并绑定实际候选输出后才能模型检查，不能把名称当成已完成证明。"
+        }
+      },
+      "interface_zh": {
+        "addRecipe": "新增请求",
+        "deleteRecipe": "删除请求",
+        "modifyRecipe": "修改请求",
+        "queryRecipe": "查询请求",
+        "recipeIn": "输入配方",
+        "recipeAdded": "新增成功脉冲",
+        "recipeDeleted": "删除成功脉冲",
+        "recipeModified": "修改成功脉冲",
+        "recipeQueryResult": "最近成功查询结果",
+        "error": "错误标志",
+        "status": "状态码",
+        "recipe": "跨拍保留的10条配方数据库"
+      },
+      "tests_zh": {
+        "PUB017.T1": {
+          "name": "增查改删及最低空位重用",
+          "purpose": "增查改删及最低空位重用",
+          "source_sha256": "8f95e7edf640877741cd86a0041258a670e55da56f1cc4e4ffee8dcad72958f5"
+        },
+        "PUB017.T2": {
+          "name": "缺失错误与重复拒绝保持库",
+          "purpose": "缺失错误与重复拒绝保持库",
+          "source_sha256": "f9994dda55b8fc1b1d41b0e8c1102c144b718f12d4f88912e3170da7cdb5b817"
+        },
+        "PUB017.T3": {
+          "name": "填满10槽且重复优先于满库",
+          "purpose": "填满10槽且重复优先于满库",
+          "source_sha256": "3524ca31ccdee938f56fcd99796a26ecb9906656565559bff79c5ef1f8d1a5d4"
+        }
+      },
+      "coverage_zh": "PUB017.T1：增查改删及最低空位重用（14步）。\nPUB017.T2：缺失错误与重复拒绝保持库（11步）。\nPUB017.T3：填满10槽且重复优先于满库（23步）。",
+      "source_task_sha256": "2876637577e135f8e6fe25e9fcad33e7f5177c5285b788179278a36ea0ab3f57",
+      "review_status": "PENDING_HUMAN_REVIEW",
+      "material_origin": "GROUP_TRANSLATION_AND_REVIEW_NOT_TEACHER_SPEC",
+      "source_kind": "public",
+      "title_en": "Recipe Management System",
+      "complete_behavior_zh": "逐操作定义dbAfter与dbBefore：新增替换最低空位；删除只将匹配记录ID置0，其余记录保持，删除槽非ID字段保持或不约束须声明；修改仅匹配槽整体替换；查询/空闲/失败数据库全保持。successAdded/Deleted/Modified分别与对应成功事件等价，每拍脉冲；所有成功/空闲error=FALSE,status=0。查询结果仅成功查询更新，其余保持。"
+    },
+    {
+      "id": "PUB018",
+      "title_zh": "泛型先进先出环形队列",
+      "translation_zh": "从调用方 buffer 推导队列容量和元素类型。enqueue 上升沿入队一个 item；dequeue 上升沿出队并把队首写回 item，调用方不同时请求两者。reset 优先清队列及 elementCount，可不清底层存储。空队列出队报8001，满队列入队报8002，数据保持；其他情况状态0。首次调用为空，内部头尾指针不能暴露为接口。",
+      "assumptions_zh": "保留老师 VARIANT 接口，本机原生支持和元数据访问尚未验证，不可默改DINT特例。需同时验证A绑定DINT/下界0容量2和B绑定BOOL/下界1容量3。buffer一次绑定跨拍保留；item每拍可由调用方赋值。复位拍也采样请求边沿，长按不产生额外操作。",
+      "review_points_zh": "此题有真实环境兼容性未决项。审查泛型接口、环绕顺序、满空拒绝、reset同拍、不同下界与类型；不能仅理想参考队列自己匹配自己。",
+      "properties_zh": {
+        "PUB018.P1": {
+          "formula": "G(reset -> (empty & ok))",
+          "description": "复位优先于所有请求，队列变空且状态为0。",
+          "review": "此题有真实环境兼容性未决项。审查泛型接口、环绕顺序、满空拒绝、reset同拍、不同下界与类型；不能仅理想参考队列自己匹配自己。"
+        },
+        "PUB018.P2": {
+          "formula": "G((pop_empty -> (e1 & same)) & (push_full -> (e2 & same)))",
+          "description": "空出队或满入队分别报8001/8002，逻辑队列和item保持。",
+          "review": "此题有真实环境兼容性未决项。审查泛型接口、环绕顺序、满空拒绝、reset同拍、不同下界与类型；不能仅理想参考队列自己匹配自己。"
+        },
+        "PUB018.P3": {
+          "formula": "G((push -> pushed) & (pop -> popped))",
+          "description": "被接受的入队/出队边沿恰执行一次，更新顺序和数量，出队返回原队首。",
+          "review": "此题有真实环境兼容性未决项。审查泛型接口、环绕顺序、满空拒绝、reset同拍、不同下界与类型；不能仅理想参考队列自己匹配自己。"
+        },
+        "PUB018.P4": {
+          "formula": "G(bounded)",
+          "description": "元素数量始终在0到实际buffer容量之间。",
+          "review": "此题有真实环境兼容性未决项。审查泛型接口、环绕顺序、满空拒绝、reset同拍、不同下界与类型；不能仅理想参考队列自己匹配自己。"
+        },
+        "PUB018.P5": {
+          "formula": "G(idle -> (ok & same))",
+          "description": "空闲或请求长按无新边沿时，状态0且队列和item保持。",
+          "review": "此题有真实环境兼容性未决项。审查泛型接口、环绕顺序、满空拒绝、reset同拍、不同下界与类型；不能仅理想参考队列自己匹配自己。"
+        },
+        "PUB018.V2.COMPLETE": {
+          "formula": "G(CompleteBehaviorV2)",
+          "description": "每次调用的全部输出与保留历史必须满足完整行为关系；具体转移规则见上方完整规约。",
+          "review": "CompleteBehaviorV2是解释性复合谓词；必须显式展开并绑定实际候选输出后才能模型检查，不能把名称当成已完成证明。"
+        }
+      },
+      "interface_zh": {
+        "enqueue": "入队请求上升沿",
+        "dequeue": "出队请求上升沿",
+        "reset": "优先复位",
+        "elementCount": "有效元素数量",
+        "status": "调用状态码",
+        "item": "入队读入、出队写回的泛型元素",
+        "buffer": "调用方提供的泛型数组存储"
+      },
+      "tests_zh": {
+        "PUB018.T1": {
+          "name": "容量2环绕及满空拒绝",
+          "purpose": "容量2环绕及满空拒绝",
+          "source_sha256": "10e7d38b48719d2f1361b9d8c59e2b40b4635ade4c7be7d31ed2726ac16e6205"
+        },
+        "PUB018.T2": {
+          "name": "复位优先及长按不虚触发",
+          "purpose": "复位优先及长按不虚触发",
+          "source_sha256": "9c52670633a6f0ab98ca61fdcb9a348696f04140037ca88c79b099b822d6641c"
+        },
+        "PUB018.T3": {
+          "name": "BOOL类型与下界1的第二绑定",
+          "purpose": "BOOL类型与下界1的第二绑定",
+          "source_sha256": "6dd9b5a8b2647172058ba4a6009d08888001e489adf4a5506d92d3119248d7ac"
+        }
+      },
+      "coverage_zh": "PUB018.T1：容量2环绕及满空拒绝（17步）。\nPUB018.T2：复位优先及长按不虚触发（8步）。\nPUB018.T3：BOOL类型与下界1的第二绑定（9步）。",
+      "source_task_sha256": "bbdcc5c15ce006f24ed978cb3a36553d4be5e624ca1ba2c4321e1adaf0b3be8a",
+      "review_status": "PENDING_HUMAN_REVIEW",
+      "material_origin": "GROUP_TRANSLATION_AND_REVIEW_NOT_TEACHER_SPEC",
+      "source_kind": "public",
+      "title_en": "FIFO First-In-First-Out Queue",
+      "complete_behavior_zh": "定义Q为独立输入历史参考序列，并把elementCount=|QAfter|写成每拍不变量；pop实际item等于QBefore首项，push/idle/reject/reset实际item等于采样值。reset后QAfter=[]。buffer可允许不同环形布局，但要明确由受检head/tail映射验证存储，或以完整出队序列核对可观察FIFO行为，不凭理想Q自己通过。保持接口，不私改为DINT特例。"
+    },
+    {
+      "id": "PUB019",
+      "title_zh": "机械臂四模式控制",
+      "translation_zh": "支持手动、单步、单周期和连续模式，选择输入互斥。手动按钮控制上下左右、夹紧释放并受对应限位反馈停止。自动动作顺序为：下降→夹紧→上升→右移→下降→释放→上升→左移，初始位为左上。单步每按一次启动完成一个动作后等待；单周期自动完成一次后停；连续循环执行。急停随时停止。夹紧与释放分别用 GripLimitSwitch/ReleaseLimitSwitch 判断完成。",
+      "assumptions_zh": "EmergencyStop=FALSE才是急停。Start为上升沿，忙时忽略但更新历史。急停、无模式及模式变化复位；首次调用建立模式正常执行，之后模式改变当拍抑制动作。手动相反按钮两边均禁用，独立轴可并行。每拍最多转移一步，动作输出受转移后状态及限位门控。新自动序列须左上到位；单步完成后须另拍新启动。",
+      "review_points_zh": "重点确认模式切换抢占、限位已真时的同拍/下拍、一拍一步、自动顺序、单步长按及急停恢复不自启。",
+      "properties_zh": {
+        "PUB019.P1": {
+          "formula": "G((!safe | no_mode) -> off)",
+          "description": "急停或未选模式时，六个动作输出全部关闭。",
+          "review": "重点确认模式切换抢占、限位已真时的同拍/下拍、一拍一步、自动顺序、单步长按及急停恢复不自启。"
+        },
+        "PUB019.P2": {
+          "formula": "G(exclusive)",
+          "description": "上下、左右、夹紧释放各对互斥。",
+          "review": "重点确认模式切换抢占、限位已真时的同拍/下拍、一拍一步、自动顺序、单步长按及急停恢复不自启。"
+        },
+        "PUB019.P3": {
+          "formula": "G(safe & !modeChanged & ManualMode -> (down <-> down_manual))",
+          "description": "安全且非切换拍的手动下降仅由合法下降按钮及未到下限条件控制。",
+          "review": "重点确认模式切换抢占、限位已真时的同拍/下拍、一拍一步、自动顺序、单步长按及急停恢复不自启。"
+        },
+        "PUB019.P4": {
+          "formula": "G((down_limit -> !down) & (up_limit -> !up) & (left_limit -> !left) & (right_limit -> !right) & (grip_limit -> !grip) & (release_limit -> !release))",
+          "description": "对应限位或完成反馈为真时，禁止继续输出该动作。",
+          "review": "重点确认模式切换抢占、限位已真时的同拍/下拍、一拍一步、自动顺序、单步长按及急停恢复不自启。"
+        },
+        "PUB019.P5": {
+          "formula": "G(safe & !modeChanged & (step_done | waiting) -> off)",
+          "description": "单步完成或无新启动等待时，所有动作关闭。",
+          "review": "重点确认模式切换抢占、限位已真时的同拍/下拍、一拍一步、自动顺序、单步长按及急停恢复不自启。"
+        },
+        "PUB019.P6": {
+          "formula": "G(safe & !modeChanged & start -> started)",
+          "description": "安全且非模式切换拍，空闲左上位的新启动进入下降阶段。",
+          "review": "重点确认模式切换抢占、限位已真时的同拍/下拍、一拍一步、自动顺序、单步长按及急停恢复不自启。"
+        },
+        "PUB019.P7": {
+          "formula": "G(ordered)",
+          "description": "八个预设动作按规定顺序执行。",
+          "review": "重点确认模式切换抢占、限位已真时的同拍/下拍、一拍一步、自动顺序、单步长按及急停恢复不自启。"
+        },
+        "PUB019.P8": {
+          "formula": "G((safe & !modeChanged) -> ((cycle_done -> (idle & off)) & (continuous_done -> begin_next)))",
+          "description": "单周期末回空闲并关输出，连续模式末直接回下降。",
+          "review": "重点确认模式切换抢占、限位已真时的同拍/下拍、一拍一步、自动顺序、单步长按及急停恢复不自启。"
+        },
+        "PUB019.P9": {
+          "formula": "(G(safe & SingleCycleMode) & G(busy -> F feedback)) -> G(started -> F idle)",
+          "description": "始终安全且保持单周期模式、每个忙动作最终收到匹配反馈时，每个已启动序列最终回空闲。",
+          "review": "重点确认模式切换抢占、限位已真时的同拍/下拍、一拍一步、自动顺序、单步长按及急停恢复不自启。"
+        },
+        "PUB019.V2.COMPLETE": {
+          "formula": "G(CompleteBehaviorV2)",
+          "description": "每次调用的全部输出与保留历史必须满足完整行为关系；具体转移规则见上方完整规约。",
+          "review": "CompleteBehaviorV2是解释性复合谓词；必须显式展开并绑定实际候选输出后才能模型检查，不能把名称当成已完成证明。"
+        }
+      },
+      "interface_zh": {
+        "ManualMode": "手动模式",
+        "SingleStepMode": "单步模式",
+        "SingleCycleMode": "单周期模式",
+        "ContinuousMode": "连续模式",
+        "EmergencyStop": "急停许可，假为急停",
+        "Start": "启动按钮",
+        "DownButton": "下降按钮",
+        "UpButton": "上升按钮",
+        "LeftButton": "左移按钮",
+        "RightButton": "右移按钮",
+        "GripButton": "夹紧按钮",
+        "ReleaseButton": "释放按钮",
+        "DownLimitSwitch": "下限位",
+        "UpLimitSwitch": "上限位",
+        "LeftLimitSwitch": "左限位",
+        "RightLimitSwitch": "右限位",
+        "GripLimitSwitch": "夹紧完成反馈",
+        "ReleaseLimitSwitch": "释放完成反馈",
+        "MoveDown": "下降命令",
+        "MoveUp": "上升命令",
+        "MoveLeft": "左移命令",
+        "MoveRight": "右移命令",
+        "ActivateGrip": "夹紧命令",
+        "ActivateRelease": "释放命令"
+      },
+      "tests_zh": {
+        "PUB019.T1": {
+          "name": "手动限位、冲突及急停",
+          "purpose": "手动限位、冲突及急停",
+          "source_sha256": "f4cb38410983cd30462b4a88551a9c5d6593cf11e6f50ed5ecd149dfcc10cdd0"
+        },
+        "PUB019.T2": {
+          "name": "单步新边沿且长按不跳步",
+          "purpose": "单步新边沿且长按不跳步",
+          "source_sha256": "bd99be9196cff8e2159f19ca7cba82d891d7eaa74a34ecb7a6e2799f6619a23b"
+        },
+        "PUB019.T3": {
+          "name": "完整八动作单周期",
+          "purpose": "完整八动作单周期",
+          "source_sha256": "684e51786d500cf6740a389f8a30c96bb4b92df7af221895b308fcf997099423"
+        },
+        "PUB019.T4": {
+          "name": "连续末步回首步",
+          "purpose": "连续末步回首步",
+          "source_sha256": "70af8247e675d7f7a9f551a0bf7a7b582db44337bf3a1f7df0f671f5e5041329"
+        },
+        "PUB019.T5": {
+          "name": "急停取消且恢复不自启",
+          "purpose": "急停取消且恢复不自启",
+          "source_sha256": "501f0fff9cfc62a4bc8fe7c120ba035ba743563843b530aea320f9e57105042f"
+        }
+      },
+      "coverage_zh": "PUB019.T1：手动限位、冲突及急停（10步）。\nPUB019.T2：单步新边沿且长按不跳步（9步）。\nPUB019.T3：完整八动作单周期（10步）。\nPUB019.T4：连续末步回首步（10步）。\nPUB019.T5：急停取消且恢复不自启（6步）。",
+      "source_task_sha256": "bec00814d655592550168ea95dade4298710737893a5643c761e500a6449b703",
+      "review_status": "PENDING_HUMAN_REVIEW",
+      "material_origin": "GROUP_TRANSLATION_AND_REVIEW_NOT_TEACHER_SPEC",
+      "source_kind": "public",
+      "title_en": "Mechanical Arm Control",
+      "complete_behavior_zh": "手动对六动作均写命令=安全 & manual & 本按钮 & !反向按钮 & !本限位。自动独立建8个动作状态与单步等待态，记录nextStep/busy；按匹配反馈才前进，一拍至多一阶。单步完成全关，下一新Start边沿启动保存的nextStep；单周期末IDLE，连续末转DOWN；每个动作输出由转移后状态并按限位门控。急停/无模式/模式变化按声明优先复位。"
+    },
+    {
+      "id": "PUB020",
+      "title_zh": "五工位生产控制",
+      "translation_zh": "生产线依次为上料、清洗、称重、烧制、成品。手动正反转互锁。自动上料到位后运输至清洗，到位停车等待 washComplete；再到称重停车等待 weightComplete。重量100～200（含端点）合格，烧制温度按100→500、200→550线性换算，继续运输；不合格输出 kick。烧制到位停车，firingComplete后运至成品；到位亮灯，取走后灯灭。",
+      "assumptions_zh": "手动双按钮均停。进入手动复位流程、剔除和灯，但保留上次合格温度；模式变化从等待上料重建。到位优先，同拍确认最早下拍接受，每拍最多转移一步。废品在称重处保持剔除直至移除。只有合格判定更新 firingTemp，其余保持。单产品、传感器无矛盾。",
+      "review_points_zh": "确认100/200含等号、99.9/200.1拒绝，温度跨批保留、到位与完成同拍优先、模式切换、废品移除后新批次。",
+      "properties_zh": {
+        "PUB020.P1": {
+          "formula": "G(!(fwd & rev))",
+          "description": "正反转不能同时开启。",
+          "review": "确认100/200含等号、99.9/200.1拒绝，温度跨批保留、到位与完成同拍优先、模式切换、废品移除后新批次。"
+        },
+        "PUB020.P2": {
+          "formula": "G(!auto -> ((fwd <-> mf) & (rev <-> mr)))",
+          "description": "手动按单方向按钮输出，双按钮均关闭。",
+          "review": "确认100/200含等号、99.9/200.1拒绝，温度跨批保留、到位与完成同拍优先、模式切换、废品移除后新批次。"
+        },
+        "PUB020.P3": {
+          "formula": "G(auto -> !rev)",
+          "description": "自动流程从不反转。",
+          "review": "确认100/200含等号、99.9/200.1拒绝，温度跨批保留、到位与完成同拍优先、模式切换、废品移除后新批次。"
+        },
+        "PUB020.P4": {
+          "formula": "G(auto & arrival -> stopped)",
+          "description": "运输到目标工位当拍停车。",
+          "review": "确认100/200含等号、99.9/200.1拒绝，温度跨批保留、到位与完成同拍优先、模式切换、废品移除后新批次。"
+        },
+        "PUB020.P5": {
+          "formula": "G(judged -> ((valid -> qualified) & (!valid -> reject)))",
+          "description": "称重判定时，合格进入后续并线性计算温度，不合格剔除且停机。",
+          "review": "确认100/200含等号、99.9/200.1拒绝，温度跨批保留、到位与完成同拍优先、模式切换、废品移除后新批次。"
+        },
+        "PUB020.P6": {
+          "formula": "G(no_judgment -> same_temp)",
+          "description": "没有合格判定的拍次保留上次烧制温度。",
+          "review": "确认100/200含等号、99.9/200.1拒绝，温度跨批保留、到位与完成同拍优先、模式切换、废品移除后新批次。"
+        },
+        "PUB020.P7": {
+          "formula": "G((output_arrival -> light) & (removed -> clear))",
+          "description": "成品到位开灯，移除后清灯并停车。",
+          "review": "确认100/200含等号、99.9/200.1拒绝，温度跨批保留、到位与完成同拍优先、模式切换、废品移除后新批次。"
+        },
+        "PUB020.P8": {
+          "formula": "G(order)",
+          "description": "仅合格产品按上料、清洗、称重、烧制、成品顺序推进。",
+          "review": "确认100/200含等号、99.9/200.1拒绝，温度跨批保留、到位与完成同拍优先、模式切换、废品移除后新批次。"
+        },
+        "PUB020.P9": {
+          "formula": "(G(auto) & G(arrival_pending -> F arrival) & G(processing_wait -> F matching_completion) & G(judged -> valid)) -> G(feed -> F light)",
+          "description": "始终自动、运输和加工均最终反馈且所有被判定重量合格时，每次上料最终亮完成灯。",
+          "review": "确认100/200含等号、99.9/200.1拒绝，温度跨批保留、到位与完成同拍优先、模式切换、废品移除后新批次。"
+        },
+        "PUB020.V2.COMPLETE": {
+          "formula": "G(CompleteBehaviorV2)",
+          "description": "每次调用的全部输出与保留历史必须满足完整行为关系；具体转移规则见上方完整规约。",
+          "review": "CompleteBehaviorV2是解释性复合谓词；必须显式展开并绑定实际候选输出后才能模型检查，不能把名称当成已完成证明。"
+        }
+      },
+      "interface_zh": {
+        "Mode": "假手动、真自动",
+        "ForwardButton": "正转按钮",
+        "ReverseButton": "反转按钮",
+        "SensorFeed": "上料到位",
+        "SensorWash": "清洗到位",
+        "SensorWeight": "称重到位",
+        "SensorFiring": "烧制到位",
+        "SensorOutput": "成品到位",
+        "washComplete": "清洗完成",
+        "weightComplete": "称重完成",
+        "weight": "重量",
+        "firingComplete": "烧制完成",
+        "MotorForward": "电机正转",
+        "MotorReverse": "电机反转",
+        "kick": "废品剔除",
+        "CompletionLight": "完成灯",
+        "firingTemp": "保留的烧制温度"
+      },
+      "tests_zh": {
+        "PUB020.T1": {
+          "name": "手动方向及冲突",
+          "purpose": "手动方向及冲突",
+          "source_sha256": "6551a67af4ebac1d8641a90b2eae8a6f9971dd4acc2088eef8529f6daea46918"
+        },
+        "PUB020.T2": {
+          "name": "合格重量100与温度500",
+          "purpose": "合格重量100与温度500",
+          "source_sha256": "b0feced4ffbd5384bb1a79513418cb32e07b2d0a0a37f9480c785583ff904de7"
+        },
+        "PUB020.T3": {
+          "name": "合格重量150与温度525",
+          "purpose": "合格重量150与温度525",
+          "source_sha256": "73e33062ed020234599ab052f781b2590d9fa48b922dd861896b5c3e83427ae4"
+        },
+        "PUB020.T4": {
+          "name": "合格重量200与温度550",
+          "purpose": "合格重量200与温度550",
+          "source_sha256": "ff93b811e509bfa32341c938aaaf3a25d5017b41fbc09673757a2624b0aec257"
+        },
+        "PUB020.T5": {
+          "name": "99.9拒绝并保持剔除",
+          "purpose": "99.9拒绝并保持剔除",
+          "source_sha256": "07474de6c004389ae7531145e99bad66e3fa1df2ee92dfd0b3a21bfc36020e37"
+        },
+        "PUB020.T6": {
+          "name": "200.1拒绝并保持剔除",
+          "purpose": "200.1拒绝并保持剔除",
+          "source_sha256": "92d81d38451bf18cc40bc7e3efda64de40c16fe7dc7b109f02d1dd0156b2c664"
+        },
+        "PUB020.T7": {
+          "name": "乱序完成不能启动",
+          "purpose": "乱序完成不能启动",
+          "source_sha256": "61ffd2595219e74647fd6973793adba03c3d96ab1e6e4aba352850844d68210f"
+        },
+        "V2_process_history_regression": {
+          "name": "跨批温度与模式历史回归",
+          "purpose": "跨批温度与模式历史回归",
+          "source_sha256": "e1add405fd82ff42109fe95ff9d08897406246485c4ce128ff12f0dc7a7a05d3"
+        }
+      },
+      "coverage_zh": "PUB020.T1：手动方向及冲突（4步）。\nPUB020.T2：合格重量100与温度500（11步）。\nPUB020.T3：合格重量150与温度525（11步）。\nPUB020.T4：合格重量200与温度550（11步）。\nPUB020.T5：99.9拒绝并保持剔除（9步）。\nPUB020.T6：200.1拒绝并保持剔除（9步）。\nPUB020.T7：乱序完成不能启动（4步）。\nV2_process_history_regression：跨批温度与模式历史回归（16步）。",
+      "source_task_sha256": "6855819aabd35f661243f66c3f83256d7346d5647554d333cfb9cf0e98573a66",
+      "review_status": "PENDING_HUMAN_REVIEW",
+      "material_origin": "GROUP_TRANSLATION_AND_REVIEW_NOT_TEACHER_SPEC",
+      "source_kind": "public",
+      "title_en": "Production Control",
+      "complete_behavior_zh": "列出WAIT_FEED/MOVE_WASH/WAIT_WASH/MOVE_WEIGHT/WAIT_WEIGHT/REJECT/MOVE_FIRING/WAIT_FIRING/MOVE_OUTPUT/OUTPUT_DONE全转移表，明确旧阶段判定事件、转移后阶段决定输出。arrival分四运输段按目标传感器定义。称重成功只更新一次firingTemp，其余保持；REJECT在SensorWeight仍TRUE时kick保持，移除后回WAIT_FEED。"
+    },
+    {
+      "id": "SELF001",
+      "title_zh": "带防护门许可的电机自保持",
+      "translation_zh": "Run初值FALSE。每拍Stop或防护门未关闭都强制停机；否则Start置运行，无Start则保留。Start长按时关门当拍允许启动。本题是教学逻辑，不替代安全等级防护门电路。",
+      "assumptions_zh": "输入均为电平，不要求启动上升沿；输出观测在本次调用结束。",
+      "review_points_zh": "审查停止与门许可优先于启动、关门长按允许启动这一明确约定。",
+      "properties_zh": {
+        "P1": {
+          "formula": "G(first -> !qRun)",
+          "description": "首次调用前保留的运行请求为假。",
+          "review": "审查停止与门许可优先于启动、关门长按允许启动这一明确约定。"
+        },
+        "P2": {
+          "formula": "G((Stop | !GuardClosed) -> !Run)",
+          "description": "停止或开门同拍停机。",
+          "review": "审查停止与门许可优先于启动、关门长按允许启动这一明确约定。"
+        },
+        "P3": {
+          "formula": "G((Start & !Stop & GuardClosed) -> Run)",
+          "description": "许可成立的启动同拍运行。",
+          "review": "审查停止与门许可优先于启动、关门长按允许启动这一明确约定。"
+        },
+        "P4": {
+          "formula": "G((!Start & !Stop & GuardClosed) -> (Run <-> qRun))",
+          "description": "无新启动且未停止、门关闭时保留运行状态。",
+          "review": "审查停止与门许可优先于启动、关门长按允许启动这一明确约定。"
+        },
+        "P5": {
+          "formula": "G(Run -> X(Stop | !GuardClosed | Run))",
+          "description": "运行在相邻调用中保持，除非下一拍有停止或开门。",
+          "review": "审查停止与门许可优先于启动、关门长按允许启动这一明确约定。"
+        },
+        "SELF001.V2.COMPLETE": {
+          "formula": "G(CompleteBehaviorV2)",
+          "description": "每次调用的全部输出与保留历史必须满足完整行为关系；具体转移规则见上方完整规约。",
+          "review": "CompleteBehaviorV2是解释性复合谓词；必须显式展开并绑定实际候选输出后才能模型检查，不能把名称当成已完成证明。"
+        }
+      },
+      "interface_zh": {
+        "Start": "启动请求",
+        "Stop": "停止请求",
+        "GuardClosed": "防护门关闭许可",
+        "Run": "电机运行"
+      },
+      "tests_zh": {
+        "latch": {
+          "name": "初始化、启动、保持和停止",
+          "purpose": "初始化、启动、保持和停止",
+          "source_sha256": "ab815afb0eb8c24c8376a59f6c0d9f158e671b6d946d0d51a4effecac97578f8"
+        },
+        "priority": {
+          "name": "同拍优先及关门恢复",
+          "purpose": "同拍优先及关门恢复",
+          "source_sha256": "eb851763e99a57de67db9e62c871cc28e10c75c63bdd85965e1fb13840ae69bc"
+        }
+      },
+      "coverage_zh": "latch：初始化、启动、保持和停止（5步）。\npriority：同拍优先及关门恢复（5步）。",
+      "source_task_sha256": "bee291a0ed4586925c640e902444bc5af99973f2dc94fa29799f203e11ce9feb",
+      "review_status": "PENDING_HUMAN_REVIEW",
+      "material_origin": "GROUP_TRANSLATION_AND_REVIEW_NOT_TEACHER_SPEC",
+      "source_kind": "self_built",
+      "title_en": "Guarded motor with retained run command",
+      "complete_behavior_zh": "补qRun[0]=FALSE，qRun[k+1]=Run[k]的监控绑定；可用总方程Run↔GuardClosed & !Stop & (Start | qRun)作为完整一步规约。P5可保留作冗余一致性检查。"
+    },
+    {
+      "id": "SELF002",
+      "title_zh": "换向前空挡一拍的点动驱动",
+      "translation_zh": "停止、双按钮或无按钮时两输出都假。仅一按钮请求对应方向；若前拍输出为相反方向，本拍两输出都假形成空挡，持续请求在再下一拍可运行。初始方向为空挡，正反向永不同时通电。",
+      "assumptions_zh": "空挡依据上拍实际输出，不依据原按钮；按钮为电平，计一拍而不是固定物理时间。",
+      "review_points_zh": "检查直接换向、持续换向请求、双按钮和停止，以及中间空挡恰一拍。",
+      "properties_zh": {
+        "P1": {
+          "formula": "G(!(Forward & Reverse))",
+          "description": "两个方向输出始终互斥。",
+          "review": "检查直接换向、持续换向请求、双按钮和停止，以及中间空挡恰一拍。"
+        },
+        "P2": {
+          "formula": "G((Stop | (ForwardButton <-> ReverseButton)) -> (!Forward & !Reverse))",
+          "description": "停止、双按钮相同为真或相同为假时输出空挡。",
+          "review": "检查直接换向、持续换向请求、双按钮和停止，以及中间空挡恰一拍。"
+        },
+        "P3": {
+          "formula": "G((fwdOnly & qReverse) -> (!Forward & !Reverse))",
+          "description": "仅正转请求且前拍反转时，本拍空挡。",
+          "review": "检查直接换向、持续换向请求、双按钮和停止，以及中间空挡恰一拍。"
+        },
+        "P4": {
+          "formula": "G((revOnly & qForward) -> (!Forward & !Reverse))",
+          "description": "仅反转请求且前拍正转时，本拍空挡。",
+          "review": "检查直接换向、持续换向请求、双按钮和停止，以及中间空挡恰一拍。"
+        },
+        "P5": {
+          "formula": "G((fwdOnly & !qReverse) -> Forward)",
+          "description": "仅正转请求且前拍未反转时，本拍正转。",
+          "review": "检查直接换向、持续换向请求、双按钮和停止，以及中间空挡恰一拍。"
+        },
+        "P6": {
+          "formula": "G((revOnly & !qForward) -> Reverse)",
+          "description": "仅反转请求且前拍未正转时，本拍反转。",
+          "review": "检查直接换向、持续换向请求、双按钮和停止，以及中间空挡恰一拍。"
+        },
+        "SELF002.V2.COMPLETE": {
+          "formula": "G(CompleteBehaviorV2)",
+          "description": "每次调用的全部输出与保留历史必须满足完整行为关系；具体转移规则见上方完整规约。",
+          "review": "CompleteBehaviorV2是解释性复合谓词；必须显式展开并绑定实际候选输出后才能模型检查，不能把名称当成已完成证明。"
+        }
+      },
+      "interface_zh": {
+        "ForwardButton": "正转点动",
+        "ReverseButton": "反转点动",
+        "Stop": "停止",
+        "Forward": "正转接触器",
+        "Reverse": "反转接触器"
+      },
+      "tests_zh": {
+        "reverse": {
+          "name": "直接换向及持续反向请求",
+          "purpose": "直接换向及持续反向请求",
+          "source_sha256": "838de0b6605411cf8359688c8ed944a8354342e33e766d7da7177c5f7b176b3d"
+        },
+        "ambiguous": {
+          "name": "双按钮与停止优先",
+          "purpose": "双按钮与停止优先",
+          "source_sha256": "3c6d4899e5066d4fbc8fc062da322fe0af2c53b3d9a7d2ef163fb70dbf425397"
+        }
+      },
+      "coverage_zh": "reverse：直接换向及持续反向请求（6步）。\nambiguous：双按钮与停止优先（4步）。",
+      "source_task_sha256": "3f4d6055aa2b1d594d64e9b97f72e3008d0004e2c49942c38d03d844096cf2b4",
+      "review_status": "PENDING_HUMAN_REVIEW",
+      "material_origin": "GROUP_TRANSLATION_AND_REVIEW_NOT_TEACHER_SPEC",
+      "source_kind": "self_built",
+      "title_en": "Reversing jog drive with a neutral scan",
+      "complete_behavior_zh": "明确qForward[0]=qReverse[0]=FALSE；每拍无条件更新为本拍两个实际输出，包括Stop/双按钮/无按钮产生的中立拍。完整公式可保留。"
+    },
+    {
+      "id": "SELF003",
+      "title_zh": "急停复位与防意外再启动",
+      "translation_zh": "上电Run=FALSE、ResetRequired=TRUE。EStopNC为假立即停机并锁定需复位。锁定期间保持停机；只有急停释放、Reset真、Start和Stop均假才清锁，清锁当拍不能启动。解锁后Stop优先停机、Start启动、否则保留。复位时长按Start不得解锁。教学逻辑不等于认证急停链。",
+      "assumptions_zh": "输入按电平；初值是首次执行前状态。清复位与启动至少分开两个调用。",
+      "review_points_zh": "检查上电锁定、长按启动阻止复位、急停恢复、清锁当拍不运行及解锁后保持。",
+      "properties_zh": {
+        "P1": {
+          "formula": "G(first -> (qRequired & !qRun))",
+          "description": "初始保留状态要求复位且不运行。",
+          "review": "检查上电锁定、长按启动阻止复位、急停恢复、清锁当拍不运行及解锁后保持。"
+        },
+        "P2": {
+          "formula": "G(!EStopNC -> (!Run & ResetRequired))",
+          "description": "急停同拍停机并置需复位。",
+          "review": "检查上电锁定、长按启动阻止复位、急停恢复、清锁当拍不运行及解锁后保持。"
+        },
+        "P3": {
+          "formula": "G(qRequired -> !Run)",
+          "description": "拍前仍需复位时，本拍一定不运行。",
+          "review": "检查上电锁定、长按启动阻止复位、急停恢复、清锁当拍不运行及解锁后保持。"
+        },
+        "P4": {
+          "formula": "G((qRequired & EStopNC) -> (ResetRequired <-> !validReset))",
+          "description": "需复位且急停释放时，只有合法复位条件才清除锁定。",
+          "review": "检查上电锁定、长按启动阻止复位、急停恢复、清锁当拍不运行及解锁后保持。"
+        },
+        "P5": {
+          "formula": "G((!qRequired & EStopNC & !Stop & Start) -> Run)",
+          "description": "已解锁且安全、无Stop时，Start启动。",
+          "review": "检查上电锁定、长按启动阻止复位、急停恢复、清锁当拍不运行及解锁后保持。"
+        },
+        "P6": {
+          "formula": "G((!qRequired & EStopNC & Stop) -> !Run)",
+          "description": "已解锁且安全时，Stop强制停止。",
+          "review": "检查上电锁定、长按启动阻止复位、急停恢复、清锁当拍不运行及解锁后保持。"
+        },
+        "SELF003.V2.1": {
+          "formula": "G((!qRequired & EStopNC) -> !ResetRequired)",
+          "description": "已解锁且安全时，不应无故重新要求复位。",
+          "review": "检查上电锁定、长按启动阻止复位、急停恢复、清锁当拍不运行及解锁后保持。"
+        },
+        "SELF003.V2.2": {
+          "formula": "G((!qRequired & EStopNC & !Stop & !Start) -> (Run <-> qRun))",
+          "description": "已解锁且安全、无Stop和Start时保留原运行状态。",
+          "review": "检查上电锁定、长按启动阻止复位、急停恢复、清锁当拍不运行及解锁后保持。"
+        },
+        "SELF003.V2.COMPLETE": {
+          "formula": "G(CompleteBehaviorV2)",
+          "description": "每次调用的全部输出与保留历史必须满足完整行为关系；具体转移规则见上方完整规约。",
+          "review": "CompleteBehaviorV2是解释性复合谓词；必须显式展开并绑定实际候选输出后才能模型检查，不能把名称当成已完成证明。"
+        }
+      },
+      "interface_zh": {
+        "Start": "启动",
+        "Stop": "正常停止",
+        "EStopNC": "急停许可，真为释放",
+        "Reset": "复位",
+        "Run": "电机运行",
+        "ResetRequired": "防再启动锁定"
+      },
+      "tests_zh": {
+        "reset_restart": {
+          "name": "上电禁止、复位、运行与急停",
+          "purpose": "上电禁止、复位、运行与急停",
+          "source_sha256": "b3aa09624361346bddb315978a596418397b6af54bc064018f738186c7d6d06c"
+        },
+        "invalid_reset": {
+          "name": "长按启动和停止阻止复位",
+          "purpose": "长按启动和停止阻止复位",
+          "source_sha256": "3961423ccac7f9ccc331eb353d11705e0ff05f696317a0f0667b12e568238424"
+        },
+        "V2_omission_regression": {
+          "name": "规约遗漏回归",
+          "purpose": "规约遗漏回归",
+          "source_sha256": "1673967eda711eea5edc9046760abaf654961ce678c2c6ab9384b9ab7d929319"
+        }
+      },
+      "coverage_zh": "reset_restart：上电禁止、复位、运行与急停（6步）。\ninvalid_reset：长按启动和停止阻止复位（4步）。\nV2_omission_regression：规约遗漏回归（4步）。",
+      "source_task_sha256": "7538658208add834b4a22bcda3ac1c95044fecbde637c9bc1a2886692ebddfd0",
+      "review_status": "PENDING_HUMAN_REVIEW",
+      "material_origin": "GROUP_TRANSLATION_AND_REVIEW_NOT_TEACHER_SPEC",
+      "source_kind": "self_built",
+      "title_en": "Emergency stop reset with restart inhibition",
+      "complete_behavior_zh": "增加G((!qRequired & EStopNC) -> !ResetRequired)和G((!qRequired & EStopNC & !Stop & !Start) -> (Run↔qRun))；qRun/qRequired每拍绑定前一输出。完整优先级为急停→若闭锁则只尝试有效复位且Run关→Stop→Start→保持；解除闭锁当拍不能启动。"
+    },
+    {
+      "id": "SELF004",
+      "title_zh": "托盘定位与卡滞故障锁存",
+      "translation_zh": "状态为空闲、移动、完成、故障，初始空闲。Jam优先进入故障并关Belt/Complete；无Jam时Reset返回空闲。故障无复位一直锁存。Stop中止非故障周期。空闲且未到出口才接受Start移动；移动到出口转完成，完成保持至Reset或Stop。Belt仅移动时真，Complete仅完成时真，Fault仅故障时真，一拍最多转移一步。",
+      "assumptions_zh": "优先级：卡滞→合法复位→故障保持→停止→阶段事件。故障恢复不假设必然有人复位。",
+      "review_points_zh": "确认卡滞与Reset同拍仍故障，完成态Start不能重启，以及无复位无限保持是允许行为。",
+      "properties_zh": {
+        "P1": {
+          "formula": "G(Jam -> (Fault & !Belt & !Complete))",
+          "description": "卡滞优先，故障真且皮带和完成输出关闭。",
+          "review": "确认卡滞与Reset同拍仍故障，完成态Start不能重启，以及无复位无限保持是允许行为。"
+        },
+        "P2": {
+          "formula": "G((qFault & !Reset) -> Fault)",
+          "description": "上拍故障且没有复位时保持故障。",
+          "review": "确认卡滞与Reset同拍仍故障，完成态Start不能重启，以及无复位无限保持是允许行为。"
+        },
+        "P3": {
+          "formula": "G((!Jam & Reset) -> (!Belt & !Complete & !Fault))",
+          "description": "卡滞已清且Reset时返回空闲、三输出均假。",
+          "review": "确认卡滞与Reset同拍仍故障，完成态Start不能重启，以及无复位无限保持是允许行为。"
+        },
+        "P4": {
+          "formula": "G((qIdle & !Jam & !Reset & !Stop & Start & !AtExit) -> Belt)",
+          "description": "合法空闲启动进入移动并开皮带。",
+          "review": "确认卡滞与Reset同拍仍故障，完成态Start不能重启，以及无复位无限保持是允许行为。"
+        },
+        "P5": {
+          "formula": "G((qMoving & AtExit & !Jam & !Reset & !Stop) -> (Complete & !Belt))",
+          "description": "移动中到出口且无高优先级条件时，同拍完成并停皮带。",
+          "review": "确认卡滞与Reset同拍仍故障，完成态Start不能重启，以及无复位无限保持是允许行为。"
+        },
+        "P6": {
+          "formula": "G(!(Belt & (Complete | Fault)))",
+          "description": "移动不能与完成或故障输出重叠。",
+          "review": "确认卡滞与Reset同拍仍故障，完成态Start不能重启，以及无复位无限保持是允许行为。"
+        },
+        "P7": {
+          "formula": "G(Fault -> (G Fault | (Fault U (!Jam & Reset))))",
+          "description": "故障保持至卡滞清除后的复位；若永不复位，允许永久保持。",
+          "review": "确认卡滞与Reset同拍仍故障，完成态Start不能重启，以及无复位无限保持是允许行为。"
+        },
+        "SELF004.V2.COMPLETE": {
+          "formula": "G(CompleteBehaviorV2)",
+          "description": "每次调用的全部输出与保留历史必须满足完整行为关系；具体转移规则见上方完整规约。",
+          "review": "CompleteBehaviorV2是解释性复合谓词；必须显式展开并绑定实际候选输出后才能模型检查，不能把名称当成已完成证明。"
+        }
+      },
+      "interface_zh": {
+        "Start": "启动一托盘",
+        "Stop": "中止周期",
+        "AtExit": "托盘到出口",
+        "Jam": "卡滞",
+        "Reset": "清完成或已消失故障",
+        "Belt": "皮带运行",
+        "Complete": "周期完成",
+        "Fault": "锁存故障"
+      },
+      "tests_zh": {
+        "index": {
+          "name": "托盘周期与完成保持",
+          "purpose": "托盘周期与完成保持",
+          "source_sha256": "4ce0396bcc7c55840e049792fa8776b8cbbdf968116c94c6d52d55aa2ef0bc0f"
+        },
+        "jam": {
+          "name": "卡滞优先、锁存及安全复位",
+          "purpose": "卡滞优先、锁存及安全复位",
+          "source_sha256": "bc92beb169e443310a33ff7f587ab6c4f2b827fd5f7fd40804595c0f9ac39b21"
+        }
+      },
+      "coverage_zh": "index：托盘周期与完成保持（5步）。\njam：卡滞优先、锁存及安全复位（6步）。",
+      "source_task_sha256": "c0062137e9509a63be3e1e32835331d8b3cef4d57daa3d3647a11eab8ea3fd00",
+      "review_status": "PENDING_HUMAN_REVIEW",
+      "material_origin": "GROUP_TRANSLATION_AND_REVIEW_NOT_TEACHER_SPEC",
+      "source_kind": "self_built",
+      "title_en": "Pallet indexing with a latched jam fault",
+      "complete_behavior_zh": "总转移优先级：Jam→FAULT；否则Reset→IDLE；否则旧FAULT保持；否则Stop→IDLE；旧IDLE且Start且!AtExit→MOVING；旧MOVING且AtExit→COMPLETE；否则保持。定义Belt↔postState=MOVING、Complete↔COMPLETE、Fault↔FAULT以及初始IDLE，即覆盖三输出互斥和所有保持。"
+    },
+    {
+      "id": "SELF005",
+      "title_zh": "外部逻辑时钟三色信号",
+      "translation_zh": "红相位0持续2次Tick真调用，绿相位1持续3次，黄相位2持续1次，循环红→绿→黄。初始红、计数0。Enable假强制红并清计数；Enable真但Tick假保持。Tick真加1，到时转移并清计数。Phase及灯表示转移后的阶段，始终恰一盏灯。Tick是每拍使能电平，不是上升沿。",
+      "assumptions_zh": "逻辑Tick不代表物理秒；没有对向交通或行人控制。",
+      "review_points_zh": "检查2/3/1边界、暂停保持、禁用清进度，以及持续Tick并非只计一次。",
+      "properties_zh": {
+        "P1": {
+          "formula": "G(oneColor)",
+          "description": "三色灯恰好一盏为真。",
+          "review": "检查2/3/1边界、暂停保持、禁用清进度，以及持续Tick并非只计一次。"
+        },
+        "P2": {
+          "formula": "G(!Enable -> (Red & !Green & !Amber))",
+          "description": "禁用时保持红灯，绿黄关闭。",
+          "review": "检查2/3/1边界、暂停保持、禁用清进度，以及持续Tick并非只计一次。"
+        },
+        "P3": {
+          "formula": "G((Enable & !Tick) -> (Phase = qPhase))",
+          "description": "启用但无Tick时相位保持。",
+          "review": "检查2/3/1边界、暂停保持、禁用清进度，以及持续Tick并非只计一次。"
+        },
+        "P4": {
+          "formula": "G((Enable & Tick & qRedLast) -> Green)",
+          "description": "红灯第二次Tick后转绿。",
+          "review": "检查2/3/1边界、暂停保持、禁用清进度，以及持续Tick并非只计一次。"
+        },
+        "P5": {
+          "formula": "G((Enable & Tick & qGreenLast) -> Amber)",
+          "description": "绿灯第三次Tick后转黄。",
+          "review": "检查2/3/1边界、暂停保持、禁用清进度，以及持续Tick并非只计一次。"
+        },
+        "P6": {
+          "formula": "G((Enable & Tick & qAmber) -> Red)",
+          "description": "黄灯一次Tick后转红。",
+          "review": "检查2/3/1边界、暂停保持、禁用清进度，以及持续Tick并非只计一次。"
+        },
+        "P7": {
+          "formula": "(G Enable & G(F Tick)) -> (G(F Red) & G(F Green) & G(F Amber))",
+          "description": "持续使能且无限出现Tick时，每种颜色无限重现；有限测试不能证明该活性性质。",
+          "review": "检查2/3/1边界、暂停保持、禁用清进度，以及持续Tick并非只计一次。"
+        },
+        "SELF005.V2.COMPLETE": {
+          "formula": "G(CompleteBehaviorV2)",
+          "description": "每次调用的全部输出与保留历史必须满足完整行为关系；具体转移规则见上方完整规约。",
+          "review": "CompleteBehaviorV2是解释性复合谓词；必须显式展开并绑定实际候选输出后才能模型检查，不能把名称当成已完成证明。"
+        }
+      },
+      "interface_zh": {
+        "Enable": "周期使能",
+        "Tick": "每次为真调用算一Tick",
+        "Red": "红灯",
+        "Green": "绿灯",
+        "Amber": "黄灯",
+        "Phase": "扫描后相位号"
+      },
+      "tests_zh": {
+        "cycle": {
+          "name": "阶段时长边界及暂停",
+          "purpose": "阶段时长边界及暂停",
+          "source_sha256": "55766e9344e9d669a459e97ee027082686867fcd28b648e2a87262ea628f061d"
+        },
+        "disable": {
+          "name": "禁用清Tick进度",
+          "purpose": "禁用清Tick进度",
+          "source_sha256": "255b5b97d5322b7ae7d04619af75b401b78786f6406c24a5aa4a32f71fce9987"
+        }
+      },
+      "coverage_zh": "cycle：阶段时长边界及暂停（7步）。\ndisable：禁用清Tick进度（5步）。",
+      "source_task_sha256": "9c52d0e0f0d0e3d9351d2512f36dae251f342c1b244290540da6ec3dba060dd2",
+      "review_status": "PENDING_HUMAN_REVIEW",
+      "material_origin": "GROUP_TRANSLATION_AND_REVIEW_NOT_TEACHER_SPEC",
+      "source_kind": "self_built",
+      "title_en": "Three phase signal with externally clocked durations",
+      "complete_behavior_zh": "设D(0)=2,D(1)=3,D(2)=1。!Enable→(phaseAfter,ageAfter)=(0,0)；Enable且!Tick→保持；Enable且Tick且ageBefore+1<D→同phase,age+1；否则→((phase+1) mod3,0)。Phase=phaseAfter，Red↔Phase=0、Green↔1、Amber↔2。初始(0,0)，每拍更新ghost，禁止仅从实际Phase反推期望灯。"
+    },
+    {
+      "id": "SELF006",
+      "title_zh": "水箱滞回注水与液位矛盾检测",
+      "translation_zh": "LowWet/HighWet表示水到达下/上液位开关。上湿下不湿为矛盾：SensorFault真、Fill假，输入恢复一致故障即清。Inhibit或上液位湿也关阀。否则低位未湿启动注水；中间区间保留Fill。初值Fill假。中间水位解除禁止后保持停止，须降到下开关以下再启动。",
+      "assumptions_zh": "故障为组合量不锁存；Fill为带滞回记忆的输出。",
+      "review_points_zh": "分别从注水和停止历史进入中间区间，检查禁止恢复和矛盾传感器优先。",
+      "properties_zh": {
+        "P1": {
+          "formula": "G(SensorFault <-> (HighWet & !LowWet))",
+          "description": "传感器故障当且仅当上湿下不湿。",
+          "review": "分别从注水和停止历史进入中间区间，检查禁止恢复和矛盾传感器优先。"
+        },
+        "P2": {
+          "formula": "G((SensorFault | Inhibit | HighWet) -> !Fill)",
+          "description": "故障、禁止或满水任一成立就关闭注水。",
+          "review": "分别从注水和停止历史进入中间区间，检查禁止恢复和矛盾传感器优先。"
+        },
+        "P3": {
+          "formula": "G((!LowWet & !HighWet & !Inhibit) -> Fill)",
+          "description": "上下均不湿且未禁止时启动注水。",
+          "review": "分别从注水和停止历史进入中间区间，检查禁止恢复和矛盾传感器优先。"
+        },
+        "P4": {
+          "formula": "G((middle & !Inhibit) -> (Fill <-> qFill))",
+          "description": "中间水位且未禁止时保留前拍注水命令。",
+          "review": "分别从注水和停止历史进入中间区间，检查禁止恢复和矛盾传感器优先。"
+        },
+        "P5": {
+          "formula": "G(first -> !qFill)",
+          "description": "初始保留注水状态为假。",
+          "review": "分别从注水和停止历史进入中间区间，检查禁止恢复和矛盾传感器优先。"
+        },
+        "SELF006.V2.COMPLETE": {
+          "formula": "G(CompleteBehaviorV2)",
+          "description": "每次调用的全部输出与保留历史必须满足完整行为关系；具体转移规则见上方完整规约。",
+          "review": "CompleteBehaviorV2是解释性复合谓词；必须显式展开并绑定实际候选输出后才能模型检查，不能把名称当成已完成证明。"
+        }
+      },
+      "interface_zh": {
+        "LowWet": "水到下液位",
+        "HighWet": "水到上液位",
+        "Inhibit": "禁止注水",
+        "Fill": "进水阀",
+        "SensorFault": "液位信号矛盾"
+      },
+      "tests_zh": {
+        "hysteresis": {
+          "name": "上下限滞回完整周期",
+          "purpose": "上下限滞回完整周期",
+          "source_sha256": "950caeb00585bd2676bfe764e48f770ee79450140abec137f8b5c6f1b9bc8400"
+        },
+        "fault_inhibit": {
+          "name": "矛盾信号与禁止恢复",
+          "purpose": "矛盾信号与禁止恢复",
+          "source_sha256": "35a7459f6bcc29cb2834fe4e1548c8d1259c3c16f13975b2a924ff574c5fe633"
+        }
+      },
+      "coverage_zh": "hysteresis：上下限滞回完整周期（5步）。\nfault_inhibit：矛盾信号与禁止恢复（5步）。",
+      "source_task_sha256": "e6ecec0bb38378bec983d2165d3b6d01e4b212166dd6ddde64e29cbef6f8c772",
+      "review_status": "PENDING_HUMAN_REVIEW",
+      "material_origin": "GROUP_TRANSLATION_AND_REVIEW_NOT_TEACHER_SPEC",
+      "source_kind": "self_built",
+      "title_en": "Tank filling with hysteresis and sensor inconsistency",
+      "complete_behavior_zh": "明确qFill[0]=FALSE、qFill[k+1]=Fill[k]，SensorFault每拍由HighWet & !LowWet重新计算；无需另加错误保持。可保留原公式作为完整一步规约。"
+    },
+    {
+      "id": "SELF007",
+      "title_zh": "主备泵轮换与故障回退",
+      "translation_zh": "LeadA初始真。Demand期间优先选健康主泵，主泵故障则用另一健康泵；两泵均坏都停，故障变化即时回退。Demand下降时，仅刚结束的连续需求期间确实有泵运行过，才翻转一次主泵偏好。全故障且从未运行的需求段不轮换。无需求都停。LeadA表示偏好，不代表当前回退后谁在运行。",
+      "assumptions_zh": "需求段服务记忆需跨拍保留，需求下降只处理一次；恢复健康可在当前需求内回到优先泵。",
+      "review_points_zh": "检查整段未服务、部分运行后结束、主泵故障即回退、长需求不轮换。",
+      "properties_zh": {
+        "P1": {
+          "formula": "G(!(PumpA & PumpB))",
+          "description": "两台泵最多运行一台。",
+          "review": "检查整段未服务、部分运行后结束、主泵故障即回退、长需求不轮换。"
+        },
+        "P2": {
+          "formula": "G((!Demand | FaultA) -> !PumpA)",
+          "description": "无需求或A故障时A不得运行。",
+          "review": "检查整段未服务、部分运行后结束、主泵故障即回退、长需求不轮换。"
+        },
+        "P3": {
+          "formula": "G((!Demand | FaultB) -> !PumpB)",
+          "description": "无需求或B故障时B不得运行。",
+          "review": "检查整段未服务、部分运行后结束、主泵故障即回退、长需求不轮换。"
+        },
+        "P4": {
+          "formula": "G((Demand & LeadA & !FaultA) -> PumpA)",
+          "description": "有需求且偏好A、A健康时运行A。",
+          "review": "检查整段未服务、部分运行后结束、主泵故障即回退、长需求不轮换。"
+        },
+        "P5": {
+          "formula": "G((Demand & !LeadA & !FaultB) -> PumpB)",
+          "description": "有需求且偏好B、B健康时运行B。",
+          "review": "检查整段未服务、部分运行后结束、主泵故障即回退、长需求不轮换。"
+        },
+        "P6": {
+          "formula": "G(completedServed -> (LeadA <-> !qLeadA))",
+          "description": "已服务需求段结束当拍，主泵偏好翻转一次。",
+          "review": "检查整段未服务、部分运行后结束、主泵故障即回退、长需求不轮换。"
+        },
+        "P7": {
+          "formula": "G(!completedServed -> (LeadA <-> qLeadA))",
+          "description": "其他情况保持主泵偏好。",
+          "review": "检查整段未服务、部分运行后结束、主泵故障即回退、长需求不轮换。"
+        },
+        "SELF007.V2.1": {
+          "formula": "G((Demand & FaultA & !FaultB) -> PumpB)",
+          "description": "有需求且A故障、B健康时必须回退到B。",
+          "review": "检查整段未服务、部分运行后结束、主泵故障即回退、长需求不轮换。"
+        },
+        "SELF007.V2.2": {
+          "formula": "G((Demand & FaultB & !FaultA) -> PumpA)",
+          "description": "有需求且B故障、A健康时必须回退到A。",
+          "review": "检查整段未服务、部分运行后结束、主泵故障即回退、长需求不轮换。"
+        },
+        "SELF007.V2.COMPLETE": {
+          "formula": "G(CompleteBehaviorV2)",
+          "description": "每次调用的全部输出与保留历史必须满足完整行为关系；具体转移规则见上方完整规约。",
+          "review": "CompleteBehaviorV2是解释性复合谓词；必须显式展开并绑定实际候选输出后才能模型检查，不能把名称当成已完成证明。"
+        }
+      },
+      "interface_zh": {
+        "Demand": "抽水需求",
+        "FaultA": "A泵不可用",
+        "FaultB": "B泵不可用",
+        "PumpA": "A泵运行",
+        "PumpB": "B泵运行",
+        "LeadA": "真表示偏好A泵"
+      },
+      "tests_zh": {
+        "alternate": {
+          "name": "已服务需求结束后轮换",
+          "purpose": "已服务需求结束后轮换",
+          "source_sha256": "9e74548f15a8821b1e82746f547053819104507deaf665b17484b12f5d27abb4"
+        },
+        "fallback": {
+          "name": "故障回退、未服务需求及恢复",
+          "purpose": "故障回退、未服务需求及恢复",
+          "source_sha256": "d499ce38386f1558934b0ebd12d8acd371d1d282adc5a262db258d9f271c6663"
+        },
+        "V2_omission_regression": {
+          "name": "规约遗漏回归",
+          "purpose": "规约遗漏回归",
+          "source_sha256": "e29eafe75e2458309b94cc9b4676e2b27ec5ffd0e48c06fd238bdef4459e82f7"
+        }
+      },
+      "coverage_zh": "alternate：已服务需求结束后轮换（7步）。\nfallback：故障回退、未服务需求及恢复（5步）。\nV2_omission_regression：规约遗漏回归（3步）。",
+      "source_task_sha256": "aa95312f76c01817423c63ecca2a1ac4fc7acd0f8cb6b92fd86a0f890539ac0f",
+      "review_status": "PENDING_HUMAN_REVIEW",
+      "material_origin": "GROUP_TRANSLATION_AND_REVIEW_NOT_TEACHER_SPEC",
+      "source_kind": "self_built",
+      "title_en": "Duty standby alternation with healthy pump fallback",
+      "complete_behavior_zh": "补G((Demand & FaultA & !FaultB) -> PumpB)及对称条件。更完整：PumpA↔Demand & !FaultA & (qLeadA | FaultB)，PumpB↔Demand & !FaultB & (!qLeadA | FaultA)。completed=previousDemand & !Demand & servedBefore；LeadA=completed?!qLeadA:qLeadA。服务记忆在Demand内累计，结束清零；初始首选A、previousDemand=FALSE、served=FALSE。"
+    },
+    {
+      "id": "SELF008",
+      "title_zh": "连续扫描资格计数与即时跳闸",
+      "translation_zh": "Preset有效范围1～5，Count初始0。Trip真、Request假或Preset非法均清Count及Ready。否则Count=min(原Count+1,Preset)，Ready恰在达到Preset时真。计数饱和；Preset变化立即生效，减小可当拍完成。这是调用次数，不是毫秒延时。",
+      "assumptions_zh": "Preset每拍可变；非法值清资格，不沿用原计数。",
+      "review_points_zh": "检查1和5、0和6、达到后饱和、预置变化、单拍中断立即清零。",
+      "properties_zh": {
+        "P1": {
+          "formula": "G((Trip | !Request | invalid) -> (!Ready & (Count = 0)))",
+          "description": "跳闸、无请求或非法预置时，Ready假且Count=0。",
+          "review": "检查1和5、0和6、达到后饱和、预置变化、单拍中断立即清零。"
+        },
+        "P2": {
+          "formula": "G((Request & !Trip & !invalid) -> (Count = nextCount))",
+          "description": "合法请求且未跳闸时，计数按加一并饱和规则更新。",
+          "review": "检查1和5、0和6、达到后饱和、预置变化、单拍中断立即清零。"
+        },
+        "P3": {
+          "formula": "G(Ready <-> qualified)",
+          "description": "Ready与更新后计数达到有效预置等价。",
+          "review": "检查1和5、0和6、达到后饱和、预置变化、单拍中断立即清零。"
+        },
+        "P4": {
+          "formula": "G(!invalid -> ((Count >= 0) & (Count <= Preset)))",
+          "description": "预置有效时，计数在0和Preset之间。",
+          "review": "检查1和5、0和6、达到后饱和、预置变化、单拍中断立即清零。"
+        },
+        "P5": {
+          "formula": "(G(Request & !Trip & !invalid)) -> F Ready",
+          "description": "请求持续合法且无跳闸时最终完成，合法Preset变化也不影响最多五拍达到。",
+          "review": "检查1和5、0和6、达到后饱和、预置变化、单拍中断立即清零。"
+        },
+        "SELF008.V2.COMPLETE": {
+          "formula": "G(CompleteBehaviorV2)",
+          "description": "每次调用的全部输出与保留历史必须满足完整行为关系；具体转移规则见上方完整规约。",
+          "review": "CompleteBehaviorV2是解释性复合谓词；必须显式展开并绑定实际候选输出后才能模型检查，不能把名称当成已完成证明。"
+        }
+      },
+      "interface_zh": {
+        "Request": "原始请求",
+        "Trip": "即时跳闸",
+        "Preset": "连续扫描预置1～5",
+        "Ready": "资格完成",
+        "Count": "饱和连续计数"
+      },
+      "tests_zh": {
+        "delay": {
+          "name": "三拍完成、饱和及跳闸清零",
+          "purpose": "三拍完成、饱和及跳闸清零",
+          "source_sha256": "5fcfc5f00f6d09e606f87ee7570c7518b25557bb08e81be4d6068c2e1060be65"
+        },
+        "bounds": {
+          "name": "非法预置与降低阈值",
+          "purpose": "非法预置与降低阈值",
+          "source_sha256": "8f7f10ed1c7b743b3df878b18d83d8b7399050ccb74d47cb32214db5ba4d430d"
+        }
+      },
+      "coverage_zh": "delay：三拍完成、饱和及跳闸清零（6步）。\nbounds：非法预置与降低阈值（5步）。",
+      "source_task_sha256": "7ee87236fddf9450449925e02b04ba3c0917b9e7d16495e64e4ce411e79a487a",
+      "review_status": "PENDING_HUMAN_REVIEW",
+      "material_origin": "GROUP_TRANSLATION_AND_REVIEW_NOT_TEACHER_SPEC",
+      "source_kind": "self_built",
+      "title_en": "Consecutive scan qualification with an immediate trip",
+      "complete_behavior_zh": "明确invalid↔Preset<1或>5，qCount[0]=0且逐拍更新；计数按清零分支或min(qCount+1,Preset)精确确定，Ready与合法且Count>=Preset等价。P5保留作派生性质。"
+    },
+    {
+      "id": "SELF009",
+      "title_zh": "上升沿批次计数与复位采样",
+      "translation_zh": "Target有效1～20。Count初始0，PartPulse历史初始假。Error恰表示非法Target；非法或Reset清Count/Complete。其他情况仅PartPulse上升沿加1并钳位到Target，Complete反映计数到目标。提高Target可清完成标志。每拍包括复位和非法拍都更新脉冲历史，所以复位后持续高电平不应虚计数。",
+      "assumptions_zh": "Complete不是与目标无关的永久锁存；目标每拍可变。",
+      "review_points_zh": "检查长按只计一次、复位同拍高脉冲、非法目标恢复、降低目标钳位及提高目标清完成。",
+      "properties_zh": {
+        "P1": {
+          "formula": "G(Error <-> invalid)",
+          "description": "Error当且仅当Target非法。",
+          "review": "检查长按只计一次、复位同拍高脉冲、非法目标恢复、降低目标钳位及提高目标清完成。"
+        },
+        "P2": {
+          "formula": "G((Reset | invalid) -> ((Count = 0) & !Complete))",
+          "description": "复位或非法目标清计数和完成。",
+          "review": "检查长按只计一次、复位同拍高脉冲、非法目标恢复、降低目标钳位及提高目标清完成。"
+        },
+        "P3": {
+          "formula": "G((!Reset & !invalid) -> (Count = countAfterEdge))",
+          "description": "正常拍只按新上升沿增加并在Target处饱和。",
+          "review": "检查长按只计一次、复位同拍高脉冲、非法目标恢复、降低目标钳位及提高目标清完成。"
+        },
+        "P4": {
+          "formula": "G((!Reset & !invalid) -> (Complete <-> (Count >= Target)))",
+          "description": "正常拍完成标志等于计数达到Target。",
+          "review": "检查长按只计一次、复位同拍高脉冲、非法目标恢复、降低目标钳位及提高目标清完成。"
+        },
+        "P5": {
+          "formula": "G(X(qPulse) <-> PartPulse)",
+          "description": "下一拍的脉冲历史始终等于本拍输入，复位也更新。",
+          "review": "检查长按只计一次、复位同拍高脉冲、非法目标恢复、降低目标钳位及提高目标清完成。"
+        },
+        "SELF009.V2.COMPLETE": {
+          "formula": "G(CompleteBehaviorV2)",
+          "description": "每次调用的全部输出与保留历史必须满足完整行为关系；具体转移规则见上方完整规约。",
+          "review": "CompleteBehaviorV2是解释性复合谓词；必须显式展开并绑定实际候选输出后才能模型检查，不能把名称当成已完成证明。"
+        }
+      },
+      "interface_zh": {
+        "PartPulse": "检测脉冲电平",
+        "Reset": "批次复位",
+        "Target": "批次目标1～20",
+        "Count": "饱和计数",
+        "Complete": "达到目标",
+        "Error": "目标非法"
+      },
+      "tests_zh": {
+        "edges": {
+          "name": "长按计一次及目标饱和",
+          "purpose": "长按计一次及目标饱和",
+          "source_sha256": "970e325e8d7e4383299e5741dc0a5b758f45fb6d5a92915a5973dadf8e8e9791"
+        },
+        "reset_edge": {
+          "name": "复位高电平不虚计数",
+          "purpose": "复位高电平不虚计数",
+          "source_sha256": "fbdab824ed7b40f901513962c718c812f28a55a1e7570c335219a0dd728f69b0"
+        }
+      },
+      "coverage_zh": "edges：长按计一次及目标饱和（7步）。\nreset_edge：复位高电平不虚计数（6步）。",
+      "source_task_sha256": "03e0d525288d5244b39e319d526e3c0d37aa68a20e2370344757326e37d615fb",
+      "review_status": "PENDING_HUMAN_REVIEW",
+      "material_origin": "GROUP_TRANSLATION_AND_REVIEW_NOT_TEACHER_SPEC",
+      "source_kind": "self_built",
+      "title_en": "Rising edge batch counter with reset sampling",
+      "complete_behavior_zh": "用G(X(qPulse)↔PartPulse)替换P5，并写qPulse初始FALSE；qCount初始0且更新。countAfter=min(qCount+rise,Target)包括Target降低时无新边沿也截断。Complete按当前Target重算，复位/非法优先。"
+    },
+    {
+      "id": "SELF010",
+      "title_zh": "带确认与再鸣响的锁存报警",
+      "translation_zh": "Alarm/Acknowledged和故障历史初始假。Fault置报警；新故障上升沿清确认，优先于同拍Ack。故障持续时Ack可确认。故障消失报警仍锁存，可继续Ack。仅无Fault时Reset清报警及确认，并优先于Ack。即使旧报警未清，新故障边沿仍重新鸣响。Horn=Alarm AND NOT Acknowledged，每拍更新故障历史。",
+      "assumptions_zh": "故障为真不能通过Reset消除；无报警时不能凭Ack产生有效已确认报警。",
+      "review_points_zh": "检查新故障与Ack同拍、新事件再鸣、故障消失后保持、合法Reset抢占确认。",
+      "properties_zh": {
+        "P1": {
+          "formula": "G(Horn <-> (Alarm & !Acknowledged))",
+          "description": "蜂鸣器恰等于有报警且未确认。",
+          "review": "检查新故障与Ack同拍、新事件再鸣、故障消失后保持、合法Reset抢占确认。"
+        },
+        "P2": {
+          "formula": "G(Fault -> Alarm)",
+          "description": "当前有故障时报警必须真。",
+          "review": "检查新故障与Ack同拍、新事件再鸣、故障消失后保持、合法Reset抢占确认。"
+        },
+        "P3": {
+          "formula": "G(rise -> (Alarm & !Acknowledged & Horn))",
+          "description": "新故障上升沿置报警、清确认并鸣响，优先同拍Ack。",
+          "review": "检查新故障与Ack同拍、新事件再鸣、故障消失后保持、合法Reset抢占确认。"
+        },
+        "P4": {
+          "formula": "G((Reset & !Fault) -> (!Alarm & !Acknowledged & !Horn))",
+          "description": "无故障且Reset时报警、确认、蜂鸣均清除。",
+          "review": "检查新故障与Ack同拍、新事件再鸣、故障消失后保持、合法Reset抢占确认。"
+        },
+        "P5": {
+          "formula": "G((!Fault & !Reset & qAlarm) -> Alarm)",
+          "description": "故障已消失、无Reset且原报警真时报警保持。",
+          "review": "检查新故障与Ack同拍、新事件再鸣、故障消失后保持、合法Reset抢占确认。"
+        },
+        "P6": {
+          "formula": "G((!rise & !(Reset & !Fault) & Ack & qAlarm) -> Acknowledged)",
+          "description": "非新故障、非合法复位且Ack、已有报警时，置确认。",
+          "review": "检查新故障与Ack同拍、新事件再鸣、故障消失后保持、合法Reset抢占确认。"
+        },
+        "SELF010.V2.COMPLETE": {
+          "formula": "G(CompleteBehaviorV2)",
+          "description": "每次调用的全部输出与保留历史必须满足完整行为关系；具体转移规则见上方完整规约。",
+          "review": "CompleteBehaviorV2是解释性复合谓词；必须显式展开并绑定实际候选输出后才能模型检查，不能把名称当成已完成证明。"
+        }
+      },
+      "interface_zh": {
+        "Fault": "当前故障",
+        "Ack": "报警确认",
+        "Reset": "清除已消失故障",
+        "Alarm": "锁存报警",
+        "Acknowledged": "已确认",
+        "Horn": "未确认蜂鸣"
+      },
+      "tests_zh": {
+        "annunciate": {
+          "name": "确认、故障消失及新事件再鸣",
+          "purpose": "确认、故障消失及新事件再鸣",
+          "source_sha256": "eb0112b7c122b31c38c670fa89af988540bb3137ddff20df0f3e030400a905d0"
+        },
+        "reset_priority": {
+          "name": "现有故障禁止清除及复位优先",
+          "purpose": "现有故障禁止清除及复位优先",
+          "source_sha256": "6f038990c7ca416d5c94f1cde0c132e0958342eb7f7259166689e3a3546bf7bd"
+        },
+        "V2_omission_regression": {
+          "name": "规约遗漏回归",
+          "purpose": "规约遗漏回归",
+          "source_sha256": "3536e292d164be15ccf63baa805c939f218f12400fb52dde78c9419fdfa8d6d2"
+        }
+      },
+      "coverage_zh": "annunciate：确认、故障消失及新事件再鸣（6步）。\nreset_priority：现有故障禁止清除及复位优先（3步）。\nV2_omission_regression：规约遗漏回归（3步）。",
+      "source_task_sha256": "f4978755d0e90a073eb4ee33a510f520e622d5e621208eb2e866767cb3f13df0",
+      "review_status": "PENDING_HUMAN_REVIEW",
+      "material_origin": "GROUP_TRANSLATION_AND_REVIEW_NOT_TEACHER_SPEC",
+      "source_kind": "self_built",
+      "title_en": "Latched alarm with acknowledgment and reannunciation",
+      "complete_behavior_zh": "定义validReset=Reset & !Fault。优先validReset清Alarm/Ack；否则rise置Alarm并清Ack；否则Fault或qAlarm保持Alarm，若Ack且本来有报警则置确认，否则确认保持；无报警时不得自行确认。完整方程：Alarm↔!validReset & (Fault | qAlarm)；Acknowledged=validReset或rise时FALSE，否则qAck | (Ack & qAlarm)。Horn↔Alarm & !Acknowledged；qFault下一拍等于Fault，所有历史有初值。"
+    },
+    {
+      "id": "SELF011",
+      "title_zh": "单周期执行器握手与每拍一步",
+      "translation_zh": "初始空闲。Stop或Reset立即空闲；空闲且回缩原点到位才接受Start，进入伸出。随后伸出完成→夹紧，夹紧完成→释放，释放完成→回缩，回缩完成→结束。每拍最多转移一步，即使所有反馈真也不跳步。完成保持到复位或停止。四动作输出仅各自转移后状态为真，Busy为四动作状态，Done仅结束态。忙或结束时忽略Start。",
+      "assumptions_zh": "Start按电平，握手按当前拍前状态选择；不假设无反馈也能前进。",
+      "review_points_zh": "检查所有反馈同时真仍逐拍推进、各阶段等待、非原点禁止启动、Busy/Done与动作一致。",
+      "properties_zh": {
+        "P1": {
+          "formula": "G(oneAction)",
+          "description": "四个动作最多一个为真。",
+          "review": "检查所有反馈同时真仍逐拍推进、各阶段等待、非原点禁止启动、Busy/Done与动作一致。"
+        },
+        "P2": {
+          "formula": "G((Stop | Reset) -> (!Busy & !Done & !Extend & !Clamp & !Release & !Retract))",
+          "description": "Stop或Reset立即清忙、完成及全部动作。",
+          "review": "检查所有反馈同时真仍逐拍推进、各阶段等待、非原点禁止启动、Busy/Done与动作一致。"
+        },
+        "P3": {
+          "formula": "G((normal & qIdle & Start & RetractDone) -> Extend)",
+          "description": "正常空闲且原点到位时Start只进入伸出。",
+          "review": "检查所有反馈同时真仍逐拍推进、各阶段等待、非原点禁止启动、Busy/Done与动作一致。"
+        },
+        "P4": {
+          "formula": "G((normal & qExtend & ExtendDone) -> Clamp)",
+          "description": "正常伸出完成后转夹紧。",
+          "review": "检查所有反馈同时真仍逐拍推进、各阶段等待、非原点禁止启动、Busy/Done与动作一致。"
+        },
+        "P5": {
+          "formula": "G((normal & qClamp & ClampDone) -> Release)",
+          "description": "正常夹紧完成后转释放。",
+          "review": "检查所有反馈同时真仍逐拍推进、各阶段等待、非原点禁止启动、Busy/Done与动作一致。"
+        },
+        "P6": {
+          "formula": "G((normal & qRelease & ReleaseDone) -> Retract)",
+          "description": "正常释放完成后转回缩。",
+          "review": "检查所有反馈同时真仍逐拍推进、各阶段等待、非原点禁止启动、Busy/Done与动作一致。"
+        },
+        "P7": {
+          "formula": "G((normal & qRetract & RetractDone) -> Done)",
+          "description": "正常回缩且回原点时转结束。",
+          "review": "检查所有反馈同时真仍逐拍推进、各阶段等待、非原点禁止启动、Busy/Done与动作一致。"
+        },
+        "P8": {
+          "formula": "G((normal & qDone) -> Done)",
+          "description": "正常结束态持续保持Done，不能直接重启。",
+          "review": "检查所有反馈同时真仍逐拍推进、各阶段等待、非原点禁止启动、Busy/Done与动作一致。"
+        },
+        "P9": {
+          "formula": "G((normal & qExtend & !ExtendDone) -> Extend)",
+          "description": "未收到伸出完成时保持伸出等待。",
+          "review": "检查所有反馈同时真仍逐拍推进、各阶段等待、非原点禁止启动、Busy/Done与动作一致。"
+        },
+        "SELF011.V2.COMPLETE": {
+          "formula": "G(CompleteBehaviorV2)",
+          "description": "每次调用的全部输出与保留历史必须满足完整行为关系；具体转移规则见上方完整规约。",
+          "review": "CompleteBehaviorV2是解释性复合谓词；必须显式展开并绑定实际候选输出后才能模型检查，不能把名称当成已完成证明。"
+        }
+      },
+      "interface_zh": {
+        "Start": "启动夹具周期",
+        "Stop": "中止周期",
+        "Reset": "复位",
+        "ExtendDone": "伸出完成",
+        "ClampDone": "夹紧完成",
+        "ReleaseDone": "释放完成",
+        "RetractDone": "回缩原点",
+        "Extend": "伸出",
+        "Clamp": "夹紧",
+        "Release": "释放",
+        "Retract": "回缩",
+        "Busy": "动作执行中",
+        "Done": "周期完成"
+      },
+      "tests_zh": {
+        "handshake": {
+          "name": "正常握手与完成保持",
+          "purpose": "正常握手与完成保持",
+          "source_sha256": "2729220f0b4b8041cdcacfb7f3277ee402e53c18c0b7be56300ac6ff3fa2fb09"
+        },
+        "single_transition": {
+          "name": "反馈全真不跳步及停止中止",
+          "purpose": "反馈全真不跳步及停止中止",
+          "source_sha256": "062f78992f22b7a8e6f2b4ab403ea247aadcb1a53b71c7a2033977ed91ccd11c"
+        }
+      },
+      "coverage_zh": "handshake：正常握手与完成保持（9步）。\nsingle_transition：反馈全真不跳步及停止中止（5步）。",
+      "source_task_sha256": "fe1fc90690ac43f3ba770b6905d110a5669ebbc6729b030da75841c5bdbaf5f5",
+      "review_status": "PENDING_HUMAN_REVIEW",
+      "material_origin": "GROUP_TRANSLATION_AND_REVIEW_NOT_TEACHER_SPEC",
+      "source_kind": "self_built",
+      "title_en": "Single cycle actuator handshakes with one transition per scan",
+      "complete_behavior_zh": "给六态总转移：Stop或Reset→IDLE；IDLE满足Start且RetractDone→EXTEND；四动作各匹配反馈→下一态，否则保持；DONE保持。Extend/Clamp/Release/Retract分别↔postState对应动作；Busy↔四动作之一；Done↔postState=DONE；初始IDLE。"
+    },
+    {
+      "id": "SELF012",
+      "title_zh": "有限故障重试与恢复等待",
+      "translation_zh": "状态空闲/运行/等待/锁定，初始空闲、Attempts=0。空闲Start仅无故障才启动；运行遇故障立即停机，重试数小于2进等待，否则锁定。等待需连续两拍无故障才自动重启，每次自动重启加一次Attempts，初次人工启动不计。等待中故障清恢复进度。锁定不受Start/Stop解除。无故障且Start释放时Reset有效，返回空闲清次数并优先Stop；否则Stop中止非锁定状态、保留次数。每拍最多转移一步。",
+      "assumptions_zh": "恢复等待是两次调用而非物理秒；Stop不恢复重试额度，合法Reset才清额度。",
+      "review_points_zh": "检查两次重试后第三次故障锁定、恢复中断、Stop不清次数、锁定不被Stop绕过及Start按住禁止Reset。",
+      "properties_zh": {
+        "P1": {
+          "formula": "G(Fault -> !Run)",
+          "description": "有故障时不得运行。",
+          "review": "检查两次重试后第三次故障锁定、恢复中断、Stop不清次数、锁定不被Stop绕过及Start按住禁止Reset。"
+        },
+        "P2": {
+          "formula": "G((Attempts >= 0) & (Attempts <= 2))",
+          "description": "自动重试次数始终0～2。",
+          "review": "检查两次重试后第三次故障锁定、恢复中断、Stop不清次数、锁定不被Stop绕过及Start按住禁止Reset。"
+        },
+        "P3": {
+          "formula": "G(validReset -> (!Run & !Locked & (Attempts = 0)))",
+          "description": "合法复位清运行、锁定和重试次数。",
+          "review": "检查两次重试后第三次故障锁定、恢复中断、Stop不清次数、锁定不被Stop绕过及Start按住禁止Reset。"
+        },
+        "P4": {
+          "formula": "G((qLocked & !validReset) -> (Locked & !Run))",
+          "description": "已锁定且没有合法复位时保持锁定及停机。",
+          "review": "检查两次重试后第三次故障锁定、恢复中断、Stop不清次数、锁定不被Stop绕过及Start按住禁止Reset。"
+        },
+        "P5": {
+          "formula": "G((qRunning & Fault & normal & (qAttempts = 2)) -> Locked)",
+          "description": "用尽两次重试后运行再遇故障，正常条件下转锁定。",
+          "review": "检查两次重试后第三次故障锁定、恢复中断、Stop不清次数、锁定不被Stop绕过及Start按住禁止Reset。"
+        },
+        "P6": {
+          "formula": "G((retryDue & normal) -> (Run & (Attempts = qAttempts + 1)))",
+          "description": "恰到连续第二拍健康等待且无高优先条件时，自动运行并加一次重试。",
+          "review": "检查两次重试后第三次故障锁定、恢复中断、Stop不清次数、锁定不被Stop绕过及Start按住禁止Reset。"
+        },
+        "P7": {
+          "formula": "G((qWait & Fault & normal) -> !Run)",
+          "description": "等待中故障禁止运行，并由完整行为重置恢复进度。",
+          "review": "检查两次重试后第三次故障锁定、恢复中断、Stop不清次数、锁定不被Stop绕过及Start按住禁止Reset。"
+        },
+        "SELF012.V2.COMPLETE": {
+          "formula": "G(CompleteBehaviorV2)",
+          "description": "每次调用的全部输出与保留历史必须满足完整行为关系；具体转移规则见上方完整规约。",
+          "review": "CompleteBehaviorV2是解释性复合谓词；必须显式展开并绑定实际候选输出后才能模型检查，不能把名称当成已完成证明。"
+        }
+      },
+      "interface_zh": {
+        "Start": "人工启动",
+        "Stop": "中止但保留重试数",
+        "Fault": "过程故障",
+        "Reset": "安全清除历史",
+        "Run": "设备运行",
+        "Locked": "重试用尽锁定",
+        "Attempts": "自动重启次数0～2"
+      },
+      "tests_zh": {
+        "exhaustion": {
+          "name": "两次自动重试后再故障锁定",
+          "purpose": "两次自动重试后再故障锁定",
+          "source_sha256": "c4496ee1119efe5f2f578794b54f35568493d2b1f37f4b1d662e83ac9e89908b"
+        },
+        "dwell_interrupt": {
+          "name": "故障打断健康等待及停止中止",
+          "purpose": "故障打断健康等待及停止中止",
+          "source_sha256": "e8165192a33d876c69c0b0e65856b9c37d3dbdebf399e378a1eb20090314cfa3"
+        },
+        "V2_omission_regression": {
+          "name": "规约遗漏回归",
+          "purpose": "规约遗漏回归",
+          "source_sha256": "8ebf8775f41cc35891aef49e6dc9653f26a7efdcf557b43175486555d87627d3"
+        }
+      },
+      "coverage_zh": "exhaustion：两次自动重试后再故障锁定（11步）。\ndwell_interrupt：故障打断健康等待及停止中止（9步）。\nV2_omission_regression：规约遗漏回归（3步）。",
+      "source_task_sha256": "44d6b3b0e76e7b1a7362c7cb002a3323e8ea0bc147f6226197d552f184bcbddb",
+      "review_status": "PENDING_HUMAN_REVIEW",
+      "material_origin": "GROUP_TRANSLATION_AND_REVIEW_NOT_TEACHER_SPEC",
+      "source_kind": "self_built",
+      "title_en": "Bounded automatic fault retries with a recovery dwell",
+      "complete_behavior_zh": "按validReset→旧LOCKED保持→Stop→正常状态分支排序。IDLE且Start且!Fault→RUNNING；RUNNING遇Fault则按qAttempts<2进入WAIT，否则LOCKED；WAIT遇Fault清dwell，健康第一拍dwell=1仍WAIT，第二拍RUNNING且Attempts+1；其余保持。Stop从非锁定态回IDLE并清dwell，但不改Attempts。Run↔postState=RUNNING，Locked↔postState=LOCKED；Attempts除有效Reset和自动重试外全部保持。"
+    }
+  ]
+}

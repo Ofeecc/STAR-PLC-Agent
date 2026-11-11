@@ -34,6 +34,14 @@ def attr(obj, name):
     except Exception:
         return ""
 
+def diagnostic_code(message):
+    try:
+        prefix = message.prefix
+        number = message.number
+        return text_type(prefix) + ("%04d" % int(number)) if prefix and number is not None else ""
+    except Exception:
+        return ""
+
 def replace_checked(document, value):
     # ScriptTextDocument normalizes CR/CRLF to LF. Compare the actual editor
     # buffer so a failed insertion cannot compile an unrelated empty body.
@@ -47,6 +55,7 @@ request = json.load(io.open(os.environ["PLC_CODESYS_REQUEST"], encoding="utf-8")
 result = {"backend": "CODESYS", "request_id": request["request_id"],
           "source_sha256": request["source_sha256"], "finished": False,
           "rebuild_invoked": False, "error_count": None, "diagnostics": [],
+          "code_generation_invoked": False,
           "compiled_pou_crc": None, "infrastructure_error": None}
 project = None
 try:
@@ -84,6 +93,17 @@ try:
     if not pou.build_properties.link_always_is_valid:
         raise RuntimeError("Profile cannot force FB_Task compilation; configure a binding caller")
     pou.build_properties.link_always = True
+    # Verification-only caller, explicitly recorded in the request; normal candidates
+    # retain the template's caller. This makes the lint probe part of the task graph.
+    probe = request.get("diagnostic_probe_program")
+    if probe:
+        programs = [o for o in app.find("PLC_PRG", True)
+                    if getattr(o, "has_textual_declaration", False)
+                    and getattr(o, "has_textual_implementation", False)]
+        if len(programs) != 1:
+            raise RuntimeError("Diagnostic probe needs exactly one task-called PLC_PRG")
+        replace_checked(programs[0].textual_declaration, probe["declaration"])
+        replace_checked(programs[0].textual_implementation, probe["implementation"])
     project.save()
     # Clean and clear ALL categories first. Fail closed if any API call fails.
     app.clean()
@@ -91,6 +111,13 @@ try:
         system.clear_messages(category)
     app.rebuild()
     result["rebuild_invoked"] = True
+    # Light rules execute during code generation, beyond the rebuild/type check.
+    rebuild_errors = sum(len(system.get_message_objects(category, Severity.Error))
+                         + len(system.get_message_objects(category, Severity.FatalError))
+                         for category in system.get_message_categories())
+    if rebuild_errors == 0:
+        app.generate_code()
+        result["code_generation_invoked"] = True
     errors = 0
     for category in system.get_message_categories():
         # FatalError is a distinct flag and must also prevent success.
@@ -98,6 +125,7 @@ try:
         errors += len(system.get_message_objects(category, Severity.FatalError))
         for message in system.get_message_objects(category):
             result["diagnostics"].append({"category": str(category), "severity": attr(message, "severity"),
+                                          "code": diagnostic_code(message),
                                           "text": attr(message, "text"), "position": attr(message, "position_text")})
     result["error_count"] = int(errors)
     if errors == 0:

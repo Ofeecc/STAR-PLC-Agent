@@ -33,7 +33,7 @@ def doctor(cfg):
     result = {"observed_utc": now(), "python": sys.executable, "prefix": sys.prefix,
               "project1_interpreter": Path(sys.prefix).name.casefold() == "project1",
               "isolated_environment": sys.prefix != sys.base_prefix,
-              "local_environment_ready": sys.prefix != sys.base_prefix and all(packages.values()), "python_version": platform.python_version(),
+              "local_environment_ready": sys.prefix != sys.base_prefix and bool(packages["requests"]), "python_version": platform.python_version(),
               "os": platform.platform(), "packages": packages, "api_key_configured": bool(cfg.api_key),
               "base_url_configured": bool(cfg.base_url), "compiler_missing": cfg.compiler_ready(),
               "codesys_exe": cfg.codesys_exe or None, "profile": cfg.codesys_profile or None,
@@ -145,8 +145,13 @@ def probe_models(cfg, smoke=False):
     return results
 
 def main():
+    # Redirected Windows stdout may default to GBK; JSON remains ASCII-safe.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="backslashreplace")
     parser = argparse.ArgumentParser(description="PLC ST coding benchmark (real CODESYS evidence required)")
-    parser.add_argument("--config", default=str(ROOT / "configs/runtime.json"))
+    parser.add_argument("--config", default=None, help="Config file; defaults to runtime.local.json, then runtime.json")
+    parser.add_argument("--allow-model-api", action="store_true", help="Use only after user authorization for this run")
     sub = parser.add_subparsers(dest="command", required=True)
     for cmd in ("doctor", "validate-dataset", "compiler-smoke", "prepare", "aggregate"):
         sub.add_parser(cmd)
@@ -179,6 +184,12 @@ def main():
     imp_verify.add_argument("--bundle-dir", required=True, help="Verification bundle directory")
     imp_verify.add_argument("--evidence", required=True, help="Verification evidence file")
 
+    model_check = sub.add_parser("check-model", help="Check an explicitly encoded SMV model using local NuSMV")
+    model_check.add_argument("--model", required=True, help="SMV model path (not ST)")
+    model_check.add_argument("--out-dir", required=True)
+    model_check.add_argument("--executable", default=None, help="NuSMV.exe; otherwise use NUSMV_EXE or local installation")
+    model_check.add_argument("--timeout", type=int, default=60)
+
     rand_test = sub.add_parser("random-test")
     rand_test.add_argument("--task", "--task-id", dest="task", required=True, help="Task ID (e.g. PUB001)")
     rand_test.add_argument("--seed", type=int, default=20261110, help="Random seed")
@@ -189,7 +200,7 @@ def main():
     web = sub.add_parser("web", help="Launch interactive Auto-Test & Trace Inspector WebUI")
     web.add_argument("--host", default="127.0.0.1", help="Host interface to bind")
     web.add_argument("--port", type=int, default=8765, help="Port to listen on")
-    web.add_argument("--config", default=str(ROOT / "configs/runtime.json"), help="Config file path")
+    web.add_argument("--config", default=argparse.SUPPRESS, help="Config file path")
 
     cfg_p = sub.add_parser("configure", help="Configure local CODESYS paths and API credentials")
     cfg_p.add_argument("--codesys-exe", default=None, help="Path to CODESYS.exe")
@@ -204,11 +215,16 @@ def main():
     ref_p.add_argument("--backend", choices=["auto", "codesys", "fake"], default="auto", help="Execution backend")
     ref_p.add_argument("--out-dir", default=None, help="Output directory for test evidence")
     args = parser.parse_args()
+    if args.command in ("run", "probe-models") and not args.allow_model_api:
+        parser.error("Model calls require explicit authorization and --allow-model-api")
     cfg = Settings.load(args.config, load_api=args.command in ("run", "probe-models"))
     tasks = load_tasks()
     try:
         if args.command == "doctor":
             result = doctor(cfg)
+        elif args.command == "check-model":
+            from .model_checker import check_model
+            result = check_model(args.model, args.out_dir, args.executable, args.timeout)
         elif args.command == "validate-dataset":
             result = validate(tasks)
             source = ROOT.parent / "大作业题库json/大作业题库json/大作业题库.json"
@@ -368,7 +384,7 @@ def main():
                 avail = [p.stem for p in sorted((ROOT / "codesys/examples").glob("*.json"))]
                 raise ValueError(f"No reference ST found for {args.task}. Available: {', '.join(avail)}")
             candidate = read_json(example_file)
-            use_codesys = (args.backend == "codesys") or (args.backend == "auto" and not cfg.compiler_ready())
+            use_codesys = args.backend != "fake"
             b_name = "CodesysBackend" if use_codesys else "FakeBackend"
             backend = CodesysBackend(cfg) if use_codesys else FakeBackend()
             ws = Path(args.out_dir) if args.out_dir else (ROOT / "results/raw/test_reference" / args.task)
@@ -449,6 +465,12 @@ def main():
             result = {"executed_runs": len(outcomes)}
         print(json.dumps(result, ensure_ascii=False, indent=2))
         if args.command == "validate-dataset" and (result["errors"] or not result.get("public_coverage", {}).get("verbatim_all_included", False)):
+            return 1
+        if args.command == "compiler-smoke" and not result.get("verified"):
+            return 1
+        if args.command == "test-reference" and not result.get("passed"):
+            return 1
+        if args.command == "check-model" and result.get("status") != "MODEL_PROPERTIES_TRUE":
             return 1
         return 0
     except (ValueError, OSError, ProviderError, StopIteration) as exc:

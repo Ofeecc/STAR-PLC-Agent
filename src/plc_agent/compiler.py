@@ -152,7 +152,7 @@ def stage_ascii_workspace(
     else:
         root = Settings.load(load_api=False).get_ascii_work_root()
 
-    if not str(root.resolve()).isascii():
+    if ascii_root is None and not str(root.resolve()).isascii():
         root = Path("C:/plc_work" if os.name == "nt" else "/tmp/plc_work")
 
     ws_hash = hashlib.sha256(str(ws.resolve()).encode("utf-8")).hexdigest()[:16]
@@ -196,6 +196,8 @@ def _compile_st(task, source_code, workspace, settings=None):
         request = {"request_id": request_id, "source_sha256": source_hash, "task_id": task["id"],
                    "project": str(project), "candidate": candidate,
                    "result_path": str(exec_ws / "codesys_evidence.json"), "started_utc": now()}
+        if task.get("id") == "STATIC_ANALYSIS_SMOKE" and task.get("diagnostic_probe_program"):
+            request["diagnostic_probe_program"] = task["diagnostic_probe_program"]
         write_json(exec_ws / "request.json", request)
         if exec_ws != workspace:
             write_json(workspace / "request.json", request)
@@ -266,6 +268,8 @@ def actionable_diagnostics(result, max_chars=6000):
     for d in result.diagnostics:
         if "error" in str(d.get("severity", "")).lower():
             text = str(d.get("text", ""))
+            if d.get("code"):
+                text = str(d["code"]) + ": " + text
             if text not in unique:
                 unique.append(text)
     return "\n".join(unique)[:max_chars]

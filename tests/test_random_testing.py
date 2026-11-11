@@ -59,7 +59,7 @@ class RandomTestingTests(unittest.TestCase):
                 self.assertGreater(len(cases_a), 0)
                 for case in cases_a:
                     self.assertGreater(len(case["steps"]), 0)
-                    res = check_contract_trace(tid, case["steps"])
+                    res = check_contract_trace(tid, [dict(s, outputs=s["expected"]) for s in case["steps"]])
                     self.assertEqual(
                         res["status"],
                         "NO_VIOLATION_IN_OBSERVED_TRACE",

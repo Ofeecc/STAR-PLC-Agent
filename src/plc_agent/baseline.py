@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import sys
 import time
+from dataclasses import asdict
 from pathlib import Path
 
 from .common import ROOT, now, read_json, redact, write_json
@@ -77,6 +78,9 @@ def run_baseline(
     trusted = workspace / "compiler_records"
     agent_dir.mkdir(parents=True, exist_ok=True)
     trusted.mkdir(parents=True, exist_ok=True)
+    snapshot = asdict(settings)
+    snapshot.pop('api_key', None)
+    write_json(workspace / 'runtime_config.json', snapshot)
 
     result = empty_result(task, condition, model, driver)
     result["completed_agent_turns"] = 0
@@ -171,12 +175,20 @@ def run_baseline(
                         pass
                 break
 
+            # Preserve the Responses output items once, including all parallel calls.
+            if resp.get('output'):
+                messages.extend(resp['output'])
+            else:
+                messages.extend({'type':'function_call', 'call_id':cid, 'name':name,
+                                 'arguments':json.dumps(arguments)} for cid,name,arguments in tool_calls)
+
             for call_id, name, args in tool_calls:
                 result["tool_call_count"] += 1
                 mcp_msg = {
                     "method": "tools/call",
                     "params": {"name": name, "arguments": args},
                 }
+                tool_resp = None
                 try:
                     tool_resp = dispatch(mcp_msg, task=view, trusted=trusted, settings=settings, backend=backend)
                     content_text = tool_resp.get("content", [{}])[0].get("text", "")
@@ -184,20 +196,21 @@ def run_baseline(
                     content_text = json.dumps({"error": str(exc)})
 
                 messages.append({
-                    "role": "assistant",
-                    "tool_calls": [
-                        {
-                            "id": call_id or f"call_{result['tool_call_count']}",
-                            "type": "function",
-                            "function": {"name": name, "arguments": json.dumps(args) if isinstance(args, dict) else str(args)},
-                        }
-                    ],
+                    "type": "function_call_output",
+                    "call_id": call_id,
+                    "output": content_text,
                 })
-                messages.append({
-                    "role": "tool",
-                    "tool_call_id": call_id or f"call_{result['tool_call_count']}",
-                    "content": content_text,
-                })
+                write_json(turn_dir / f"tool_{result['tool_call_count']:02d}.json",
+                           {'call_id':call_id,'name':name,'arguments':args,'result':tool_resp or content_text})
+                try:
+                    tool_status = json.loads(content_text).get('status')
+                except (ValueError, AttributeError):
+                    tool_status = None
+                if tool_status in ('TOOL_ERROR','TIMEOUT'):
+                    result['status'], result['reason'] = tool_status, 'Trusted tool infrastructure failed; stopped model requests'
+                    break
+            if result['status'] in ('TOOL_ERROR','TIMEOUT'):
+                break
 
     elif driver == "codex_cli":
         executable = shutil.which("codex")
@@ -401,7 +414,7 @@ def run_baseline(
     sim_attempts = [read_json(p) for p in sorted(trusted.glob("sim_*/simulation_result.json"))]
     result["simulation_call_count"] = len(sim_attempts)
 
-    if attempts:
+    if attempts and result['status'] not in ('TOOL_ERROR','TIMEOUT'):
         if attempts[0].get("status") in ("PASS", "COMPILE_FAIL"):
             result["first_pass_compiled"] = attempts[0].get("success", False)
         last = attempts[-1]

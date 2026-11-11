@@ -1,0 +1,271 @@
+{
+  "state_machine": {
+    "scan_semantics": "Evaluate using pre-scan phase q[k]. Update outputs and next_phase once per scan. Allow at most one phase transition per scan. Ignore confirmation inputs that do not match the active pre-scan phase.",
+    "states": [
+      {
+        "name": "IDLE",
+        "phase": 0,
+        "description": "Idle, awaiting bottle detection.",
+        "steady_outputs": {
+          "Pump_Motor": false,
+          "Filling_Valve": false,
+          "Capping_Machine": false,
+          "Packing_Machine": false,
+          "Completion_Light": false
+        }
+      },
+      {
+        "name": "CLEANING",
+        "phase": 1,
+        "description": "Cleaning pump is active; waiting for cleaning confirmation.",
+        "steady_outputs": {
+          "Pump_Motor": true,
+          "Filling_Valve": false,
+          "Capping_Machine": false,
+          "Packing_Machine": false,
+          "Completion_Light": false
+        }
+      },
+      {
+        "name": "FILLING",
+        "phase": 2,
+        "description": "Filling valve is active; waiting for filling confirmation.",
+        "steady_outputs": {
+          "Pump_Motor": false,
+          "Filling_Valve": true,
+          "Capping_Machine": false,
+          "Packing_Machine": false,
+          "Completion_Light": false
+        }
+      },
+      {
+        "name": "CAPPING",
+        "phase": 3,
+        "description": "Capping machine is active; waiting for capping confirmation.",
+        "steady_outputs": {
+          "Pump_Motor": false,
+          "Filling_Valve": false,
+          "Capping_Machine": true,
+          "Packing_Machine": false,
+          "Completion_Light": false
+        }
+      },
+      {
+        "name": "PACKING",
+        "phase": 4,
+        "description": "Packing machine is active; waiting for packaging confirmation.",
+        "steady_outputs": {
+          "Pump_Motor": false,
+          "Filling_Valve": false,
+          "Capping_Machine": false,
+          "Packing_Machine": true,
+          "Completion_Light": false
+        }
+      },
+      {
+        "name": "COMPLETE",
+        "phase": 5,
+        "description": "Packaging complete; completion light remains on until pickup is confirmed.",
+        "steady_outputs": {
+          "Pump_Motor": false,
+          "Filling_Valve": false,
+          "Capping_Machine": false,
+          "Packing_Machine": false,
+          "Completion_Light": true
+        }
+      }
+    ],
+    "transitions": [
+      {
+        "from": "IDLE",
+        "to": "CLEANING",
+        "condition": "bottleSensor == TRUE",
+        "next_phase": 1,
+        "set_outputs": {
+          "Pump_Motor": true,
+          "Filling_Valve": false,
+          "Capping_Machine": false,
+          "Packing_Machine": false,
+          "Completion_Light": false
+        }
+      },
+      {
+        "from": "IDLE",
+        "to": "IDLE",
+        "condition": "bottleSensor == FALSE",
+        "next_phase": 0,
+        "set_outputs": {
+          "Pump_Motor": false,
+          "Filling_Valve": false,
+          "Capping_Machine": false,
+          "Packing_Machine": false,
+          "Completion_Light": false
+        }
+      },
+      {
+        "from": "CLEANING",
+        "to": "FILLING",
+        "condition": "cleaningConfirmButton == TRUE",
+        "next_phase": 2,
+        "set_outputs": {
+          "Pump_Motor": false,
+          "Filling_Valve": true,
+          "Capping_Machine": false,
+          "Packing_Machine": false,
+          "Completion_Light": false
+        }
+      },
+      {
+        "from": "CLEANING",
+        "to": "CLEANING",
+        "condition": "cleaningConfirmButton == FALSE",
+        "next_phase": 1,
+        "set_outputs": {
+          "Pump_Motor": true,
+          "Filling_Valve": false,
+          "Capping_Machine": false,
+          "Packing_Machine": false,
+          "Completion_Light": false
+        }
+      },
+      {
+        "from": "FILLING",
+        "to": "CAPPING",
+        "condition": "fillingConfirmButton == TRUE",
+        "next_phase": 3,
+        "set_outputs": {
+          "Pump_Motor": false,
+          "Filling_Valve": false,
+          "Capping_Machine": true,
+          "Packing_Machine": false,
+          "Completion_Light": false
+        }
+      },
+      {
+        "from": "FILLING",
+        "to": "FILLING",
+        "condition": "fillingConfirmButton == FALSE",
+        "next_phase": 2,
+        "set_outputs": {
+          "Pump_Motor": false,
+          "Filling_Valve": true,
+          "Capping_Machine": false,
+          "Packing_Machine": false,
+          "Completion_Light": false
+        }
+      },
+      {
+        "from": "CAPPING",
+        "to": "PACKING",
+        "condition": "cappingConfirmButton == TRUE",
+        "next_phase": 4,
+        "set_outputs": {
+          "Pump_Motor": false,
+          "Filling_Valve": false,
+          "Capping_Machine": false,
+          "Packing_Machine": true,
+          "Completion_Light": false
+        }
+      },
+      {
+        "from": "CAPPING",
+        "to": "CAPPING",
+        "condition": "cappingConfirmButton == FALSE",
+        "next_phase": 3,
+        "set_outputs": {
+          "Pump_Motor": false,
+          "Filling_Valve": false,
+          "Capping_Machine": true,
+          "Packing_Machine": false,
+          "Completion_Light": false
+        }
+      },
+      {
+        "from": "PACKING",
+        "to": "COMPLETE",
+        "condition": "packingConfirmButton == TRUE",
+        "next_phase": 5,
+        "set_outputs": {
+          "Pump_Motor": false,
+          "Filling_Valve": false,
+          "Capping_Machine": false,
+          "Packing_Machine": false,
+          "Completion_Light": true
+        }
+      },
+      {
+        "from": "PACKING",
+        "to": "PACKING",
+        "condition": "packingConfirmButton == FALSE",
+        "next_phase": 4,
+        "set_outputs": {
+          "Pump_Motor": false,
+          "Filling_Valve": false,
+          "Capping_Machine": false,
+          "Packing_Machine": true,
+          "Completion_Light": false
+        }
+      },
+      {
+        "from": "COMPLETE",
+        "to": "IDLE",
+        "condition": "finishedButton == TRUE",
+        "next_phase": 0,
+        "set_outputs": {
+          "Pump_Motor": false,
+          "Filling_Valve": false,
+          "Capping_Machine": false,
+          "Packing_Machine": false,
+          "Completion_Light": false
+        }
+      },
+      {
+        "from": "COMPLETE",
+        "to": "COMPLETE",
+        "condition": "finishedButton == FALSE",
+        "next_phase": 5,
+        "set_outputs": {
+          "Pump_Motor": false,
+          "Filling_Valve": false,
+          "Capping_Machine": false,
+          "Packing_Machine": false,
+          "Completion_Light": true
+        }
+      }
+    ]
+  },
+  "timer_plan": {
+    "timers": [],
+    "pt_durations": {},
+    "reset_conditions": "No timers are required. All phase transitions are event-driven by bottleSensor and operator confirmation buttons."
+  },
+  "priorities": {
+    "safety": [
+      "Maintain one-hot actuator outputs: at most one of Pump_Motor, Filling_Valve, Capping_Machine, Packing_Machine, and Completion_Light may be TRUE.",
+      "Accept a confirmation only when it matches the active pre-scan phase.",
+      "Allow at most one phase transition per scan.",
+      "Ignore all non-active-phase confirmation inputs.",
+      "On a phase-advancing scan, de-energize the previous phase actuator and energize the actuator for the newly entered phase as specified by the normative LTL/contract.",
+      "Completion_Light remains energized in COMPLETE until finishedButton is TRUE.",
+      "On fresh initialization, all outputs are FALSE and phase is IDLE."
+    ],
+    "operational": [
+      "IDLE plus bottleSensor starts cleaning, sets Pump_Motor TRUE, and advances next_phase to 1 in the same scan.",
+      "CLEANING plus cleaningConfirmButton advances to FILLING, de-energizes Pump_Motor, and energizes Filling_Valve in the same scan.",
+      "FILLING plus fillingConfirmButton advances to CAPPING, de-energizes Filling_Valve, and energizes Capping_Machine in the same scan.",
+      "CAPPING plus cappingConfirmButton advances to PACKING, de-energizes Capping_Machine, and energizes Packing_Machine in the same scan.",
+      "PACKING plus packingConfirmButton advances to COMPLETE, de-energizes Packing_Machine, and energizes Completion_Light in the same scan.",
+      "COMPLETE plus finishedButton resets Completion_Light and returns phase to IDLE.",
+      "A bottle still present after reset can start a new cleaning cycle only on a following IDLE scan, not in the same reset scan."
+    ]
+  },
+  "initial_values": {
+    "phase": 0,
+    "next_phase": 0,
+    "Pump_Motor": false,
+    "Filling_Valve": false,
+    "Capping_Machine": false,
+    "Packing_Machine": false,
+    "Completion_Light": false
+  }
+}

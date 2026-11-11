@@ -1,0 +1,330 @@
+{
+  "description": "本轮六题人工审核；中文翻译和补充约定为组内整理，老师原题以 requirements 为准。",
+  "tasks": [
+    {
+      "id": "PUB001",
+      "title_zh": "自动灌装线控制",
+      "translation_zh": "生产线依次完成瓶子的清洗、灌装、旋盖和包装。bottleSensor 检测到瓶子后启动清洗泵并持续工作；操作员按 cleaningConfirmButton 确认清洗完成，启动灌装阀；按 fillingConfirmButton 确认灌装完成，启动旋盖机；按 cappingConfirmButton 确认旋盖完成，启动包装机；按 packingConfirmButton 确认包装完成，点亮完成指示灯。取走瓶子后按 finishedButton，复位指示灯，准备下一轮。",
+      "assumptions_zh": "确认按钮采用电平；每扫描最多推进一个阶段；只响应当前阶段的确认；取瓶复位仅作用于完成阶段；复位后若有瓶信号仍为真，下一拍重新开始。",
+      "coverage_zh": "完整周期10步；乱序确认和防止同拍跳阶段6步。",
+      "review_points_zh": "建议补充：完成后有瓶信号持续为真的连续两轮测试；全部确认持续为真的逐拍完整轨迹。",
+      "properties_zh": {
+        "P1": {
+          "formula": "init",
+          "description": "初始实例尚未执行扫描时，处于空闲阶段且全部输出关闭。",
+          "review": "只检查初始化；不要误读成运行中永远空闲。"
+        },
+        "P2": {
+          "formula": "G(oneHotOutputs)",
+          "description": "任意扫描中，五个输出最多一个为真，允许全部关闭。",
+          "review": "oneHotOutputs 在此定义为“至多一个”，包括完成灯；核对是否符合组内约定。"
+        },
+        "P3": {
+          "formula": "G((phase=0 & bottleSensor) -> (Pump_Motor & X(phase=1)))",
+          "description": "扫描开始为空闲且检测到瓶子，则本扫描结束启动清洗泵，下一扫描开始处于清洗阶段。",
+          "review": "同时按所有确认按钮也只能走一步；X 修饰阶段，不修饰本拍泵输出。"
+        },
+        "P4": {
+          "formula": "G((phase=1 & cleaningConfirmButton) -> (Filling_Valve & X(phase=2)))",
+          "description": "扫描开始在清洗阶段且清洗确认有效，则本拍打开灌装阀，下拍进入灌装阶段。",
+          "review": "确认采用电平；本条没有单独要求其他输出关闭，需结合 P2 和完整行为。"
+        },
+        "P5": {
+          "formula": "G((phase=2 & fillingConfirmButton) -> (Capping_Machine & X(phase=3)))",
+          "description": "扫描开始在灌装阶段且灌装确认有效，则本拍启动旋盖机，下拍进入旋盖阶段。",
+          "review": "非灌装阶段的该按钮应被忽略；忽略规则由完整行为补足。"
+        },
+        "P6": {
+          "formula": "G((phase=3 & cappingConfirmButton) -> (Packing_Machine & X(phase=4)))",
+          "description": "扫描开始在旋盖阶段且旋盖确认有效，则本拍启动包装机，下拍进入包装阶段。",
+          "review": "核对按钮与设备是否配对，不能跨阶段跳转。"
+        },
+        "P7": {
+          "formula": "G((phase=4 & packingConfirmButton) -> (Completion_Light & X(phase=5)))",
+          "description": "扫描开始在包装阶段且包装确认有效，则本拍点亮完成灯，下拍进入完成阶段。",
+          "review": "包装输出必须关闭，结合完整行为一起审核。"
+        },
+        "P8": {
+          "formula": "G((phase=5 & !finishedButton) -> (Completion_Light & X(phase=5)))",
+          "description": "完成阶段尚未确认取瓶时，本拍完成灯保持亮，下拍仍在完成阶段。",
+          "review": "持续多拍等待，不能自动清灯。"
+        },
+        "P9": {
+          "formula": "G((phase=5 & finishedButton) -> (!Completion_Light & X(phase=0)))",
+          "description": "完成阶段确认取瓶时，本拍关闭完成灯，下拍回到空闲阶段。",
+          "review": "若瓶信号仍为真，重新启动发生在再下一次空闲扫描。"
+        },
+        "P10": {
+          "formula": "G((phase=1 & G((phase=1) -> F(cleaningConfirmButton)) & G((phase=2) -> F(fillingConfirmButton)) & G((phase=3) -> F(cappingConfirmButton)) & G((phase=4) -> F(packingConfirmButton))) -> F(Completion_Light))",
+          "description": "从清洗阶段开始，若今后每个活动阶段最终都得到相应确认，则最终会亮完成灯。",
+          "review": "这是带环境条件的进度要求；操作员永不确认时不要求自动完成。F 不代表限定几拍内。"
+        },
+        "PUB001.V2.COMPLETE": {
+          "formula": "G(CompleteBehaviorV2)",
+          "description": "每次调用都满足完整状态转移及全部输出规则，具体定义见原子命题与完整规约。",
+          "review": "CompleteBehaviorV2 是文字定义的复合谓词，必须展开编码后才能交给模型检查器；不是已验证证明。"
+        }
+      }
+    },
+    {
+      "id": "PUB003",
+      "title_zh": "带滞回的报警处理",
+      "translation_zh": "Value > hiLevel 时触发高报警；Value < hiLevel-hystWindow 时解除高报警。Value < loLevel 时触发低报警；Value > loLevel+hystWindow 时解除低报警。loLevel >= hiLevel 时输出 error=TRUE、status=16#8001，并退出；hystWindow >= hiLevel-loLevel 时输出 error=TRUE、status=16#8002。滞回用于避免参数轻微波动引发报警反复切换。",
+      "assumptions_zh": "等于阈值时保持报警；无效配置保留报警输出；8001优先于8002；合法配置恢复时清除错误；负滞回宽度排除在输入域之外。",
+      "coverage_zh": "严格触发/释放边界9步；错误优先级、保持与恢复4步；数据边界回归6步。",
+      "review_points_zh": "建议补充：合法动态修改阈值的组合、宽度为零的完整循环；明确负宽度是排除还是报错。",
+      "properties_zh": {
+        "P1": {
+          "formula": "G(badRange -> (error & status=16#8001 & sameAlarms))",
+          "description": "上下限非法时，置 error，status=16#8001，两个报警保持原值。",
+          "review": "同时出现窗口错误时仍以 8001 优先；核对 badRange 定义。"
+        },
+        "P2": {
+          "formula": "G((!badRange & badWindow) -> (error & status=16#8002 & sameAlarms))",
+          "description": "上下限合法但滞回窗口非法时，置 error，status=16#8002，两个报警保持原值。",
+          "review": "核对窗口等于上下限差时是否非法；负宽度的输入域另行确认。"
+        },
+        "P3": {
+          "formula": "G(valid -> (!error & status=0))",
+          "description": "配置合法时，清除 error，status=0。",
+          "review": "先错后对的恢复过程也要满足。"
+        },
+        "P4": {
+          "formula": "G((valid & Value>hiLevel) -> hiAlarm)",
+          "description": "配置合法且 Value 严格大于高阈值时，高报警为真。",
+          "review": "等于高阈值不由本条触发。"
+        },
+        "P5": {
+          "formula": "G((valid & Value<hiLevel-hystWindow) -> !hiAlarm)",
+          "description": "配置合法且 Value 严格小于高阈值减滞回宽度时，高报警为假。",
+          "review": "等于释放边界时保持旧值。"
+        },
+        "P6": {
+          "formula": "G((valid & hiLevel-hystWindow<=Value & Value<=hiLevel) -> (hiAlarm=hiPrev))",
+          "description": "配置合法且 Value 在高报警滞回闭区间内时，高报警等于上拍值。",
+          "review": "两个端点都包含；分别用原来亮与原来灭检查。"
+        },
+        "P7": {
+          "formula": "G((valid & Value<loLevel) -> loAlarm)",
+          "description": "配置合法且 Value 严格小于低阈值时，低报警为真。",
+          "review": "等于低阈值不由本条触发。"
+        },
+        "P8": {
+          "formula": "G((valid & Value>loLevel+hystWindow) -> !loAlarm)",
+          "description": "配置合法且 Value 严格大于低阈值加滞回宽度时，低报警为假。",
+          "review": "等于释放边界时保持旧值。"
+        },
+        "P9": {
+          "formula": "G((valid & loLevel<=Value & Value<=loLevel+hystWindow) -> (loAlarm=loPrev))",
+          "description": "配置合法且 Value 在低报警滞回闭区间内时，低报警等于上拍值。",
+          "review": "两个端点都包含；检查高低报警互不错误覆盖。"
+        },
+        "PUB003.V2.COMPLETE": {
+          "formula": "G(CompleteBehaviorV2)",
+          "description": "每次调用满足完整报警、错误优先级与保持规则。",
+          "review": "需展开 CompleteBehaviorV2；仅写名字不能直接执行验证。"
+        }
+      }
+    },
+    {
+      "id": "PUB009",
+      "title_zh": "移动平均计算",
+      "translation_zh": "编写功能块，计算连续数据的移动算术平均值，新数据替代最旧数据后重新计算。cyclicExecution=TRUE 时每扫描采集一次；trigger 每次上升沿触发一次采样；reset=TRUE 时重置计算。窗口长度必须为1至100，成功状态为16#0000，越界错误状态为16#8200。",
+      "assumptions_zh": "窗口未满时按实际样本数计算；有效窗口变化清空历史；有效窗口下复位优先于采样；非法窗口保持历史与输出；复位和非法输入期间也更新触发边沿记忆。",
+      "coverage_zh": "周期采样、滑动替换和复位6步；上升沿、长按、窗口变化及非法边界9步；历史边界回归7步。",
+      "review_points_zh": "建议补充：合法最大窗口100的填满及第101次替换；大量正负数据的数值误差；复位与非法窗口同时发生的优先级。",
+      "properties_zh": {
+        "P1": {
+          "formula": "G(!valid -> (error & status=16#8200 & unchangedMean))",
+          "description": "窗口无效时，置 error，status=16#8200，平均值和窗口满标志保持原值。",
+          "review": "unchangedMean 明确定义保持这两个输出；内部采样历史是否保持还要检查完整行为。"
+        },
+        "P2": {
+          "formula": "G(valid -> (!error & status=0))",
+          "description": "窗口有效时，清除 error，status=0。",
+          "review": "非法窗口恢复后必须能正常采样。"
+        },
+        "P3": {
+          "formula": "G((valid & reset) -> (average=0 & !windowSizeReached))",
+          "description": "窗口有效且复位时，平均值为0，窗口满标志为假。",
+          "review": "复位优先于本拍采样；非法窗口与复位同时出现的优先级另查完整行为。"
+        },
+        "P4": {
+          "formula": "G((valid & !reset) -> average=meanOrZero(historyAfter))",
+          "description": "窗口有效且未复位时，平均值等于更新后历史的均值；历史为空则为0。",
+          "review": "historyAfter 必须独立定义采样、窗口变化和淘汰规则，不能用输出反定义期望。"
+        },
+        "P5": {
+          "formula": "G(valid -> (windowSizeReached <-> length(historyAfter)=windowSize))",
+          "description": "窗口有效时，窗口满标志当且仅当更新后的历史长度等于窗口长度。",
+          "review": "窗口未满按实际样本数平均；窗口变化后重新累计。"
+        },
+        "P6": {
+          "formula": "G(X(previousTrigger)=trigger)",
+          "description": "下一拍保留的触发历史等于本拍 trigger 输入。",
+          "review": "每拍都更新，包括非法窗口与复位；X 指下一拍。"
+        },
+        "P7": {
+          "formula": "G((valid & !reset & !cyclicExecution & !triggerRise & !windowChanged) -> unchangedMean)",
+          "description": "合法、未复位、非周期模式、没有触发上升沿且窗口未变化时，平均值和窗口满标志保持不变。",
+          "review": "按钮长按只采一次；窗口变化不能误套保持规则。"
+        },
+        "PUB009.V2.COMPLETE": {
+          "formula": "G(CompleteBehaviorV2)",
+          "description": "每次调用满足完整采样、复位、窗口变更、错误与边沿历史规则。",
+          "review": "CompleteBehaviorV2 及历史序列仍需显式建模。"
+        }
+      }
+    },
+    {
+      "id": "PUB010",
+      "title_zh": "温度逻辑控制",
+      "translation_zh": "编写功能块，读取温度 TemperatureSensorInput，与 SetTemperature 比较；低于设定值开启加热，高于设定值关闭加热。连续加热超过一定时间（取5秒）触发过热保护并关闭加热器；等待一定时间（取3秒）后才能解除保护。提供当前温度、设定温度、加热器及保护状态显示。温度小于0或大于100判为传感器故障，关闭加热器。",
+      "assumptions_zh": "当前评测将原文“超过5秒”解释为>=5秒；等温保持上次热需求；保护后第一个>=3秒观测点解除，允许同拍重新加热；故障不清除已有冷却保护；计时从首次有效调用的零时刻起算。",
+      "coverage_zh": "加热和冷却边界6步；传感器故障、有效端点、等温保持7步；保护期间故障5步；错误行为回归3步。",
+      "review_points_zh": "必须审核：>5秒与>=5秒选择；冷却结束是否同拍重启。真实PLC计时采样/容差尚需验收。规约正文仍留有“选定边界”等编辑性文字，应在确认后改成唯一最终规则。",
+      "properties_zh": {
+        "P1": {
+          "formula": "G(sensorFault -> !HeaterOutput)",
+          "description": "传感器故障时，加热输出必须关闭。",
+          "review": "核对故障范围是温度<0或>100；0和100为有效值。"
+        },
+        "P2": {
+          "formula": "G(OverheatProtection -> !HeaterOutput)",
+          "description": "处于过热保护时，加热输出必须关闭。",
+          "review": "保护输出与实际加热不能同时为真。"
+        },
+        "P3": {
+          "formula": "G(HeaterStatus=HeaterOutput)",
+          "description": "加热状态显示始终等于实际加热输出。",
+          "review": "禁止显示与执行器状态不一致。"
+        },
+        "P4": {
+          "formula": "G((CurrentTemperature=TemperatureSensorInput) & (SetTempDisplay=SetTemperature))",
+          "description": "当前温度显示等于传感器输入，设定显示等于设定温度。",
+          "review": "故障时是否仍直接显示原值，本条表示是。"
+        },
+        "P5": {
+          "formula": "G((!sensorFault & !OverheatProtection & demand & !heatLimitReached) -> HeaterOutput)",
+          "description": "无传感器故障、无保护、有加热需求且未达到连续加热上限时，必须开启加热。",
+          "review": "demand 的等温保持定义与计时边界都需要人工确认。"
+        },
+        "P6": {
+          "formula": "G(heatLimitReached -> (OverheatProtection & !HeaterOutput))",
+          "description": "达到加热时间上限时，开启过热保护并关闭加热。",
+          "review": "当前约定>=5秒；老师“超过5秒”存在边界歧义。"
+        },
+        "P7": {
+          "formula": "G((protectPrev & !cooldownDone) -> OverheatProtection)",
+          "description": "上拍处于保护且冷却尚未完成时，本拍保护必须保持。",
+          "review": "传感器故障不能提前清除保护；冷却时间约定3秒。"
+        },
+        "P8": {
+          "formula": "G((OverheatProtection & G(!sensorFault & demand)) -> F(HeaterOutput))",
+          "description": "保护期间若从当前起始终无故障且持续需要加热，则最终会重新开启加热。",
+          "review": "假设时间持续前进；这条本身不表达精确3秒，也不能排除提前解除。"
+        },
+        "PUB010.V2.COMPLETE": {
+          "formula": "G(CompleteBehaviorV2)",
+          "description": "每次调用满足完整需求、计时、保护和故障优先级规则。",
+          "review": "需展开完整谓词并给出时间模型；真实 PLC 的定时器采样误差另做验收。"
+        },
+        "PUB010.V2.1": {
+          "formula": "G((TemperatureSensorInput>SetTemperature) -> !HeaterOutput)",
+          "description": "传感器温度严格高于设定温度时，始终禁止加热。",
+          "review": "等温行为由需求记忆决定；用于防止错误保持加热。"
+        }
+      }
+    },
+    {
+      "id": "PUB015",
+      "title_zh": "物料配比过程控制",
+      "translation_zh": "混合三种物料并经阀D排出。estop=FALSE 时所有设备立即停止。opeMode=FALSE为手动模式，通过按钮上升沿分别切换阀A/B/C/D和搅拌电机启停；例如阀A按钮第一次上升沿启动、第二次上升沿停止。opeMode=TRUE为自动模式：按autoStart后开启A，液位到50cm切换为B，到80cm关闭B。processMode=FALSE时开始搅拌，完成后关闭搅拌并开启D；processMode=TRUE时先开启C，到100cm关闭C并开始搅拌，完成后开启D，流程结束。",
+      "assumptions_zh": "液位采用>=阈值；急停清空状态；模式切换当拍清空并抑制命令；按钮历史每拍更新；自动启动需新上升沿；批次中processMode固定；D保持开启，直到急停或模式复位。",
+      "coverage_zh": "手动按钮/长按/急停7步；两物料流程阈值与搅拌7步；三物料跨阈值与急停8步；模式和边沿历史回归10步。",
+      "review_points_zh": "必须审核：D保持开启是否符合题意；下一批如何启动；模式切换是否必须取消当前流程。建议逐阶段补急停及恢复、每个手动输出独立双沿。",
+      "properties_zh": {
+        "PUB015.P1": {
+          "formula": "G(!safe -> off)",
+          "description": "安全条件不成立时，所有执行器都关闭。",
+          "review": "safe 对应 estop=TRUE；不要误把 estop=FALSE 理解为正常。"
+        },
+        "PUB015.P2": {
+          "formula": "G((toggle -> changed) & (held -> same))",
+          "description": "手动模式下，符合条件的按钮切换事件使对应输出翻转，长按使其保持。",
+          "review": "toggle/held/changed/same 必须逐个执行器定义，包含模式与急停的前置条件。"
+        },
+        "PUB015.P3": {
+          "formula": "G(toB -> B)",
+          "description": "自动流程到达切换B条件时，满足B阶段输出组合。",
+          "review": "B 不是单一原始变量；须核对其含义为关A、开B及其他输出。"
+        },
+        "PUB015.P4": {
+          "formula": "G(toMix -> Mix)",
+          "description": "两物料流程到达搅拌条件时，满足搅拌阶段输出组合。",
+          "review": "液位>=80；两物料模式应跳过C，不能只检查搅拌输出为真。"
+        },
+        "PUB015.P5": {
+          "formula": "G((toC -> C) & (fromC -> Mix))",
+          "description": "三物料流程到达C条件时进入C阶段；完成C条件时进入搅拌阶段。",
+          "review": "分别核对>=80切C、>=100切搅拌以及互锁。"
+        },
+        "PUB015.P6": {
+          "formula": "G(mixed -> Drain)",
+          "description": "搅拌完成条件成立时，满足排料阶段输出组合。",
+          "review": "停止搅拌并打开D；D是否保持开启、下一批如何开始仍需确认。"
+        },
+        "PUB015.V2.COMPLETE": {
+          "formula": "G(CompleteBehaviorV2)",
+          "description": "每次调用满足完整急停、模式切换、手动边沿与自动批次规则。",
+          "review": "完整谓词未展开前不能直接模型检查；批次 processMode 固定是组内假设。"
+        }
+      }
+    },
+    {
+      "id": "PUB016",
+      "title_zh": "柔性加工控制",
+      "translation_zh": "五个工作站从左至右编号1至5。1号上料，2至4号加工，5号成品输出。每站有到位传感器，电机可使输送带左右运动。1号检测到原料并按station1Start后，按processSequence第一项送往目标站，到位停车；收到该站加工完成信号后读取下一项，并决定输送方向，直到送至5号。processLength规定有效序列长度1至8，从processSequence[1]开始；最后一项必须为5，其余有效项为2至4，调用方负责提供合法序列。",
+      "assumptions_zh": "路线批次内固定；启动和完成均按上升沿；到位当拍仅停车，不接受同拍完成；重复站点代表两次加工，需两次新完成沿，无须移动；每拍最多推进一项。",
+      "coverage_zh": "双向路线[4,2,5]和错误站完成信号8步；最短路线[5]3步；重复站点[2,2,5]7步；到位/完成同拍和边沿历史回归9步。",
+      "review_points_zh": "建议补充：最大长度8、覆盖3号站的完整路线、连续两批；确认到位与完成同拍是否故意忽略。真实数组绑定仍需PLC运行验收。",
+      "properties_zh": {
+        "PUB016.P1": {
+          "formula": "G(!(left & right))",
+          "description": "输送带左转与右转不能同时为真。",
+          "review": "允许两者都为假；检查停车和反向切换。"
+        },
+        "PUB016.P2": {
+          "formula": "G((higher -> (right & !left)) & (lower -> (left & !right)))",
+          "description": "目标在右侧时右转且不左转；目标在左侧时左转且不右转。",
+          "review": "higher/lower 必须限定在正在移动的有效路线阶段，等待加工时不能误启动。"
+        },
+        "PUB016.P3": {
+          "formula": "G(arrive -> stop)",
+          "description": "目标工位到位事件成立时，输送带停止。",
+          "review": "应检查目标工位传感器；其他工位到位信号不能提前停车。"
+        },
+        "PUB016.P4": {
+          "formula": "G(waiting -> stop)",
+          "description": "等待加工完成期间，输送带保持停止。",
+          "review": "到位当拍按当前约定不接受同拍加工完成信号。"
+        },
+        "PUB016.P5": {
+          "formula": "G(out -> (done & stop))",
+          "description": "输出工位到达条件成立时，置完成并停止。",
+          "review": "核对 done 的保持与复位定义；成品输出为路线最后一步。"
+        },
+        "PUB016.P6": {
+          "formula": "(G(moving -> F arrive) & G(processing -> F completion)) -> G(started -> F done)",
+          "description": "若每次移动最终到位且每次加工最终收到完成信号，则每次启动最终完成。",
+          "review": "还依赖合法、固定路线和正确边沿；不能要求没有外部反馈也自动完成。"
+        },
+        "PUB016.V2.COMPLETE": {
+          "formula": "G(CompleteBehaviorV2)",
+          "description": "每次调用满足完整路线、移动、等待、完成边沿与重复站点规则。",
+          "review": "需要展开数组和索引语义；长度1和8、重复站点、3号工位分别审核。"
+        }
+      }
+    }
+  ]
+}

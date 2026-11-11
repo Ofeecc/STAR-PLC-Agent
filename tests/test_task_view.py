@@ -53,9 +53,13 @@ class TaskViewTests(unittest.TestCase):
             staged_ws, staged_script, staged_tpl = stage_ascii_workspace(
                 ascii_ws, script, template, ascii_root
             )
-            self.assertEqual(staged_ws, ascii_ws)
-            self.assertEqual(staged_script, script)
-            self.assertEqual(staged_tpl, template)
+            if str(ascii_ws.resolve()).isascii():
+                self.assertEqual(staged_ws, ascii_ws)
+                self.assertEqual(staged_script, script)
+                self.assertEqual(staged_tpl, template)
+            else:
+                self.assertNotEqual(staged_ws, ascii_ws)
+                self.assertEqual(staged_script.read_bytes(), script.read_bytes())
 
     def test_sync_ascii_artifacts_copies_expected_files(self):
         with tempfile.TemporaryDirectory() as tmp:

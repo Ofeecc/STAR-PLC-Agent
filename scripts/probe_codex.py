@@ -19,7 +19,7 @@ from plc_agent.common import ROOT, now, read_json, redact, write_json
 from plc_agent.compiler import _kill_tree
 from plc_agent.config import Settings
 
-MODELS = ("deepseek-v4.1-flash", "kimi-k3.1-pro")
+MODELS = ("deepseek-v4.1-flash-1017", "kimi-k3.1-pro")
 
 
 def toml_string(value):

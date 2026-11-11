@@ -345,6 +345,7 @@ def run_harness(
                     model,
                     planner_messages,
                     workspace / "llm_planner",
+                    max_tokens=settings.output_limit('planner'),
                     timeout=remaining_time(),
                 )
                 result["llm_calls"] += 1
@@ -399,6 +400,7 @@ def run_harness(
             model,
             messages,
             workspace / "llm_code_00",
+            max_tokens=settings.output_limit('coder'),
             timeout=remaining_time(),
         )
         result["llm_calls"] += 1
@@ -427,6 +429,10 @@ def run_harness(
             prev_cand_hash = digest(str(candidate))
         previous_hashes = [prev_cand_hash]
         stagnation_detected = False
+
+        if compiled.status in ("TOOL_ERROR", "TIMEOUT"):
+            result["status"], result["reason"] = compiled.status, compiled.infrastructure_error
+            return result
 
         attempt = 0
         while not compiled.success and attempt < settings.max_repairs:
@@ -469,6 +475,7 @@ def run_harness(
                 model,
                 repair_messages,
                 workspace / f"llm_repair_{attempt:02d}",
+                max_tokens=settings.output_limit('repair'),
                 timeout=remaining_time(),
             )
             result["llm_calls"] += 1
@@ -541,10 +548,18 @@ def run_harness(
                     },
                     {"role": "user", "content": tester_prompt},
                 ]
+                if settings.selftest_max_cases and settings.selftest_max_steps_per_case:
+                    tester_messages[-1]['content'] += (
+                        f'\nOutput budget: at most {settings.selftest_max_cases} cases, '
+                        f'at most {settings.selftest_max_steps_per_case} steps per case. '
+                        'Use compact JSON. Cover a complete normal path and one important boundary. '
+                        'Keep reasoning concise enough to finish the entire JSON within the output budget.'
+                    )
                 reply = client.respond(
                     model,
                     tester_messages,
                     workspace / "llm_tester",
+                    max_tokens=settings.output_limit('tester'),
                     timeout=remaining_time(),
                 )
                 result["llm_calls"] += 1
@@ -565,6 +580,7 @@ def run_harness(
         # Step 5: Simulation & Behavioral Repair Loop
         if valid_cases:
             active_cases = list(valid_cases)
+            best_was_simulated = False
             max_rejections = len(valid_cases) // 2
             rejected_case_ids: set[str] = set()
 
@@ -586,10 +602,19 @@ def run_harness(
                 result["simulation_call_count"] += 1
                 sim_attempt += 1
 
+                if sim.status in ("TOOL_ERROR", "TIMEOUT", "UNVERIFIED"):
+                    result["status"], result["reason"] = sim.status, sim.infrastructure_error
+                    break
+                if sim.evaluated_cases != len(active_cases):
+                    result["status"], result["reason"] = "UNVERIFIED", "Incomplete simulation coverage"
+                    break
+
                 passed_cases = sim.passed_cases
-                if (True, passed_cases) > best_score:
+                result["status"], result["reason"] = "TEST_FAIL", "Active self-tests have behavioral failures"
+                if (True, passed_cases) >= best_score:
                     best_score = (True, passed_cases)
                     best_candidate = candidate
+                    best_was_simulated = True
 
                 if passed_cases == len(active_cases) and len(active_cases) > 0:
                     result["status"] = "PASS"
@@ -639,6 +664,7 @@ def run_harness(
                     model,
                     sim_repair_messages,
                     workspace / f"llm_sim_repair_{sim_attempt:02d}",
+                    max_tokens=settings.output_limit('repair'),
                     timeout=remaining_time(),
                 )
                 result["llm_calls"] += 1
@@ -666,9 +692,12 @@ def run_harness(
                 except Exception:
                     pass
 
-                active_cases = [
-                    c for c in valid_cases if c["id"] not in rejected_case_ids
-                ]
+                next_cases = [c for c in valid_cases if c["id"] not in rejected_case_ids]
+                if next_cases != active_cases:
+                    # Scores from different test sets are not comparable.
+                    best_score = (True, -1)
+                    best_was_simulated = False
+                active_cases = next_cases
 
                 # Parse new candidate
                 try:
@@ -687,6 +716,9 @@ def run_harness(
                 result["compiler_call_count"] += 1
                 result["compilation_attempts"].append(asdict(comp_res))
 
+                if comp_res.status in ("TOOL_ERROR", "TIMEOUT"):
+                    result["status"], result["reason"] = comp_res.status, comp_res.infrastructure_error
+                    break
                 if not comp_res.success:
                     # Ratchet rejects uncompiled code (False, 0) < best_score (True, ...)
                     candidate = best_candidate
@@ -697,17 +729,10 @@ def run_harness(
 
             # Update best_candidate as final_candidate
             result["final_candidate"] = best_candidate
-            result["functional"]["evaluated_cases"] = len(active_cases)
-            result["functional"]["passed_cases"] = best_score[1]
-            if result["status"] in ("NOT_RUN", "UNVERIFIED"):
-                if best_score[1] == len(active_cases) and len(active_cases) > 0:
-                    result["status"] = "PASS"
-                    result["reason"] = "All active self-tests passed"
-                else:
-                    result["status"] = "TEST_FAIL"
-                    result["reason"] = (
-                        f"Passed {best_score[1]} of {len(active_cases)} active self-tests"
-                    )
+            result["selftest_evaluation"] = {"candidate_sha256": digest(normalize_candidate(best_candidate)),
+                "cases_sha256": digest(active_cases), "status": result["status"],
+                "evaluated_cases": len(active_cases) if best_was_simulated else 0,
+                "passed_cases": max(0, best_score[1]) if best_was_simulated else 0}
         else:
             result["final_candidate"] = best_candidate
 

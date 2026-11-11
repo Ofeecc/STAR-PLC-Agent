@@ -140,7 +140,8 @@ class MetricsAndVerificationTests(unittest.TestCase):
 
         # Verify manifest structure
         self.assertEqual(manifest["task_id"], "PUB001")
-        self.assertEqual(manifest["tools_supported"], ["nuXmv", "UPPAAL", "CBMC"])
+        self.assertEqual(manifest["tools_supported"], [])
+        self.assertFalse(manifest["encoding_complete"])
         self.assertEqual(manifest["st_path"], "candidate.st")
         self.assertEqual(manifest["ltl_path"], "spec.ltl")
         self.assertIsInstance(manifest["properties"], list)
@@ -165,8 +166,8 @@ class MetricsAndVerificationTests(unittest.TestCase):
             encoding="utf-8",
         )
         res_sat = import_verification_evidence(bundle_dir, sat_evidence)
-        self.assertEqual(res_sat["status"], "SAT")
-        self.assertTrue(res_sat["verified"])
+        self.assertEqual(res_sat["status"], "PROPERTIES_TRUE")
+        self.assertFalse(res_sat["verified"])
         self.assertTrue((bundle_dir / "verification_result.json").is_file())
 
         # Test Counterexample evidence
@@ -187,7 +188,7 @@ class MetricsAndVerificationTests(unittest.TestCase):
         )
         res_json = import_verification_evidence(bundle_dir, json_evidence)
         self.assertEqual(res_json["status"], "UNSAT")
-        self.assertTrue(res_json["verified"])
+        self.assertFalse(res_json["verified"])
 
     def test_aggregate_with_statistical_metrics(self):
         # Build mock records for E1 (baseline) and E3 (STAR v2)
@@ -277,9 +278,9 @@ class MetricsAndVerificationTests(unittest.TestCase):
         res = subprocess.run(
             [sys.executable, "-m", "plc_agent.cli", "--help"],
             capture_output=True,
-            text=True,
+            text=True, encoding="utf-8",
             cwd=str(ROOT),
-            env={"PYTHONPATH": str(ROOT / "src")},
+            env={"PYTHONPATH": str(ROOT / "src"), "PYTHONUTF8": "1"},
         )
         self.assertEqual(res.returncode, 0)
         self.assertIn("export-verify", res.stdout)
@@ -306,9 +307,9 @@ class MetricsAndVerificationTests(unittest.TestCase):
                 str(rand_out),
             ],
             capture_output=True,
-            text=True,
+            text=True, encoding="utf-8",
             cwd=str(ROOT),
-            env={"PYTHONPATH": str(ROOT / "src")},
+            env={"PYTHONPATH": str(ROOT / "src"), "PYTHONUTF8": "1"},
         )
         self.assertEqual(res_rand.returncode, 0, res_rand.stderr)
         self.assertTrue(rand_out.is_file())
@@ -341,9 +342,9 @@ class MetricsAndVerificationTests(unittest.TestCase):
                 str(bundle_dir),
             ],
             capture_output=True,
-            text=True,
+            text=True, encoding="utf-8",
             cwd=str(ROOT),
-            env={"PYTHONPATH": str(ROOT / "src")},
+            env={"PYTHONPATH": str(ROOT / "src"), "PYTHONUTF8": "1"},
         )
         self.assertEqual(res_exp.returncode, 0, res_exp.stderr)
         self.assertTrue((bundle_dir / "verification_manifest.json").is_file())
@@ -365,15 +366,15 @@ class MetricsAndVerificationTests(unittest.TestCase):
                 str(ev_file),
             ],
             capture_output=True,
-            text=True,
+            text=True, encoding="utf-8",
             cwd=str(ROOT),
-            env={"PYTHONPATH": str(ROOT / "src")},
+            env={"PYTHONPATH": str(ROOT / "src"), "PYTHONUTF8": "1"},
         )
         self.assertEqual(res_imp.returncode, 0, res_imp.stderr)
         self.assertTrue((bundle_dir / "verification_result.json").is_file())
         ver_res = json.loads((bundle_dir / "verification_result.json").read_text(encoding="utf-8"))
-        self.assertEqual(ver_res["status"], "SAT")
-        self.assertTrue(ver_res["verified"])
+        self.assertEqual(ver_res["status"], "PROPERTIES_TRUE")
+        self.assertFalse(ver_res["verified"])
 
 
 if __name__ == "__main__":

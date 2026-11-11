@@ -1,0 +1,262 @@
+{
+  "state_machine": {
+    "phase_variable": "phase",
+    "phase_meaning": "phase is the pre-scan PLC state: 0=Idle, 1=Cleaning, 2=Filling, 3=Capping, 4=Packing, 5=Complete. At the end of each scan, phase is updated to nextPhase.",
+    "states": [
+      {
+        "name": "IDLE",
+        "phase": 0,
+        "description": "Idle, waiting for a bottle to be detected.",
+        "stable_output": "none",
+        "advance_input": "bottleSensor"
+      },
+      {
+        "name": "CLEANING",
+        "phase": 1,
+        "description": "Cleaning pump runs until operator confirms cleaning completion.",
+        "stable_output": "Pump_Motor",
+        "advance_input": "cleaningConfirmButton"
+      },
+      {
+        "name": "FILLING",
+        "phase": 2,
+        "description": "Filling valve runs until operator confirms filling completion.",
+        "stable_output": "Filling_Valve",
+        "advance_input": "fillingConfirmButton"
+      },
+      {
+        "name": "CAPPING",
+        "phase": 3,
+        "description": "Capping machine runs until operator confirms capping completion.",
+        "stable_output": "Capping_Machine",
+        "advance_input": "cappingConfirmButton"
+      },
+      {
+        "name": "PACKING",
+        "phase": 4,
+        "description": "Packing machine runs until operator confirms packaging completion.",
+        "stable_output": "Packing_Machine",
+        "advance_input": "packingConfirmButton"
+      },
+      {
+        "name": "COMPLETE",
+        "phase": 5,
+        "description": "Packaging completion light is on until operator confirms bottle pickup.",
+        "stable_output": "Completion_Light",
+        "advance_input": "finishedButton"
+      }
+    ],
+    "transitions": [
+      {
+        "from_phase": 0,
+        "to_phase": 0,
+        "condition": "NOT bottleSensor",
+        "guard": "pre-scan phase = 0",
+        "actions": [
+          "nextPhase := 0",
+          "Pump_Motor := FALSE",
+          "Filling_Valve := FALSE",
+          "Capping_Machine := FALSE",
+          "Packing_Machine := FALSE",
+          "Completion_Light := FALSE"
+        ]
+      },
+      {
+        "from_phase": 0,
+        "to_phase": 1,
+        "condition": "bottleSensor = TRUE",
+        "guard": "pre-scan phase = 0",
+        "actions": [
+          "nextPhase := 1",
+          "Pump_Motor := TRUE",
+          "Filling_Valve := FALSE",
+          "Capping_Machine := FALSE",
+          "Packing_Machine := FALSE",
+          "Completion_Light := FALSE"
+        ]
+      },
+      {
+        "from_phase": 1,
+        "to_phase": 1,
+        "condition": "NOT cleaningConfirmButton",
+        "guard": "pre-scan phase = 1",
+        "actions": [
+          "nextPhase := 1",
+          "Pump_Motor := TRUE",
+          "Filling_Valve := FALSE",
+          "Capping_Machine := FALSE",
+          "Packing_Machine := FALSE",
+          "Completion_Light := FALSE"
+        ]
+      },
+      {
+        "from_phase": 1,
+        "to_phase": 2,
+        "condition": "cleaningConfirmButton = TRUE",
+        "guard": "pre-scan phase = 1",
+        "actions": [
+          "nextPhase := 2",
+          "Pump_Motor := FALSE",
+          "Filling_Valve := TRUE",
+          "Capping_Machine := FALSE",
+          "Packing_Machine := FALSE",
+          "Completion_Light := FALSE"
+        ]
+      },
+      {
+        "from_phase": 2,
+        "to_phase": 2,
+        "condition": "NOT fillingConfirmButton",
+        "guard": "pre-scan phase = 2",
+        "actions": [
+          "nextPhase := 2",
+          "Pump_Motor := FALSE",
+          "Filling_Valve := TRUE",
+          "Capping_Machine := FALSE",
+          "Packing_Machine := FALSE",
+          "Completion_Light := FALSE"
+        ]
+      },
+      {
+        "from_phase": 2,
+        "to_phase": 3,
+        "condition": "fillingConfirmButton = TRUE",
+        "guard": "pre-scan phase = 2",
+        "actions": [
+          "nextPhase := 3",
+          "Pump_Motor := FALSE",
+          "Filling_Valve := FALSE",
+          "Capping_Machine := TRUE",
+          "Packing_Machine := FALSE",
+          "Completion_Light := FALSE"
+        ]
+      },
+      {
+        "from_phase": 3,
+        "to_phase": 3,
+        "condition": "NOT cappingConfirmButton",
+        "guard": "pre-scan phase = 3",
+        "actions": [
+          "nextPhase := 3",
+          "Pump_Motor := FALSE",
+          "Filling_Valve := FALSE",
+          "Capping_Machine := TRUE",
+          "Packing_Machine := FALSE",
+          "Completion_Light := FALSE"
+        ]
+      },
+      {
+        "from_phase": 3,
+        "to_phase": 4,
+        "condition": "cappingConfirmButton = TRUE",
+        "guard": "pre-scan phase = 3",
+        "actions": [
+          "nextPhase := 4",
+          "Pump_Motor := FALSE",
+          "Filling_Valve := FALSE",
+          "Capping_Machine := FALSE",
+          "Packing_Machine := TRUE",
+          "Completion_Light := FALSE"
+        ]
+      },
+      {
+        "from_phase": 4,
+        "to_phase": 4,
+        "condition": "NOT packingConfirmButton",
+        "guard": "pre-scan phase = 4",
+        "actions": [
+          "nextPhase := 4",
+          "Pump_Motor := FALSE",
+          "Filling_Valve := FALSE",
+          "Capping_Machine := FALSE",
+          "Packing_Machine := TRUE",
+          "Completion_Light := FALSE"
+        ]
+      },
+      {
+        "from_phase": 4,
+        "to_phase": 5,
+        "condition": "packingConfirmButton = TRUE",
+        "guard": "pre-scan phase = 4",
+        "actions": [
+          "nextPhase := 5",
+          "Pump_Motor := FALSE",
+          "Filling_Valve := FALSE",
+          "Capping_Machine := FALSE",
+          "Packing_Machine := FALSE",
+          "Completion_Light := TRUE"
+        ]
+      },
+      {
+        "from_phase": 5,
+        "to_phase": 5,
+        "condition": "NOT finishedButton",
+        "guard": "pre-scan phase = 5",
+        "actions": [
+          "nextPhase := 5",
+          "Pump_Motor := FALSE",
+          "Filling_Valve := FALSE",
+          "Capping_Machine := FALSE",
+          "Packing_Machine := FALSE",
+          "Completion_Light := TRUE"
+        ]
+      },
+      {
+        "from_phase": 5,
+        "to_phase": 0,
+        "condition": "finishedButton = TRUE",
+        "guard": "pre-scan phase = 5",
+        "actions": [
+          "nextPhase := 0",
+          "Pump_Motor := FALSE",
+          "Filling_Valve := FALSE",
+          "Capping_Machine := FALSE",
+          "Packing_Machine := FALSE",
+          "Completion_Light := FALSE"
+        ]
+      }
+    ],
+    "output_rule": "Outputs are derived from nextPhase in the same scan: Pump_Motor := (nextPhase = 1); Filling_Valve := (nextPhase = 2); Capping_Machine := (nextPhase = 3); Packing_Machine := (nextPhase = 4); Completion_Light := (nextPhase = 5); all other outputs FALSE. At scan end, phase := nextPhase. This guarantees one-hot process outputs.",
+    "transition_policy": [
+      "Inputs are sampled once per scan and evaluated against the pre-scan phase.",
+      "At most one phase transition is allowed per scan.",
+      "Confirmation inputs outside their matching pre-scan phase are ignored and cannot skip phases.",
+      "Confirmation inputs are level-sampled; a held confirmation may complete its phase on a later scan once that phase is active.",
+      "If finishedButton returns phase 5 to phase 0, a still-present bottle may start a new cleaning cycle only on the following idle scan.",
+      "All outputs are assigned every scan from nextPhase rather than using set/reset latches, ensuring deterministic one-hot output behavior."
+    ]
+  },
+  "timer_plan": {
+    "required": false,
+    "timers": [],
+    "pt_durations": {},
+    "reset_conditions": {},
+    "rationale": "No timed process step, delay, or debounce duration is specified in the requirements. Phase progression is controlled only by level-sampled sensors and operator confirmation buttons. If hardware debounce is required, it should be implemented outside this phase-control FB using an external timer with a PT value taken from the electrical/hardware specification."
+  },
+  "priorities": {
+    "safety_priorities": [
+      "Maintain mutual exclusion: at most one of Pump_Motor, Filling_Valve, Capping_Machine, Packing_Machine, and Completion_Light may be TRUE.",
+      "Use the pre-scan phase to gate confirmations: only the confirmation matching the active pre-scan phase may influence nextPhase.",
+      "Allow at most one phase transition per scan; never skip phases even if multiple inputs are TRUE or held.",
+      "Drive outputs only from nextPhase so the selected actuator for the next PLC state is the only energized process output.",
+      "Completion_Light must remain ON during phase 5 until finishedButton is TRUE, and only finishedButton may return the system to idle.",
+      "On initialization or reset, force phase = 0 and all process outputs FALSE."
+    ],
+    "operational_priorities": [
+      "Compute nextPhase with a single CASE or IF/ELSIF structure using the old phase and current sampled inputs.",
+      "Assign all outputs every scan from nextPhase to avoid stale latched states.",
+      "Treat confirmation buttons as level-sampled signals; a held confirmation can complete its phase later when that phase becomes active, but cannot skip phases.",
+      "Permit a new cycle when a bottle is still present only on the scan after the system has returned to idle.",
+      "Keep the FB deterministic and avoid relying on previous-scan input stability unless explicitly latched."
+    ]
+  },
+  "initial_values": {
+    "phase": 0,
+    "nextPhase": 0,
+    "Pump_Motor": false,
+    "Filling_Valve": false,
+    "Capping_Machine": false,
+    "Packing_Machine": false,
+    "Completion_Light": false
+  }
+}

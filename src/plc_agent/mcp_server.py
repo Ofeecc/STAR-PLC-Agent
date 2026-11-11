@@ -92,7 +92,6 @@ def dispatch(message: dict, task: dict, trusted: Path, settings: Settings, backe
                     "isError": True,
                 }
             run_dir = trusted / f"compile_{len(records):02d}"
-            run_dir.mkdir(parents=True, exist_ok=True)
             source = args.get("source")
             if backend is not None:
                 result = backend.compile(task, source, run_dir)

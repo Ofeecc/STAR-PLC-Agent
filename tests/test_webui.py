@@ -13,6 +13,82 @@ class WebUITests(unittest.TestCase):
     def setUp(self):
         self.settings = Settings()
 
+    def test_every_task_has_current_chinese_review_interface_tests_and_properties(self):
+        from plc_agent.common import digest
+        from plc_agent.task_view import agent_view
+        status, listing=handle_api_request('GET','/api/tasks',{},None,self.settings)
+        self.assertEqual(status,200)
+        self.assertEqual(len(listing['task_review']),32)
+        self.assertEqual(len(listing['pilot_review']),6)
+        count=0
+        for summary in listing['tasks']:
+            status,detail=handle_api_request('GET','/api/task',{'id':summary['id']},None,self.settings)
+            task,review=detail['task'],detail['review']
+            self.assertTrue(review['source_matches'])
+            self.assertEqual(review['source_task_sha256'],digest(task))
+            self.assertEqual(review['review_status'],'PENDING_HUMAN_REVIEW')
+            self.assertEqual(detail['agent_view'],agent_view(task))
+            self.assertNotIn('translation_zh',detail['agent_view'])
+            for field in ('title_zh','translation_zh','assumptions_zh','coverage_zh','review_points_zh'):
+                self.assertRegex(review[field],r'[\u4e00-\u9fff]')
+            self.assertEqual(set(review['interface_zh']),{p['name'] for p in task['interface']})
+            self.assertEqual(set(review['tests_zh']),{c['id'] for c in task['tests']})
+            for case in task['tests']:
+                self.assertEqual(review['tests_zh'][case['id']]['source_sha256'],digest(case))
+            self.assertEqual(set(review['properties_zh']),{p['id'] for p in task['ltl']})
+            for prop in task['ltl']:
+                self.assertEqual(review['properties_zh'][prop['id']]['formula'],prop['formula'])
+                self.assertRegex(review['properties_zh'][prop['id']]['description'],r'[\u4e00-\u9fff]')
+                count+=1
+        self.assertEqual(count,244)
+
+    def test_six_pilot_tasks_have_review_material_and_match_current_dataset(self):
+        status, listing = handle_api_request('GET','/api/tasks',{},None,self.settings)
+        self.assertEqual(status,200)
+        ids = ['PUB001','PUB003','PUB009','PUB010','PUB015','PUB016']
+        self.assertEqual([r['id'] for r in listing['pilot_review']],ids)
+        cases = steps = 0
+        difficulties = []
+        for tid in ids:
+            status, detail = handle_api_request('GET','/api/task',{'id':tid},None,self.settings)
+            self.assertEqual(status,200)
+            self.assertEqual(detail['task']['kind'],'public')
+            self.assertEqual(detail['review']['id'],tid)
+            for field in ('title_zh','translation_zh','assumptions_zh','coverage_zh','review_points_zh'):
+                self.assertTrue(detail['review'][field])
+            cases += len(detail['tests'])
+            steps += sum(len(c['steps']) for c in detail['tests'])
+            difficulties.append(detail['task']['difficulty'])
+            summary = next(t for t in listing['tasks'] if t['id'] == tid)
+            self.assertEqual(summary['steps_count'],sum(len(c['steps']) for c in detail['tests']))
+        self.assertEqual((cases,steps),(20,137))
+        self.assertEqual(difficulties,['easy','easy','medium','medium','hard','hard'])
+
+    def test_pilot_chinese_explanations_cover_every_current_formula(self):
+        count = 0
+        for tid in ['PUB001','PUB003','PUB009','PUB010','PUB015','PUB016']:
+            status, detail = handle_api_request('GET','/api/task',{'id':tid},None,self.settings)
+            self.assertEqual(status,200)
+            chinese = detail['review']['properties_zh']
+            self.assertEqual(set(chinese),{p['id'] for p in detail['task']['ltl']})
+            for prop in detail['task']['ltl']:
+                row = chinese[prop['id']]
+                self.assertEqual(row['formula'],prop['formula'])
+                self.assertTrue(row['description'])
+                self.assertTrue(row['review'])
+                count += 1
+        self.assertEqual(count,53)
+
+    def test_model_checker_api_keeps_reference_scope_and_rejects_other_tasks(self):
+        for body in (None,{}, {'task_id':'PUB016'},{'task_id':'../../arbitrary'}):
+            status, _ = handle_api_request('POST','/api/check-reference-model',{},body,self.settings)
+            self.assertEqual(status,400)
+        from unittest.mock import patch
+        with patch('plc_agent.model_checker.check_model',side_effect=ValueError('not installed')):
+            status, data = handle_api_request('POST','/api/check-reference-model',{}, {'task_id':'PUB001'},self.settings)
+            self.assertEqual(status,503)
+            self.assertEqual(data['status'],'TOOL_ERROR')
+
     def test_render_index_html_contains_titles_and_components(self):
         html = render_index_html()
         self.assertIsInstance(html, str)
