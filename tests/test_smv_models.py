@@ -52,7 +52,7 @@ class SmvModelsTests(unittest.TestCase):
         pub001 = json.loads((ROOT / "dataset/public/PUB001.json").read_text(encoding="utf-8"))
         pub001_complete = (ROOT / "models/PUB001_complete.smv").read_text(encoding="utf-8")
         for prop in pub001["ltl"]:
-            if prop["id"] in {"P3", "P4", "P5", "P6", "P7", "P8", "P9", "P10"}:
+            if prop["id"] in {"P3", "P4", "P5", "P6", "P7", "P8", "P9", "P10", "P11"}:
                 self.assertIn(prop["formula"], pub001_complete)
 
         for smv_path in sorted((ROOT / "models").glob("*.smv")):

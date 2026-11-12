@@ -56,13 +56,13 @@ DEFINE
   arrival := auto & ((phase = MOVE_WASH & SensorWash) | (phase = MOVE_WEIGHT & SensorWeight) |
                      (phase = MOVE_FIRING & SensorFiring) | (phase = MOVE_OUTPUT & SensorOutput));
   stopped := !MotorForward & !MotorReverse;
-  arrival_pending := nextPhase = MOVE_WASH | nextPhase = MOVE_WEIGHT | nextPhase = MOVE_FIRING | nextPhase = MOVE_OUTPUT;
-  arrival_done := (nextPhase = MOVE_WASH & SensorWash) | (nextPhase = MOVE_WEIGHT & SensorWeight) |
-                  (nextPhase = MOVE_FIRING & SensorFiring) | (nextPhase = MOVE_OUTPUT & SensorOutput);
-  processing_wait := nextPhase = WAIT_WASH | nextPhase = WAIT_WEIGHT | nextPhase = WAIT_FIRING;
-  matching_completion := (nextPhase = WAIT_WASH & SensorWash & washComplete) |
-                         (nextPhase = WAIT_WEIGHT & SensorWeight & weightComplete) |
-                         (nextPhase = WAIT_FIRING & SensorFiring & firingComplete);
+  arrival_pending := phase = MOVE_WASH | phase = MOVE_WEIGHT | phase = MOVE_FIRING | phase = MOVE_OUTPUT;
+  arrival_done := (phase = MOVE_WASH & SensorWash) | (phase = MOVE_WEIGHT & SensorWeight) |
+                  (phase = MOVE_FIRING & SensorFiring) | (phase = MOVE_OUTPUT & SensorOutput);
+  processing_wait := phase = WAIT_WASH | phase = WAIT_WEIGHT | phase = WAIT_FIRING;
+  matching_completion := (phase = WAIT_WASH & SensorWash & washComplete) |
+                         (phase = WAIT_WEIGHT & SensorWeight & weightComplete) |
+                         (phase = WAIT_FIRING & SensorFiring & firingComplete);
 
 INVARSPEC NAME P1 := !(MotorForward & MotorReverse);
 INVARSPEC NAME P2 := !auto -> ((MotorForward <-> mf) & (MotorReverse <-> mr) & !kick & !CompletionLight & firingTemp = temp);
@@ -71,6 +71,12 @@ INVARSPEC NAME P4 := (auto & arrival) -> stopped;
 INVARSPEC NAME P5 := judged -> (valid_weight ? (!kick & MotorForward & firingTemp = 500.0 + (weight - 100.0) * 0.5) : (kick & stopped & firingTemp = temp));
 INVARSPEC NAME P6 := (!judged | !valid_weight) -> (firingTemp = temp);
 INVARSPEC NAME P7 := ((auto & phase = MOVE_OUTPUT & SensorOutput) -> CompletionLight) & ((auto & phase = OUTPUT_DONE & !SensorOutput) -> (!CompletionLight & stopped));
-INVARSPEC NAME P8_safety := (phase = REJECT) -> !CompletionLight;
+INVARSPEC NAME P8_safety := ((phase = REJECT) -> !CompletionLight) &
+                             ((auto & phase = REJECT & SensorWeight) -> (nextPhase = REJECT)) &
+                             ((auto & phase = REJECT & !SensorWeight) -> (nextPhase = WAIT_FEED)) &
+                             ((auto & phase = REJECT) -> (nextPhase != MOVE_FIRING));
+INVARSPEC NAME P10 := (!auto -> (!kick & !CompletionLight)) &
+                      ((auto & (nextPhase = WAIT_FEED | nextPhase = WAIT_WASH | nextPhase = WAIT_WEIGHT | nextPhase = WAIT_FIRING)) -> stopped) &
+                      ((auto & (nextPhase = MOVE_WASH | nextPhase = MOVE_WEIGHT | nextPhase = MOVE_FIRING | nextPhase = MOVE_OUTPUT)) -> (MotorForward & !MotorReverse));
 LTLSPEC NAME P9 := (G (auto) & G (arrival_pending -> F arrival_done) & G (processing_wait -> F matching_completion) & G (judged -> valid_weight)) ->
                    G ((phase = WAIT_FEED & SensorFeed) -> F CompletionLight);

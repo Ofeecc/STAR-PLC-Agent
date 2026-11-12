@@ -1,6 +1,6 @@
 -- Scope: EXPLICIT_SMV_MODEL_ONLY (not candidate ST verification).
 -- Task: PUB004 (Jam Pump Debouncing and Runtime Maintenance), nuXmv infinite-state SMT model.
--- Abstraction note: clock, DebounceTime_ms, CycleTime_ms, and runtime are exact unbounded integers at millisecond scale (500h = 1800000000 ms, fitting nuXmv 32-bit integer literals). Liveness P7 models TimeTick as macro progress dt_ms >= DebounceTime_ms so K-Liveness terminates over parametric DebounceTime_ms.
+-- Abstraction note: clock, DebounceTime_ms, CycleTime_ms, and runtime are exact unbounded integers at millisecond scale (500h = 1800000000 ms, fitting nuXmv 32-bit integer literals). Liveness P7 models TimeTick via coarse-tick progress dt_ms >= DebounceTime_ms (abstraction of fine ms accumulation) so K-Liveness terminates over parametric DebounceTime_ms.
 MODULE main
 FROZENVAR
   DebounceTime_ms : integer;
@@ -32,13 +32,14 @@ DEFINE
   qualified := permit & (have_since ? (clk_now - since >= DebounceTime_ms) : FALSE);
   VFD_RUN := permit & qualified;
   accNext := runtime + (VFD_RUN ? CycleTime_ms : 0);
-  PUMP_MAINT_DUE := accNext >= 1800000000;
+  PUMP_RUNTIME_ACC := accNext;
+  PUMP_MAINT_DUE := PUMP_RUNTIME_ACC >= 1800000000;
   coarse_tick := dt_ms >= DebounceTime_ms;
 
 INVARSPEC NAME P1 := VFD_RUN <-> (permit & qualified);
 INVARSPEC NAME P2 := !permit -> !VFD_RUN;
-INVARSPEC NAME P4 := VFD_RUN -> (accNext = runtime + CycleTime_ms);
-INVARSPEC NAME P5 := !VFD_RUN -> (accNext = runtime);
-INVARSPEC NAME P6 := PUMP_MAINT_DUE <-> (accNext >= 1800000000);
+INVARSPEC NAME P4 := VFD_RUN -> (PUMP_RUNTIME_ACC = runtime + CycleTime_ms);
+INVARSPEC NAME P5 := !VFD_RUN -> (PUMP_RUNTIME_ACC = runtime);
+INVARSPEC NAME P6 := PUMP_MAINT_DUE <-> (PUMP_RUNTIME_ACC >= 1800000000);
 LTLSPEC NAME P3 := G (!permit -> X (!qualified));
 LTLSPEC NAME P7 := G (F (coarse_tick)) -> G (G (permit) -> F (VFD_RUN));

@@ -6,6 +6,7 @@ VAR
   TemperatureSensorInput : real;
   SetTemperature : real;
   dt_ms : integer;
+  first_scan : boolean;
   clk : integer;
   demandPrev : boolean;
   have_heat : boolean;
@@ -13,10 +14,11 @@ VAR
   have_prot : boolean;
   prot_start : integer;
 
-INIT clk = 0 & !demandPrev & !have_heat & heat_start = 0 & !have_prot & prot_start = 0;
+INIT first_scan & clk = 0 & !demandPrev & !have_heat & heat_start = 0 & !have_prot & prot_start = 0;
 INVAR dt_ms >= 0 & clk >= 0;
 
 ASSIGN
+  next(first_scan) := FALSE;
   next(clk) := clk_now;
   next(demandPrev) := demand;
   next(have_heat) := HeaterOutput;
@@ -25,9 +27,9 @@ ASSIGN
   next(prot_start) := prot_start_now;
 
 DEFINE
-  clk_now := clk + dt_ms;
+  clk_now := first_scan ? 0 : clk + dt_ms;
   sensorFault := TemperatureSensorInput < 0.0 | TemperatureSensorInput > 100.0;
-  demand := TemperatureSensorInput < SetTemperature ? TRUE : (TemperatureSensorInput > SetTemperature ? FALSE : demandPrev);
+  demand := sensorFault ? demandPrev : (TemperatureSensorInput < SetTemperature ? TRUE : (TemperatureSensorInput > SetTemperature ? FALSE : demandPrev));
   cooldownDone := have_prot & (clk_now - prot_start >= 3000);
   heatLimitReached := !have_prot & have_heat & (clk_now - heat_start >= 5000);
   have_prot_now := have_prot ? !cooldownDone : heatLimitReached;
@@ -47,5 +49,7 @@ INVARSPEC NAME P4 := (CurrentTemperature = TemperatureSensorInput) & (SetTempDis
 INVARSPEC NAME P5 := (!sensorFault & !OverheatProtection & demand & !heatLimitReached) -> HeaterOutput;
 INVARSPEC NAME P6 := heatLimitReached -> (OverheatProtection & !HeaterOutput);
 INVARSPEC NAME P7 := (have_prot & !cooldownDone) -> OverheatProtection;
+INVARSPEC NAME P9 := (!sensorFault & !OverheatProtection & !demand) -> !HeaterOutput;
+INVARSPEC NAME P10 := (have_prot & cooldownDone) -> !OverheatProtection;
 INVARSPEC NAME V2_1 := (TemperatureSensorInput > SetTemperature) -> !HeaterOutput;
 LTLSPEC NAME P8 := G (F (coarse_tick)) -> G ((OverheatProtection & G (!sensorFault & demand)) -> F (HeaterOutput));

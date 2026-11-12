@@ -133,8 +133,8 @@ ASSIGN
   next(arm_step) := next_arm_step;
   next(step_index) := next_step_index;
   next(step_busy) := next_step_busy;
-  next(has_mode) := (!safe | no_mode) ? FALSE : TRUE;
-  next(prev_mode) := (!safe | no_mode) ? NONE : cur_mode;
+  next(has_mode) := no_mode ? FALSE : TRUE;
+  next(prev_mode) := no_mode ? NONE : cur_mode;
   next(prev_start) := Start;
 
 INVARSPEC NAME P1 := (!safe | no_mode | mode_changed) -> all_off;
@@ -144,6 +144,7 @@ INVARSPEC NAME P4 := (DownLimitSwitch -> !MoveDown) & (UpLimitSwitch -> !MoveUp)
 INVARSPEC NAME P5 := (!reset_all & cur_mode = SINGLE_STEP & !single_step_active) -> all_off;
 INVARSPEC NAME P6 := (!reset_all & auto_started) -> next_arm_step = 1;
 INVARSPEC NAME P8 := (!reset_all -> ((cycle_done -> (next_arm_step = 0 & all_off)) & (continuous_done -> next_arm_step = 1)));
+INVARSPEC NAME P10_mode_and_step := ((safe & mode_changed) -> all_off) & ((!reset_all & single_step_active) -> (active_count = 1));
 LTLSPEC NAME P7 := G (auto_mode & arm_step >= 1 & arm_step <= 7 & auto_limit -> next(arm_step) = arm_step + 1);
 LTLSPEC NAME P9 := (G (safe & SingleCycleMode & !ManualMode & !SingleStepMode & !ContinuousMode) &
                     G (arm_step != 0 -> F auto_limit)) ->

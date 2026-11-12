@@ -1,6 +1,6 @@
 -- Scope: EXPLICIT_SMV_MODEL_ONLY (not candidate ST verification).
 -- Task: PUB017 (Recipe Management System).
--- Exact N=10 slots (ST_Recipe[1..10]), positive recipeID on active commands, at most one rising
+-- Exact N=10 slots (ST_Recipe[1..10]), nonzero INT recipeID (-32768..32767, != 0) on active commands, at most one rising
 -- request edge per scan, exact priority dup(8002) > full(8003), delete clears recipeID=0 only.
 -- Status codes: 16#8001=32769 .. 16#8005=32773.
 MODULE main
@@ -37,7 +37,7 @@ DEFINE
 
 INVAR
   ((r_qry ? 1 : 0) + (r_add ? 1 : 0) + (r_del ? 1 : 0) + (r_mod ? 1 : 0)) <= 1 &
-  ((r_qry | r_add | r_del | r_mod) -> in_id > 0);
+  ((r_qry | r_add | r_del | r_mod) -> (in_id != 0 & in_id >= -32768 & in_id <= 32767));
 
 DEFINE
   m1  := (id1  = in_id); m2  := (id2  = in_id); m3  := (id3  = in_id); m4  := (id4  = in_id); m5  := (id5  = in_id);
@@ -194,3 +194,19 @@ INVARSPEC NAME P3 := add_ok -> (out_added & !out_error & out_status = 0 &
 INVARSPEC NAME P4 := qry_ok -> (post_qres_id = in_id & post_qres_typ = match_typ & post_qres_rat = match_rat & post_qres_tmp = match_tmp);
 INVARSPEC NAME P5 := idle -> (!out_error & out_status = 0 & !out_added & !out_deleted & !out_modified);
 INVARSPEC NAME P6 := unique_ids;
+INVARSPEC NAME P7 :=
+  (del_ok -> (out_deleted & !out_error & out_status = 0 &
+    (m1 -> post_id1 = 0) & (m2 -> post_id2 = 0) & (m3 -> post_id3 = 0) & (m4 -> post_id4 = 0) & (m5 -> post_id5 = 0) &
+    (m6 -> post_id6 = 0) & (m7 -> post_id7 = 0) & (m8 -> post_id8 = 0) & (m9 -> post_id9 = 0) & (m10 -> post_id10 = 0))) &
+  (mod_ok -> (out_modified & !out_error & out_status = 0 &
+    (m1  -> (post_id1=in_id  & post_typ1=in_typ  & post_rat1=in_rat  & post_tmp1=in_tmp)) &
+    (m2  -> (post_id2=in_id  & post_typ2=in_typ  & post_rat2=in_rat  & post_tmp2=in_tmp)) &
+    (m3  -> (post_id3=in_id  & post_typ3=in_typ  & post_rat3=in_rat  & post_tmp3=in_tmp)) &
+    (m4  -> (post_id4=in_id  & post_typ4=in_typ  & post_rat4=in_rat  & post_tmp4=in_tmp)) &
+    (m5  -> (post_id5=in_id  & post_typ5=in_typ  & post_rat5=in_rat  & post_tmp5=in_tmp)) &
+    (m6  -> (post_id6=in_id  & post_typ6=in_typ  & post_rat6=in_rat  & post_tmp6=in_tmp)) &
+    (m7  -> (post_id7=in_id  & post_typ7=in_typ  & post_rat7=in_rat  & post_tmp7=in_tmp)) &
+    (m8  -> (post_id8=in_id  & post_typ8=in_typ  & post_rat8=in_rat  & post_tmp8=in_tmp)) &
+    (m9  -> (post_id9=in_id  & post_typ9=in_typ  & post_rat9=in_rat  & post_tmp9=in_tmp)) &
+    (m10 -> (post_id10=in_id & post_typ10=in_typ & post_rat10=in_rat & post_tmp10=in_tmp)))) &
+  (idle -> same_db);

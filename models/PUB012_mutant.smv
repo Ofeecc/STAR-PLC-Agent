@@ -23,7 +23,7 @@ VAR
 
 INIT first_scan & clk = 0 & !have_hold & since = 0 & !prev_fault & fault_count = 0 & runtime = 0 &
      hist0 = 0 & hist1 = 0 & hist2 = 0 & hist3 = 0 & hist4 = 0;
-INVAR dt_ms >= 0 & CycleTime_ms > 0 & clk >= 0 & runtime >= 0 & fault_count >= 0 & fault_count <= 65535;
+INVAR dt_ms >= 0 & CycleTime_ms > 0 & clk >= 0 & runtime >= 0 & fault_count >= 0;
 
 ASSIGN
   next(first_scan) := FALSE;
@@ -52,6 +52,8 @@ DEFINE
   hist4_now := rise ? FaultTimestamp : hist4;
   hold := have_hold & (clk_now - since < 500);
   THICKNESS_ALARM := fault | hold;
+  Slab_Fault_Counter := count_now;
+  Slab_Runtime_Accumulator := runtime + ((valid & !fault & CUTTING_RUN) ? CycleTime_ms : 0);
 
 INVARSPEC NAME P1 := !valid -> !THICKNESS_ALARM;
-INVARSPEC NAME P3 := rise -> (hist0_now = FaultTimestamp);
+INVARSPEC NAME P3 := rise -> (count_now = fault_count + 1 & hist0_now = FaultTimestamp & hist1_now = hist0 & hist2_now = hist1 & hist3_now = hist2 & hist4_now = hist3);

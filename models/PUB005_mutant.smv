@@ -9,26 +9,29 @@ VAR
   dt_ms : integer;
   first_scan : boolean;
   clk : integer;
+  true_clk : integer;
   have_since : boolean;
   since : integer;
 
-INIT DebounceTime_ms > 0 & first_scan & clk = 0 & !have_since & since = 0;
-INVAR dt_ms >= 0 & clk >= 0;
+INIT DebounceTime_ms > 0 & first_scan & clk = 0 & true_clk = 0 & !have_since & since = 0;
+INVAR dt_ms >= 0 & clk >= 0 & true_clk >= 0;
 
 ASSIGN
   next(first_scan) := FALSE;
   next(clk) := Weld_E_Stop_NC ? clk_now : 0;
+  next(true_clk) := true_clk_now;
   next(have_since) := gapPermit;
   next(since) := since_now;
 
 DEFINE
   clk_now := first_scan ? 0 : clk + dt_ms;
-  startup := clk_now < 5000;
+  true_clk_now := first_scan ? 0 : true_clk + dt_ms;
+  startup := true_clk_now < 5000;
   gapPermit := !startup & Gap_Exceeded & Weld_E_Stop_NC;
   since_now := gapPermit ? (have_since ? since : clk_now) : 0;
   gapQualified := gapPermit & (have_since ? (clk_now - since >= DebounceTime_ms) : FALSE);
   Operator_Alert := gapPermit & gapQualified;
-  Weld_Soft_Start_Active := startup;
+  Weld_Soft_Start_Active := clk_now < 5000;
 
 INVARSPEC NAME P1 := Weld_Soft_Start_Active <-> startup;
 LTLSPEC NAME V2_clock_monotonic := G (!first_scan -> next(clk) >= clk);
