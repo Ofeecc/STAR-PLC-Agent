@@ -75,10 +75,11 @@
     "The official VARIANT interface is preserved. Native CODESYS compatibility and runtime type/array metadata access remain unverified; never silently replace it by a DINT-only interface.",
     "Binding A: item DINT, buffer ARRAY[0..1] OF DINT. Binding B: item BOOL, buffer ARRAY[1..3] OF BOOL. Both must run to substantiate genericity.",
     "Buffer is initialized and bound once per test; its association and contents are not externally overwritten between calls. item is caller-writable every scan.",
-    "Enqueue and dequeue are never requested together. Reset may coincide with either and wins.",
+    "Simultaneous enqueue and dequeue rising edges on a non-reset scan are outside the valid domain (rejected with ValueError); reset=TRUE takes priority over both and updates edge memories.",
     "Edge memories update during reset; a request held afterward is not another edge.",
     "Reset need not clear buffer values. Unused storage arrangement is unconstrained.",
-    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
   ],
   "atomic_propositions": {
     "reset": "I[k].reset: sampled input (BOOL).",
@@ -90,20 +91,32 @@
     "e2": "status=16#8002",
     "same": "logical queue equals pre-queue AND item equals sampled item",
     "push": "NOT reset AND rising(enqueue) AND pre-count<capacity",
-    "pushed": "post-queue=pre-queue appended with sampled item AND count=pre-count+1 AND status=0",
+    "pushed": "post-queue=pre-queue appended with sampled item AND count=pre-count+1 AND status=0 AND item equals sampled item",
     "pop": "NOT reset AND rising(dequeue) AND pre-count>0",
     "popped": "item=pre-front AND post-queue=pre-queue without front AND count=pre-count-1 AND status=0",
     "bounded": "0<=elementCount<=actual buffer length",
     "idle": "NOT reset AND no request rising edge",
-    "CompleteBehaviorV2": "令(Sref[k+1], E[k])=T_PUB018(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\n独立逻辑队列Q初始空、enqPrev/deqPrev=FALSE。reset优先QAfter=[]；否则单个enqueue新沿且未满时追加采样item，满报8002；dequeue新沿且非空时返回旧队首并去首，空报8001；其余状态0。elementCount=|QAfter|；仅成功pop改变实际item，其余等于采样item。buffer物理布局不受约束，其正确性由完整可观察出队行为约束。绑定A容量2、B容量3，其余容量由实际buffer元数据固定。",
+    "CompleteBehaviorV2": "令(Sref[k+1], E[k])=T_PUB018(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\n独立逻辑队列Q初始空、enqPrev/deqPrev=FALSE。非reset下严禁同拍enqueue/dequeue同时上升沿。reset优先QAfter=[]；否则单个enqueue新沿且未满时追加采样item，满报8002；dequeue新沿且非空时返回旧队首并去首，空报8001；其余状态0。elementCount=|QAfter|；仅成功pop改变实际item，其余等于采样item。buffer物理布局不受约束，其正确性由完整可观察出队行为约束。绑定A容量2(DINT)、B容量3(BOOL)，其余正整数容量由实际buffer元数据固定。",
     "enqueue": "I[k].enqueue: sampled input (BOOL).",
     "dequeue": "I[k].dequeue: sampled input (BOOL).",
     "elementCount": "O[k].elementCount: independently observed post-scan candidate value (DINT); never defined as expected output.",
     "status": "O[k].status: independently observed post-scan candidate value (WORD); never defined as expected output.",
     "item": "O[k].item: independently observed post-scan candidate value (VARIANT); never defined as expected output. I[k].item denotes separately captured caller value before invocation.",
-    "buffer": "O[k].buffer: independently observed post-scan candidate value (VARIANT); never defined as expected output. I[k].buffer denotes separately captured caller value before invocation."
+    "buffer": "O[k].buffer: independently observed post-scan candidate value (VARIANT); never defined as expected output. I[k].buffer denotes separately captured caller value before invocation.",
+    "non_pop_item_preserved": "item equals sampled caller item",
+    "init": "At the separate pre-invocation initial observation before scan k=0: O_init.elementCount=0, O_init.status=0."
   },
   "ltl": [
+    {
+      "id": "PUB018.P_init",
+      "kind": "safety",
+      "formula": "init",
+      "description": "Before the first scan invocation, all declared OUTPUT variables and initial instance state hold their declared initial values.",
+      "explanation": "Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "INITIAL_INSTANCE"
+    },
     {
       "id": "PUB018.P1",
       "name": "Reset",
@@ -145,6 +158,16 @@
       "name": "Held request",
       "formula": "G(idle -> (ok & same))",
       "explanation": "Held levels do not perform another operation.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB018.P6",
+      "kind": "safety",
+      "formula": "G((!pop) -> non_pop_item_preserved)",
+      "description": "Whenever no element is successfully dequeued (idle, push, reset, or error), IN_OUT item retains the caller-provided value.",
+      "explanation": "Prevents spurious overwriting of caller item when not popping.",
       "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
       "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
       "scope": "SCAN_SEQUENCE"
@@ -194,7 +217,8 @@
             }
           },
           "expected": {
-            "elementCount": 1
+            "elementCount": 1,
+            "status": 0
           }
         },
         {
@@ -210,7 +234,8 @@
             }
           },
           "expected": {
-            "elementCount": 1
+            "elementCount": 1,
+            "status": 0
           }
         },
         {
@@ -226,7 +251,8 @@
             }
           },
           "expected": {
-            "status": 0
+            "status": 0,
+            "elementCount": 1
           }
         },
         {
@@ -242,7 +268,8 @@
             }
           },
           "expected": {
-            "elementCount": 2
+            "elementCount": 2,
+            "status": 0
           }
         },
         {
@@ -258,7 +285,8 @@
             }
           },
           "expected": {
-            "status": 0
+            "status": 0,
+            "elementCount": 2
           }
         },
         {
@@ -292,7 +320,8 @@
             }
           },
           "expected": {
-            "status": 0
+            "status": 0,
+            "elementCount": 2
           }
         },
         {
@@ -326,7 +355,8 @@
             }
           },
           "expected": {
-            "status": 0
+            "status": 0,
+            "elementCount": 1
           }
         },
         {
@@ -342,7 +372,8 @@
             }
           },
           "expected": {
-            "elementCount": 2
+            "elementCount": 2,
+            "status": 0
           }
         },
         {
@@ -358,7 +389,8 @@
             }
           },
           "expected": {
-            "status": 0
+            "status": 0,
+            "elementCount": 2
           }
         },
         {
@@ -375,7 +407,8 @@
           },
           "expected": {
             "elementCount": 1,
-            "item": 20
+            "item": 20,
+            "status": 0
           }
         },
         {
@@ -391,7 +424,8 @@
             }
           },
           "expected": {
-            "status": 0
+            "status": 0,
+            "elementCount": 1
           }
         },
         {
@@ -408,7 +442,8 @@
           },
           "expected": {
             "elementCount": 0,
-            "item": 30
+            "item": 30,
+            "status": 0
           }
         },
         {
@@ -424,7 +459,8 @@
             }
           },
           "expected": {
-            "status": 0
+            "status": 0,
+            "elementCount": 0
           }
         },
         {
@@ -466,7 +502,8 @@
             }
           },
           "expected": {
-            "elementCount": 1
+            "elementCount": 1,
+            "status": 0
           }
         },
         {
@@ -482,7 +519,8 @@
             }
           },
           "expected": {
-            "status": 0
+            "status": 0,
+            "elementCount": 1
           }
         },
         {
@@ -533,7 +571,8 @@
             }
           },
           "expected": {
-            "status": 0
+            "status": 0,
+            "elementCount": 0
           }
         },
         {
@@ -549,7 +588,8 @@
             }
           },
           "expected": {
-            "elementCount": 1
+            "elementCount": 1,
+            "status": 0
           }
         },
         {
@@ -565,7 +605,8 @@
             }
           },
           "expected": {
-            "status": 0
+            "status": 0,
+            "elementCount": 1
           }
         },
         {
@@ -607,7 +648,8 @@
             }
           },
           "expected": {
-            "elementCount": 1
+            "elementCount": 1,
+            "status": 0
           }
         },
         {
@@ -623,7 +665,8 @@
             }
           },
           "expected": {
-            "status": 0
+            "status": 0,
+            "elementCount": 1
           }
         },
         {
@@ -639,7 +682,8 @@
             }
           },
           "expected": {
-            "elementCount": 2
+            "elementCount": 2,
+            "status": 0
           }
         },
         {
@@ -655,7 +699,8 @@
             }
           },
           "expected": {
-            "status": 0
+            "status": 0,
+            "elementCount": 2
           }
         },
         {
@@ -671,7 +716,8 @@
             }
           },
           "expected": {
-            "elementCount": 3
+            "elementCount": 3,
+            "status": 0
           }
         },
         {
@@ -687,7 +733,8 @@
             }
           },
           "expected": {
-            "status": 0
+            "status": 0,
+            "elementCount": 3
           }
         },
         {
@@ -704,7 +751,8 @@
           },
           "expected": {
             "elementCount": 2,
-            "item": true
+            "item": true,
+            "status": 0
           }
         },
         {
@@ -720,7 +768,8 @@
             }
           },
           "expected": {
-            "status": 0
+            "status": 0,
+            "elementCount": 2
           }
         },
         {
@@ -737,11 +786,324 @@
           },
           "expected": {
             "elementCount": 1,
-            "item": false
+            "item": false,
+            "status": 0
           }
         }
       ],
       "binding_id": "B"
+    },
+    {
+      "id": "PUB018.T4",
+      "description": "Binding B (BOOL, ARRAY[1..3] OF BOOL, capacity 3): fill 3 items, full 8002, FIFO dequeue of 3 items, empty 8001, wrap-around, and reset.",
+      "steps": [
+        {
+          "inputs": {
+            "enqueue": true,
+            "dequeue": false,
+            "reset": false,
+            "item": true,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "B",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "elementCount": 1,
+            "status": 0
+          }
+        },
+        {
+          "inputs": {
+            "enqueue": false,
+            "dequeue": false,
+            "reset": false,
+            "item": false,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "B",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "elementCount": 1,
+            "status": 0
+          }
+        },
+        {
+          "inputs": {
+            "enqueue": true,
+            "dequeue": false,
+            "reset": false,
+            "item": false,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "B",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "elementCount": 2,
+            "status": 0
+          }
+        },
+        {
+          "inputs": {
+            "enqueue": false,
+            "dequeue": false,
+            "reset": false,
+            "item": true,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "B",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "elementCount": 2,
+            "status": 0
+          }
+        },
+        {
+          "inputs": {
+            "enqueue": true,
+            "dequeue": false,
+            "reset": false,
+            "item": true,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "B",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "elementCount": 3,
+            "status": 0
+          }
+        },
+        {
+          "inputs": {
+            "enqueue": false,
+            "dequeue": false,
+            "reset": false,
+            "item": false,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "B",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "elementCount": 3,
+            "status": 0
+          }
+        },
+        {
+          "inputs": {
+            "enqueue": true,
+            "dequeue": false,
+            "reset": false,
+            "item": false,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "B",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "elementCount": 3,
+            "status": 32770
+          }
+        },
+        {
+          "inputs": {
+            "enqueue": false,
+            "dequeue": true,
+            "reset": false,
+            "item": false,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "B",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "elementCount": 2,
+            "status": 0
+          }
+        },
+        {
+          "inputs": {
+            "enqueue": false,
+            "dequeue": false,
+            "reset": false,
+            "item": false,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "B",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "elementCount": 2,
+            "status": 0
+          }
+        },
+        {
+          "inputs": {
+            "enqueue": true,
+            "dequeue": false,
+            "reset": false,
+            "item": true,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "B",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "elementCount": 3,
+            "status": 0
+          }
+        },
+        {
+          "inputs": {
+            "enqueue": false,
+            "dequeue": true,
+            "reset": false,
+            "item": true,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "B",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "elementCount": 2,
+            "status": 0
+          }
+        },
+        {
+          "inputs": {
+            "enqueue": false,
+            "dequeue": false,
+            "reset": false,
+            "item": true,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "B",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "elementCount": 2,
+            "status": 0
+          }
+        },
+        {
+          "inputs": {
+            "enqueue": false,
+            "dequeue": true,
+            "reset": false,
+            "item": false,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "B",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "elementCount": 1,
+            "status": 0
+          }
+        },
+        {
+          "inputs": {
+            "enqueue": false,
+            "dequeue": false,
+            "reset": false,
+            "item": false,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "B",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "elementCount": 1,
+            "status": 0
+          }
+        },
+        {
+          "inputs": {
+            "enqueue": false,
+            "dequeue": true,
+            "reset": false,
+            "item": false,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "B",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "elementCount": 0,
+            "status": 0
+          }
+        },
+        {
+          "inputs": {
+            "enqueue": false,
+            "dequeue": false,
+            "reset": false,
+            "item": false,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "B",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "elementCount": 0,
+            "status": 0
+          }
+        },
+        {
+          "inputs": {
+            "enqueue": false,
+            "dequeue": true,
+            "reset": false,
+            "item": true,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "B",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "elementCount": 0,
+            "status": 32769
+          }
+        },
+        {
+          "inputs": {
+            "enqueue": true,
+            "dequeue": false,
+            "reset": true,
+            "item": true,
+            "buffer": {
+              "$binding": "buffer",
+              "binding_id": "B",
+              "retain_storage": true
+            }
+          },
+          "expected": {
+            "elementCount": 0,
+            "status": 0
+          }
+        }
+      ]
     }
   ],
   "portability": {
@@ -772,10 +1134,10 @@
       "capacity": 3
     }
   ],
-  "specification_version": "2.1-normalized-20261111",
+  "specification_version": "2.2-normalized-20261112",
   "specification_contract": {
     "observation": "I[k] is sampled before execution; O[k] is observed after execution. Initial conditions apply before invocation zero.",
-    "normative_completion": "令(Sref[k+1], E[k])=T_PUB018(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\n独立逻辑队列Q初始空、enqPrev/deqPrev=FALSE。reset优先QAfter=[]；否则单个enqueue新沿且未满时追加采样item，满报8002；dequeue新沿且非空时返回旧队首并去首，空报8001；其余状态0。elementCount=|QAfter|；仅成功pop改变实际item，其余等于采样item。buffer物理布局不受约束，其正确性由完整可观察出队行为约束。绑定A容量2、B容量3，其余容量由实际buffer元数据固定。",
+    "normative_completion": "令(Sref[k+1], E[k])=T_PUB018(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\n独立逻辑队列Q初始空、enqPrev/deqPrev=FALSE。非reset下严禁同拍enqueue/dequeue同时上升沿。reset优先QAfter=[]；否则单个enqueue新沿且未满时追加采样item，满报8002；dequeue新沿且非空时返回旧队首并去首，空报8001；其余状态0。elementCount=|QAfter|；仅成功pop改变实际item，其余等于采样item。buffer物理布局不受约束，其正确性由完整可观察出队行为约束。绑定A容量2(DINT)、B容量3(BOOL)，其余正整数容量由实际buffer元数据固定。",
     "history_binding": "I, O and Sref namespaces, initialization and updates are defined in normalized_specification.observation, history_bindings and reference_state_initial. Candidate output never drives Sref.",
     "evaluation_scope": "Versioned executable scan predicate plus LTL over interpreted predicates. No native checker encoding or completed formal proof is claimed.",
     "review_source": "docs/规约逐题审查_20261106/PUB018.md",
@@ -890,7 +1252,8 @@
         "reference": null,
         "phase": 0,
         "previous_mode": null,
-        "clock": 0.0,
+        "clock": 0,
+        "first": true,
         "heat_start": null,
         "protection_start": null,
         "demand": false
@@ -901,16 +1264,16 @@
       "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('PUB018'); constructed once per independent case, current state is Sref[k].",
       "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
       "module_sha256": {
-        "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
-        "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
-        "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
-        "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
-        "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+        "scan_contract.py": "2ebdbeb0bacd3c6154e1add2fd358f1aadc9ac9c9322a9201798065154353f48",
+        "array_contracts.py": "f541ffe0e28c56e84ad737b06aa8c8ee6180b1afda720b7c41cc8fccad2d8ecd",
+        "data_contracts.py": "0792c46b303ce62a0a2180bcf4d7ebfe4838ccfaa18deb331780af1819377b3a",
+        "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
+        "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
         "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-        "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+        "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
       },
       "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-      "frozen_sources": "dataset/specifications/normalized_transition_v1"
+      "frozen_sources": "dataset/specifications/normalized_transition_v2"
     },
     "constrained_observed_fields": [
       "elementCount",
@@ -969,10 +1332,11 @@
       "The official VARIANT interface is preserved. Native CODESYS compatibility and runtime type/array metadata access remain unverified; never silently replace it by a DINT-only interface.",
       "Binding A: item DINT, buffer ARRAY[0..1] OF DINT. Binding B: item BOOL, buffer ARRAY[1..3] OF BOOL. Both must run to substantiate genericity.",
       "Buffer is initialized and bound once per test; its association and contents are not externally overwritten between calls. item is caller-writable every scan.",
-      "Enqueue and dequeue are never requested together. Reset may coincide with either and wins.",
+      "Simultaneous enqueue and dequeue rising edges on a non-reset scan are outside the valid domain (rejected with ValueError); reset=TRUE takes priority over both and updates edge memories.",
       "Edge memories update during reset; a request held afterward is not another edge.",
       "Reset need not clear buffer values. Unused storage arrangement is unconstrained.",
-      "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+      "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+      "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
     ],
     "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
     "limitations": [
@@ -980,6 +1344,6 @@
       "Focused legacy LTL predicates still require backend lowering; normalization is not model-checker acceptance.",
       "Finite matching cannot establish liveness or validate runtime provenance."
     ],
-    "rules_zh": "独立逻辑队列Q初始空、enqPrev/deqPrev=FALSE。reset优先QAfter=[]；否则单个enqueue新沿且未满时追加采样item，满报8002；dequeue新沿且非空时返回旧队首并去首，空报8001；其余状态0。elementCount=|QAfter|；仅成功pop改变实际item，其余等于采样item。buffer物理布局不受约束，其正确性由完整可观察出队行为约束。绑定A容量2、B容量3，其余容量由实际buffer元数据固定。"
+    "rules_zh": "独立逻辑队列Q初始空、enqPrev/deqPrev=FALSE。非reset下严禁同拍enqueue/dequeue同时上升沿。reset优先QAfter=[]；否则单个enqueue新沿且未满时追加采样item，满报8002；dequeue新沿且非空时返回旧队首并去首，空报8001；其余状态0。elementCount=|QAfter|；仅成功pop改变实际item，其余等于采样item。buffer物理布局不受约束，其正确性由完整可观察出队行为约束。绑定A容量2(DINT)、B容量3(BOOL)，其余正整数容量由实际buffer元数据固定。"
   }
 }

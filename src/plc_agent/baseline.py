@@ -5,6 +5,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from dataclasses import asdict
 from pathlib import Path
@@ -190,7 +191,7 @@ def run_baseline(
                 }
                 tool_resp = None
                 try:
-                    tool_resp = dispatch(mcp_msg, task=view, trusted=trusted, settings=settings, backend=backend)
+                    tool_resp = dispatch(mcp_msg, task=task, trusted=trusted, settings=settings, backend=backend)
                     content_text = tool_resp.get("content", [{}])[0].get("text", "")
                 except Exception as exc:
                     content_text = json.dumps({"error": str(exc)})
@@ -217,128 +218,131 @@ def run_baseline(
         if not executable:
             result["status"], result["reason"] = "TOOL_ERROR", "Codex CLI executable missing"
         else:
-            args = [
-                sys.executable,
-                "-X",
-                "utf8",
-                "-m",
-                "plc_agent.mcp_server",
-                "--task",
-                str(workspace / "task.json"),
-                "--trusted",
-                str(trusted),
-            ]
-            compiler_config = {
-                k: getattr(settings, k)
-                for k in (
-                    "codesys_exe",
-                    "codesys_profile",
-                    "codesys_template",
-                    "additional_folder",
-                    "compiler_timeout",
-                    "max_repairs",
-                    "max_simulations",
+            with tempfile.TemporaryDirectory() as mcp_dir:
+                trusted_task_path = Path(mcp_dir) / "task.json"
+                write_json(trusted_task_path, task)
+                args = [
+                    sys.executable,
+                    "-X",
+                    "utf8",
+                    "-m",
+                    "plc_agent.mcp_server",
+                    "--task",
+                    str(trusted_task_path),
+                    "--trusted",
+                    str(trusted),
+                ]
+                compiler_config = {
+                    k: getattr(settings, k)
+                    for k in (
+                        "codesys_exe",
+                        "codesys_profile",
+                        "codesys_template",
+                        "additional_folder",
+                        "compiler_timeout",
+                        "max_repairs",
+                        "max_simulations",
+                    )
+                }
+                write_json(trusted / "compiler_config.json", compiler_config)
+                args += ["--config", str(trusted / "compiler_config.json")]
+                server = (
+                    "{command="
+                    + toml_string(sys.executable)
+                    + ",args="
+                    + json.dumps(args[1:], ensure_ascii=False)
+                    + ",env={PYTHONPATH="
+                    + toml_string(ROOT / "src")
+                    + "},startup_timeout_sec=30,tool_timeout_sec="
+                    + str(settings.compiler_timeout + 30)
+                    + "}"
                 )
-            }
-            write_json(trusted / "compiler_config.json", compiler_config)
-            args += ["--config", str(trusted / "compiler_config.json")]
-            server = (
-                "{command="
-                + toml_string(sys.executable)
-                + ",args="
-                + json.dumps(args[1:], ensure_ascii=False)
-                + ",env={PYTHONPATH="
-                + toml_string(ROOT / "src")
-                + "},startup_timeout_sec=30,tool_timeout_sec="
-                + str(settings.compiler_timeout + 30)
-                + "}"
-            )
-            overrides = [
-                'model_provider="plc_relay"',
-                'model_providers.plc_relay={name="PLC relay",base_url='
-                + toml_string(settings.base_url)
-                + ',env_key="PLC_LLM_API_KEY",wire_api="responses",requires_openai_auth=false}',
-                "model_reasoning_effort=" + toml_string(settings.reasoning_effort),
-                "mcp_servers.plc=" + server,
-                'web_search="disabled"',
-            ]
-            command = [
-                executable,
-                "exec",
-                "--ignore-user-config",
-                "--ephemeral",
-                "--skip-git-repo-check",
-                "--json",
-                "--color",
-                "never",
-                "--sandbox",
-                "workspace-write",
-                "--cd",
-                str(agent_dir),
-                "--model",
-                model,
-            ]
-            for item in overrides:
-                command += ["-c", item]
+                overrides = [
+                    'model_provider="plc_relay"',
+                    'model_providers.plc_relay={name="PLC relay",base_url='
+                    + toml_string(settings.base_url)
+                    + ',env_key="PLC_LLM_API_KEY",wire_api="responses",requires_openai_auth=false}',
+                    "model_reasoning_effort=" + toml_string(settings.reasoning_effort),
+                    "mcp_servers.plc=" + server,
+                    'web_search="disabled"',
+                ]
+                command = [
+                    executable,
+                    "exec",
+                    "--ignore-user-config",
+                    "--ephemeral",
+                    "--skip-git-repo-check",
+                    "--json",
+                    "--color",
+                    "never",
+                    "--sandbox",
+                    "workspace-write",
+                    "--cd",
+                    str(agent_dir),
+                    "--model",
+                    model,
+                ]
+                for item in overrides:
+                    command += ["-c", item]
 
-            write_json(
-                workspace / "invocation.json",
-                {
-                    "argv": command,
-                    "baseline": "unmodified Codex CLI",
-                    "differences": [
-                        "Baseline controls context and tool selection; self harness uses deterministic control flow.",
-                        "Same compiler-call budget and task timeout; Codex internal model calls/tool schemas are not identical.",
-                        "Codex does not expose a hard common per-response output-token cap; token usage is reported separately.",
-                    ],
-                },
-            )
-            env = os.environ.copy()
-            env["PLC_LLM_API_KEY"] = settings.api_key
-            env["PYTHONPATH"] = str(ROOT / "src")
-            process = None
-            try:
-                with (workspace / "events.private.tmp").open("wb") as out, (
-                    workspace / "stderr.private.tmp"
-                ).open("wb") as err:
-                    process = subprocess.Popen(
-                        command + ["-"],
-                        stdin=subprocess.PIPE,
-                        stdout=out,
-                        stderr=err,
-                        env=env,
-                        creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
-                    )
-                    try:
-                        process.communicate(prompt.encode("utf-8"), timeout=settings.task_timeout)
-                    except subprocess.TimeoutExpired:
-                        _kill_tree(process)
-                        result["status"], result["reason"] = "TIMEOUT", "Codex task timeout"
-                for old, new in (("events.private.tmp", "events.jsonl"), ("stderr.private.tmp", "stderr.log")):
-                    raw = workspace / old
-                    (workspace / new).write_text(
-                        redact(raw.read_text(encoding="utf-8", errors="replace"), [settings.api_key]),
-                        encoding="utf-8",
-                    )
-                    raw.unlink()
-                result["baseline_exit_code"] = process.returncode
-                for line in (workspace / "events.jsonl").read_text(encoding="utf-8").splitlines():
-                    try:
-                        event = json.loads(line)
-                    except ValueError:
-                        continue
-                    if event.get("type") == "turn.completed":
-                        result["usage"].append(event.get("usage"))
-                        result["completed_agent_turns"] += 1
-                    if event.get("type") == "item.completed" and event.get("item", {}).get("type") in (
-                        "command_execution",
-                        "mcp_tool_call",
-                        "web_search",
-                        "file_change",
-                    ):
-                        result["tool_call_count"] += 1
-            except (OSError, subprocess.SubprocessError) as exc:
-                result["status"], result["reason"] = "TOOL_ERROR", redact(str(exc), [settings.api_key])
+                write_json(
+                    workspace / "invocation.json",
+                    {
+                        "argv": command,
+                        "baseline": "unmodified Codex CLI",
+                        "differences": [
+                            "Baseline controls context and tool selection; self harness uses deterministic control flow.",
+                            "Same compiler-call budget and task timeout; Codex internal model calls/tool schemas are not identical.",
+                            "Codex does not expose a hard common per-response output-token cap; token usage is reported separately.",
+                        ],
+                    },
+                )
+                env = os.environ.copy()
+                env["PLC_LLM_API_KEY"] = settings.api_key
+                env["PYTHONPATH"] = str(ROOT / "src")
+                process = None
+                try:
+                    with (workspace / "events.private.tmp").open("wb") as out, (
+                        workspace / "stderr.private.tmp"
+                    ).open("wb") as err:
+                        process = subprocess.Popen(
+                            command + ["-"],
+                            stdin=subprocess.PIPE,
+                            stdout=out,
+                            stderr=err,
+                            env=env,
+                            creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+                        )
+                        try:
+                            process.communicate(prompt.encode("utf-8"), timeout=settings.task_timeout)
+                        except subprocess.TimeoutExpired:
+                            _kill_tree(process)
+                            result["status"], result["reason"] = "TIMEOUT", "Codex task timeout"
+                    for old, new in (("events.private.tmp", "events.jsonl"), ("stderr.private.tmp", "stderr.log")):
+                        raw = workspace / old
+                        (workspace / new).write_text(
+                            redact(raw.read_text(encoding="utf-8", errors="replace"), [settings.api_key]),
+                            encoding="utf-8",
+                        )
+                        raw.unlink()
+                    result["baseline_exit_code"] = process.returncode
+                    for line in (workspace / "events.jsonl").read_text(encoding="utf-8").splitlines():
+                        try:
+                            event = json.loads(line)
+                        except ValueError:
+                            continue
+                        if event.get("type") == "turn.completed":
+                            result["usage"].append(event.get("usage"))
+                            result["completed_agent_turns"] += 1
+                        if event.get("type") == "item.completed" and event.get("item", {}).get("type") in (
+                            "command_execution",
+                            "mcp_tool_call",
+                            "web_search",
+                            "file_change",
+                        ):
+                            result["tool_call_count"] += 1
+                except (OSError, subprocess.SubprocessError) as exc:
+                    result["status"], result["reason"] = "TOOL_ERROR", redact(str(exc), [settings.api_key])
 
     elif driver == "claude_code":
         executable = shutil.which("claude")
@@ -357,53 +361,56 @@ def run_baseline(
                     "max_simulations",
                 )
             }
-            write_json(trusted / "compiler_config.json", compiler_config)
-            mcp_config = {
-                "mcpServers": {
-                    "plc": {
-                        "command": sys.executable,
-                        "args": [
-                            "-X",
-                            "utf8",
-                            "-m",
-                            "plc_agent.mcp_server",
-                            "--task",
-                            str(workspace / "task.json"),
-                            "--trusted",
-                            str(trusted),
-                            "--config",
-                            str(trusted / "compiler_config.json"),
-                        ],
-                        "env": {"PYTHONPATH": str(ROOT / "src")},
+            with tempfile.TemporaryDirectory() as mcp_dir:
+                trusted_task_path = Path(mcp_dir) / "task.json"
+                write_json(trusted_task_path, task)
+                write_json(trusted / "compiler_config.json", compiler_config)
+                mcp_config = {
+                    "mcpServers": {
+                        "plc": {
+                            "command": sys.executable,
+                            "args": [
+                                "-X",
+                                "utf8",
+                                "-m",
+                                "plc_agent.mcp_server",
+                                "--task",
+                                str(trusted_task_path),
+                                "--trusted",
+                                str(trusted),
+                                "--config",
+                                str(trusted / "compiler_config.json"),
+                            ],
+                            "env": {"PYTHONPATH": str(ROOT / "src")},
+                        }
                     }
                 }
-            }
-            write_json(agent_dir / ".mcp.json", mcp_config)
-            command = [executable, "--dangerously-skip-permissions", "-p", prompt]
-            env = os.environ.copy()
-            env["PLC_LLM_API_KEY"] = settings.api_key
-            env["PYTHONPATH"] = str(ROOT / "src")
-            try:
-                with (workspace / "events.private.tmp").open("wb") as out, (
-                    workspace / "stderr.private.tmp"
-                ).open("wb") as err:
-                    process = subprocess.Popen(
-                        command,
-                        stdin=subprocess.PIPE,
-                        stdout=out,
-                        stderr=err,
-                        env=env,
-                        cwd=str(agent_dir),
-                        creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
-                    )
-                    try:
-                        process.communicate(timeout=settings.task_timeout)
-                    except subprocess.TimeoutExpired:
-                        _kill_tree(process)
-                        result["status"], result["reason"] = "TIMEOUT", "Claude task timeout"
-                result["baseline_exit_code"] = process.returncode
-            except (OSError, subprocess.SubprocessError) as exc:
-                result["status"], result["reason"] = "TOOL_ERROR", redact(str(exc), [settings.api_key])
+                write_json(agent_dir / ".mcp.json", mcp_config)
+                command = [executable, "--dangerously-skip-permissions", "-p", prompt]
+                env = os.environ.copy()
+                env["PLC_LLM_API_KEY"] = settings.api_key
+                env["PYTHONPATH"] = str(ROOT / "src")
+                try:
+                    with (workspace / "events.private.tmp").open("wb") as out, (
+                        workspace / "stderr.private.tmp"
+                    ).open("wb") as err:
+                        process = subprocess.Popen(
+                            command,
+                            stdin=subprocess.PIPE,
+                            stdout=out,
+                            stderr=err,
+                            env=env,
+                            cwd=str(agent_dir),
+                            creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+                        )
+                        try:
+                            process.communicate(timeout=settings.task_timeout)
+                        except subprocess.TimeoutExpired:
+                            _kill_tree(process)
+                            result["status"], result["reason"] = "TIMEOUT", "Claude task timeout"
+                    result["baseline_exit_code"] = process.returncode
+                except (OSError, subprocess.SubprocessError) as exc:
+                    result["status"], result["reason"] = "TOOL_ERROR", redact(str(exc), [settings.api_key])
 
     # Shared Evaluation & Record Parsing:
     attempts = [read_json(p) for p in sorted(trusted.glob("compile_*/compile_result.json"))]

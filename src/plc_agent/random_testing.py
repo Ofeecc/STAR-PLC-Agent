@@ -81,6 +81,7 @@ def _generate_step_input(
                 'measuringMode': rng.choice([0, 1, 2]),
                 'hiLIM': 100.0,
                 'loLIM': 0.0,
+                'retVal': 0,
                 'outputValue': 0.0,
             }
             for _ in range(8)
@@ -163,7 +164,7 @@ def _generate_step_input(
     elif task_id == 'PUB017':
         op = rng.choice(['none', 'none', 'add', 'del', 'mod', 'qry'])
         rec = {
-            'recipeID': rng.randint(1, 8),
+            'recipeID': rng.choice([-2, -1, 1, 2, 3, 4, 5, 6]),
             'ingredientType': rng.randint(1, 5),
             'ingredientRatio': round(rng.uniform(0.1, 1.0), 2),
             'productionTemperature': round(rng.uniform(50.0, 120.0), 1),
@@ -180,11 +181,12 @@ def _generate_step_input(
         enq = rng.choice([True, False])
         deq = False if enq else rng.choice([True, False])
         bid = state.setdefault('bid', rng.choice(['A', 'B']))
+        item_val = rng.choice([True, False]) if bid == 'B' else rng.randint(1, 50)
         inp = {
             'enqueue': enq,
             'dequeue': deq,
             'reset': rng.choice([False, False, False, True]),
-            'item': rng.randint(1, 50),
+            'item': item_val,
             'buffer': {'$binding': 'buffer', 'binding_id': bid, 'retain_storage': True},
         }
     elif task_id == 'PUB019':

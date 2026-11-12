@@ -2,6 +2,7 @@ import unittest
 
 from plc_agent.dataset import load_tasks
 from plc_agent.functional import equal
+from plc_agent.normalized_spec import reference_step
 from plc_agent.scan_contract import SUPPORTED, ScanContract, check_contract_trace
 
 
@@ -13,7 +14,7 @@ class ScanContractTests(unittest.TestCase):
                 monitor=ScanContract(task['id'])
                 for j,s in enumerate(case['steps']):
                     with self.subTest(task=task['id'],case=case['id'],scan=j):
-                        self.assertTrue(equal(monitor.step(s['inputs'],s.get('dt_ms')),s['expected']))
+                        self.assertTrue(equal(reference_step(task,monitor,s['inputs'],s.get('dt_ms')),s['expected']))
 
     def test_filling_wait_and_reset_outputs(self):
         names=['bottleSensor','cleaningConfirmButton','fillingConfirmButton','cappingConfirmButton','packingConfirmButton','finishedButton']

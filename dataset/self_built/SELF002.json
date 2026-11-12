@@ -12,7 +12,7 @@
     "rationale": "A reversible positioning drive must break its previous direction command for one full output scan before reversing.",
     "review": "Assistant consistency review of initialization, simultaneous commands, retained state and recovery boundaries; independent Python oracle checked against manual expected traces. Not an industrial safety certification or external expert review."
   },
-  "requirements": "ForwardButton and ReverseButton are jog commands. Stop, both buttons, or neither button gives both outputs FALSE. Exactly one button requests that direction. If the previous scan output commanded the opposite direction, give a neutral scan with both outputs FALSE; a request held into the following scan can then run. At initialization the previous direction is neutral. Never energize Forward and Reverse together.",
+  "requirements": "# SELF002: Bidirectional Reversing Interlock with One-Scan Stop\n\n## Background\nForward/reverse motor interlock preventing immediate reversal on consecutive scans.\n\n## Functional Requirements\n1. Inputs: `ForwardButton`, `ReverseButton`, and `Stop` (`BOOL`).\n2. Compute desired direction: `0` (stop) if `Stop = TRUE` or `ForwardButton = ReverseButton`; `+1` if only `ForwardButton = TRUE`; `-1` if only `ReverseButton = TRUE`.\n3. If desired direction is nonzero and opposite to the previous scan's active direction (`-1` vs `+1`), force both outputs FALSE for this one intermediate stop scan (clearing direction memory to `0`).\n4. Otherwise output the desired direction (`Forward := (dir = +1)`, `Reverse := (dir = -1)`) and store it.\n\n## Interface\n- **Inputs:** `ForwardButton: BOOL`, `ReverseButton: BOOL`, `Stop: BOOL`\n- **Outputs:** `Forward: BOOL`, `Reverse: BOOL`\n\n## Initial Values\n- `previous_direction=0`, `Forward=false`, `Reverse=false`\n\n## Timing & Evaluation Conventions\nAll inputs are level-sensitive; direction memory initializes to `0` (stopped).",
   "scenario": "A reversible positioning drive must break its previous direction command for one full output scan before reversing.",
   "interface": [
     {
@@ -57,7 +57,8 @@
     "Opposite-direction request inserts neutral"
   ],
   "assumptions": [
-    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
   ],
   "atomic_propositions": {
     "ForwardButton": "I[k].ForwardButton: sampled input (BOOL).",
@@ -70,9 +71,20 @@
     "qReverse": "{\"kind\": \"previous_observed_output\", \"source\": \"O[k-1].Reverse\", \"initial\": false, \"update\": \"After comparing scan k, store ACTUAL O[k].Reverse; never write into reference state.\"}",
     "fwdOnly": "ForwardButton & !ReverseButton & !Stop.",
     "revOnly": "ReverseButton & !ForwardButton & !Stop.",
-    "CompleteBehaviorV2": "令(Sref[k+1], E[k])=T_SELF002(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\nd初值0；desired在Stop或两方向按钮相等时为0，否则前进1/后退-1。dAfter在desired!=0且dBefore=-desired时为0，否则desired；Forward=(dAfter=1)，Reverse=(dAfter=-1)。"
+    "CompleteBehaviorV2": "令(Sref[k+1], E[k])=T_SELF002(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\nd初值0；desired在Stop或两方向按钮相等时为0，否则前进1/后退-1。dAfter在desired!=0且dBefore=-desired时为0，否则desired；Forward=(dAfter=1)，Reverse=(dAfter=-1)。",
+    "init": "At the separate pre-invocation initial observation before scan k=0: O_init.Forward=false, O_init.Reverse=false."
   },
   "ltl": [
+    {
+      "id": "P_init",
+      "kind": "safety",
+      "formula": "init",
+      "description": "Before the first scan invocation, all declared OUTPUT variables and initial instance state hold their declared initial values.",
+      "explanation": "Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "INITIAL_INSTANCE"
+    },
     {
       "id": "P1",
       "formula": "G(!(Forward & Reverse))",
@@ -252,9 +264,70 @@
           }
         }
       ]
+    },
+    {
+      "id": "SELF002.boundary_reverse_memory",
+      "description": "First-scan Reverse, Stop clears memory for immediate opposite dir, and opposing buttons.",
+      "steps": [
+        {
+          "inputs": {
+            "ForwardButton": false,
+            "ReverseButton": true,
+            "Stop": false
+          },
+          "expected": {
+            "Forward": false,
+            "Reverse": true
+          }
+        },
+        {
+          "inputs": {
+            "ForwardButton": true,
+            "ReverseButton": false,
+            "Stop": true
+          },
+          "expected": {
+            "Forward": false,
+            "Reverse": false
+          }
+        },
+        {
+          "inputs": {
+            "ForwardButton": true,
+            "ReverseButton": false,
+            "Stop": false
+          },
+          "expected": {
+            "Forward": true,
+            "Reverse": false
+          }
+        },
+        {
+          "inputs": {
+            "ForwardButton": true,
+            "ReverseButton": true,
+            "Stop": false
+          },
+          "expected": {
+            "Forward": false,
+            "Reverse": false
+          }
+        },
+        {
+          "inputs": {
+            "ForwardButton": false,
+            "ReverseButton": true,
+            "Stop": false
+          },
+          "expected": {
+            "Forward": false,
+            "Reverse": true
+          }
+        }
+      ]
     }
   ],
-  "specification_version": "2.1-normalized-20261111",
+  "specification_version": "2.2-normalized-20261112",
   "specification_contract": {
     "observation": "I[k] is sampled before execution; O[k] is observed after execution. Initial conditions apply before invocation zero.",
     "normative_completion": "令(Sref[k+1], E[k])=T_SELF002(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\nd初值0；desired在Stop或两方向按钮相等时为0，否则前进1/后退-1。dAfter在desired!=0且dBefore=-desired时为0，否则desired；Forward=(dAfter=1)，Reverse=(dAfter=-1)。",
@@ -294,7 +367,8 @@
         },
         "phase": 0,
         "previous_mode": null,
-        "clock": 0.0,
+        "clock": 0,
+        "first": true,
         "heat_start": null,
         "protection_start": null,
         "demand": false
@@ -305,16 +379,16 @@
       "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('SELF002'); constructed once per independent case, current state is Sref[k].",
       "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
       "module_sha256": {
-        "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
-        "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
-        "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
-        "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
-        "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+        "scan_contract.py": "2ebdbeb0bacd3c6154e1add2fd358f1aadc9ac9c9322a9201798065154353f48",
+        "array_contracts.py": "f541ffe0e28c56e84ad737b06aa8c8ee6180b1afda720b7c41cc8fccad2d8ecd",
+        "data_contracts.py": "0792c46b303ce62a0a2180bcf4d7ebfe4838ccfaa18deb331780af1819377b3a",
+        "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
+        "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
         "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-        "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+        "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
       },
       "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-      "frozen_sources": "dataset/specifications/normalized_transition_v1"
+      "frozen_sources": "dataset/specifications/normalized_transition_v2"
     },
     "constrained_observed_fields": [
       "Forward",
@@ -369,7 +443,8 @@
       "time_progress": "Timed eventuality clauses explicitly require G(F(TimeTick)); TimeTick denotes crossing a new integer-ms boundary. Finite observations cannot establish this premise."
     },
     "assumptions": [
-      "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+      "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+      "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
     ],
     "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
     "limitations": [

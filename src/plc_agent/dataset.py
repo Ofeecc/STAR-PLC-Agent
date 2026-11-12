@@ -22,7 +22,8 @@ def validate(tasks):
         errors.extend(f"{tid}: missing {k}" for k in required - task.keys())
         if not task.get("ltl") or not task.get("tests"):
             errors.append(f"{tid}: needs LTL and functional tests")
-        if task.get('specification_version','').startswith('2.1-normalized'):
+        if task.get('specification_version','').startswith(('2.1-normalized', '2.2-normalized')):
+            from .normalized_spec import check_definition_binding
             normalized=task.get('normalized_specification',{})
             if normalized.get('status')!='NORMALIZED_PENDING_HUMAN_REVIEW':
                 errors.append(f'{tid}: missing normalized definition/review boundary')
@@ -34,6 +35,11 @@ def validate(tasks):
                     errors.append(f'{tid}/{prop["id"]}: non-Boolean next or unexpanded quantifier')
             if not normalized.get('transition',{}).get('module_sha256'):
                 errors.append(f'{tid}: unpinned transition definition')
+            else:
+                try:
+                    check_definition_binding(task)
+                except ValueError as exc:
+                    errors.append(f'{tid}: {exc}')
         names = [v["name"].casefold() for v in task.get("interface", [])]
         if len(names) != len(set(names)):
             errors.append(f"{tid}: duplicate case-insensitive IEC identifiers")
@@ -44,9 +50,12 @@ def validate(tasks):
                 errors.append(f"{tid}/{test['id']}: empty test")
             for i, step in enumerate(test.get("steps", [])):
                 absent = inputs - step.get("inputs", {}).keys()
+                extra_inputs = step.get("inputs", {}).keys() - inputs
                 extra = step.get("expected", {}).keys() - outputs
                 if absent:
                     errors.append(f"{tid}/{test['id']}/{i}: omitted inputs {sorted(absent)}")
+                if extra_inputs:
+                    errors.append(f"{tid}/{test['id']}/{i}: unknown inputs {sorted(extra_inputs)}")
                 if extra:
                     errors.append(f"{tid}/{test['id']}/{i}: unknown outputs {sorted(extra)}")
                 if not step.get("expected"):

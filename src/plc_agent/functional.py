@@ -83,6 +83,11 @@ def evaluate_trace(task, source_hash, trace, evidence_root=ROOT):
     if observations.keys() - {case["id"] for case in task["tests"]}:
         raise ValueError("Trace contains unknown test cases")
     from .scan_contract import check_contract_trace
+    norm_monitor_cls = None
+    if 'normalized_specification' in task:
+        from .normalized_spec import NormalizedScanMonitor
+        norm_monitor_cls = NormalizedScanMonitor
+    output_names = {f["name"] for f in task.get("interface", []) if f.get("direction") == "OUTPUT"}
     passed_cases = evaluated = passed_steps = steps_count = 0
     details = []
     for case in task["tests"]:
@@ -93,6 +98,7 @@ def evaluate_trace(task, source_hash, trace, evidence_root=ROOT):
         if len(rows) != len(case["steps"]):
             raise ValueError("Incomplete scan trace: " + case["id"])
         good = []
+        norm_monitor = norm_monitor_cls(task) if norm_monitor_cls is not None else None
         for row, step in zip(rows, case["steps"]):
             if not _same_inputs(row.get("inputs"), step["inputs"]):
                 raise ValueError("Observed inputs do not match fixed test")
@@ -100,7 +106,7 @@ def evaluate_trace(task, source_hash, trace, evidence_root=ROOT):
                 observed = row.get("dt_ms")
                 expected = step["dt_ms"]
                 raw_tol = step.get("dt_tolerance_ms", case.get("dt_tolerance_ms", task.get("dt_tolerance_ms", None)))
-                if raw_tol in (None, 0):
+                if raw_tol is None:
                     tolerance = 0 if task.get("id") == "UNIT_REVIEW" else 25
                 else:
                     tolerance = raw_tol
@@ -110,7 +116,14 @@ def evaluate_trace(task, source_hash, trace, evidence_root=ROOT):
                     raise ValueError("Timed test requires a nonnegative observed dt_ms for every timed step")
                 if not math.isclose(observed, expected, rel_tol=0, abs_tol=tolerance):
                     raise ValueError("Observed dt_ms does not match fixed test timing")
-            good.append(outputs_equal(task, row.get("outputs", {}), step["expected"], row['inputs']))
+            step_outs = row.get("outputs", {})
+            step_ok = outputs_equal(task, step_outs, step["expected"], row['inputs'])
+            if norm_monitor is not None:
+                norm_res = norm_monitor.step(row["inputs"], step_outs, dt_ms=row.get("dt_ms"))
+                for fname, ok in norm_res["field_results"].items():
+                    if not ok and (fname in output_names or fname in step["expected"] or fname in step_outs):
+                        step_ok = False
+            good.append(step_ok)
         # Historical datasets keep their original evaluation semantics.
         contract = check_contract_trace(task['id'], rows) if task.get('specification_version', '').startswith('2.') else {'status': 'NOT_APPLIED_TO_LEGACY_DATASET', 'violations': []}
         for violation in contract['violations']:

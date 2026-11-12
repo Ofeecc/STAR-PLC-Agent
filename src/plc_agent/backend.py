@@ -14,6 +14,7 @@ from .common import digest, read_json
 from .compiler import CompileResult, compile_st, normalize_candidate
 from .config import Settings
 from .functional import equal, outputs_equal
+from .normalized_spec import reference_step
 from .scan_contract import ScanContract
 from .simulation import run_functional
 
@@ -313,7 +314,7 @@ class FakeBackend:
                 expected = step.get("expected", {})
 
                 if contract is not None:
-                    observed = contract.step(inputs, dt_ms)
+                    observed = reference_step(task, contract, inputs, dt_ms)
                 else:
                     observed = _call_step_fn(self.step_fn, inputs, dt_ms)
 

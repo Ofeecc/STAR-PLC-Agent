@@ -2,6 +2,7 @@ import unittest
 
 from plc_agent.dataset import load_tasks
 from plc_agent.functional import equal
+from plc_agent.normalized_spec import reference_step
 from plc_agent.random_testing import generate_random_cases
 from plc_agent.scan_contract import SUPPORTED, ScanContract, check_contract_trace
 
@@ -24,7 +25,7 @@ class RandomTestingTests(unittest.TestCase):
                 rows = []
                 for j, s in enumerate(case["steps"]):
                     with self.subTest(task=tid, case=case["id"], scan=j):
-                        full_outputs = monitor.step(s["inputs"], s.get("dt_ms"))
+                        full_outputs = reference_step(task, monitor, s["inputs"], s.get("dt_ms"))
                         self.assertTrue(
                             equal(full_outputs, s["expected"]),
                             f"Output mismatch on {tid}/{case['id']} scan {j}: {full_outputs} vs {s['expected']}"

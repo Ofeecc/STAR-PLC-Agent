@@ -25,6 +25,11 @@ class ProcessContract:
     def mixing(self,i):
         buttons=['valveAStart','valveBStart','valveCStart','valveDStart','mixMotorStart']
         outputs=['valveARun','valveBRun','valveCRun','valveDRun','mixMotorRun']
+        for bname in buttons + ['autoStart', 'estop', 'opeMode', 'processMode', 'mixMotorComplete']:
+            if type(i[bname]) is not bool:
+                raise ValueError(f'{bname} must be BOOL')
+        if type(i['levelSensor']) is not int or not -32768 <= i['levelSensor'] <= 32767:
+            raise ValueError('levelSensor must be INT')
         edge=self.edges(i,buttons+['autoStart'])
         changed=self.mode is not None and self.mode!=i['opeMode'];self.mode=i['opeMode']
         if not i['estop'] or changed:
@@ -36,7 +41,7 @@ class ProcessContract:
         if self.phase in (1,2,3,4) and i['processMode']!=self.batch_mode:
             raise ValueError('processMode changed during batch outside declared domain')
         # IDLE, FILL_A, FILL_B, FILL_C, MIX, DRAIN. One branch per call.
-        if self.phase==0 and edge['autoStart']:
+        if self.phase in (0, 5) and edge['autoStart']:
             self.phase=1;self.batch_mode=i['processMode']
         elif self.phase==1 and i['levelSensor']>=50:self.phase=2
         elif self.phase==2 and i['levelSensor']>=80:self.phase=3 if self.batch_mode else 4
@@ -70,6 +75,7 @@ class ProcessContract:
     def production(self,i):
         # WAIT_FEED, MOVE_WASH, WAIT_WASH, MOVE_WEIGHT, WAIT_WEIGHT,
         # REJECT, MOVE_FIRING, WAIT_FIRING, MOVE_OUTPUT, OUTPUT_DONE.
+        real32(i['weight'])
         if not i['Mode']:
             self.phase=0
             return dict(MotorForward=i['ForwardButton'] and not i['ReverseButton'],
@@ -105,6 +111,14 @@ class ProcessContract:
         ]
         all_outputs = ['MoveDown', 'MoveUp', 'MoveLeft', 'MoveRight', 'ActivateGrip', 'ActivateRelease']
 
+        mode_flags = [
+            bool(i.get('ManualMode')),
+            bool(i.get('SingleStepMode')),
+            bool(i.get('SingleCycleMode')),
+            bool(i.get('ContinuousMode')),
+        ]
+        if sum(mode_flags) > 1:
+            raise ValueError('PUB019 forbids simultaneous active mode inputs')
         if i.get('ManualMode'):
             cur_mode = 'manual'
         elif i.get('SingleStepMode'):

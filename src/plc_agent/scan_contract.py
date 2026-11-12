@@ -22,7 +22,8 @@ class ScanContract:
         self.reference = ReferenceController(task_id) if task_id.startswith('SELF') else None
         self.phase = 0
         self.previous_mode = None
-        self.clock = 0.0
+        self.clock = 0
+        self.first = True
         self.heat_start = None
         self.protection_start = None
         self.demand = False
@@ -66,17 +67,24 @@ class ScanContract:
             return dict(MotorForward=self.phase in (1, 3), MotorReverse=False,
                         CompletionLight=self.phase == 5 and i['SensorC'])
         if self.task_id == 'PUB010':
+            from decimal import Decimal
             if isinstance(dt_ms, bool) or not isinstance(dt_ms, (int, float)) or not math.isfinite(dt_ms) or dt_ms < 0:
                 raise ValueError('PUB010 requires observed finite nonnegative dt_ms')
-            self.clock += dt_ms
+            dt_dec = Decimal(str(dt_ms))
+            if self.first:
+                self.clock = Decimal(0)
+                self.first = False
+            else:
+                self.clock = (self.clock if isinstance(self.clock, Decimal) else Decimal(self.clock)) + dt_dec
             value, target = i['TemperatureSensorInput'], i['SetTemperature']
             if not all(isinstance(x, (int, float)) and not isinstance(x, bool) and math.isfinite(x) for x in (value, target)):
                 raise ValueError('Temperature inputs must be finite numbers')
             fault = not 0 <= value <= 100
-            if value < target:
-                self.demand = True
-            elif value > target:
-                self.demand = False
+            if not fault:
+                if value < target:
+                    self.demand = True
+                elif value > target:
+                    self.demand = False
             # Evaluate elapsed time of the preceding energized interval before output update.
             if self.protection_start is not None:
                 if self.clock - self.protection_start >= 3000:

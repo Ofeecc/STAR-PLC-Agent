@@ -35,16 +35,19 @@ class TimedContract:
     def step(self,i,dt_ms):
         if isinstance(dt_ms,bool) or not isinstance(dt_ms,(int,float)) or not math.isfinite(dt_ms) or dt_ms<0:
             raise ValueError('Observed finite nonnegative dt_ms required')
-        if not self.first:self.clock+=Decimal(str(dt_ms))*1000000
+        dt_ns=Decimal(str(dt_ms))*1000000
+        if dt_ns!=dt_ns.to_integral_value():
+            raise ValueError('Observed dt_ms must map to exact integer nanoseconds')
+        if not self.first:self.clock+=dt_ns
         self.first=False
         if self.task_id in ('PUB004','PUB005'):
             limit=duration_ns(i['DebounceTime'])
-            if limit<=0:raise ValueError('DebounceTime must be positive')
+            if limit<=0 or limit>4294967295*UNITS['ms']:raise ValueError('DebounceTime outside 32-bit positive TIME domain')
             if self.debounce is not None and self.debounce!=limit:raise ValueError('DebounceTime must remain constant per case')
             self.debounce=limit
         if self.task_id in ('PUB004','PUB012'):
             cycle=duration_ns(i['CycleTime'])
-            if cycle<=0:raise ValueError('CycleTime must be positive')
+            if cycle<=0 or cycle>4294967295*UNITS['ms']:raise ValueError('CycleTime outside 32-bit positive TIME domain')
         if self.task_id=='PUB004':
             run=self.qualified(i['VISCOSITY_OK'] and i['PASTE_E_STOP_NC'],limit)
             if run:self.runtime+=cycle
@@ -58,10 +61,15 @@ class TimedContract:
             self.count+=int(run and not self.previous_run);self.previous_run=run
             result=dict(BLOWER_RUN=run,AERATION_BLOWER_CYCLE_COUNT=self.count)
         elif self.task_id=='PUB012':
+            ts=i['FaultTimestamp']
+            if type(ts) is not int or not -2**31<=ts<=2**31-1:
+                raise ValueError('FaultTimestamp outside DINT domain')
+            if not all(type(i[k]) is bool for k in ('THICKNESS_SIGNAL_VALID','THICKNESS_FAULT','CUTTING_RUN')):
+                raise ValueError('PUB012 Boolean inputs required')
             valid=i['THICKNESS_SIGNAL_VALID'];fault=valid and i['THICKNESS_FAULT']
             if fault and not self.previous_fault:
                 self.count+=1;self.since=self.clock
-                self.history=[i['FaultTimestamp']]+self.history[:4]
+                self.history=[ts]+self.history[:4]
             if not valid:self.since=None
             alarm=valid and (fault or (self.since is not None and self.clock-self.since<500*UNITS['ms']))
             if valid and not fault and i['CUTTING_RUN']:self.runtime+=cycle

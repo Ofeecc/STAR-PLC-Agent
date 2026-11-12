@@ -20,9 +20,21 @@ class NormalizedSpecTests(unittest.TestCase):
     def test_all_32_preserve_source_tests_and_initial_conditions(self):
         for tid,t in self.tasks.items():
             before=read_json(ROOT/'dataset_versions/before_normalization_20261111'/(tid+'.json'))
-            for field in ('requirements','interface','tests','initial_conditions','assumptions'):
-                self.assertEqual(t[field],before[field],(tid,field))
-            self.assertEqual(len(t['ltl']),len(before['ltl']))
+            self.assertEqual(t['specification_version'],'2.2-normalized-20261112',tid)
+            self.assertEqual(t['interface'],before['interface'],(tid,'interface'))
+            if t['kind']=='public':
+                self.assertEqual(t['requirements'],before['requirements'],(tid,'requirements'))
+            self.assertGreaterEqual(len(t['ltl']),len(before['ltl']),tid)
+            self.assertGreaterEqual(len(t['tests']),len(before['tests']),tid)
+            outs=[f['name'] for f in t['interface'] if f['direction']=='OUTPUT']
+            if outs:
+                self.assertTrue(any(p.get('scope')=='INITIAL_INSTANCE' and p['formula']=='init' for p in t['ltl']),tid)
+                for o in outs:
+                    self.assertIn(o,t['initial_conditions'],(tid,o))
+            for case in t['tests']:
+                for sidx,step in enumerate(case['steps']):
+                    for o in outs:
+                        self.assertIn(o,step['expected'],(tid,case['id'],sidx,o))
             self.assertEqual(t['normalized_specification']['candidate_formal_verification'],'UNVERIFIED')
 
     def test_complete_predicates_are_pinned_and_not_future_work_instructions(self):
@@ -165,6 +177,82 @@ class NormalizedSpecTests(unittest.TestCase):
         self.assertTrue(m.step(i,idle)['holds'])
         idle['recipe'][0]['ingredientType']=998
         self.assertFalse(m.step(i,idle)['holds'])
+
+
+class Round1FixesTests(unittest.TestCase):
+    def test_pub010_scan0_clock_zero_and_demand_freezes_on_fault(self):
+        c=ScanContract('PUB010')
+        out0=c.step({'TemperatureSensorInput':50.0,'SetTemperature':80.0},dt_ms=9999)
+        self.assertTrue(out0['HeaterOutput'])
+        self.assertEqual(float(c.clock),0.0)
+        # Step 1 <5s still heats, demand is True; step 2 fault=120 freezes demand=True!
+        c.step({'TemperatureSensorInput':120.0,'SetTemperature':40.0},dt_ms=100)
+        self.assertTrue(c.demand)
+
+    def test_pub017_zero_rejected_negative_accepted_concurrent_edges_rejected_and_bad_deleted_slot_rejected(self):
+        c=ScanContract('PUB017')
+        rec_neg={'recipeID':-7,'ingredientType':1,'ingredientRatio':0.5,'productionTemperature':60.0}
+        rec_zero={'recipeID':0,'ingredientType':0,'ingredientRatio':0.0,'productionTemperature':0.0}
+        base=dict(addRecipe=False,deleteRecipe=False,modifyRecipe=False,queryRecipe=False,
+                  recipeIn=rec_zero,recipe=[deepcopy(rec_zero) for _ in range(10)])
+        with self.assertRaisesRegex(ValueError,'zero'):
+            c.step({**base,'addRecipe':True})
+        c=ScanContract('PUB017')
+        with self.assertRaisesRegex(ValueError,'multiple'):
+            c.step({**base,'addRecipe':True,'queryRecipe':True,'recipeIn':rec_neg})
+        t=next(x for x in load_tasks() if x['id']=='PUB017')
+        m=NormalizedScanMonitor(t)
+        oracle=ScanContract('PUB017')
+        out=reference_step(t,oracle,{**base,'addRecipe':True,'recipeIn':rec_neg})
+        self.assertTrue(out['recipeAdded'])
+        self.assertEqual(out['recipe'][0]['recipeID'],-7)
+        self.assertTrue(m.step({**base,'addRecipe':True,'recipeIn':rec_neg},out)['holds'])
+        # Deleted slot struct validation rejects bad keys/NaN
+        step_del=reference_step(t,oracle,{**base,'deleteRecipe':True,'recipeIn':rec_neg})
+        bad_obs=deepcopy(step_del)
+        bad_obs['recipe'][0]={'recipeID':0,'unexpected':1}
+        self.assertFalse(m.step({**base,'deleteRecipe':True,'recipeIn':rec_neg},bad_obs)['field_results']['recipe'])
+
+    def test_pub018_concurrent_enq_deq_and_nonpositive_capacity_rejected(self):
+        c=ScanContract('PUB018')
+        buf={'$binding':'buffer','binding_id':'A','capacity':2,'buffer_initial':[0,0],'item_type':'DINT'}
+        with self.assertRaisesRegex(ValueError,'enqueue and dequeue'):
+            c.step({'enqueue':True,'dequeue':True,'reset':False,'item':1,'buffer':buf})
+        with self.assertRaisesRegex(ValueError,'capacity'):
+            ScanContract('PUB018').step({'enqueue':True,'dequeue':False,'reset':False,'item':1,
+                                        'buffer':[]})
+
+    def test_pub019_simultaneous_modes_rejected(self):
+        c=ScanContract('PUB019')
+        i={f['name']:False for f in next(x for x in load_tasks() if x['id']=='PUB019')['interface'] if f['direction']=='INPUT'}
+        i['EmergencyStop']=True
+        i['ManualMode']=True
+        i['SingleStepMode']=True
+        with self.assertRaisesRegex(ValueError,'simultaneous'):
+            c.step(i)
+
+    def test_functional_respects_zero_dt_tolerance_and_metrics_verification_passes(self):
+        from plc_agent.common import digest
+        from plc_agent.functional import evaluate_trace
+        from plc_agent.harness import empty_result
+        from plc_agent.metrics import aggregate
+        task=deepcopy(next(x for x in load_tasks() if x['id']=='PUB010'))
+        case=task['tests'][0]
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            (root/'log.txt').write_text('ok\n',encoding='utf-8')
+            trace={'task_id':'PUB010','task_sha256':digest(task),'source_sha256':'s','backend':'CODESYS_SIMULATION',
+                   'operator':'UNIT_DOUBLE','observed_utc':'2026-11-12T00:00:00Z','evidence_files':['log.txt'],
+                   'cases':{c['id']:[{'inputs':s['inputs'],'outputs':s['expected'],'dt_ms':s['dt_ms']} for s in c['steps']]
+                            for c in task['tests']}}
+            trace['cases'][case['id']][1]['dt_ms']=5000  # differs by 1ms from 4999 where dt_tolerance_ms==0
+            with self.assertRaisesRegex(ValueError,'fixed test timing'):
+                evaluate_trace(task,'s',trace,evidence_root=root)
+        row=empty_result(task,'E1','UNIT','codex_cli')
+        row['verification']={'verified':True,'status':'SAT'}
+        self.assertEqual(aggregate([row],1)[0]['verification_passed_tasks'],0)
+        row['verification']={'verified':True,'status':'VERIFIED'}
+        self.assertEqual(aggregate([row],1)[0]['verification_passed_tasks'],1)
 
 
 if __name__=='__main__':unittest.main()

@@ -114,8 +114,8 @@ def aggregate(records, planned_tasks, conditions=None):
 
         # Verification metrics
         verification_passes = sum(
-            r.get("verification", {}).get("status") in ("SAT", "UNSAT", "VERIFIED", "PASS")
-            or r.get("verification", {}).get("verified") is True
+            r.get("verification", {}).get("verified") is True
+            and r.get("verification", {}).get("status") in ("PASS", "VERIFIED")
             for r in rows
         )
 

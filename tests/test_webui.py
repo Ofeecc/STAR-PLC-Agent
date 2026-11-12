@@ -40,7 +40,7 @@ class WebUITests(unittest.TestCase):
                 self.assertEqual(review['properties_zh'][prop['id']]['formula'],prop['formula'])
                 self.assertRegex(review['properties_zh'][prop['id']]['description'],r'[\u4e00-\u9fff]')
                 count+=1
-        self.assertEqual(count,244)
+        self.assertEqual(count,294)
 
     def test_six_pilot_tasks_have_review_material_and_match_current_dataset(self):
         status, listing = handle_api_request('GET','/api/tasks',{},None,self.settings)
@@ -61,7 +61,7 @@ class WebUITests(unittest.TestCase):
             difficulties.append(detail['task']['difficulty'])
             summary = next(t for t in listing['tasks'] if t['id'] == tid)
             self.assertEqual(summary['steps_count'],sum(len(c['steps']) for c in detail['tests']))
-        self.assertEqual((cases,steps),(20,137))
+        self.assertEqual((cases,steps),(26,314))
         self.assertEqual(difficulties,['easy','easy','medium','medium','hard','hard'])
 
     def test_pilot_chinese_explanations_cover_every_current_formula(self):
@@ -77,7 +77,7 @@ class WebUITests(unittest.TestCase):
                 self.assertTrue(row['description'])
                 self.assertTrue(row['review'])
                 count += 1
-        self.assertEqual(count,53)
+        self.assertEqual(count,64)
 
     def test_model_checker_api_keeps_reference_scope_and_rejects_other_tasks(self):
         for body in (None,{}, {'task_id':'PUB016'},{'task_id':'../../arbitrary'}):

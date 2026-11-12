@@ -78,10 +78,22 @@
     "An E-stop resets debounce validity as well as incomplete timing, so re-enabling requires a full new qualification.",
     "At each invocation, add the supplied CycleTime to the LTIME accumulator iff the end-of-scan VFD_RUN is TRUE. Do not use TIME for the 500-hour accumulator.",
     "PUMP_MAINT_DUE is a level comparison accumulated runtime>=500h and has no reset input. Its threshold case is specified but is not a short practical runtime test.",
-    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
-    "DebounceTime is a strictly positive constant throughout each test case. Dynamic changes are outside this benchmark domain. Time must advance for eventual-start properties."
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "DebounceTime is a strictly positive constant throughout each test case. Dynamic changes are outside this benchmark domain. Time must advance for eventual-start properties.",
+    "On timed benchmark tests, CycleTime equals the step dt_ms. Both DebounceTime and CycleTime use exact integer nanoseconds within unsigned 32-bit IEC TIME bounds (<=4294967295 ms), whereas PUMP_RUNTIME_ACC uses 64-bit LTIME (0..2^63-1 ns). Scan k=0 initializes the debounce clock at 0 ms but adds CycleTime to PUMP_RUNTIME_ACC if end-of-scan VFD_RUN is TRUE.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
   ],
   "ltl": [
+    {
+      "id": "P_init",
+      "kind": "safety",
+      "formula": "init",
+      "description": "Before the first scan invocation, all declared OUTPUT variables and initial instance state hold their declared initial values.",
+      "explanation": "Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "INITIAL_INSTANCE"
+    },
     {
       "id": "P1",
       "formula": "G(VFD_RUN <-> (permit & qualified))",
@@ -153,7 +165,7 @@
     "accPrev": "{\"kind\": \"previous_observed_output\", \"source\": \"O[k-1].PUMP_RUNTIME_ACC\", \"initial\": \"LTIME#0ns\", \"update\": \"After comparing scan k, store ACTUAL O[k].PUMP_RUNTIME_ACC; never write into reference state.\"}",
     "accNext": "O[k].PUMP_RUNTIME_ACC, actual post-scan LTIME; never reference accumulator.",
     "interface names": "Identically named sampled input or end-of-scan output.",
-    "CompleteBehaviorV2": "令(Sref[k+1], E[k])=T_PUB004(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\n物理采样时钟首拍0、以后累加dt_ms。permit=VISCOSITY_OK & PASTE_E_STOP_NC；首次permit真时记录起点，假时清起点，run=permit且年龄>=固定正DebounceTime。acc初值0；accAfter=accBefore+(run?CycleTime:0)，CycleTime先解释为纳秒；maint=accAfter>=500h。累计域0..2^63-1纳秒。",
+    "CompleteBehaviorV2": "令(Sref[k+1], E[k])=T_PUB004(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\n物理采样时钟首拍0、以后累加dt_ms；CycleTime与采样周期dt_ms一致，首拍运行工时按CycleTime语义计入。permit=VISCOSITY_OK & PASTE_E_STOP_NC；首次permit真时记录起点，假时清起点，run=permit且年龄>=固定正DebounceTime。acc初值0；accAfter=accBefore+(run?CycleTime:0)，CycleTime先解释为纳秒；maint=accAfter>=500h。累计域0..2^63-1纳秒。",
     "TimeTick": "Boolean: floor(t[k]/1ms)>floor(t[k-1]/1ms), with t[0]=0, TimeTick[0]=FALSE, t[k]=sum(dt_ms[1..k]). G(F(TimeTick)) states unbounded physical time progress; merely positive dt is insufficient.",
     "VISCOSITY_OK": "I[k].VISCOSITY_OK: sampled input (BOOL).",
     "PASTE_E_STOP_NC": "I[k].PASTE_E_STOP_NC: sampled input (BOOL).",
@@ -161,7 +173,8 @@
     "CycleTime": "I[k].CycleTime: sampled input (TIME).",
     "VFD_RUN": "O[k].VFD_RUN: independently observed post-scan candidate value (BOOL); never defined as expected output.",
     "PUMP_MAINT_DUE": "O[k].PUMP_MAINT_DUE: independently observed post-scan candidate value (BOOL); never defined as expected output.",
-    "PUMP_RUNTIME_ACC": "O[k].PUMP_RUNTIME_ACC: independently observed post-scan candidate value (LTIME); never defined as expected output."
+    "PUMP_RUNTIME_ACC": "O[k].PUMP_RUNTIME_ACC: independently observed post-scan candidate value (LTIME); never defined as expected output.",
+    "init": "At the separate pre-invocation initial observation before scan k=0: O_init.VFD_RUN=false, O_init.PUMP_MAINT_DUE=false, O_init.PUMP_RUNTIME_ACC=\"LTIME#0ns\"."
   },
   "tests": [
     {
@@ -479,7 +492,8 @@
             "PUMP_RUNTIME_ACC": "LTIME#0ms",
             "PUMP_MAINT_DUE": false
           },
-          "dt_ms": 0
+          "dt_ms": 0,
+          "dt_tolerance_ms": 0
         },
         {
           "inputs": {
@@ -493,7 +507,8 @@
             "PUMP_RUNTIME_ACC": "LTIME#0ms",
             "PUMP_MAINT_DUE": false
           },
-          "dt_ms": 1000
+          "dt_ms": 1000,
+          "dt_tolerance_ms": 0
         },
         {
           "inputs": {
@@ -507,7 +522,8 @@
             "PUMP_RUNTIME_ACC": "LTIME#0ms",
             "PUMP_MAINT_DUE": false
           },
-          "dt_ms": 2000
+          "dt_ms": 2000,
+          "dt_tolerance_ms": 0
         },
         {
           "inputs": {
@@ -521,7 +537,8 @@
             "PUMP_RUNTIME_ACC": "LTIME#0ms",
             "PUMP_MAINT_DUE": false
           },
-          "dt_ms": 999
+          "dt_ms": 999,
+          "dt_tolerance_ms": 0
         },
         {
           "inputs": {
@@ -535,15 +552,142 @@
             "PUMP_RUNTIME_ACC": "LTIME#100ms",
             "PUMP_MAINT_DUE": false
           },
-          "dt_ms": 1
+          "dt_ms": 1,
+          "dt_tolerance_ms": 0
+        }
+      ]
+    },
+    {
+      "id": "PUB004.T5",
+      "description": "Exact 500h (1800000000 ms) maintenance boundary beyond signed 32-bit TIME, plus post-E-stop re-debounce and restart.",
+      "steps": [
+        {
+          "inputs": {
+            "VISCOSITY_OK": true,
+            "PASTE_E_STOP_NC": true,
+            "DebounceTime": "T#1s",
+            "CycleTime": "T#1s"
+          },
+          "expected": {
+            "VFD_RUN": false,
+            "PUMP_MAINT_DUE": false,
+            "PUMP_RUNTIME_ACC": "LTIME#0ms"
+          },
+          "dt_ms": 0,
+          "dt_tolerance_ms": 0
+        },
+        {
+          "inputs": {
+            "VISCOSITY_OK": true,
+            "PASTE_E_STOP_NC": true,
+            "DebounceTime": "T#1s",
+            "CycleTime": "T#1000ms"
+          },
+          "expected": {
+            "VFD_RUN": true,
+            "PUMP_MAINT_DUE": false,
+            "PUMP_RUNTIME_ACC": "LTIME#1000ms"
+          },
+          "dt_ms": 1000,
+          "dt_tolerance_ms": 0
+        },
+        {
+          "inputs": {
+            "VISCOSITY_OK": true,
+            "PASTE_E_STOP_NC": true,
+            "DebounceTime": "T#1s",
+            "CycleTime": "T#1799998999ms"
+          },
+          "expected": {
+            "VFD_RUN": true,
+            "PUMP_MAINT_DUE": false,
+            "PUMP_RUNTIME_ACC": "LTIME#1799999999ms"
+          },
+          "dt_ms": 1799998999,
+          "dt_tolerance_ms": 0
+        },
+        {
+          "inputs": {
+            "VISCOSITY_OK": true,
+            "PASTE_E_STOP_NC": true,
+            "DebounceTime": "T#1s",
+            "CycleTime": "T#1ms"
+          },
+          "expected": {
+            "VFD_RUN": true,
+            "PUMP_MAINT_DUE": true,
+            "PUMP_RUNTIME_ACC": "LTIME#1800000000ms"
+          },
+          "dt_ms": 1,
+          "dt_tolerance_ms": 0
+        },
+        {
+          "inputs": {
+            "VISCOSITY_OK": true,
+            "PASTE_E_STOP_NC": false,
+            "DebounceTime": "T#1s",
+            "CycleTime": "T#100ms"
+          },
+          "expected": {
+            "VFD_RUN": false,
+            "PUMP_MAINT_DUE": true,
+            "PUMP_RUNTIME_ACC": "LTIME#1800000000ms"
+          },
+          "dt_ms": 100,
+          "dt_tolerance_ms": 0
+        },
+        {
+          "inputs": {
+            "VISCOSITY_OK": true,
+            "PASTE_E_STOP_NC": true,
+            "DebounceTime": "T#1s",
+            "CycleTime": "T#999ms"
+          },
+          "expected": {
+            "VFD_RUN": false,
+            "PUMP_MAINT_DUE": true,
+            "PUMP_RUNTIME_ACC": "LTIME#1800000000ms"
+          },
+          "dt_ms": 999,
+          "dt_tolerance_ms": 0
+        },
+        {
+          "inputs": {
+            "VISCOSITY_OK": true,
+            "PASTE_E_STOP_NC": true,
+            "DebounceTime": "T#1s",
+            "CycleTime": "T#999ms"
+          },
+          "expected": {
+            "VFD_RUN": false,
+            "PUMP_MAINT_DUE": true,
+            "PUMP_RUNTIME_ACC": "LTIME#1800000000ms"
+          },
+          "dt_ms": 999,
+          "dt_tolerance_ms": 0
+        },
+        {
+          "inputs": {
+            "VISCOSITY_OK": true,
+            "PASTE_E_STOP_NC": true,
+            "DebounceTime": "T#1s",
+            "CycleTime": "T#1ms"
+          },
+          "expected": {
+            "VFD_RUN": true,
+            "PUMP_MAINT_DUE": true,
+            "PUMP_RUNTIME_ACC": "LTIME#1800000001ms"
+          },
+          "dt_ms": 1,
+          "dt_tolerance_ms": 0
         }
       ]
     }
   ],
-  "specification_version": "2.1-normalized-20261111",
+  "specification_version": "2.2-normalized-20261112",
   "specification_contract": {
     "observation": "I[k] is sampled before execution; O[k] is observed after execution. Initial conditions apply before invocation zero.",
-    "normative_completion": "令(Sref[k+1], E[k])=T_PUB004(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\n物理采样时钟首拍0、以后累加dt_ms。permit=VISCOSITY_OK & PASTE_E_STOP_NC；首次permit真时记录起点，假时清起点，run=permit且年龄>=固定正DebounceTime。acc初值0；accAfter=accBefore+(run?CycleTime:0)，CycleTime先解释为纳秒；maint=accAfter>=500h。累计域0..2^63-1纳秒。",
+    "normative_completion": "令(Sref[k+1], E[k])=T_PUB004(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\n物理采样时钟首拍0、以后累加dt_ms；CycleTime与采样周期dt_ms一致，首拍运行工时按CycleTime语义计入。permit=VISCOSITY_OK & PASTE_E_STOP_NC；首次permit真时记录起点，假时清起点，run=permit且年龄>=固定正DebounceTime。acc初值0；accAfter=accBefore+(run?CycleTime:0)，CycleTime先解释为纳秒；maint=accAfter>=500h。累计域0..2^63-1纳秒。",
     "history_binding": "I, O and Sref namespaces, initialization and updates are defined in normalized_specification.observation, history_bindings and reference_state_initial. Candidate output never drives Sref.",
     "evaluation_scope": "Versioned executable scan predicate plus LTL over interpreted predicates. No native checker encoding or completed formal proof is claimed.",
     "review_source": "docs/规约逐题审查_20261106/PUB004.md",
@@ -594,7 +738,8 @@
         "reference": null,
         "phase": 0,
         "previous_mode": null,
-        "clock": 0.0,
+        "clock": 0,
+        "first": true,
         "heat_start": null,
         "protection_start": null,
         "demand": false
@@ -605,16 +750,16 @@
       "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('PUB004'); constructed once per independent case, current state is Sref[k].",
       "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
       "module_sha256": {
-        "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
-        "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
-        "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
-        "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
-        "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+        "scan_contract.py": "2ebdbeb0bacd3c6154e1add2fd358f1aadc9ac9c9322a9201798065154353f48",
+        "array_contracts.py": "f541ffe0e28c56e84ad737b06aa8c8ee6180b1afda720b7c41cc8fccad2d8ecd",
+        "data_contracts.py": "0792c46b303ce62a0a2180bcf4d7ebfe4838ccfaa18deb331780af1819377b3a",
+        "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
+        "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
         "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-        "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+        "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
       },
       "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-      "frozen_sources": "dataset/specifications/normalized_transition_v1"
+      "frozen_sources": "dataset/specifications/normalized_transition_v2"
     },
     "constrained_observed_fields": [
       "PUMP_MAINT_DUE",
@@ -682,8 +827,10 @@
       "An E-stop resets debounce validity as well as incomplete timing, so re-enabling requires a full new qualification.",
       "At each invocation, add the supplied CycleTime to the LTIME accumulator iff the end-of-scan VFD_RUN is TRUE. Do not use TIME for the 500-hour accumulator.",
       "PUMP_MAINT_DUE is a level comparison accumulated runtime>=500h and has no reset input. Its threshold case is specified but is not a short practical runtime test.",
-      "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
-      "DebounceTime is a strictly positive constant throughout each test case. Dynamic changes are outside this benchmark domain. Time must advance for eventual-start properties."
+      "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+      "DebounceTime is a strictly positive constant throughout each test case. Dynamic changes are outside this benchmark domain. Time must advance for eventual-start properties.",
+      "On timed benchmark tests, CycleTime equals the step dt_ms. Both DebounceTime and CycleTime use exact integer nanoseconds within unsigned 32-bit IEC TIME bounds (<=4294967295 ms), whereas PUMP_RUNTIME_ACC uses 64-bit LTIME (0..2^63-1 ns). Scan k=0 initializes the debounce clock at 0 ms but adds CycleTime to PUMP_RUNTIME_ACC if end-of-scan VFD_RUN is TRUE.",
+      "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
     ],
     "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
     "limitations": [
@@ -691,6 +838,6 @@
       "Focused legacy LTL predicates still require backend lowering; normalization is not model-checker acceptance.",
       "Finite matching cannot establish liveness or validate runtime provenance."
     ],
-    "rules_zh": "物理采样时钟首拍0、以后累加dt_ms。permit=VISCOSITY_OK & PASTE_E_STOP_NC；首次permit真时记录起点，假时清起点，run=permit且年龄>=固定正DebounceTime。acc初值0；accAfter=accBefore+(run?CycleTime:0)，CycleTime先解释为纳秒；maint=accAfter>=500h。累计域0..2^63-1纳秒。"
+    "rules_zh": "物理采样时钟首拍0、以后累加dt_ms；CycleTime与采样周期dt_ms一致，首拍运行工时按CycleTime语义计入。permit=VISCOSITY_OK & PASTE_E_STOP_NC；首次permit真时记录起点，假时清起点，run=permit且年龄>=固定正DebounceTime。acc初值0；accAfter=accBefore+(run?CycleTime:0)，CycleTime先解释为纳秒；maint=accAfter>=500h。累计域0..2^63-1纳秒。"
   }
 }

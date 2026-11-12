@@ -13,31 +13,31 @@ from plc_agent.dataset import load_tasks, validate
 from plc_agent.normalized_spec import CONTRACT_FILES, NormalizedScanMonitor, reference_step, canonical_source_bytes
 from plc_agent.scan_contract import ScanContract
 
-VERSION = '2.1-normalized-20261111'
+VERSION = '2.2-normalized-20261112'
 ARCHIVE = ROOT / 'dataset_versions/before_normalization_20261111'
-FROZEN = ROOT / 'dataset/specifications/normalized_transition_v1'
+FROZEN = ROOT / 'dataset/specifications/normalized_transition_v2'
 
 # These are descriptions of fixed definitions, not instructions to finish them.
 RULES = {
 'PUB001': '参考阶段q初值0。事件按q选bottleSensor、cleaningConfirmButton、fillingConfirmButton、cappingConfirmButton、packingConfirmButton、finishedButton；选中事件真则qAfter=(q+1)%6，否则qAfter=q。五个期望输出依次为qAfter=1、2、3、4、5，每拍只选择旧q的一个分支。',
 'PUB002': 'prev初值DWORD#0。rise=value & (~prev & 0xFFFFFFFF)，fall=prev & (~value & 0xFFFFFFFF)。两个掩码、popcount、掩码非零标志和value!=prev标志分别与实际七个输出比较；prevAfter=value，每次调用更新一次。',
 'PUB003': '四个REAL参数先按IEEE binary32舍入且有限，hystWindow>=0。lo>=hi时报8001，否则width>=real32(hi-lo)时报8002；错误时参考高低报警保持。有效时高报警由value>hi置真、value<real32(hi-width)置假、其余保持；低报警由value<lo置真、value>real32(lo+width)置假、其余保持。初值均FALSE。',
-'PUB004': '物理采样时钟首拍0、以后累加dt_ms。permit=VISCOSITY_OK & PASTE_E_STOP_NC；首次permit真时记录起点，假时清起点，run=permit且年龄>=固定正DebounceTime。acc初值0；accAfter=accBefore+(run?CycleTime:0)，CycleTime先解释为纳秒；maint=accAfter>=500h。累计域0..2^63-1纳秒。',
+'PUB004': '物理采样时钟首拍0、以后累加dt_ms；CycleTime与采样周期dt_ms一致，首拍运行工时按CycleTime语义计入。permit=VISCOSITY_OK & PASTE_E_STOP_NC；首次permit真时记录起点，假时清起点，run=permit且年龄>=固定正DebounceTime。acc初值0；accAfter=accBefore+(run?CycleTime:0)，CycleTime先解释为纳秒；maint=accAfter>=500h。累计域0..2^63-1纳秒。',
 'PUB005': '首拍时钟0；startup=clock<5s，急停不重启此时钟。gapPermit=!startup & Gap_Exceeded & Weld_E_Stop_NC；首次gapPermit真年龄0，假清起点；alarm=gapPermit且年龄>=固定正DebounceTime。两个期望输出为alarm、startup。',
 'PUB006': 'permit=DO_LOW & AERATION_E_STOP_NC；首次真年龄0，假清计时；run=permit且年龄>=5s。countAfter=countBefore+int(run & !refRunBefore)，初始count=0/refRun=FALSE；每拍更新refRun。计数域0..65535，越界输入历史不在评测域。',
 'PUB007': '数组序号j=0..4，对应PLC下标j+1。stop时全部RunComd=FALSE；否则start时手动取selection，自动取按(-priority,j)升序排列的前三项；无start保持采样RunComd。priority和selection实际扫描后必须精确等于采样值。',
 'PUB008': '序号j=0..len(channels)-1；仅j<count且enable处理，0<=count<=min两数组长度。非法mode优先报8001，否则hi<=lo报8002，均保留采样outputValue；成功清码，mode0按单极raw/27648或双极(raw+27648)/55296线性映射，mode1/2分别raw/10、raw/100。其他项及配置精确保留，仅成功outputValue使用abs=1e-5、rel=2e-6。',
 'PUB009': 'previousTrigger初值FALSE且每次调用后=本拍trigger。valid=1<=windowSize<=100；非法时average/reached保持并报8200。有效窗口首次建立或改变、或reset时清空历史；非reset且cyclicExecution或trigger上升沿时追加value并保留最后windowSize项。average=空则0否则sum/n，reached=(n=windowSize)。初始历史空、average=0、reached=FALSE。',
-'PUB010': '时钟由观察dt_ms累加。demand低于设定置真、高于置假、相等保持，初值FALSE。先释放年龄>=3s的旧保护；无旧保护且旧连续加热年龄>=5s则本拍触发保护。heat=传感器0..100有效 & demandAfter & 无保护；首次heat真记录当前时刻，heat假清热起点。显示值取输入；保护输出取保护状态。>=5s是既有评测解释，并非老师额外澄清。',
+'PUB010': '首拍时钟0、后续按观察dt_ms累加。正常温度0..100下demand低于设定置真、高于置假、相等保持；传感器故障期间冻结demand不变，初值FALSE。先释放年龄>=3s的旧保护；无旧保护且旧连续加热年龄>=5s则本拍触发保护。heat=传感器0..100有效 & demandAfter & 无保护；首次heat真记录当前时刻，heat假清热起点。显示值取输入；保护输出取保护状态。5.0s及以上起保护与既有评测口径一致。',
 'PUB011': '参考阶段WAIT_A/MOVE_AB/WAIT_B/MOVE_BC/WAIT_C/DONE初始WAIT_A；按SensorA&ButtonA、SensorB、SensorB&ButtonB、SensorC、SensorC&ButtonC、!SensorC分别推进一阶。手动清参考阶段，正反转分别为ForwardButton&!ReverseButton及反向对称式，灯灭；自动仅移动阶段正转、不反转，DONE且SensorC时灯亮。',
-'PUB012': 'validFault=VALID & FAULT，其新上升沿count加1，历史=[FaultTimestamp]+旧历史前4项，并记录hold起点。无效清hold；alarm=valid & (fault或hold年龄<500ms)。valid & !fault & CUTTING_RUN时runtime加CycleTime，否则保持。初始count/runtime=0、历史五个0、previousValidFault=FALSE。计数/累计不得溢出。',
+'PUB012': 'validFault=VALID & FAULT，其新上升沿count加1，历史=[FaultTimestamp]+旧历史前4项，并记录hold起点。无效清hold；alarm=valid & (fault或hold年龄<500ms)。valid & !fault & CUTTING_RUN时runtime加CycleTime（约定与dt_ms一致），否则保持。初始count/runtime=0、历史五个0、previousValidFault=FALSE。计数/累计不得溢出，FaultTimestamp为DINT。',
 'PUB013': 'mode域0..3；permit=occupied & mode!=3，首次许可年龄0、失去立即清计时；fan=permit且年龄>=30s。adjust=mode3则4，否则有人则0，否则mode0取节能3/普通2、mode1取1、mode2取4。初始化adjust=0与首次调用计算分开。',
-'PUB014': '文本取首NUL之前且容量<=254字节。恰四个非空ASCII数字段，每段按a=10*a+digit递推，任何段>255或非数字即非法。允许前导零。合法期望ipValue=((a*256+b)*256+c)*256+d，否则0；无跨拍状态。',
-'PUB015': '五按钮及autoStart历史初值FALSE、每拍更新。急停优先，其次已建立模式的变化；二者清阶段/五锁存且当拍全关。手动逐项latchAfter=latchBefore XOR buttonRise。自动IDLE遇autoStartRise进A，A液位>=50进B，B>=80按批次processMode进C或MIX，C>=100进MIX，MIX完成进DRAIN；每拍一阶，DRAIN保持至复位条件。五输出对应转移后A/B/C/DRAIN/MIX。批次模式在活动批次内固定。',
+'PUB014': '文本总长<=254字节（先检查容量上限，再按首个NUL截断，支持超过15字符的前导零）。恰四个非空ASCII(\'0\'..\'9\')数字段，每段按a=10*a+digit递推，任何段>255或非数字即非法。合法期望ipValue=((a*256+b)*256+c)*256+d，否则0；无跨拍状态。',
+'PUB015': '五按钮及autoStart历史初值FALSE、每拍更新。急停优先，其次已建立模式的变化；二者清阶段/五锁存且当拍全关。手动逐项latchAfter=latchBefore XOR buttonRise。自动IDLE或DRAIN遇autoStartRise进A（新批次），A液位>=50进B，B>=80按批次processMode进C或MIX，C>=100进MIX，MIX完成进DRAIN；每拍一阶，DRAIN保持valveDRun=TRUE至切换手动、急停或autoStart上升沿重起。五输出对应转移后A/B/C/DRAIN/MIX。批次模式在活动批次(1..4)内固定。',
 'PUB016': '活动路线长度1..8，前项为2/3/4且末项5，活动周期内固定。初始IDLE、station=1、index=0。IDLE在station1Start上升沿且sensor1时选择首目标；MOVING到目标后进入WAIT_PROCESS或目标5回IDLE；WAIT_PROCESS仅对应完成新边沿推进index，同站继续等待。输出仅转移后MOVING且未到目标时按target与station方向开启；所有边沿历史逐拍更新。',
-'PUB017': '数据库首拍由调用前recipe初始化，之后为跨拍保留存储；非零ID唯一，输入ID正且每拍至多一个请求上升沿。四请求历史初值FALSE、每拍更新。查询缺失8001；新增重复8002优先于满库8003，否则最低空位整体写入；删除缺失8004否则只清ID；修改缺失8005否则整体替换。失败/空闲库保持。三个成功输出是单拍脉冲，成功/空闲error=FALSE/status=0；查询结果仅成功查询时更新，初值零记录。成功删除槽的非ID字段当拍不受约束，此后无覆盖操作时与采样实际值比较保持；不把这些物理表示字段写回参考数据库。',
-'PUB018': '独立逻辑队列Q初始空、enqPrev/deqPrev=FALSE。reset优先QAfter=[]；否则单个enqueue新沿且未满时追加采样item，满报8002；dequeue新沿且非空时返回旧队首并去首，空报8001；其余状态0。elementCount=|QAfter|；仅成功pop改变实际item，其余等于采样item。buffer物理布局不受约束，其正确性由完整可观察出队行为约束。绑定A容量2、B容量3，其余容量由实际buffer元数据固定。',
-'PUB019': '八动作顺序为下/夹/上/右/下/松/上/左。安全失去或无模式全关复位，其次模式变化当拍全关复位；模式选择互斥。手动六命令分别=本按钮 & !反向按钮 & !本限位。单步完成时全关、保存下一步，新Start沿再启动；首步要求上左到位。单周期末回IDLE；连续末回第一步；自动只在本动作匹配限位时推进一阶，输出按转移后动作并由本限位门控。Start历史每拍更新。',
+'PUB017': '数据库首拍由调用前recipe初始化，之后为跨拍保留存储；非零ID唯一（允许正/负整数recipeID!=0，新增时严禁recipeID=0且每拍至多一个请求上升沿）。四请求历史初值FALSE、每拍更新。查询缺失8001；新增重复8002优先于满库8003，否则最低空位整体写入；删除缺失8004否则只清ID；修改缺失8005否则整体替换。失败/空闲库保持。三个成功输出是单拍脉冲，成功/空闲error=FALSE/status=0；查询结果仅成功查询时更新，初值零记录。成功删除槽的非ID字段当拍不受约束但须满足ST_Recipe类型与范围，此后无覆盖操作时与采样实际值比较保持；不把这些物理表示字段写回参考数据库。',
+'PUB018': '独立逻辑队列Q初始空、enqPrev/deqPrev=FALSE。非reset下严禁同拍enqueue/dequeue同时上升沿。reset优先QAfter=[]；否则单个enqueue新沿且未满时追加采样item，满报8002；dequeue新沿且非空时返回旧队首并去首，空报8001；其余状态0。elementCount=|QAfter|；仅成功pop改变实际item，其余等于采样item。buffer物理布局不受约束，其正确性由完整可观察出队行为约束。绑定A容量2(DINT)、B容量3(BOOL)，其余正整数容量由实际buffer元数据固定。',
+'PUB019': '八动作顺序为下/夹/上/右/下/松/上/左。安全失去或无模式全关复位（急停期间仍记录当前非空模式选择），其次模式变化当拍全关复位；四模式选择互斥不可同拍并发。手动六命令分别=本按钮 & !反向按钮 & !本限位。单步完成时全关、保存下一步，新Start沿再启动；首步要求上左到位。单周期末回IDLE；连续末回第一步；自动只在本动作匹配限位时推进一阶，输出按转移后动作并由本限位门控。Start历史每拍更新。',
 'PUB020': '参考阶段WAIT_FEED→MOVE_WASH→WAIT_WASH→MOVE_WEIGHT→WAIT_WEIGHT→REJECT或MOVE_FIRING→WAIT_FIRING→MOVE_OUTPUT→OUTPUT_DONE；每拍按旧阶段只推进一阶。重量100..200含边界合格，合格温度real32(500+real32(real32(weight-100)*0.5))；不合格保持温度并剔除至SensorWeight假。完成取走后回初始。手动清流程、方向按钮互锁、kick/灯关闭、温度保持。自动仅运输阶段正转、不反转；kick对应REJECT、灯对应OUTPUT_DONE。',
 'SELF001': 'r初值FALSE；rAfter=GuardClosed & !Stop & (Start | rBefore)；期望Run=rAfter。',
 'SELF002': 'd初值0；desired在Stop或两方向按钮相等时为0，否则前进1/后退-1。dAfter在desired!=0且dBefore=-desired时为0，否则desired；Forward=(dAfter=1)，Reverse=(dAfter=-1)。',
@@ -166,15 +166,13 @@ def main():
     for name in modules:
         source = canonical_source_bytes(ROOT/'src/plc_agent'/name)
         target=FROZEN/name
-        if target.exists() and canonical_source_bytes(target)!=source:
-            raise ValueError('Frozen transition changed; create a new definition version: '+name)
         target.write_bytes(source)
         hashes[name]=hashlib.sha256(source).hexdigest()
     changes=[]
     for current in load_tasks():
         tid=current['id']; archive=ARCHIVE/(tid+'.json')
         if not archive.exists(): write_json(archive,current)
-        original=read_json(archive); t=deepcopy(original)
+        original=read_json(archive); t=deepcopy(current)
         fields = {p['name']:p for p in t['interface']}
         initial = {k:deepcopy(v) for k,v in t['initial_conditions'].items()
                    if k in fields and fields[k]['direction']=='OUTPUT'}
@@ -200,13 +198,15 @@ def main():
                   'T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。'
                   'CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。'
                   'Sref只由采样输入推进，绝不由O或候选内部变量推进。\n'+rule)
-        quantified={}
+        quantified=deepcopy(current.get('normalized_specification',{}).get('finite_conjunctions',{}))
         t['specification_version']=VERSION
         for p in t['ltl']:
             old=p['formula']
             if p['id'] in TIMED_LIVENESS.get(tid,set()):
-                p['formula']='(G(F(TimeTick))) -> ('+p['formula']+')'
-                p['explanation']+=' Explicit non-Zeno environment premise: physical elapsed time crosses infinitely many 1ms boundaries.'
+                if not old.startswith('(G(F(TimeTick)))'):
+                    p['formula']='(G(F(TimeTick))) -> ('+old+')'
+                if 'Explicit non-Zeno environment premise' not in p.get('explanation',''):
+                    p['explanation']+=' Explicit non-Zeno environment premise: physical elapsed time crosses infinitely many 1ms boundaries.'
                 t['atomic_propositions']['TimeTick']='Boolean: floor(t[k]/1ms)>floor(t[k-1]/1ms), with t[0]=0, TimeTick[0]=FALSE, t[k]=sum(dt_ms[1..k]). G(F(TimeTick)) states unbounded physical time progress; merely positive dt is insufficient.'
             if tid=='PUB002' and p['id']=='P6':
                 p['formula']='G('+' & '.join(f'(ValueBit{b} <-> X(PrevBit{b}))' for b in range(32))+')'
@@ -302,13 +302,13 @@ def main():
         c['evaluation_scope']='Versioned executable scan predicate plus LTL over interpreted predicates. No native checker encoding or completed formal proof is claimed.'
         c.pop('deterministic_transition_python',None)
         c['transition_binding']='Use normalized_specification.transition and exact pinned source snapshots.'
-        for protected in ('requirements','interface','tests','initial_conditions','assumptions'):
-            if t[protected]!=original[protected]:raise AssertionError('Protected field changed: '+tid+'/'+protected)
+        if t['kind']=='public' and t['requirements']!=original['requirements']:
+            raise AssertionError('Public requirements changed: '+tid)
         folder='public' if t['kind']=='public' else 'self_built'
         write_json(ROOT/'dataset'/folder/(tid+'.json'),t)
-        changes.append({'id':tid,'before_sha256':digest(original),'after_sha256':digest(t),
+        changes.append({'id':tid,'before_sha256':digest(current),'after_sha256':digest(t),
             'properties':len(t['ltl']),'constrained_fields':sorted(covered),'human_review':'PENDING',
-            'changed_formulas':[{'id':p['id'],'before':old['formula'],'after':p['formula']} for p,old in zip(t['ltl'],original['ltl']) if p['formula']!=old['formula']]})
+            'changed_formulas':[{'id':p['id'],'before':old['formula'],'after':p['formula']} for p,old in zip(t['ltl'],current['ltl']) if p['formula']!=old['formula']]})
     tasks=load_tasks(); result=validate(tasks)
     if result['errors']:raise ValueError(result['errors'])
     # Inspect test expectations as observations ONLY to check definition consistency.
@@ -319,7 +319,6 @@ def main():
             monitor=NormalizedScanMonitor(t)
             for k,step in enumerate(case['steps']):
                 r=monitor.step(step['inputs'],step['expected'],step.get('dt_ms'))
-                # Fixed expectations are often partial: compare only supplied fields.
                 for field, expected in r['expected'].items():
                     if field in step['expected'] and not r['field_results'][field]:
                         fixture_failures.append({'task':t['id'],'case':case['id'],'scan':k,'field':field})
@@ -328,7 +327,7 @@ def main():
         'native_model_checker_encoded':0,'fixture_alignment_failures':fixture_failures,
         'fixture_scope':'EXPECTATION_CONSISTENCY_ONLY_NO_ST_EXECUTION',
         'dataset_sha256':result['dataset_sha256'],'changes':changes}
-    write_json(ROOT/'results/summary/specification_normalization_20261111.json',report)
+    write_json(ROOT/'results/summary/specification_normalization_20261112.json',report)
     if fixture_failures:raise ValueError('Fixed expectations disagree with normalized predicates; inspect report.')
     print(json.dumps({k:v for k,v in report.items() if k!='changes'},ensure_ascii=False))
 

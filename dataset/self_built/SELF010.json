@@ -12,7 +12,7 @@
     "rationale": "A panel alarm retains the event after a fault clears, silences the horn after acknowledgment, and sounds again for a new fault edge.",
     "review": "Assistant consistency review of initialization, simultaneous commands, retained state and recovery boundaries; independent Python oracle checked against manual expected traces. Not an industrial safety certification or external expert review."
   },
-  "requirements": "Initialize Alarm and Acknowledged FALSE and previous Fault FALSE. A Fault sets Alarm. A rising Fault also clears Acknowledged, taking priority over Ack on that scan. While Fault remains TRUE, Ack can set Acknowledged. When Fault is FALSE the alarm remains latched; Ack can acknowledge that retained alarm. Reset clears both values only when Fault is FALSE, taking priority over Ack then. A new Fault rising edge reannunciates even if an old alarm was already latched. Horn equals Alarm AND NOT Acknowledged. Always update the previous Fault sample.",
+  "requirements": "# SELF010: Latching Alarm Annunciator with Acknowledge and Horn\n\n## Background\nISA-style latching alarm annunciator with acknowledgment and horn silence logic.\n\n## Functional Requirements\n1. Inputs: `Fault`, `Ack`, `Reset` (`BOOL`). Edge memory `previous_fault` initializes `FALSE` and updates on EVERY scan.\n2. If `Reset = TRUE AND Fault = FALSE`, clear `Alarm := FALSE` and `Acknowledged := FALSE`.\n3. Else if `Fault = TRUE`: set `Alarm := TRUE`; on a new `Fault` rising edge clear `Acknowledged := FALSE`, else if `Ack = TRUE` set `Acknowledged := TRUE`.\n4. Else (`Fault = FALSE` and no valid reset): retain `Alarm`, and if `Alarm = TRUE AND Ack = TRUE` set `Acknowledged := TRUE`.\n5. Set `Horn := Alarm AND NOT Acknowledged` on every scan.\n\n## Interface\n- **Inputs:** `Fault: BOOL`, `Ack: BOOL`, `Reset: BOOL`\n- **Outputs:** `Alarm: BOOL`, `Acknowledged: BOOL`, `Horn: BOOL`\n\n## Initial Values\n- `Alarm=false`, `Acknowledged=false`, `previous_fault=false`, `Horn=false`\n\n## Timing & Evaluation Conventions\nIf `Reset = TRUE` while `Fault = TRUE`, reset is ignored and the alarm remains active.",
   "scenario": "A panel alarm retains the event after a fault clears, silences the horn after acknowledgment, and sounds again for a new fault edge.",
   "interface": [
     {
@@ -55,7 +55,8 @@
   "initial_conditions": {
     "Alarm": false,
     "Acknowledged": false,
-    "previous_fault": false
+    "previous_fault": false,
+    "Horn": false
   },
   "scan_semantics": "At scan k, sample every input once, read retained pre-state q[k], execute one transition, and observe outputs O[k] at the end of that same scan. Updated state becomes q[k+1]. Reset the instance before each test. Step 0 executes normally; initial conditions describe pre-state, not an extra delayed scan. All timing in this task is explicitly counted in invocations, not wall time.",
   "safety_priority": [
@@ -64,7 +65,8 @@
     "Reset then precedes Ack"
   ],
   "assumptions": [
-    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
   ],
   "atomic_propositions": {
     "Fault": "I[k].Fault: sampled input (BOOL).",
@@ -78,9 +80,20 @@
     "qFault": "{\"kind\": \"previous_sampled_input\", \"source\": \"I[k-1].Fault\", \"initial\": false, \"update\": \"After EVERY scan k, including invalid/reset/stop, store I[k].Fault\"}",
     "qAlarm": "{\"kind\": \"previous_observed_output\", \"source\": \"O[k-1].Alarm\", \"initial\": false, \"update\": \"After comparing scan k, store ACTUAL O[k].Alarm; never write into reference state.\"}",
     "qAck": "{\"kind\": \"previous_observed_output\", \"source\": \"O[k-1].Acknowledged\", \"initial\": false, \"update\": \"After comparing scan k, store ACTUAL O[k].Acknowledged; never write into reference state.\"}",
-    "CompleteBehaviorV2": "令(Sref[k+1], E[k])=T_SELF010(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\nlatched/ack/previousFault初值FALSE。Reset & !Fault时清latched/ack；否则Fault时置latched，若Fault新沿清ack、否则Ack置ack；否则旧latched且Ack置ack，其余保持。Alarm=latchedAfter，Acknowledged=ackAfter，Horn=latchedAfter & !ackAfter。previousFault每拍=Fault。"
+    "CompleteBehaviorV2": "令(Sref[k+1], E[k])=T_SELF010(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\nlatched/ack/previousFault初值FALSE。Reset & !Fault时清latched/ack；否则Fault时置latched，若Fault新沿清ack、否则Ack置ack；否则旧latched且Ack置ack，其余保持。Alarm=latchedAfter，Acknowledged=ackAfter，Horn=latchedAfter & !ackAfter。previousFault每拍=Fault。",
+    "init": "At the separate pre-invocation initial observation before scan k=0: O_init.Alarm=false, O_init.Acknowledged=false, O_init.Horn=false."
   },
   "ltl": [
+    {
+      "id": "P_init",
+      "kind": "safety",
+      "formula": "init",
+      "description": "Before the first scan invocation, all declared OUTPUT variables and initial instance state hold their declared initial values.",
+      "explanation": "Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "INITIAL_INSTANCE"
+    },
     {
       "id": "P1",
       "formula": "G(Horn <-> (Alarm & !Acknowledged))",
@@ -125,6 +138,26 @@
       "id": "P6",
       "formula": "G((!rise & !(Reset & !Fault) & Ack & qAlarm) -> Acknowledged)",
       "explanation": "Acknowledgment silences a retained event.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "P7",
+      "kind": "safety",
+      "formula": "G(!Fault & !qAlarm -> (!Alarm & !Acknowledged & !Horn))",
+      "description": "When no fault is active and no alarm was latched before the scan, Alarm, Acknowledged, and Horn stay FALSE even if Ack is pressed.",
+      "explanation": "Forbids spontaneous alarm or pre-acknowledgment on idle scans.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "P8",
+      "kind": "safety",
+      "formula": "G((qAlarm & !(Reset & !Fault) & !rise & !Ack) -> (Acknowledged <-> qAck))",
+      "description": "When an existing alarm remains unreset without a new Fault rising edge or Ack, Acknowledged retains its prior value.",
+      "explanation": "Preserves acknowledgment retention without requiring CompleteBehaviorV2.",
       "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
       "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
       "scope": "SCAN_SEQUENCE"
@@ -300,9 +333,99 @@
           }
         }
       ]
+    },
+    {
+      "id": "SELF010.boundary_ack_and_horn",
+      "description": "Latched-no-fault Ack silence, new Fault rising edge while Ack=T clears Acknowledged, idle Ack ignored, and Fault&Reset ignored.",
+      "steps": [
+        {
+          "inputs": {
+            "Fault": false,
+            "Ack": true,
+            "Reset": false
+          },
+          "expected": {
+            "Alarm": false,
+            "Acknowledged": false,
+            "Horn": false
+          }
+        },
+        {
+          "inputs": {
+            "Fault": true,
+            "Ack": false,
+            "Reset": false
+          },
+          "expected": {
+            "Alarm": true,
+            "Acknowledged": false,
+            "Horn": true
+          }
+        },
+        {
+          "inputs": {
+            "Fault": false,
+            "Ack": false,
+            "Reset": false
+          },
+          "expected": {
+            "Alarm": true,
+            "Acknowledged": false,
+            "Horn": true
+          }
+        },
+        {
+          "inputs": {
+            "Fault": false,
+            "Ack": true,
+            "Reset": false
+          },
+          "expected": {
+            "Alarm": true,
+            "Acknowledged": true,
+            "Horn": false
+          }
+        },
+        {
+          "inputs": {
+            "Fault": true,
+            "Ack": true,
+            "Reset": false
+          },
+          "expected": {
+            "Alarm": true,
+            "Acknowledged": false,
+            "Horn": true
+          }
+        },
+        {
+          "inputs": {
+            "Fault": true,
+            "Ack": false,
+            "Reset": true
+          },
+          "expected": {
+            "Alarm": true,
+            "Acknowledged": false,
+            "Horn": true
+          }
+        },
+        {
+          "inputs": {
+            "Fault": false,
+            "Ack": false,
+            "Reset": true
+          },
+          "expected": {
+            "Alarm": false,
+            "Acknowledged": false,
+            "Horn": false
+          }
+        }
+      ]
     }
   ],
-  "specification_version": "2.1-normalized-20261111",
+  "specification_version": "2.2-normalized-20261112",
   "specification_contract": {
     "observation": "I[k] is sampled before execution; O[k] is observed after execution. Initial conditions apply before invocation zero.",
     "normative_completion": "令(Sref[k+1], E[k])=T_SELF010(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\nlatched/ack/previousFault初值FALSE。Reset & !Fault时清latched/ack；否则Fault时置latched，若Fault新沿清ack、否则Ack置ack；否则旧latched且Ack置ack，其余保持。Alarm=latchedAfter，Acknowledged=ackAfter，Horn=latchedAfter & !ackAfter。previousFault每拍=Fault。",
@@ -323,7 +446,8 @@
     "candidate_formal_verification": "UNVERIFIED",
     "initial_observed": {
       "Alarm": false,
-      "Acknowledged": false
+      "Acknowledged": false,
+      "Horn": false
     },
     "reference_state_initial": {
       "class": "ScanContract",
@@ -346,7 +470,8 @@
         },
         "phase": 0,
         "previous_mode": null,
-        "clock": 0.0,
+        "clock": 0,
+        "first": true,
         "heat_start": null,
         "protection_start": null,
         "demand": false
@@ -357,16 +482,16 @@
       "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('SELF010'); constructed once per independent case, current state is Sref[k].",
       "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
       "module_sha256": {
-        "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
-        "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
-        "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
-        "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
-        "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+        "scan_contract.py": "2ebdbeb0bacd3c6154e1add2fd358f1aadc9ac9c9322a9201798065154353f48",
+        "array_contracts.py": "f541ffe0e28c56e84ad737b06aa8c8ee6180b1afda720b7c41cc8fccad2d8ecd",
+        "data_contracts.py": "0792c46b303ce62a0a2180bcf4d7ebfe4838ccfaa18deb331780af1819377b3a",
+        "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
+        "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
         "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-        "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+        "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
       },
       "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-      "frozen_sources": "dataset/specifications/normalized_transition_v1"
+      "frozen_sources": "dataset/specifications/normalized_transition_v2"
     },
     "constrained_observed_fields": [
       "Acknowledged",
@@ -428,7 +553,8 @@
       "time_progress": "Timed eventuality clauses explicitly require G(F(TimeTick)); TimeTick denotes crossing a new integer-ms boundary. Finite observations cannot establish this premise."
     },
     "assumptions": [
-      "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+      "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+      "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
     ],
     "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
     "limitations": [

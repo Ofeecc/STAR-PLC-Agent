@@ -65,6 +65,9 @@ class DataContract:
                 elif value > real32(lo+width): self.low = False
             return dict(hiAlarm=self.high, loAlarm=self.low, error=bool(status), status=status)
         if self.task_id == 'PUB009':
+            for req_key in ('cyclicExecution', 'trigger', 'reset'):
+                if type(i[req_key]) is not bool:
+                    raise ValueError(f'PUB009 requires Boolean {req_key}')
             size = i['windowSize']
             if type(size) is not int or not -32768 <= size <= 32767:
                 raise ValueError('windowSize outside INT domain')
@@ -111,15 +114,22 @@ class DataContract:
                 ]
                 self.recipes_initialized = True
 
-            add_req = bool(i.get('addRecipe'))
-            del_req = bool(i.get('deleteRecipe'))
-            mod_req = bool(i.get('modifyRecipe'))
-            qry_req = bool(i.get('queryRecipe'))
+            for req_key in ('addRecipe', 'deleteRecipe', 'modifyRecipe', 'queryRecipe'):
+                if type(i.get(req_key)) is not bool:
+                    raise ValueError(f'PUB017 requires Boolean {req_key}')
+
+            add_req = i['addRecipe']
+            del_req = i['deleteRecipe']
+            mod_req = i['modifyRecipe']
+            qry_req = i['queryRecipe']
 
             add_edge = add_req and not self.prev_add
             del_edge = del_req and not self.prev_delete
             mod_edge = mod_req and not self.prev_modify
             qry_edge = qry_req and not self.prev_query
+
+            if sum((add_edge, del_edge, mod_edge, qry_edge)) > 1:
+                raise ValueError('PUB017 forbids multiple simultaneous request rising edges')
 
             self.prev_add = add_req
             self.prev_delete = del_req
@@ -134,6 +144,13 @@ class DataContract:
 
             rec_in = i.get('recipeIn') or {}
             tid = rec_in.get('recipeID', 0)
+            ing_type = rec_in.get('ingredientType', 0)
+            if type(tid) is not int or not -32768 <= tid <= 32767:
+                raise ValueError('PUB017 recipeID must be INT (-32768..32767)')
+            if type(ing_type) is not int or not -32768 <= ing_type <= 32767:
+                raise ValueError('PUB017 ingredientType must be INT (-32768..32767)')
+            real32(rec_in.get('ingredientRatio', 0.0))
+            real32(rec_in.get('productionTemperature', 0.0))
 
             if qry_edge:
                 match = None
@@ -150,7 +167,9 @@ class DataContract:
                     error = True
                     status = 0x8001
             elif add_edge:
-                dup = any(r['recipeID'] == tid for r in self.recipes) if tid != 0 else False
+                if tid == 0:
+                    raise ValueError('PUB017 addRecipe requires non-zero recipeID')
+                dup = any(r['recipeID'] == tid for r in self.recipes)
                 if dup:
                     error = True
                     status = 0x8002
@@ -162,7 +181,7 @@ class DataContract:
                     else:
                         self.recipes[empty_idx] = {
                             'recipeID': tid,
-                            'ingredientType': rec_in.get('ingredientType', 0),
+                            'ingredientType': ing_type,
                             'ingredientRatio': real32(rec_in.get('ingredientRatio', 0.0)),
                             'productionTemperature': real32(rec_in.get('productionTemperature', 0.0)),
                         }
@@ -210,6 +229,7 @@ class DataContract:
             )
         if self.task_id == 'PUB018':
             buf = i.get('buffer')
+            bid = None
             if isinstance(buf, dict) and '$binding' in buf:
                 bid = buf.get('binding_id', 'default')
                 if bid == 'A':
@@ -217,22 +237,36 @@ class DataContract:
                 elif bid == 'B':
                     capacity = 3
                 else:
-                    capacity = buf.get('capacity', 2)
+                    capacity = buf.get('capacity')
             elif isinstance(buf, list):
                 capacity = len(buf)
             else:
-                capacity = 2
+                raise ValueError('PUB018 requires buffer list or declared binding')
+            if type(capacity) is not int or capacity <= 0:
+                raise ValueError('PUB018 buffer capacity must be a positive integer')
 
-            enq_req = bool(i.get('enqueue'))
-            deq_req = bool(i.get('dequeue'))
-            reset_req = bool(i.get('reset'))
+            for req_key in ('enqueue', 'dequeue', 'reset'):
+                if type(i.get(req_key)) is not bool:
+                    raise ValueError(f'PUB018 requires Boolean {req_key}')
+            enq_req = i['enqueue']
+            deq_req = i['dequeue']
+            reset_req = i['reset']
 
             enq_edge = enq_req and not self.prev_enq
             deq_edge = deq_req and not self.prev_deq
             self.prev_enq = enq_req
             self.prev_deq = deq_req
 
+            if not reset_req and enq_edge and deq_edge:
+                raise ValueError('PUB018 forbids simultaneous enqueue and dequeue rising edges without reset')
+
             current_item = i['item']
+            if bid == 'A':
+                if type(current_item) is not int or not -2**31 <= current_item <= 2**31 - 1:
+                    raise ValueError('PUB018 binding A requires DINT item')
+            elif bid == 'B':
+                if type(current_item) is not bool:
+                    raise ValueError('PUB018 binding B requires BOOL item')
             status = 0
 
             if reset_req:

@@ -71,7 +71,7 @@ def is_array_type(type_name: str) -> bool:
     return bool(re.fullmatch(r"ARRAY\s*\[.+\]\s+OF\s+.+", type_name.strip(), re.IGNORECASE))
 
 def parse_array_type(type_name: str) -> tuple[int | None, int | None, str]:
-    m = re.fullmatch(r"ARRAY\s*\[\s*(\*|\d+)\s*(?:\.\.\s*(\d+))?\s*\]\s+OF\s+(.+)", type_name.strip(), re.IGNORECASE)
+    m = re.fullmatch(r"ARRAY\s*\[\s*(\*|-?\d+)\s*(?:\.\.\s*(-?\d+))?\s*\]\s+OF\s+(.+)", type_name.strip(), re.IGNORECASE)
     if not m:
         raise ValueError(f"Invalid array type: {type_name}")
     low_s, high_s, elem_t = m.group(1), m.group(2), m.group(3).strip()
@@ -217,10 +217,13 @@ def get_case_inouts(task: dict, case_index: int, case: dict) -> dict[str, dict]:
                 val = step0_in
                 length = len(val) if isinstance(val, list) else 1
                 _, _, elem_t = parse_array_type(f["type"])
+                low = int(case.get("array_lower_bounds", {}).get(vname, 1))
+                high = low + length - 1
                 res[vname] = {
-                    "type": f"ARRAY[1..{length}] OF {elem_t}",
+                    "type": f"ARRAY[{low}..{high}] OF {elem_t}",
                     "initial": None,
                     "retain_storage": False,
+                    "lower_bound": low,
                 }
             else:
                 res[vname] = {
@@ -327,7 +330,6 @@ def build_program(task: dict, cases: list[dict] | None = None) -> dict:
         declarations += [
             " BenchLastTime : TIME := T#0ms;",
             " BenchCurrentTime : TIME := T#0ms;",
-            " BenchElapsed : TIME := T#0ms;",
             f" TraceDt : ARRAY[0..{count - 1}] OF UDINT;",
         ]
     declarations += [f" BenchUut{i} : FB_Task;" for i, _ in enumerate(cases)]
@@ -390,6 +392,14 @@ def build_program(task: dict, cases: list[dict] | None = None) -> dict:
             for idx in range(1, max_len + 1):
                 for sfname, sftype in sdefs["ST_AnalogChannel"].items():
                     declarations.append(f" TraceOut_channels_{idx}_{sfname} : ARRAY[0..{count - 1}] OF {sftype};")
+        elif fname == "recipe":
+            r_type = case_inouts_map[0]["recipe"]["type"]
+            r_low, r_high, _ = parse_array_type(r_type)
+            if r_low is None:
+                r_low = 1
+            for idx in range(r_low, r_high + 1):
+                for sfname, sftype in sdefs["ST_Recipe"].items():
+                    declarations.append(f" TraceOut_recipe_{idx}_{sfname} : ARRAY[0..{count - 1}] OF {sftype};")
 
     declarations.append("END_VAR")
 
@@ -554,27 +564,44 @@ def build_program(task: dict, cases: list[dict] | None = None) -> dict:
                     step_map["outputs"]["pumpGroup"] = {"kind": "array", "elements": elements}
                 elif fname == "analogValues":
                     cur_len = len(step["inputs"]["analogValues"])
+                    a_low = cin["analogValues"].get("lower_bound", 1)
                     elements = []
                     for idx in range(1, cur_len + 1):
                         tr_var = f"TraceOut_analogValues_{idx}"
-                        body.append(f"{indent}{tr_var}[{step_index}] := Binding_{case_index}_analogValues[{idx}];")
+                        body.append(f"{indent}{tr_var}[{step_index}] := Binding_{case_index}_analogValues[{a_low + idx - 1}];")
                         expr = f"PLC_PRG.{tr_var}[{step_index}]"
                         elements.append({"kind": "scalar", "expr": expr, "type": "INT"})
                         trace_expressions.append(expr)
                     step_map["outputs"]["analogValues"] = {"kind": "array", "elements": elements}
                 elif fname == "channels":
                     cur_len = len(step["inputs"]["channels"])
+                    c_low = cin["channels"].get("lower_bound", 1)
                     elements = []
                     for idx in range(1, cur_len + 1):
                         s_map = {}
                         for sfname, sftype in sdefs["ST_AnalogChannel"].items():
                             tr_var = f"TraceOut_channels_{idx}_{sfname}"
-                            body.append(f"{indent}{tr_var}[{step_index}] := Binding_{case_index}_channels[{idx}].{sfname};")
+                            body.append(f"{indent}{tr_var}[{step_index}] := Binding_{case_index}_channels[{c_low + idx - 1}].{sfname};")
                             expr = f"PLC_PRG.{tr_var}[{step_index}]"
                             s_map[sfname] = {"kind": "scalar", "expr": expr, "type": sftype}
                             trace_expressions.append(expr)
                         elements.append({"kind": "struct", "fields": s_map})
                     step_map["outputs"]["channels"] = {"kind": "array", "elements": elements}
+                elif fname == "recipe":
+                    r_low, r_high, _ = parse_array_type(cin["recipe"]["type"])
+                    if r_low is None:
+                        r_low = 1
+                    elements = []
+                    for idx in range(r_low, r_high + 1):
+                        s_map = {}
+                        for sfname, sftype in sdefs["ST_Recipe"].items():
+                            tr_var = f"TraceOut_recipe_{idx}_{sfname}"
+                            body.append(f"{indent}{tr_var}[{step_index}] := Binding_{case_index}_recipe[{idx}].{sfname};")
+                            expr = f"PLC_PRG.{tr_var}[{step_index}]"
+                            s_map[sfname] = {"kind": "scalar", "expr": expr, "type": sftype}
+                            trace_expressions.append(expr)
+                        elements.append({"kind": "struct", "fields": s_map})
+                    step_map["outputs"]["recipe"] = {"kind": "array", "elements": elements}
 
             # 6. Increment calls & step
             body.append(f"{indent}BenchCalls := BenchCalls + 1;")

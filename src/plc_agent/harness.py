@@ -266,7 +266,6 @@ def run_harness(
     # Leak-free sanitized agent view
     view = agent_view(task, spec_visible=spec_visible)
     write_json(workspace / "task_view.json", view)
-    write_json(workspace / "task.json", task)
 
     # Runtime config
     snapshot = asdict(settings)

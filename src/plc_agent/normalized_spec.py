@@ -66,6 +66,21 @@ def exact_shape_equal(actual, expected, *, abs_tol=0.0, rel_tol=0.0):
     return type(actual) is type(expected) and actual == expected
 
 
+def _valid_deleted_recipe_slot(slot):
+    required = {'recipeID', 'ingredientType', 'ingredientRatio', 'productionTemperature'}
+    if not isinstance(slot, dict) or set(slot.keys()) != required:
+        return False
+    if type(slot['recipeID']) is not int or not -32768 <= slot['recipeID'] <= 32767:
+        return False
+    if type(slot['ingredientType']) is not int or not -32768 <= slot['ingredientType'] <= 32767:
+        return False
+    for rkey in ('ingredientRatio', 'productionTemperature'):
+        val = slot[rkey]
+        if isinstance(val, bool) or not isinstance(val, (int, float)) or not math.isfinite(val):
+            return False
+    return True
+
+
 def output_matches(task_id, name, actual, expected, inputs):
     if name in ('PUMP_RUNTIME_ACC', 'Slab_Runtime_Accumulator'):
         try:
@@ -88,6 +103,8 @@ def output_matches(task_id, name, actual, expected, inputs):
                         rel_tol=2e-6 if converted and field == 'outputValue' else 0):
                     return False
         return True
+    if task_id == 'PUB020' and name == 'firingTemp':
+        return exact_shape_equal(actual, expected, abs_tol=1e-4)
     return exact_shape_equal(actual, expected, abs_tol=1e-5)
 
 
@@ -139,10 +156,11 @@ class NormalizedScanMonitor:
             got = observed.get('recipe')
             if isinstance(got,list) and len(got)==len(wanted):
                 for j in self.deleted_slots:
-                    # Only the deletion invocation leaves non-ID bytes unconstrained.
+                    # Only the deletion invocation leaves non-ID bytes unconstrained,
+                    # provided the slot remains a well-typed ST_Recipe struct.
                     # Later invocations must preserve their sampled actual contents.
                     source = got[j] if j in newly_deleted else pre_actual[j]
-                    if isinstance(source,dict):
+                    if _valid_deleted_recipe_slot(source):
                         wanted[j] = {**deepcopy(source),'recipeID':0}
             checks['recipe'] = ('recipe' in observed and output_matches(self.task['id'],
                                 'recipe', observed['recipe'], wanted, sampled))

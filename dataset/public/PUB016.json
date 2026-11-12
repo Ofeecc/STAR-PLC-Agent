@@ -100,7 +100,8 @@
     "conveyorRight": false,
     "phase": "IDLE",
     "currentStation": 1,
-    "sequenceIndex": 1
+    "sequenceIndex": 0,
+    "target": 1
   },
   "scan_semantics": "Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call. Retained pre-state q[k] becomes q[k+1]. Each test resets the instance. A transition affects the same observed scan. dt_ms is elapsed time since the preceding invocation; the first invocation starts IEC timers at elapsed zero. CycleTime inputs, where supplied, are attributed to the current invocation rather than inferred from dt_ms.",
   "safety_priority": [
@@ -113,13 +114,15 @@
     "Destination arrival immediately stops the motor. Completion is accepted only at the current processing wait.",
     "Completion signals are rising edges. Consecutive equal stations denote separate processing operations with fresh edges and no conveyor movement.",
     "Only one sequence-index advancement occurs per invocation. Station5 arrival returns to idle.",
-    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "Station completion edges are ignored unless post-entry phase is WAIT_PROCESS; dropping a station arrival sensor while already in WAIT_PROCESS is outside caller error injection.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
   ],
   "atomic_propositions": {
     "left": "conveyorLeft",
     "right": "conveyorRight",
-    "higher": "pre-phase MOVING AND targetStation>currentStation AND NOT sensor[targetStation]",
-    "lower": "pre-phase MOVING AND targetStation<currentStation AND NOT sensor[targetStation]",
+    "higher": "post-phase MOVING AND targetStation>currentStation AND NOT sensor[targetStation]",
+    "lower": "post-phase MOVING AND targetStation<currentStation AND NOT sensor[targetStation]",
     "arrive": "pre-phase MOVING AND sensor[targetStation]",
     "stop": "NOT conveyorLeft AND NOT conveyorRight",
     "waiting": "pre-phase WAIT_PROCESS AND no fresh completion edge",
@@ -142,9 +145,21 @@
     "station4Complete": "I[k].station4Complete: sampled input (BOOL).",
     "processSequence": "I[k].processSequence: sampled input (ARRAY[1..8] OF USINT).",
     "conveyorLeft": "O[k].conveyorLeft: independently observed post-scan candidate value (BOOL); never defined as expected output.",
-    "conveyorRight": "O[k].conveyorRight: independently observed post-scan candidate value (BOOL); never defined as expected output."
+    "conveyorRight": "O[k].conveyorRight: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "station1Start_rejected": "pre-phase IDLE AND station1Start AND NOT sensor1",
+    "init": "At the separate pre-invocation initial observation before scan k=0: Spre.phase=\"IDLE\", O_init.conveyorLeft=false, O_init.conveyorRight=false."
   },
   "ltl": [
+    {
+      "id": "PUB016.P_init",
+      "kind": "safety",
+      "formula": "init",
+      "description": "Before the first scan invocation, all declared OUTPUT variables and initial instance state hold their declared initial values.",
+      "explanation": "Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "INITIAL_INSTANCE"
+    },
     {
       "id": "PUB016.P1",
       "name": "Interlock",
@@ -195,6 +210,16 @@
       "name": "Conditional completion",
       "formula": "(G(moving -> F arrive) & G(processing -> F completion)) -> G(started -> F done)",
       "explanation": "Under the valid fixed-sequence input contract, eventual external feedback permits every started route to complete.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB016.P7",
+      "kind": "safety",
+      "formula": "G(station1Start_rejected -> stop)",
+      "description": "Pressing station1Start in IDLE when sensor1 is FALSE keeps both conveyor motors OFF.",
+      "explanation": "Forbids starting automatic transport without a detected product at station 1.",
       "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
       "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
       "scope": "SCAN_SEQUENCE"
@@ -469,7 +494,8 @@
             ]
           },
           "expected": {
-            "conveyorRight": false
+            "conveyorRight": false,
+            "conveyorLeft": false
           }
         },
         {
@@ -559,7 +585,8 @@
             ]
           },
           "expected": {
-            "conveyorRight": false
+            "conveyorRight": false,
+            "conveyorLeft": false
           }
         },
         {
@@ -586,7 +613,8 @@
             ]
           },
           "expected": {
-            "conveyorRight": true
+            "conveyorRight": true,
+            "conveyorLeft": false
           }
         },
         {
@@ -613,7 +641,8 @@
             ]
           },
           "expected": {
-            "conveyorRight": false
+            "conveyorRight": false,
+            "conveyorLeft": false
           }
         },
         {
@@ -640,7 +669,8 @@
             ]
           },
           "expected": {
-            "conveyorRight": false
+            "conveyorRight": false,
+            "conveyorLeft": false
           }
         },
         {
@@ -667,7 +697,8 @@
             ]
           },
           "expected": {
-            "conveyorRight": false
+            "conveyorRight": false,
+            "conveyorLeft": false
           }
         },
         {
@@ -694,7 +725,8 @@
             ]
           },
           "expected": {
-            "conveyorRight": false
+            "conveyorRight": false,
+            "conveyorLeft": false
           }
         },
         {
@@ -984,9 +1016,575 @@
           }
         }
       ]
+    },
+    {
+      "id": "PUB016.T4",
+      "description": "Multi-scan conveyor transit with intermediate sensor-off scans, length-8 sequence including station 3 & reverse moves, and start without sensor1.",
+      "steps": [
+        {
+          "inputs": {
+            "processLength": 8,
+            "sensor1": false,
+            "sensor2": false,
+            "sensor3": false,
+            "sensor4": false,
+            "sensor5": false,
+            "station1Start": true,
+            "station2Complete": false,
+            "station3Complete": false,
+            "station4Complete": false,
+            "processSequence": [
+              4,
+              3,
+              2,
+              4,
+              2,
+              3,
+              4,
+              5
+            ]
+          },
+          "expected": {
+            "conveyorLeft": false,
+            "conveyorRight": false
+          }
+        },
+        {
+          "inputs": {
+            "processLength": 8,
+            "sensor1": true,
+            "sensor2": false,
+            "sensor3": false,
+            "sensor4": false,
+            "sensor5": false,
+            "station1Start": true,
+            "station2Complete": false,
+            "station3Complete": false,
+            "station4Complete": false,
+            "processSequence": [
+              4,
+              3,
+              2,
+              4,
+              2,
+              3,
+              4,
+              5
+            ]
+          },
+          "expected": {
+            "conveyorLeft": false,
+            "conveyorRight": false
+          }
+        },
+        {
+          "inputs": {
+            "processLength": 8,
+            "sensor1": false,
+            "sensor2": true,
+            "sensor3": false,
+            "sensor4": false,
+            "sensor5": false,
+            "station1Start": false,
+            "station2Complete": false,
+            "station3Complete": false,
+            "station4Complete": false,
+            "processSequence": [
+              4,
+              3,
+              2,
+              4,
+              2,
+              3,
+              4,
+              5
+            ]
+          },
+          "expected": {
+            "conveyorLeft": false,
+            "conveyorRight": false
+          }
+        },
+        {
+          "inputs": {
+            "processLength": 8,
+            "sensor1": false,
+            "sensor2": false,
+            "sensor3": false,
+            "sensor4": false,
+            "sensor5": false,
+            "station1Start": false,
+            "station2Complete": false,
+            "station3Complete": false,
+            "station4Complete": false,
+            "processSequence": [
+              4,
+              3,
+              2,
+              4,
+              2,
+              3,
+              4,
+              5
+            ]
+          },
+          "expected": {
+            "conveyorLeft": false,
+            "conveyorRight": false
+          }
+        },
+        {
+          "inputs": {
+            "processLength": 8,
+            "sensor1": false,
+            "sensor2": false,
+            "sensor3": false,
+            "sensor4": true,
+            "sensor5": false,
+            "station1Start": false,
+            "station2Complete": false,
+            "station3Complete": false,
+            "station4Complete": false,
+            "processSequence": [
+              4,
+              3,
+              2,
+              4,
+              2,
+              3,
+              4,
+              5
+            ]
+          },
+          "expected": {
+            "conveyorLeft": false,
+            "conveyorRight": false
+          }
+        },
+        {
+          "inputs": {
+            "processLength": 8,
+            "sensor1": false,
+            "sensor2": false,
+            "sensor3": false,
+            "sensor4": true,
+            "sensor5": false,
+            "station1Start": false,
+            "station2Complete": false,
+            "station3Complete": false,
+            "station4Complete": true,
+            "processSequence": [
+              4,
+              3,
+              2,
+              4,
+              2,
+              3,
+              4,
+              5
+            ]
+          },
+          "expected": {
+            "conveyorLeft": false,
+            "conveyorRight": false
+          }
+        },
+        {
+          "inputs": {
+            "processLength": 8,
+            "sensor1": false,
+            "sensor2": false,
+            "sensor3": false,
+            "sensor4": false,
+            "sensor5": false,
+            "station1Start": false,
+            "station2Complete": false,
+            "station3Complete": false,
+            "station4Complete": false,
+            "processSequence": [
+              4,
+              3,
+              2,
+              4,
+              2,
+              3,
+              4,
+              5
+            ]
+          },
+          "expected": {
+            "conveyorLeft": false,
+            "conveyorRight": false
+          }
+        },
+        {
+          "inputs": {
+            "processLength": 8,
+            "sensor1": false,
+            "sensor2": false,
+            "sensor3": true,
+            "sensor4": false,
+            "sensor5": false,
+            "station1Start": false,
+            "station2Complete": false,
+            "station3Complete": false,
+            "station4Complete": false,
+            "processSequence": [
+              4,
+              3,
+              2,
+              4,
+              2,
+              3,
+              4,
+              5
+            ]
+          },
+          "expected": {
+            "conveyorLeft": false,
+            "conveyorRight": false
+          }
+        },
+        {
+          "inputs": {
+            "processLength": 8,
+            "sensor1": false,
+            "sensor2": false,
+            "sensor3": true,
+            "sensor4": false,
+            "sensor5": false,
+            "station1Start": false,
+            "station2Complete": false,
+            "station3Complete": true,
+            "station4Complete": false,
+            "processSequence": [
+              4,
+              3,
+              2,
+              4,
+              2,
+              3,
+              4,
+              5
+            ]
+          },
+          "expected": {
+            "conveyorLeft": false,
+            "conveyorRight": false
+          }
+        },
+        {
+          "inputs": {
+            "processLength": 8,
+            "sensor1": false,
+            "sensor2": true,
+            "sensor3": false,
+            "sensor4": false,
+            "sensor5": false,
+            "station1Start": false,
+            "station2Complete": false,
+            "station3Complete": false,
+            "station4Complete": false,
+            "processSequence": [
+              4,
+              3,
+              2,
+              4,
+              2,
+              3,
+              4,
+              5
+            ]
+          },
+          "expected": {
+            "conveyorLeft": false,
+            "conveyorRight": false
+          }
+        },
+        {
+          "inputs": {
+            "processLength": 8,
+            "sensor1": false,
+            "sensor2": true,
+            "sensor3": false,
+            "sensor4": false,
+            "sensor5": false,
+            "station1Start": false,
+            "station2Complete": true,
+            "station3Complete": false,
+            "station4Complete": false,
+            "processSequence": [
+              4,
+              3,
+              2,
+              4,
+              2,
+              3,
+              4,
+              5
+            ]
+          },
+          "expected": {
+            "conveyorLeft": false,
+            "conveyorRight": false
+          }
+        },
+        {
+          "inputs": {
+            "processLength": 8,
+            "sensor1": false,
+            "sensor2": false,
+            "sensor3": false,
+            "sensor4": true,
+            "sensor5": false,
+            "station1Start": false,
+            "station2Complete": false,
+            "station3Complete": false,
+            "station4Complete": false,
+            "processSequence": [
+              4,
+              3,
+              2,
+              4,
+              2,
+              3,
+              4,
+              5
+            ]
+          },
+          "expected": {
+            "conveyorLeft": false,
+            "conveyorRight": false
+          }
+        },
+        {
+          "inputs": {
+            "processLength": 8,
+            "sensor1": false,
+            "sensor2": false,
+            "sensor3": false,
+            "sensor4": true,
+            "sensor5": false,
+            "station1Start": false,
+            "station2Complete": false,
+            "station3Complete": false,
+            "station4Complete": true,
+            "processSequence": [
+              4,
+              3,
+              2,
+              4,
+              2,
+              3,
+              4,
+              5
+            ]
+          },
+          "expected": {
+            "conveyorLeft": false,
+            "conveyorRight": false
+          }
+        },
+        {
+          "inputs": {
+            "processLength": 8,
+            "sensor1": false,
+            "sensor2": true,
+            "sensor3": false,
+            "sensor4": false,
+            "sensor5": false,
+            "station1Start": false,
+            "station2Complete": false,
+            "station3Complete": false,
+            "station4Complete": false,
+            "processSequence": [
+              4,
+              3,
+              2,
+              4,
+              2,
+              3,
+              4,
+              5
+            ]
+          },
+          "expected": {
+            "conveyorLeft": false,
+            "conveyorRight": false
+          }
+        },
+        {
+          "inputs": {
+            "processLength": 8,
+            "sensor1": false,
+            "sensor2": true,
+            "sensor3": false,
+            "sensor4": false,
+            "sensor5": false,
+            "station1Start": false,
+            "station2Complete": true,
+            "station3Complete": false,
+            "station4Complete": false,
+            "processSequence": [
+              4,
+              3,
+              2,
+              4,
+              2,
+              3,
+              4,
+              5
+            ]
+          },
+          "expected": {
+            "conveyorLeft": false,
+            "conveyorRight": false
+          }
+        },
+        {
+          "inputs": {
+            "processLength": 8,
+            "sensor1": false,
+            "sensor2": false,
+            "sensor3": true,
+            "sensor4": false,
+            "sensor5": false,
+            "station1Start": false,
+            "station2Complete": false,
+            "station3Complete": false,
+            "station4Complete": false,
+            "processSequence": [
+              4,
+              3,
+              2,
+              4,
+              2,
+              3,
+              4,
+              5
+            ]
+          },
+          "expected": {
+            "conveyorLeft": false,
+            "conveyorRight": false
+          }
+        },
+        {
+          "inputs": {
+            "processLength": 8,
+            "sensor1": false,
+            "sensor2": false,
+            "sensor3": true,
+            "sensor4": false,
+            "sensor5": false,
+            "station1Start": false,
+            "station2Complete": false,
+            "station3Complete": true,
+            "station4Complete": false,
+            "processSequence": [
+              4,
+              3,
+              2,
+              4,
+              2,
+              3,
+              4,
+              5
+            ]
+          },
+          "expected": {
+            "conveyorLeft": false,
+            "conveyorRight": false
+          }
+        },
+        {
+          "inputs": {
+            "processLength": 8,
+            "sensor1": false,
+            "sensor2": false,
+            "sensor3": false,
+            "sensor4": true,
+            "sensor5": false,
+            "station1Start": false,
+            "station2Complete": false,
+            "station3Complete": false,
+            "station4Complete": false,
+            "processSequence": [
+              4,
+              3,
+              2,
+              4,
+              2,
+              3,
+              4,
+              5
+            ]
+          },
+          "expected": {
+            "conveyorLeft": false,
+            "conveyorRight": false
+          }
+        },
+        {
+          "inputs": {
+            "processLength": 8,
+            "sensor1": false,
+            "sensor2": false,
+            "sensor3": false,
+            "sensor4": true,
+            "sensor5": false,
+            "station1Start": false,
+            "station2Complete": false,
+            "station3Complete": false,
+            "station4Complete": true,
+            "processSequence": [
+              4,
+              3,
+              2,
+              4,
+              2,
+              3,
+              4,
+              5
+            ]
+          },
+          "expected": {
+            "conveyorLeft": false,
+            "conveyorRight": false
+          }
+        },
+        {
+          "inputs": {
+            "processLength": 8,
+            "sensor1": false,
+            "sensor2": false,
+            "sensor3": false,
+            "sensor4": false,
+            "sensor5": true,
+            "station1Start": false,
+            "station2Complete": false,
+            "station3Complete": false,
+            "station4Complete": false,
+            "processSequence": [
+              4,
+              3,
+              2,
+              4,
+              2,
+              3,
+              4,
+              5
+            ]
+          },
+          "expected": {
+            "conveyorLeft": false,
+            "conveyorRight": false
+          }
+        }
+      ]
     }
   ],
-  "specification_version": "2.1-normalized-20261111",
+  "specification_version": "2.2-normalized-20261112",
   "specification_contract": {
     "observation": "I[k] is sampled before execution; O[k] is observed after execution. Initial conditions apply before invocation zero.",
     "normative_completion": "令(Sref[k+1], E[k])=T_PUB016(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\n活动路线长度1..8，前项为2/3/4且末项5，活动周期内固定。初始IDLE、station=1、index=0。IDLE在station1Start上升沿且sensor1时选择首目标；MOVING到目标后进入WAIT_PROCESS或目标5回IDLE；WAIT_PROCESS仅对应完成新边沿推进index，同站继续等待。输出仅转移后MOVING且未到目标时按target与station方向开启；所有边沿历史逐拍更新。",
@@ -1042,7 +1640,8 @@
         "reference": null,
         "phase": 0,
         "previous_mode": null,
-        "clock": 0.0,
+        "clock": 0,
+        "first": true,
         "heat_start": null,
         "protection_start": null,
         "demand": false
@@ -1053,16 +1652,16 @@
       "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('PUB016'); constructed once per independent case, current state is Sref[k].",
       "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
       "module_sha256": {
-        "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
-        "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
-        "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
-        "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
-        "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+        "scan_contract.py": "2ebdbeb0bacd3c6154e1add2fd358f1aadc9ac9c9322a9201798065154353f48",
+        "array_contracts.py": "f541ffe0e28c56e84ad737b06aa8c8ee6180b1afda720b7c41cc8fccad2d8ecd",
+        "data_contracts.py": "0792c46b303ce62a0a2180bcf4d7ebfe4838ccfaa18deb331780af1819377b3a",
+        "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
+        "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
         "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-        "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+        "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
       },
       "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-      "frozen_sources": "dataset/specifications/normalized_transition_v1"
+      "frozen_sources": "dataset/specifications/normalized_transition_v2"
     },
     "constrained_observed_fields": [
       "conveyorLeft",
@@ -1123,7 +1722,9 @@
       "Destination arrival immediately stops the motor. Completion is accepted only at the current processing wait.",
       "Completion signals are rising edges. Consecutive equal stations denote separate processing operations with fresh edges and no conveyor movement.",
       "Only one sequence-index advancement occurs per invocation. Station5 arrival returns to idle.",
-      "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+      "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+      "Station completion edges are ignored unless post-entry phase is WAIT_PROCESS; dropping a station arrival sensor while already in WAIT_PROCESS is outside caller error injection.",
+      "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
     ],
     "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
     "limitations": [

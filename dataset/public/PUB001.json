@@ -104,7 +104,8 @@
     "Confirmation inputs are level sampled. A held confirmation can complete its relevant phase on a later scan, but cannot skip several phases in one scan.",
     "finishedButton resets only the completed phase. A bottle still present can start a new cleaning cycle on the following idle scan.",
     "For the progress property, future confirmations are ordered and sustained until their matching phase accepts them. Unordered one-scan pulses do not imply completion.",
-    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
   ],
   "ltl": [
     {
@@ -174,7 +175,7 @@
     {
       "id": "P9",
       "formula": "G((phase=5 & finishedButton) -> (!Completion_Light & X(phase=0)))",
-      "explanation": "Pickup confirmation rearms the line.",
+      "explanation": "On finishedButton during completion, clear Completion_Light and return to IDLE.",
       "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
       "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
       "scope": "SCAN_SEQUENCE"
@@ -183,6 +184,16 @@
       "id": "P10",
       "formula": "G((phase=1 & G((phase=1) -> F(cleaningConfirmButton)) & G((phase=2) -> F(fillingConfirmButton)) & G((phase=3) -> F(cappingConfirmButton)) & G((phase=4) -> F(packingConfirmButton))) -> F(Completion_Light))",
       "explanation": "Conditional progress: from cleaning, if every active phase eventually receives its matching confirmation, completion eventually occurs.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "P11",
+      "kind": "safety",
+      "formula": "G(((phase=0 & !bottleSensor) -> (!Pump_Motor & !Filling_Valve & !Capping_Machine & !Packing_Machine & !Completion_Light & X(phase=0))) & ((phase=1 & !cleaningConfirmButton) -> (Pump_Motor & !Filling_Valve & !Capping_Machine & !Packing_Machine & !Completion_Light & X(phase=1))) & ((phase=2 & !fillingConfirmButton) -> (!Pump_Motor & Filling_Valve & !Capping_Machine & !Packing_Machine & !Completion_Light & X(phase=2))) & ((phase=3 & !cappingConfirmButton) -> (!Pump_Motor & !Filling_Valve & Capping_Machine & !Packing_Machine & !Completion_Light & X(phase=3))) & ((phase=4 & !packingConfirmButton) -> (!Pump_Motor & !Filling_Valve & !Capping_Machine & Packing_Machine & !Completion_Light & X(phase=4))) & ((phase=5 & finishedButton) -> (!Pump_Motor & !Filling_Valve & !Capping_Machine & !Packing_Machine & !Completion_Light & X(phase=0))))",
+      "description": "Idle stays all-off until bottleSensor, active phases 1..4 hold only their actuator until confirmed, and finishedButton clears all five outputs to IDLE.",
+      "explanation": "Closes the unconfirmed phase-hold and finish-clearing obligations left implicit by P3..P9.",
       "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
       "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
       "scope": "SCAN_SEQUENCE"
@@ -212,7 +223,8 @@
     "Filling_Valve": "O[k].Filling_Valve: independently observed post-scan candidate value (BOOL); never defined as expected output.",
     "Capping_Machine": "O[k].Capping_Machine: independently observed post-scan candidate value (BOOL); never defined as expected output.",
     "Packing_Machine": "O[k].Packing_Machine: independently observed post-scan candidate value (BOOL); never defined as expected output.",
-    "Completion_Light": "O[k].Completion_Light: independently observed post-scan candidate value (BOOL); never defined as expected output."
+    "Completion_Light": "O[k].Completion_Light: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "phase0_idle": "phase=0"
   },
   "tests": [
     {
@@ -498,9 +510,287 @@
           }
         }
       ]
+    },
+    {
+      "id": "PUB001.T3",
+      "description": "Multi-scan hold across Filling/Capping/Packing, held level buttons, and second complete bottle cycle.",
+      "steps": [
+        {
+          "inputs": {
+            "bottleSensor": true,
+            "cleaningConfirmButton": false,
+            "fillingConfirmButton": false,
+            "cappingConfirmButton": false,
+            "packingConfirmButton": false,
+            "finishedButton": false
+          },
+          "expected": {
+            "Pump_Motor": true,
+            "Filling_Valve": false,
+            "Capping_Machine": false,
+            "Packing_Machine": false,
+            "Completion_Light": false
+          }
+        },
+        {
+          "inputs": {
+            "bottleSensor": false,
+            "cleaningConfirmButton": true,
+            "fillingConfirmButton": false,
+            "cappingConfirmButton": false,
+            "packingConfirmButton": false,
+            "finishedButton": false
+          },
+          "expected": {
+            "Pump_Motor": false,
+            "Filling_Valve": true,
+            "Capping_Machine": false,
+            "Packing_Machine": false,
+            "Completion_Light": false
+          }
+        },
+        {
+          "inputs": {
+            "bottleSensor": false,
+            "cleaningConfirmButton": false,
+            "fillingConfirmButton": false,
+            "cappingConfirmButton": false,
+            "packingConfirmButton": false,
+            "finishedButton": false
+          },
+          "expected": {
+            "Pump_Motor": false,
+            "Filling_Valve": true,
+            "Capping_Machine": false,
+            "Packing_Machine": false,
+            "Completion_Light": false
+          }
+        },
+        {
+          "inputs": {
+            "bottleSensor": false,
+            "cleaningConfirmButton": false,
+            "fillingConfirmButton": true,
+            "cappingConfirmButton": false,
+            "packingConfirmButton": false,
+            "finishedButton": false
+          },
+          "expected": {
+            "Pump_Motor": false,
+            "Filling_Valve": false,
+            "Capping_Machine": true,
+            "Packing_Machine": false,
+            "Completion_Light": false
+          }
+        },
+        {
+          "inputs": {
+            "bottleSensor": false,
+            "cleaningConfirmButton": false,
+            "fillingConfirmButton": false,
+            "cappingConfirmButton": false,
+            "packingConfirmButton": false,
+            "finishedButton": false
+          },
+          "expected": {
+            "Pump_Motor": false,
+            "Filling_Valve": false,
+            "Capping_Machine": true,
+            "Packing_Machine": false,
+            "Completion_Light": false
+          }
+        },
+        {
+          "inputs": {
+            "bottleSensor": false,
+            "cleaningConfirmButton": false,
+            "fillingConfirmButton": false,
+            "cappingConfirmButton": true,
+            "packingConfirmButton": false,
+            "finishedButton": false
+          },
+          "expected": {
+            "Pump_Motor": false,
+            "Filling_Valve": false,
+            "Capping_Machine": false,
+            "Packing_Machine": true,
+            "Completion_Light": false
+          }
+        },
+        {
+          "inputs": {
+            "bottleSensor": false,
+            "cleaningConfirmButton": false,
+            "fillingConfirmButton": false,
+            "cappingConfirmButton": false,
+            "packingConfirmButton": false,
+            "finishedButton": false
+          },
+          "expected": {
+            "Pump_Motor": false,
+            "Filling_Valve": false,
+            "Capping_Machine": false,
+            "Packing_Machine": true,
+            "Completion_Light": false
+          }
+        },
+        {
+          "inputs": {
+            "bottleSensor": false,
+            "cleaningConfirmButton": false,
+            "fillingConfirmButton": false,
+            "cappingConfirmButton": false,
+            "packingConfirmButton": true,
+            "finishedButton": false
+          },
+          "expected": {
+            "Pump_Motor": false,
+            "Filling_Valve": false,
+            "Capping_Machine": false,
+            "Packing_Machine": false,
+            "Completion_Light": true
+          }
+        },
+        {
+          "inputs": {
+            "bottleSensor": false,
+            "cleaningConfirmButton": false,
+            "fillingConfirmButton": false,
+            "cappingConfirmButton": false,
+            "packingConfirmButton": false,
+            "finishedButton": true
+          },
+          "expected": {
+            "Pump_Motor": false,
+            "Filling_Valve": false,
+            "Capping_Machine": false,
+            "Packing_Machine": false,
+            "Completion_Light": false
+          }
+        },
+        {
+          "inputs": {
+            "bottleSensor": true,
+            "cleaningConfirmButton": false,
+            "fillingConfirmButton": false,
+            "cappingConfirmButton": false,
+            "packingConfirmButton": false,
+            "finishedButton": true
+          },
+          "expected": {
+            "Pump_Motor": true,
+            "Filling_Valve": false,
+            "Capping_Machine": false,
+            "Packing_Machine": false,
+            "Completion_Light": false
+          }
+        },
+        {
+          "inputs": {
+            "bottleSensor": false,
+            "cleaningConfirmButton": true,
+            "fillingConfirmButton": false,
+            "cappingConfirmButton": false,
+            "packingConfirmButton": false,
+            "finishedButton": true
+          },
+          "expected": {
+            "Pump_Motor": false,
+            "Filling_Valve": true,
+            "Capping_Machine": false,
+            "Packing_Machine": false,
+            "Completion_Light": false
+          }
+        },
+        {
+          "inputs": {
+            "bottleSensor": false,
+            "cleaningConfirmButton": false,
+            "fillingConfirmButton": true,
+            "cappingConfirmButton": false,
+            "packingConfirmButton": false,
+            "finishedButton": false
+          },
+          "expected": {
+            "Pump_Motor": false,
+            "Filling_Valve": false,
+            "Capping_Machine": true,
+            "Packing_Machine": false,
+            "Completion_Light": false
+          }
+        },
+        {
+          "inputs": {
+            "bottleSensor": false,
+            "cleaningConfirmButton": false,
+            "fillingConfirmButton": false,
+            "cappingConfirmButton": true,
+            "packingConfirmButton": false,
+            "finishedButton": false
+          },
+          "expected": {
+            "Pump_Motor": false,
+            "Filling_Valve": false,
+            "Capping_Machine": false,
+            "Packing_Machine": true,
+            "Completion_Light": false
+          }
+        },
+        {
+          "inputs": {
+            "bottleSensor": false,
+            "cleaningConfirmButton": false,
+            "fillingConfirmButton": false,
+            "cappingConfirmButton": false,
+            "packingConfirmButton": true,
+            "finishedButton": false
+          },
+          "expected": {
+            "Pump_Motor": false,
+            "Filling_Valve": false,
+            "Capping_Machine": false,
+            "Packing_Machine": false,
+            "Completion_Light": true
+          }
+        },
+        {
+          "inputs": {
+            "bottleSensor": false,
+            "cleaningConfirmButton": false,
+            "fillingConfirmButton": false,
+            "cappingConfirmButton": false,
+            "packingConfirmButton": false,
+            "finishedButton": true
+          },
+          "expected": {
+            "Pump_Motor": false,
+            "Filling_Valve": false,
+            "Capping_Machine": false,
+            "Packing_Machine": false,
+            "Completion_Light": false
+          }
+        },
+        {
+          "inputs": {
+            "bottleSensor": false,
+            "cleaningConfirmButton": false,
+            "fillingConfirmButton": false,
+            "cappingConfirmButton": false,
+            "packingConfirmButton": false,
+            "finishedButton": false
+          },
+          "expected": {
+            "Pump_Motor": false,
+            "Filling_Valve": false,
+            "Capping_Machine": false,
+            "Packing_Machine": false,
+            "Completion_Light": false
+          }
+        }
+      ]
     }
   ],
-  "specification_version": "2.1-normalized-20261111",
+  "specification_version": "2.2-normalized-20261112",
   "specification_contract": {
     "observation": "I[k] is sampled before execution; O[k] is observed after execution. Initial conditions apply before invocation zero.",
     "normative_completion": "令(Sref[k+1], E[k])=T_PUB001(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\n参考阶段q初值0。事件按q选bottleSensor、cleaningConfirmButton、fillingConfirmButton、cappingConfirmButton、packingConfirmButton、finishedButton；选中事件真则qAfter=(q+1)%6，否则qAfter=q。五个期望输出依次为qAfter=1、2、3、4、5，每拍只选择旧q的一个分支。",
@@ -532,7 +822,8 @@
         "reference": null,
         "phase": 0,
         "previous_mode": null,
-        "clock": 0.0,
+        "clock": 0,
+        "first": true,
         "heat_start": null,
         "protection_start": null,
         "demand": false
@@ -543,16 +834,16 @@
       "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('PUB001'); constructed once per independent case, current state is Sref[k].",
       "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
       "module_sha256": {
-        "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
-        "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
-        "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
-        "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
-        "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+        "scan_contract.py": "2ebdbeb0bacd3c6154e1add2fd358f1aadc9ac9c9322a9201798065154353f48",
+        "array_contracts.py": "f541ffe0e28c56e84ad737b06aa8c8ee6180b1afda720b7c41cc8fccad2d8ecd",
+        "data_contracts.py": "0792c46b303ce62a0a2180bcf4d7ebfe4838ccfaa18deb331780af1819377b3a",
+        "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
+        "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
         "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-        "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+        "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
       },
       "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-      "frozen_sources": "dataset/specifications/normalized_transition_v1"
+      "frozen_sources": "dataset/specifications/normalized_transition_v2"
     },
     "constrained_observed_fields": [
       "Capping_Machine",
@@ -615,7 +906,8 @@
       "Confirmation inputs are level sampled. A held confirmation can complete its relevant phase on a later scan, but cannot skip several phases in one scan.",
       "finishedButton resets only the completed phase. A bottle still present can start a new cleaning cycle on the following idle scan.",
       "For the progress property, future confirmations are ordered and sustained until their matching phase accepts them. Unordered one-scan pulses do not imply completion.",
-      "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+      "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+      "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
     ],
     "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
     "limitations": [
