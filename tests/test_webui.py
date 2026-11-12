@@ -274,6 +274,113 @@ class WebUITests(unittest.TestCase):
         self.assertIn("pilot-card-smv", html)
         self.assertIn("renderGlossaryPanel", html)
         self.assertIn("symbol_glossary", html)
+        self.assertLess(html.index('id="spec-popover"'), html.rindex('<script>'))
+
+    def test_app_js_parses_and_renders_all_32_tasks_in_js_runtime(self):
+        import re
+        import shutil
+        import subprocess
+        import tempfile
+        from pathlib import Path
+
+        html = render_index_html()
+        match = re.search(r'<script>\s*(.*)\s*</script>', html, re.S)
+        self.assertIsNotNone(match)
+        js_code = match.group(1)
+        gjs_exe = shutil.which("gjs")
+        if not gjs_exe:
+            self.skipTest("gjs JS runtime not installed")
+
+        _, tasks_data = handle_api_request("GET", "/api/tasks", {}, None, self.settings)
+        _, task_detail = handle_api_request("GET", "/api/task", {"id": "PUB015"}, None, self.settings)
+        ids = sorted(set(re.findall(r'id="([^"]+)"', html)))
+        harness = f"""
+globalThis.TASKS_DATA = {json.dumps(tasks_data)};
+globalThis.TASK_DETAIL = {json.dumps(task_detail)};
+const ALL_IDS = {json.dumps(ids)};
+const JS_CODE = {json.dumps(js_code)};
+new Function(JS_CODE);
+globalThis.URLSearchParams = class {{
+  constructor() {{ this.m = {{}}; }}
+  get(k) {{ return this.m[k] || null; }}
+  set(k, v) {{ this.m[k] = String(v); }}
+}};
+globalThis.URL = class {{
+  constructor(u) {{ this.href = u; this.searchParams = new URLSearchParams(); }}
+}};
+globalThis.elements = {{}};
+globalThis.makeEl = function(id) {{
+  return {{
+    id, value: '', checked: false, hidden: false, textContent: '', innerHTML: '',
+    style: {{}}, dataset: {{}}, options: [],
+    classList: {{ toggle() {{}}, add() {{}}, remove() {{}} }},
+    setAttribute() {{}}, getAttribute() {{ return ''; }},
+    addEventListener() {{}}, querySelectorAll() {{ return []; }}, querySelector() {{ return null; }},
+    closest() {{ return null; }}, getBoundingClientRect() {{ return {{left:0,top:0,bottom:10,width:100,height:40}}; }}
+  }};
+}};
+ALL_IDS.forEach(id => globalThis.elements[id] = globalThis.makeEl(id));
+globalThis.elements['kind-filter'].value = 'all';
+globalThis.elements['difficulty-filter'].value = 'all';
+globalThis.elements['language-select'].value = 'zh';
+globalThis.location = {{ search: '', href: 'http://127.0.0.1:8765/' }};
+globalThis.history = {{ replaceState() {{}} }};
+globalThis.localStorage = {{ getItem() {{ return null; }}, setItem() {{}} }};
+globalThis.addEventListener = (ev, fn) => {{ if (ev === 'DOMContentLoaded') globalThis._domReady = fn; }};
+globalThis.innerWidth = 1280;
+globalThis.innerHeight = 800;
+globalThis.NodeFilter = {{ SHOW_TEXT: 4 }};
+globalThis.setTimeout = () => 1;
+globalThis.clearTimeout = () => {{}};
+globalThis.document = {{
+  body: {{}},
+  documentElement: {{ lang: 'zh-CN' }},
+  title: '',
+  createTreeWalker() {{ return {{ nextNode() {{ return null; }} }}; }},
+  getElementById(id) {{ if (!globalThis.elements[id]) globalThis.elements[id] = globalThis.makeEl(id); return globalThis.elements[id]; }},
+  querySelectorAll() {{ return []; }},
+  addEventListener() {{}}
+}};
+globalThis.fetch = async (url) => ({{
+  ok: true, status: 200, statusText: 'OK',
+  async json() {{
+    if (url === '/api/tasks') return globalThis.TASKS_DATA;
+    if (url.startsWith('/api/task?')) return globalThis.TASK_DETAIL;
+    return {{}};
+  }}
+}});
+const check = [
+  'if (globalThis._domReady) globalThis._domReady();',
+  'gTasks = globalThis.TASKS_DATA.tasks;',
+  'gReviews = globalThis.TASKS_DATA.task_review;',
+  'gPilotReview = globalThis.TASKS_DATA.pilot_review;',
+  'renderTaskList(false);',
+  'gCurrentTask = globalThis.TASK_DETAIL;',
+  'renderTaskDetails(globalThis.TASK_DETAIL);',
+  'renderReviewDetails(globalThis.TASK_DETAIL);',
+  'populateSandboxTemplate(globalThis.TASK_DETAIL);',
+  'showSpecPopover(globalThis.makeEl(\"anchor\"), \"Spre\", true);',
+  'const popOpen = !globalThis.elements[\"spec-popover\"].hidden && globalThis.elements[\"spec-popover\"].innerHTML.includes(\"Spre\");',
+  'hideSpecPopover(true);',
+  'changeLanguage(\"en\");',
+  'changeLanguage(\"zh\");',
+  'const cards = (globalThis.elements[\"pilot-grid\"].innerHTML.match(/pilot-card\"/g)||[]).length;',
+  'const opts = (globalThis.elements[\"task-select\"].innerHTML.match(/<option /g)||[]).length;',
+  'if (cards !== 32 || opts !== 32) throw new Error(\"Expected 32 cards/options, got \" + cards + \"/\" + opts);',
+  'if (!popOpen) throw new Error(\"Popover did not open\");',
+  'if (!globalThis.elements[\"task-overview\"].innerHTML.includes(\"overview-smv-box\")) throw new Error(\"Missing SMV box\");',
+  'if (!globalThis.elements[\"ltl-container\"].innerHTML.includes(\"spec-tok--\")) throw new Error(\"Missing highlighted tokens\");',
+  'if (!globalThis.elements[\"tests-container\"].innerHTML.includes(\"固定测试\")) throw new Error(\"Missing tests container\");',
+  'print(\"JS_DOM_OK\", cards, opts);'
+].join('\\n');
+(0, eval)(JS_CODE + '\\n' + check);
+"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            script_path = Path(tmpdir) / "check_webui.js"
+            script_path.write_text(harness, encoding="utf-8")
+            proc = subprocess.run([gjs_exe, str(script_path)], capture_output=True, text=True, check=False)
+            self.assertEqual(proc.returncode, 0, f"gjs failed:\nSTDOUT:\n{proc.stdout}\nSTDERR:\n{proc.stderr}")
+            self.assertIn("JS_DOM_OK 32 32", proc.stdout)
 
     def test_handle_api_request_tasks_returns_all_32_tasks(self):
         status, data = handle_api_request("GET", "/api/tasks", {}, None, self.settings)
