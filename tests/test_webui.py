@@ -61,7 +61,9 @@ class WebUITests(unittest.TestCase):
             difficulties.append(detail['task']['difficulty'])
             summary = next(t for t in listing['tasks'] if t['id'] == tid)
             self.assertEqual(summary['steps_count'],sum(len(c['steps']) for c in detail['tests']))
-        self.assertEqual((cases,steps),(26,314))
+        selected = [t for t in listing['tasks'] if t['id'] in ids]
+        self.assertGreaterEqual((cases, steps), (26, 314))
+        self.assertEqual((cases, steps), (sum(t['tests_count'] for t in selected), sum(t['steps_count'] for t in selected)))
         self.assertEqual(difficulties,['easy','easy','medium','medium','hard','hard'])
 
     def test_pilot_chinese_explanations_cover_every_current_formula(self):

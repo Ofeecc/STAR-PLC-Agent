@@ -101,6 +101,12 @@ INVARSPEC NAME P5 := (auto & phase = FILL_B & levelSensor >= 80 & batch_mode -> 
 INVARSPEC NAME P6 := (auto & phase = MIX & mixMotorComplete) -> valveDRun;
 INVARSPEC NAME P7 := manual -> ((riseA -> valveARun != latchA) & (!riseA -> valveARun = latchA) & (riseB -> valveBRun != latchB) & (!riseB -> valveBRun = latchB) & (riseC -> valveCRun != latchC) & (!riseC -> valveCRun = latchC) & (riseD -> valveDRun != latchD) & (!riseD -> valveDRun = latchD) & (riseM -> mixMotorRun != latchM) & (!riseM -> mixMotorRun = latchM));
 INVARSPEC NAME P8 := (auto -> (toint(valveARun) + toint(valveBRun) + toint(valveCRun) + toint(valveDRun) + toint(mixMotorRun) <= 1)) & (changed -> all_off);
-INVARSPEC NAME V2_auto_mutex := auto -> (toint(valveARun) + toint(valveBRun) + toint(valveCRun) + toint(valveDRun) + toint(mixMotorRun) <= 1);
+INVARSPEC NAME V2_auto_mutex := auto -> (
+  (toint(valveARun) + toint(valveBRun) + toint(valveCRun) + toint(valveDRun) + toint(mixMotorRun) <= 1) &
+  (valveARun <-> nextPhase = FILL_A) &
+  (valveBRun <-> nextPhase = FILL_B) &
+  (valveCRun <-> nextPhase = FILL_C) &
+  (valveDRun <-> nextPhase = DRAIN) &
+  (mixMotorRun <-> nextPhase = MIX));
 LTLSPEC NAME V2_drain_auto_restart := G ((auto & phase = DRAIN & autoRise) -> (valveARun & !valveDRun & X(phase = FILL_A)));
 LTLSPEC NAME V2_reset_clears_next := G (reset_cond -> (next(phase) = IDLE & !next(latchA) & !next(latchB) & !next(latchC) & !next(latchD) & !next(latchM) & !next(has_batch) & !next(batch_mode)));

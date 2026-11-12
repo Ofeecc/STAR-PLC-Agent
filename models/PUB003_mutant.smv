@@ -19,14 +19,17 @@ ASSIGN
 
 DEFINE
   badRange := loLevel >= hiLevel;
-  badWindow := !badRange & (hystWindow >= hiLevel - loLevel);
+  Span := hiLevel - loLevel;
+  HighRelease := hiLevel - hystWindow;
+  LowRelease := loLevel + hystWindow;
+  badWindow := !badRange & (hystWindow >= Span);
   valid := !badRange & !badWindow;
   error := badRange | badWindow;
   status := badRange ? 32769 : (badWindow ? 32770 : 0);
-  hiAlarm := !valid ? hiPrev : (Value > hiLevel ? TRUE : (Value <= hiLevel - hystWindow ? FALSE : hiPrev));
-  loAlarm := !valid ? loPrev : (Value < loLevel ? TRUE : (Value > loLevel + hystWindow ? FALSE : loPrev));
+  hiAlarm := !valid ? hiPrev : (Value > hiLevel ? TRUE : (Value <= HighRelease ? FALSE : hiPrev));
+  loAlarm := !valid ? loPrev : (Value < loLevel ? TRUE : (Value > LowRelease ? FALSE : loPrev));
   sameAlarms := (hiAlarm = hiPrev) & (loAlarm = loPrev);
 
 INVARSPEC NAME P1 := badRange -> (error & status = 32769 & sameAlarms);
 INVARSPEC NAME P4 := (valid & Value > hiLevel) -> hiAlarm;
-INVARSPEC NAME P6 := (valid & hiLevel - hystWindow <= Value & Value <= hiLevel) -> (hiAlarm = hiPrev);
+INVARSPEC NAME P6 := (valid & HighRelease <= Value & Value <= hiLevel) -> (hiAlarm = hiPrev);

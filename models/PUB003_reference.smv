@@ -20,22 +20,25 @@ ASSIGN
 
 DEFINE
   badRange := loLevel >= hiLevel;
-  badWindow := !badRange & (hystWindow >= hiLevel - loLevel);
+  Span := hiLevel - loLevel;
+  HighRelease := hiLevel - hystWindow;
+  LowRelease := loLevel + hystWindow;
+  badWindow := !badRange & (hystWindow >= Span);
   valid := !badRange & !badWindow;
   error := badRange | badWindow;
   status := badRange ? 32769 : (badWindow ? 32770 : 0);
-  hiAlarm := !valid ? hiPrev : (Value > hiLevel ? TRUE : (Value < hiLevel - hystWindow ? FALSE : hiPrev));
-  loAlarm := !valid ? loPrev : (Value < loLevel ? TRUE : (Value > loLevel + hystWindow ? FALSE : loPrev));
+  hiAlarm := !valid ? hiPrev : (Value > hiLevel ? TRUE : (Value < HighRelease ? FALSE : hiPrev));
+  loAlarm := !valid ? loPrev : (Value < loLevel ? TRUE : (Value > LowRelease ? FALSE : loPrev));
   sameAlarms := (hiAlarm = hiPrev) & (loAlarm = loPrev);
 
 INVARSPEC NAME P1 := badRange -> (error & status = 32769 & sameAlarms);
 INVARSPEC NAME P2 := (!badRange & badWindow) -> (error & status = 32770 & sameAlarms);
 INVARSPEC NAME P3 := valid -> (!error & status = 0);
 INVARSPEC NAME P4 := (valid & Value > hiLevel) -> hiAlarm;
-INVARSPEC NAME P5 := (valid & Value < hiLevel - hystWindow) -> !hiAlarm;
-INVARSPEC NAME P6 := (valid & hiLevel - hystWindow <= Value & Value <= hiLevel) -> (hiAlarm = hiPrev);
+INVARSPEC NAME P5 := (valid & Value < HighRelease) -> !hiAlarm;
+INVARSPEC NAME P6 := (valid & HighRelease <= Value & Value <= hiLevel) -> (hiAlarm = hiPrev);
 INVARSPEC NAME P7 := (valid & Value < loLevel) -> loAlarm;
-INVARSPEC NAME P8 := (valid & Value > loLevel + hystWindow) -> !loAlarm;
-INVARSPEC NAME P9 := (valid & loLevel <= Value & Value <= loLevel + hystWindow) -> (loAlarm = loPrev);
+INVARSPEC NAME P8 := (valid & Value > LowRelease) -> !loAlarm;
+INVARSPEC NAME P9 := (valid & loLevel <= Value & Value <= LowRelease) -> (loAlarm = loPrev);
 LTLSPEC NAME V2_init := !hiPrev & !loPrev;
 LTLSPEC NAME V2_next := G ((hiAlarm = next(hiPrev)) & (loAlarm = next(loPrev)));

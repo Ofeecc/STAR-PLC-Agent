@@ -132,7 +132,7 @@
     },
     {
       "id": "P5",
-      "formula": "G((valid & Value<hiLevel-hystWindow) -> !hiAlarm)",
+      "formula": "G((valid & Value<HighRelease) -> !hiAlarm)",
       "explanation": "Below the strict release boundary, high alarm clears.",
       "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
       "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
@@ -140,7 +140,7 @@
     },
     {
       "id": "P6",
-      "formula": "G((valid & hiLevel-hystWindow<=Value & Value<=hiLevel) -> (hiAlarm=hiPrev))",
+      "formula": "G((valid & HighRelease<=Value & Value<=hiLevel) -> (hiAlarm=hiPrev))",
       "explanation": "The high hysteresis band retains history.",
       "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
       "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
@@ -156,7 +156,7 @@
     },
     {
       "id": "P8",
-      "formula": "G((valid & Value>loLevel+hystWindow) -> !loAlarm)",
+      "formula": "G((valid & Value>LowRelease) -> !loAlarm)",
       "explanation": "Above the strict low release boundary, low alarm clears.",
       "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
       "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
@@ -164,7 +164,7 @@
     },
     {
       "id": "P9",
-      "formula": "G((valid & loLevel<=Value & Value<=loLevel+hystWindow) -> (loAlarm=loPrev))",
+      "formula": "G((valid & loLevel<=Value & Value<=LowRelease) -> (loAlarm=loPrev))",
       "explanation": "The low hysteresis band retains history.",
       "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
       "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
@@ -181,7 +181,7 @@
   ],
   "atomic_propositions": {
     "badRange": "loLevel >= hiLevel",
-    "badWindow": "hystWindow >= hiLevel-loLevel",
+    "badWindow": "real32(I.hystWindow)>=Span",
     "valid": "!badRange & !badWindow & hystWindow>=0",
     "hiPrev": "{\"kind\": \"previous_observed_output\", \"source\": \"O[k-1].hiAlarm\", \"initial\": false, \"update\": \"After comparing scan k, store ACTUAL O[k].hiAlarm; never write into reference state.\"}",
     "loPrev": "{\"kind\": \"previous_observed_output\", \"source\": \"O[k-1].loAlarm\", \"initial\": false, \"update\": \"After comparing scan k, store ACTUAL O[k].loAlarm; never write into reference state.\"}",
@@ -196,7 +196,11 @@
     "loAlarm": "O[k].loAlarm: independently observed post-scan candidate value (BOOL); never defined as expected output.",
     "error": "O[k].error: independently observed post-scan candidate value (BOOL); never defined as expected output.",
     "status": "O[k].status: independently observed post-scan candidate value (WORD); never defined as expected output.",
-    "init": "At the separate pre-invocation initial observation before scan k=0: O_init.hiAlarm=false, O_init.loAlarm=false, O_init.error=false, O_init.status=0."
+    "init": "At the separate pre-invocation initial observation before scan k=0: O_init.hiAlarm=false, O_init.loAlarm=false, O_init.error=false, O_init.status=0.",
+    "HighRelease": "real32(real32(I.hiLevel)-real32(I.hystWindow))",
+    "LowRelease": "real32(real32(I.loLevel)+real32(I.hystWindow))",
+    "Span": "real32(real32(I.hiLevel)-real32(I.loLevel))",
+    "real32": "IEEE754 binary32 rounding to nearest ties-to-even; finite declared domain. All REAL input symbols denote binary32 sampled values."
   },
   "tests": [
     {
@@ -584,6 +588,172 @@
             "error": false,
             "status": 0
           }
+        }
+      ]
+    },
+    {
+      "id": "PUB003.R22.invalid_low",
+      "name": "低报警已置位后进入非法配置，应保留低报警",
+      "purpose": "低报警已置位后进入非法配置，应保留低报警",
+      "review_origin": "2026-11-12 cross-task review",
+      "steps": [
+        {
+          "inputs": {
+            "Value": 19.0,
+            "hiLevel": 80.0,
+            "loLevel": 20.0,
+            "hystWindow": 5.0
+          },
+          "expected": {
+            "hiAlarm": false,
+            "loAlarm": true,
+            "error": false,
+            "status": 0
+          },
+          "description": "低报警已置位后进入非法配置，应保留低报警；步骤1，核对全部受约束输出。"
+        },
+        {
+          "inputs": {
+            "Value": 50.0,
+            "hiLevel": 80.0,
+            "loLevel": 80.0,
+            "hystWindow": 80.0
+          },
+          "expected": {
+            "hiAlarm": false,
+            "loAlarm": true,
+            "error": true,
+            "status": 32769
+          },
+          "description": "低报警已置位后进入非法配置，应保留低报警；步骤2，核对全部受约束输出。"
+        }
+      ]
+    },
+    {
+      "id": "PUB003.R22.real_boundaries",
+      "name": "REAL迟滞阈值相等保持及两侧变化",
+      "purpose": "REAL迟滞阈值相等保持及两侧变化",
+      "review_origin": "2026-11-12 cross-task review",
+      "steps": [
+        {
+          "inputs": {
+            "Value": 1.1,
+            "hiLevel": 1.0,
+            "loLevel": 0.0,
+            "hystWindow": 0.10000000149011612
+          },
+          "expected": {
+            "hiAlarm": true,
+            "loAlarm": false,
+            "error": false,
+            "status": 0
+          },
+          "description": "REAL迟滞阈值相等保持及两侧变化；步骤1，核对全部受约束输出。"
+        },
+        {
+          "inputs": {
+            "Value": 1.0,
+            "hiLevel": 1.0,
+            "loLevel": 0.0,
+            "hystWindow": 0.10000000149011612
+          },
+          "expected": {
+            "hiAlarm": true,
+            "loAlarm": false,
+            "error": false,
+            "status": 0
+          },
+          "description": "REAL迟滞阈值相等保持及两侧变化；步骤2，核对全部受约束输出。"
+        },
+        {
+          "inputs": {
+            "Value": 0.8999999761581421,
+            "hiLevel": 1.0,
+            "loLevel": 0.0,
+            "hystWindow": 0.10000000149011612
+          },
+          "expected": {
+            "hiAlarm": true,
+            "loAlarm": false,
+            "error": false,
+            "status": 0
+          },
+          "description": "REAL迟滞阈值相等保持及两侧变化；步骤3，核对全部受约束输出。"
+        },
+        {
+          "inputs": {
+            "Value": 0.8999989628791809,
+            "hiLevel": 1.0,
+            "loLevel": 0.0,
+            "hystWindow": 0.10000000149011612
+          },
+          "expected": {
+            "hiAlarm": false,
+            "loAlarm": false,
+            "error": false,
+            "status": 0
+          },
+          "description": "REAL迟滞阈值相等保持及两侧变化；步骤4，核对全部受约束输出。"
+        },
+        {
+          "inputs": {
+            "Value": -0.1,
+            "hiLevel": 1.0,
+            "loLevel": 0.0,
+            "hystWindow": 0.10000000149011612
+          },
+          "expected": {
+            "hiAlarm": false,
+            "loAlarm": true,
+            "error": false,
+            "status": 0
+          },
+          "description": "REAL迟滞阈值相等保持及两侧变化；步骤5，核对全部受约束输出。"
+        },
+        {
+          "inputs": {
+            "Value": 0.0,
+            "hiLevel": 1.0,
+            "loLevel": 0.0,
+            "hystWindow": 0.10000000149011612
+          },
+          "expected": {
+            "hiAlarm": false,
+            "loAlarm": true,
+            "error": false,
+            "status": 0
+          },
+          "description": "REAL迟滞阈值相等保持及两侧变化；步骤6，核对全部受约束输出。"
+        },
+        {
+          "inputs": {
+            "Value": 0.10000000149011612,
+            "hiLevel": 1.0,
+            "loLevel": 0.0,
+            "hystWindow": 0.10000000149011612
+          },
+          "expected": {
+            "hiAlarm": false,
+            "loAlarm": true,
+            "error": false,
+            "status": 0
+          },
+          "description": "REAL迟滞阈值相等保持及两侧变化；步骤7，核对全部受约束输出。"
+        },
+        {
+          "inputs": {
+            "Value": 0.10000099986791611,
+            "hiLevel": 1.0,
+            "loLevel": 0.0,
+            "hystWindow": 0.10000000149011612
+          },
+          "expected": {
+            "hiAlarm": false,
+            "loAlarm": false,
+            "error": false,
+            "status": 0
+          },
+          "description": "REAL迟滞阈值相等保持及两侧变化；步骤8，核对全部受约束输出。"
         }
       ]
     }
