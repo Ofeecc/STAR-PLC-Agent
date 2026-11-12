@@ -5,9 +5,28 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CODESYS STAR v2 | Auto-Test & Waveform Agent Trace Inspector</title>
   <style>
-    .pilot-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; }
-    .pilot-card { text-align:left; padding:14px; border:1px solid var(--border-color); border-radius:8px; background:var(--bg-card); color:var(--text-main); cursor:pointer; font:inherit; }
+    .pilot-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:12px; }
+    .pilot-card { display:flex; flex-direction:column; gap:6px; text-align:left; padding:12px 14px; border:1px solid var(--border-color); border-radius:8px; background:var(--bg-card); color:var(--text-main); cursor:pointer; font:inherit; }
     .pilot-card[aria-pressed="true"] { border-color:var(--cyan); box-shadow:0 0 0 1px var(--cyan); }
+    .pilot-card-head { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+    .pilot-card-smv { display:flex; flex-direction:column; align-items:flex-end; gap:4px; flex-shrink:0; }
+    .pilot-card-meta { font-size:0.8rem; color:var(--text-muted); }
+    .smv-pill { display:inline-flex; align-items:center; gap:4px; padding:2px 7px; border-radius:999px; font-size:0.72rem; font-weight:700; font-family:var(--font-mono); white-space:nowrap; border:1px solid transparent; }
+    .smv-meta { font-size:0.7rem; font-family:var(--font-mono); color:var(--cyan); background:rgba(56,189,248,.12); border:1px solid rgba(56,189,248,.3); padding:1px 6px; border-radius:4px; white-space:nowrap; }
+    .smv-tone-green { background:rgba(34,197,94,.16); color:#86efac; border-color:rgba(34,197,94,.45); }
+    .smv-tone-cyan { background:rgba(6,182,212,.16); color:#67e8f9; border-color:rgba(6,182,212,.45); }
+    .smv-tone-amber { background:rgba(245,158,11,.16); color:#fcd34d; border-color:rgba(245,158,11,.45); }
+    .smv-tone-red { background:rgba(239,68,68,.18); color:#fca5a5; border-color:rgba(239,68,68,.5); }
+    .smv-tone-muted { background:rgba(148,163,184,.14); color:#cbd5e1; border-color:rgba(148,163,184,.3); }
+    .overview-layout { display:flex; justify-content:space-between; align-items:flex-start; gap:18px; flex-wrap:wrap; }
+    .overview-main { flex:1 1 380px; min-width:260px; }
+    .overview-smv-box { flex:0 1 460px; min-width:300px; background:var(--bg-card); border:1px solid var(--border-color); border-radius:8px; padding:12px 14px; margin-left:auto; }
+    .overview-smv-head { display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
+    .overview-smv-title { font-size:0.85rem; font-weight:700; color:var(--text-bright); }
+    .overview-smv-list { display:flex; flex-direction:column; gap:5px; font-size:0.78rem; margin:8px 0; }
+    .overview-smv-row { display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; padding:4px 8px; border-radius:5px; background:rgba(15,20,28,.55); border:1px solid rgba(51,65,85,.7); }
+    .overview-smv-actions { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+    .btn-sm { padding:0.35rem 0.7rem !important; font-size:0.78rem !important; }
     .review-text { white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.85; }
     .review-note { padding:12px 16px; border-left:3px solid var(--amber); background:rgba(245,158,11,.07); margin:12px 0; }
     .review-section { margin:16px 0; }
@@ -15,12 +34,32 @@
     .review-section pre, .review-json { white-space:pre-wrap; overflow-wrap:anywhere; font-size:13px; font-family:var(--font-mono); }
     .review-table-wrap { overflow-x:auto; }
     .review-table-wrap td { vertical-align:top; min-width:75px; }
-    .spec-formula { white-space:pre-wrap; overflow-wrap:anywhere; font:14px/1.8 var(--font-mono); margin:0; min-width:260px; }
+    .spec-formula { white-space:pre-wrap; overflow-wrap:anywhere; font:14px/1.9 var(--font-mono); margin:0; min-width:260px; }
     .spec-table td { vertical-align:top; }
     .spec-table td:last-child { min-width:260px; line-height:1.8; }
     .spec-op { color:#67e8f9; font-weight:700; }
     .spec-pair { font-weight:800; border-radius:3px; }
     .spec-pair.is-match { background:#475569; outline:1px solid currentColor; }
+    .spec-tok { display:inline; font:inherit; padding:1px 5px; border-radius:4px; border:1px solid transparent; cursor:help; transition:filter .12s ease, box-shadow .12s ease; vertical-align:baseline; }
+    .spec-tok:hover, .spec-tok:focus-visible { outline:none; filter:brightness(1.2); box-shadow:0 0 0 2px rgba(56,189,248,.45); }
+    .spec-tok--input { background:rgba(56,189,248,.13); color:#7dd3fc; border-color:rgba(56,189,248,.32); }
+    .spec-tok--output { background:rgba(34,197,94,.14); color:#86efac; border-color:rgba(34,197,94,.34); }
+    .spec-tok--persistent_inout { background:rgba(168,85,247,.2); color:#e9d5ff; border:1.5px solid #c084fc; font-weight:700; }
+    .spec-tok--obs_history { background:rgba(245,158,11,.18); color:#fde68a; border:1.5px dashed #fbbf24; font-weight:700; }
+    .spec-tok--ghost_state { background:rgba(249,115,22,.18); color:#fed7aa; border:1.5px solid #fb923c; font-weight:700; }
+    .spec-tok--alias { background:rgba(45,212,191,.13); color:#99f6e4; border-bottom:1.5px dotted #2dd4bf; }
+    .spec-legend { display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:10px 12px; background:rgba(15,20,28,.65); border:1px solid var(--border-color); border-radius:8px; margin:10px 0; font-size:0.8rem; }
+    .spec-glossary-box { background:rgba(15,20,28,.55); border:1px solid var(--border-color); border-radius:8px; padding:10px 14px; margin:10px 0 14px; }
+    .spec-glossary-box summary { cursor:pointer; font-weight:700; color:var(--cyan); }
+    .spec-glossary-group { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-top:8px; }
+    .spec-glossary-label { font-size:0.78rem; color:var(--text-muted); min-width:160px; font-weight:600; }
+    .spec-popover { position:fixed; z-index:9999; max-width:440px; min-width:260px; background:#0b1220; color:var(--text-main); border:1px solid var(--cyan); border-radius:10px; padding:12px 14px; box-shadow:0 16px 40px rgba(0,0,0,.65); font-size:0.84rem; line-height:1.65; pointer-events:auto; }
+    .spec-popover[hidden] { display:none; }
+    .spec-popover-head { display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:6px; }
+    .spec-popover-name { font-family:var(--font-mono); font-weight:800; font-size:0.95rem; color:var(--text-bright); }
+    .spec-popover-type { font-family:var(--font-mono); font-size:0.75rem; color:#94a3b8; margin-bottom:6px; }
+    .spec-popover-warn { margin-top:8px; padding:6px 9px; border-left:3px solid var(--amber); background:rgba(245,158,11,.12); color:#fde68a; border-radius:4px; font-size:0.78rem; }
+    .spec-popover-src { margin-top:8px; padding-top:6px; border-top:1px solid rgba(51,65,85,.8); font-size:0.75rem; color:#94a3b8; font-family:var(--font-mono); white-space:pre-wrap; overflow-wrap:anywhere; max-height:130px; overflow-y:auto; }
     .spec-help { line-height:1.9; margin:12px 0; }
     .spec-help summary { cursor:pointer; color:var(--cyan); }
     .spec-hint { color:#fcd34d; font-size:13px; margin-top:8px; }
@@ -568,6 +607,7 @@
     </div>
   </main>
 
+  <div id="spec-popover" class="spec-popover" role="tooltip" hidden></div>
   <script>/*__APP_SCRIPT__*/</script>
 </body>
 </html>

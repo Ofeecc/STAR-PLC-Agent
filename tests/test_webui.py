@@ -80,14 +80,181 @@ class WebUITests(unittest.TestCase):
         self.assertEqual(count,64)
 
     def test_model_checker_api_keeps_reference_scope_and_rejects_other_tasks(self):
-        for body in (None,{}, {'task_id':'PUB016'},{'task_id':'../../arbitrary'}):
-            status, _ = handle_api_request('POST','/api/check-reference-model',{},body,self.settings)
-            self.assertEqual(status,400)
+        import shutil
+        import tempfile
+        from pathlib import Path
         from unittest.mock import patch
-        with patch('plc_agent.model_checker.check_model',side_effect=ValueError('not installed')):
-            status, data = handle_api_request('POST','/api/check-reference-model',{}, {'task_id':'PUB001'},self.settings)
-            self.assertEqual(status,503)
-            self.assertEqual(data['status'],'TOOL_ERROR')
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_status = Path(tmpdir) / 'smv_status.json'
+            for body in (
+                None,
+                {},
+                {'task_id': 'NON_EXISTENT'},
+                {'task_id': '../../arbitrary'},
+                {'task_id': 'PUB001', 'variant': '../bad'},
+            ):
+                status, _ = handle_api_request(
+                    'POST', '/api/check-reference-model', {}, body, self.settings, smv_status_path=tmp_status
+                )
+                self.assertEqual(status, 400)
+            with patch('plc_agent.model_checker.find_nusmv', side_effect=ValueError('not installed')), patch(
+                'plc_agent.model_checker.find_nuxmv', side_effect=ValueError('not installed')
+            ), patch('plc_agent.model_checker.check_model', side_effect=ValueError('not installed')):
+                for tid in ('PUB001', 'PUB016'):
+                    status, data = handle_api_request(
+                        'POST',
+                        '/api/check-reference-model',
+                        {},
+                        {'task_id': tid},
+                        self.settings,
+                        smv_status_path=tmp_status,
+                    )
+                    self.assertEqual(status, 503)
+                    self.assertEqual(data['status'], 'TOOL_ERROR')
+                    self.assertEqual(data['verification_status'], 'CHECKER_MISSING')
+                    self.assertTrue(data['checker_missing'])
+                    self.assertEqual(data['smv_status']['scope'], 'EXPLICIT_SMV_MODEL_ONLY')
+                    self.assertFalse(data['smv_status']['candidate_st_verified'])
+
+    def test_persisted_smv_status_reports_verified_both_for_all_32_tasks(self):
+        status, listing = handle_api_request('GET', '/api/tasks', {}, None, self.settings)
+        self.assertEqual(status, 200)
+        self.assertIn('checker_availability', listing)
+        self.assertEqual(len(listing['tasks']), 32)
+        for t in listing['tasks']:
+            smv = t['smv_status']
+            self.assertEqual(smv['scope'], 'EXPLICIT_SMV_MODEL_ONLY')
+            self.assertFalse(smv['candidate_st_verified'])
+            self.assertTrue(smv['authored'])
+            self.assertFalse(smv['stale'], t['id'])
+            self.assertEqual(smv['verification_status'], 'VERIFIED_BOTH', t['id'])
+            self.assertRegex(smv['authoring_text_zh'], r'[\u4e00-\u9fff]')
+            self.assertRegex(smv['badge_text_zh'], r'[\u4e00-\u9fff]')
+
+    def test_missing_checker_handling_preserves_baseline_and_records_unverified_missing(self):
+        import re
+        import shutil
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+
+        from plc_agent.smv_status import DEFAULT_SMV_STATUS_PATH, load_smv_status_store
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Subcase A: persisted baseline present + checker uninstalled
+            copied_status = Path(tmpdir) / 'copied_status.json'
+            shutil.copy2(DEFAULT_SMV_STATUS_PATH, copied_status)
+            with patch('plc_agent.model_checker.find_nusmv', side_effect=ValueError('NuSMV missing')), patch(
+                'plc_agent.model_checker.find_nuxmv', side_effect=ValueError('nuXmv missing')
+            ), patch('plc_agent.model_checker.check_model', side_effect=ValueError('checker missing')):
+                status, detail = handle_api_request(
+                    'GET', '/api/task', {'id': 'PUB015'}, None, self.settings, smv_status_path=copied_status
+                )
+                self.assertEqual(status, 200)
+                smv = detail['smv_status']
+                self.assertTrue(smv['checker_missing'])
+                self.assertFalse(smv['live_rerunnable'])
+                self.assertEqual(smv['verification_status'], 'VERIFIED_BOTH')
+                self.assertIn('nuXmv', smv['badge_text_zh'])
+
+                post_status, post_data = handle_api_request(
+                    'POST',
+                    '/api/check-reference-model',
+                    {},
+                    {'task_id': 'PUB015', 'variant': 'reference'},
+                    self.settings,
+                    smv_status_path=copied_status,
+                )
+                self.assertEqual(post_status, 503)
+                self.assertEqual(post_data['verification_status'], 'CHECKER_MISSING')
+                store_after = load_smv_status_store(copied_status)
+                self.assertEqual(
+                    store_after['records']['PUB015']['models']['reference']['status'],
+                    'MODEL_PROPERTIES_TRUE',
+                )
+                self.assertEqual(
+                    store_after['records']['PUB015']['last_run_attempt']['status'],
+                    'CHECKER_MISSING',
+                )
+
+            # Subcase B: fresh store + checker missing
+            empty_status = Path(tmpdir) / 'empty_status.json'
+            with patch('plc_agent.model_checker.find_nusmv', side_effect=ValueError('NuSMV missing')), patch(
+                'plc_agent.model_checker.find_nuxmv', side_effect=ValueError('nuXmv missing')
+            ), patch('plc_agent.model_checker.check_model', side_effect=ValueError('checker missing')):
+                status, detail = handle_api_request(
+                    'GET', '/api/task', {'id': 'PUB015'}, None, self.settings, smv_status_path=empty_status
+                )
+                self.assertEqual(status, 200)
+                self.assertEqual(detail['smv_status']['verification_status'], 'CHECKER_MISSING')
+                self.assertFalse(detail['smv_status']['persisted_record_present'])
+
+                post_status, post_data = handle_api_request(
+                    'POST',
+                    '/api/check-reference-model',
+                    {},
+                    {'task_id': 'PUB015', 'variant': 'reference'},
+                    self.settings,
+                    smv_status_path=empty_status,
+                )
+                self.assertEqual(post_status, 503)
+                self.assertEqual(post_data['verification_status'], 'CHECKER_MISSING')
+                persisted = load_smv_status_store(empty_status)
+                self.assertEqual(
+                    persisted['records']['PUB015']['models']['reference']['status'],
+                    'CHECKER_MISSING',
+                )
+
+    def test_stale_smv_status_detected_when_model_hash_differs(self):
+        import tempfile
+        from pathlib import Path
+
+        from plc_agent.smv_status import DEFAULT_SMV_STATUS_PATH, load_smv_status_store, save_smv_status_store
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            stale_status = Path(tmpdir) / 'stale_status.json'
+            store = load_smv_status_store(DEFAULT_SMV_STATUS_PATH)
+            store['records']['PUB001']['models']['reference']['model_sha256'] = '0' * 64
+            save_smv_status_store(store, status_path=stale_status)
+            status, detail = handle_api_request(
+                'GET', '/api/task', {'id': 'PUB001'}, None, self.settings, smv_status_path=stale_status
+            )
+            self.assertEqual(status, 200)
+            self.assertEqual(detail['smv_status']['verification_status'], 'STALE')
+            self.assertTrue(detail['smv_status']['stale'])
+            self.assertTrue(detail['smv_status']['models']['reference']['stale'])
+
+    def test_symbol_glossary_covers_all_tokens_and_highlights_persistence(self):
+        import re
+
+        status, listing = handle_api_request('GET', '/api/tasks', {}, None, self.settings)
+        self.assertEqual(status, 200)
+        inout_checked = 0
+        for summary in listing['tasks']:
+            tid = summary['id']
+            st, detail = handle_api_request('GET', '/api/task', {'id': tid}, None, self.settings)
+            self.assertEqual(st, 200)
+            glossary = detail['symbol_glossary']
+            task = detail['task']
+            for pin in task.get('interface', []):
+                self.assertIn(pin['name'], glossary, f'{tid}:{pin["name"]}')
+                if pin.get('direction') == 'IN_OUT':
+                    inout_checked += 1
+                    self.assertEqual(glossary[pin['name']]['category'], 'persistent_inout')
+                    self.assertTrue(glossary[pin['name']]['is_persistent'])
+                    self.assertTrue(glossary[pin['name']]['persistence_warning_zh'])
+            for prop in task.get('ltl', []):
+                for tok in re.findall(r'[A-Za-z_][A-Za-z_0-9.]*', prop['formula']):
+                    if tok in {'G', 'F', 'X', 'U', 'R', 'V', 'W', 'TRUE', 'FALSE', 'AND', 'OR', 'NOT'} or tok.isdigit():
+                        continue
+                    self.assertIn(tok, glossary, f'Missing glossary token {tid} {prop["id"]}: {tok}')
+            if tid == 'PUB001':
+                self.assertEqual(glossary['phase']['category'], 'ghost_state')
+                self.assertTrue(glossary['phase']['is_persistent'])
+                self.assertEqual(glossary['bottleSensor']['category'], 'input')
+                self.assertEqual(glossary['Pump_Motor']['category'], 'output')
+        self.assertGreater(inout_checked, 0)
 
     def test_render_index_html_contains_titles_and_components(self):
         html = render_index_html()
@@ -102,6 +269,11 @@ class WebUITests(unittest.TestCase):
         self.assertIn("waveform-view", html)
         self.assertIn("trace-playback", html)
         self.assertIn("sandbox-editor", html)
+        self.assertIn("spec-popover", html)
+        self.assertIn("overview-smv-box", html)
+        self.assertIn("pilot-card-smv", html)
+        self.assertIn("renderGlossaryPanel", html)
+        self.assertIn("symbol_glossary", html)
 
     def test_handle_api_request_tasks_returns_all_32_tasks(self):
         status, data = handle_api_request("GET", "/api/tasks", {}, None, self.settings)
@@ -282,6 +454,16 @@ class WebUITests(unittest.TestCase):
             data = json.loads(response.read().decode("utf-8"))
             self.assertIn("tasks", data)
             self.assertEqual(len(data["tasks"]), 32)
+            self.assertIn("smv_status", data["tasks"][0])
+
+        # 3. Fetch /api/task?id=PUB015
+        task_url = f"http://127.0.0.1:{port}/api/task?id=PUB015"
+        with urlopen(task_url, timeout=3) as response:
+            self.assertEqual(response.status, 200)
+            detail = json.loads(response.read().decode("utf-8"))
+            self.assertEqual(detail["task"]["id"], "PUB015")
+            self.assertIn("symbol_glossary", detail)
+            self.assertEqual(detail["smv_status"]["verification_status"], "VERIFIED_BOTH")
 
         # Stop the server
         stop_event.set()

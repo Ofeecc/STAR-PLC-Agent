@@ -10,6 +10,7 @@ import contextlib
 import dataclasses
 import http.server
 import json
+import re
 import tempfile
 import threading
 import urllib.parse
@@ -24,6 +25,13 @@ from .dataset import load_tasks
 from .formal_verify import export_verification_bundle
 from .functional import outputs_equal
 from .random_testing import generate_random_cases
+from .smv_status import (
+    build_all_smv_statuses,
+    build_task_smv_status,
+    probe_checker_availability,
+    run_and_persist_smv_check,
+)
+from .symbol_glossary import build_symbol_glossary
 from .task_view import agent_view
 
 
@@ -169,9 +177,11 @@ def handle_api_request(
     body: dict | None,
     settings: Settings,
     backend: Backend | None = None,
+    smv_status_path: Path | None = None,
 ) -> tuple[int, dict]:
     """Dispatch API request to internal handlers and return (status_code, json_dict)."""
     method = method.upper()
+    resolved_status_path = smv_status_path or getattr(settings, "smv_status_path", None)
 
     def get_query_param(name: str) -> str | None:
         val = query.get(name)
@@ -186,23 +196,22 @@ def handle_api_request(
     review_by_id = {r['id']: r for r in review_items}
 
     if method == 'POST' and path == '/api/check-reference-model':
-        # Fixed local model only: never execute a browser-supplied path or command.
-        if not isinstance(body, dict) or body.get('task_id') != 'PUB001':
-            return 400, {'error': 'Only the explicitly encoded PUB001 reference model is available'}
-        from .model_checker import check_model
-        output = ROOT / '.local/model_checker_evidence' / uuid.uuid4().hex
-        try:
-            result = check_model(ROOT / 'models/PUB001_reference.smv', output)
-        except (ValueError, OSError) as exc:
-            return 503, {'status': 'TOOL_ERROR', 'error': str(exc)}
-        result['stdout'] = (output / 'stdout.txt').read_text(encoding='utf-8')
-        result['stderr'] = (output / 'stderr.txt').read_text(encoding='utf-8')
-        result['evidence_dir'] = str(output)
-        return 200, result
+        # Fixed whitelisted tasks & variants only: never execute a browser-supplied path or command.
+        if not isinstance(body, dict):
+            return 400, {'error': 'Request body must be a JSON object'}
+        task_id = body.get('task_id')
+        variant = body.get('variant')
+        known_ids = {t['id'] for t in load_tasks()}
+        if not isinstance(task_id, str) or not re.fullmatch(r'[A-Za-z0-9_]+', task_id) or task_id not in known_ids:
+            return 400, {'error': f"Unsupported or invalid task_id: '{task_id}'"}
+        if variant is not None and (not isinstance(variant, str) or variant not in ('reference', 'complete', 'mutant')):
+            return 400, {'error': f"Unsupported SMV variant: '{variant}'"}
+        return run_and_persist_smv_check(task_id, variant, status_path=resolved_status_path)
 
     # 1. GET /api/tasks
     if method == "GET" and path == "/api/tasks":
         tasks = load_tasks()
+        smv_statuses = build_all_smv_statuses([t["id"] for t in tasks], status_path=resolved_status_path)
         task_list = [
             {
                 "id": t["id"],
@@ -212,10 +221,17 @@ def handle_api_request(
                 "tests_count": len(t.get("tests", [])),
                 "steps_count": sum(len(c.get("steps", [])) for c in t.get("tests", [])),
                 "properties_count": len(t.get("ltl", [])),
+                "smv_status": smv_statuses[t["id"]],
             }
             for t in tasks
         ]
-        return 200, {"tasks": task_list, "total": len(task_list), "pilot_review": pilot_items, "task_review": review_items}
+        return 200, {
+            "tasks": task_list,
+            "total": len(task_list),
+            "pilot_review": pilot_items,
+            "task_review": review_items,
+            "checker_availability": probe_checker_availability(),
+        }
 
     # 2. GET /api/task?id=...
     if method == "GET" and path == "/api/task":
@@ -236,6 +252,8 @@ def handle_api_request(
             "tests": task.get("tests", []),
             "random_cases": rand_cases,
             "review": review,
+            "symbol_glossary": build_symbol_glossary(task, review),
+            "smv_status": build_task_smv_status(task_id, status_path=resolved_status_path),
             "task_sha256": digest(task),
         }
 

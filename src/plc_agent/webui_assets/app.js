@@ -75,7 +75,7 @@ function changeLanguage(value) {
   gLang=value;
   try{localStorage.setItem('star-plc-language',value);}catch(_){}
   const url=new URL(location.href);url.searchParams.set('lang',value);history.replaceState(null,'',url);
-  applyStaticLanguage();renderTaskList(false);
+  hideSpecPopover(true);applyStaticLanguage();renderTaskList(false);
   if(gCurrentTask){renderTaskDetails(gCurrentTask);renderReviewDetails(gCurrentTask);}
   updateWaveformCaseSelector();
   if(gLastEvaluation)renderEvaluation(gLastEvaluation);
@@ -109,7 +109,7 @@ function renderTaskList(loadSelected=true) {
   select.value=tasks.some(t=>t.id===previous)?previous:(tasks[0]||{}).id||'';
   document.getElementById('pilot-total').textContent=tr(`${tasks.length}题 · ${tasks.reduce((n,t)=>n+t.tests_count,0)}用例 · ${tasks.reduce((n,t)=>n+t.steps_count,0)}步`,`${tasks.length} tasks · ${tasks.reduce((n,t)=>n+t.tests_count,0)} cases · ${tasks.reduce((n,t)=>n+t.steps_count,0)} steps`);
   const grid=document.getElementById('pilot-grid');
-  grid.innerHTML=tasks.map(t=>`<button class="pilot-card" data-task="${esc(t.id)}" aria-pressed="${gCurrentTask?.task.id===t.id}"><strong>${esc(t.id)} · ${esc(titleFor(t))}</strong><br><span>${esc(kind(t.kind))} · ${esc(difficulty(t.difficulty))} · ${t.tests_count} ${tr('用例','cases')} / ${t.steps_count} ${tr('步','steps')} · ${t.properties_count} ${tr('属性','properties')}</span><br><span style="color:var(--amber)">${tr('待人工审核','Pending human review')}</span></button>`).join('')||`<p>${tr('没有匹配题目。','No matching tasks.')}</p>`;
+  grid.innerHTML=tasks.map(t=>`<button class="pilot-card" data-task="${esc(t.id)}" aria-pressed="${gCurrentTask?.task.id===t.id}"><div class="pilot-card-head"><strong>${esc(t.id)} · ${esc(titleFor(t))}</strong>${renderCardSmvBadges(t.smv_status)}</div><span>${esc(kind(t.kind))} · ${esc(difficulty(t.difficulty))} · ${t.tests_count} ${tr('用例','cases')} / ${t.steps_count} ${tr('步','steps')} · ${t.properties_count} ${tr('属性','properties')}</span><br><span style="color:var(--amber)">${tr('待人工审核','Pending human review')}</span></button>`).join('')||`<p>${tr('没有匹配题目。','No matching tasks.')}</p>`;
   grid.querySelectorAll('button[data-task]').forEach(b=>b.onclick=()=>onTaskSelected(b.dataset.task));
   const url=new URL(location.href);url.searchParams.set('scope',document.getElementById('pilot-only').checked?'pilot':'all');history.replaceState(null,'',url);
   if(select.value && (loadSelected||gCurrentTask?.task.id!==select.value))onTaskSelected(select.value);
@@ -157,41 +157,266 @@ function renderReviewDetails(data){
   html+=`<p class="spec-hint">${tr('每个用例使用新实例。未列出的预期输出不表示FALSE；预期值不是实测值。解释性谓词须编码后才能模型检查。','Each case starts with a fresh instance. An omitted expected output is not implicitly FALSE. Expected values are not observations. Interpreted predicates require explicit encoding for model checking.')}</p>`;
   document.getElementById('review-details').innerHTML=html;
 }
+let gSymbolGlossary={},gPopoverTimer=null,gPopoverPinned=false;
+const SPEC_CAT_ORDER=['input','output','persistent_inout','obs_history','ghost_state','alias'];
+const SPEC_CAT_TEXT={
+  input:{zh:'输入 INPUT',en:'INPUT'},
+  output:{zh:'输出 OUTPUT',en:'OUTPUT'},
+  persistent_inout:{zh:'持久化 IN_OUT',en:'Persistent IN_OUT'},
+  obs_history:{zh:'上拍输出 O[k-1]',en:'Obs History O[k-1]'},
+  ghost_state:{zh:'跨拍参考/幽灵态',en:'Ghost / Ref State'},
+  alias:{zh:'别名 / 原子命题',en:'Alias / AP'}
+};
+function smvTooltip(smv){
+  if(!smv)return '';
+  const base=gLang==='zh'?(smv.badge_text_zh||''):(smv.badge_text_en||'');
+  const note=gLang==='zh'?'仅针对显式 SMV 模型，不证明候选 ST 代码':'Explicit SMV model only; does not verify candidate ST';
+  return `${base} · ${note}`;
+}
+function renderCardSmvBadges(smv){
+  if(!smv)return `<div class="pilot-card-smv"><span class="smv-pill smv-tone-muted">${tr('SMV 未记录','No SMV record')}</span></div>`;
+  const authText=gLang==='zh'?smv.authoring_text_zh:smv.authoring_text_en;
+  const authTone=smv.authored?'cyan':'muted';
+  const verText=gLang==='zh'?smv.badge_text_zh:smv.badge_text_en;
+  const verTone=smv.badge_tone||'muted';
+  return `<div class="pilot-card-smv" title="${esc(smvTooltip(smv))}"><span class="smv-pill smv-tone-${esc(authTone)}">${esc(authText||'SMV')}</span><span class="smv-pill smv-tone-${esc(verTone)}">${esc(verText||'')}</span></div>`;
+}
+function variantLabel(variant){
+  if(gLang==='zh')return ({reference:'参考 SMV',complete:'完备 SMV',mutant:'变异 SMV'})[variant]||variant;
+  return ({reference:'Reference SMV',complete:'Complete SMV',mutant:'Mutant SMV'})[variant]||variant;
+}
+function variantBadgeInfo(variant,vInfo){
+  const eff=vInfo?.effective_status||'UNVERIFIED';
+  if(eff==='STALE')return {tone:'amber',text:tr('模型变更 · 待重验','Stale · Re-verify')};
+  if(eff==='CHECKER_MISSING')return {tone:'amber',text:tr(`缺 ${vInfo.required_tool||'Checker'}`,`Missing ${vInfo.required_tool||'Checker'}`)};
+  if(eff==='TOOL_ERROR'||eff==='TIMEOUT')return {tone:'red',text:eff};
+  if(eff==='MODEL_PROPERTIES_TRUE'){
+    if(variant==='mutant')return {tone:'red',text:tr('变异逃逸 (未捕获)','Mutant escaped')};
+    return {tone:'green',text:tr('属性全真','Properties TRUE')};
+  }
+  if(eff==='COUNTEREXAMPLE'){
+    if(variant==='mutant')return {tone:'green',text:tr('变异已检出 (反例)','Mutant caught')};
+    return {tone:'red',text:tr('出现反例','Counterexample')};
+  }
+  return {tone:'muted',text:eff};
+}
+function renderOverviewSmvBox(task,smv){
+  if(!smv)return `<div class="overview-smv-box"><div class="overview-smv-head"><strong>${tr('显式 SMV 状态','Explicit SMV Status')}</strong><span class="smv-pill smv-tone-muted">${tr('未加载','Unavailable')}</span></div></div>`;
+  const authText=gLang==='zh'?smv.authoring_text_zh:smv.authoring_text_en;
+  const verText=gLang==='zh'?smv.badge_text_zh:smv.badge_text_en;
+  const variants=smv.authored_variants||[];
+  const rows=variants.map(variant=>{
+    const v=smv.models?.[variant];
+    if(!v)return '';
+    const info=variantBadgeInfo(variant,v);
+    const ratio=v.expected_properties!=null?`${v.passed_count??0}/${v.expected_properties}`:'—';
+    const stamp=v.checked_utc?v.checked_utc.slice(0,19).replace('T',' ')+'Z':tr('未执行','Never');
+    const engineMeta=`${v.required_tool||''} · ${ratio}`;
+    const btnTitle=v.checker_missing?tr(`缺失 ${v.required_tool}，点击将记录 CHECKER_MISSING 状态`,`${v.required_tool} missing; clicking records CHECKER_MISSING`):tr('重新运行显式 SMV 验证并持久化结果','Re-run explicit SMV verification and persist result');
+    return `<div class="overview-smv-row"><div><strong>${esc(variantLabel(variant))}</strong> <span class="smv-meta">${esc(engineMeta)} · ${esc(stamp)}</span></div><div style="display:flex;gap:6px;align-items:center"><span class="smv-pill smv-tone-${esc(info.tone)}">${esc(info.text)}</span><button type="button" class="btn btn-secondary" style="padding:3px 9px;font-size:.76rem" data-smv-run="${esc(variant)}" title="${esc(btnTitle)}">${tr('重验','Run')}</button></div></div>`;
+  }).join('');
+  const missingBanner=smv.checker_missing?`<div class="smv-meta" style="color:var(--amber);margin-top:6px">${tr(`环境缺失 ${smv.required_tool}：无法实时重跑，已优先保留哈希匹配的持久化验证记录。`,`${smv.required_tool} not installed: live re-run unavailable; hash-matched persisted records preserved.`)}</div>`:'';
+  const attemptBanner=smv.last_run_attempt?.status==='CHECKER_MISSING'?`<div class="smv-meta" style="color:var(--amber);margin-top:4px">${tr('最近重跑尝试：','Last run attempt: ')}${esc(smv.last_run_attempt.variant||'')} · CHECKER_MISSING (${esc((smv.last_run_attempt.attempted_utc||'').slice(0,19).replace('T',' '))}Z)</div>`:'';
+  return `<div class="overview-smv-box" id="overview-smv-box"><div class="overview-smv-head"><div><strong>${tr('显式 SMV 编写与验证','Explicit SMV Authoring & Verification')}</strong><div class="smv-meta">${tr('范围：仅显式 SMV 参考/完备/变异模型（不证明候选 ST）','Scope: explicit SMV models only (candidate ST not verified)')}</div></div><div class="pilot-card-smv"><span class="smv-pill smv-tone-${smv.authored?'cyan':'muted'}">${esc(authText)}</span><span class="smv-pill smv-tone-${esc(smv.badge_tone||'muted')}">${esc(verText)}</span></div></div>${rows||`<div class="smv-meta">${tr('本题尚无 SMV 模型文件。','No explicit SMV file for this task.')}</div>`}${missingBanner}${attemptBanner}<div class="overview-smv-actions" id="overview-smv-live-status"></div></div>`;
+}
+function lookupGlossarySymbol(token,glossary){
+  if(!glossary||!token)return null;
+  if(glossary[token])return glossary[token];
+  if(token.includes('#')){const base=token.split('#')[0];if(glossary[base])return glossary[base];}
+  if(token.includes('.')){const base=token.split('.')[0];if(glossary[base])return glossary[base];}
+  return null;
+}
+function hideSpecPopover(force=false){
+  if(gPopoverTimer){clearTimeout(gPopoverTimer);gPopoverTimer=null;}
+  if(!force&&gPopoverPinned)return;
+  gPopoverPinned=false;
+  const pop=document.getElementById('spec-popover');
+  if(pop)pop.hidden=true;
+}
+function positionSpecPopover(pop,anchor){
+  const rect=anchor.getBoundingClientRect();
+  const pad=10,maxW=380;
+  pop.hidden=false;
+  const popRect=pop.getBoundingClientRect();
+  const width=Math.min(maxW,popRect.width||340);
+  const height=popRect.height||180;
+  let left=rect.left;
+  if(left+width+pad>window.innerWidth)left=Math.max(pad,window.innerWidth-width-pad);
+  let top=rect.bottom+8;
+  if(top+height+pad>window.innerHeight&&rect.top-height-8>pad)top=rect.top-height-8;
+  else if(top+height+pad>window.innerHeight)top=Math.max(pad,window.innerHeight-height-pad);
+  pop.style.left=`${Math.round(left)}px`;
+  pop.style.top=`${Math.round(top)}px`;
+}
+function showSpecPopover(anchor,symbol,pinned=false){
+  const entry=lookupGlossarySymbol(symbol,gSymbolGlossary);
+  const pop=document.getElementById('spec-popover');
+  if(!entry||!pop)return;
+  if(gPopoverTimer){clearTimeout(gPopoverTimer);gPopoverTimer=null;}
+  if(pinned)gPopoverPinned=true;
+  const catText=SPEC_CAT_TEXT[entry.category]?.zh||entry.category_zh||entry.category;
+  const persistPill=entry.is_persistent?`<span class="spec-tok spec-tok--${esc(entry.category)} is-persistent" style="font-size:.72rem">持久化 / 跨拍重点</span>`:'';
+  const srcHtml=entry.definition_source&&entry.definition_source!==entry.name&&entry.definition_source!==entry.definition_zh?`<div class="spec-popover-code">来源定义 / 绑定：${esc(entry.definition_source)}</div>`:'';
+  const warnHtml=entry.persistence_warning_zh?`<div class="spec-popover-warn">${esc(entry.persistence_warning_zh)}</div>`:'';
+  pop.innerHTML=`<div class="spec-popover-head"><span class="spec-tok spec-tok--${esc(entry.category)}${entry.is_persistent?' is-persistent':''}">${esc(entry.name)}</span><span class="spec-popover-cat">${esc(catText)} · ${esc(entry.type||'')}</span>${persistPill}</div><div class="spec-popover-title">${esc(entry.label_zh||entry.name)}</div><div class="spec-popover-desc">${esc(entry.definition_zh||'')}</div>${srcHtml}${warnHtml}`;
+  positionSpecPopover(pop,anchor);
+}
+function attachPopoverEvents(container){
+  if(!container)return;
+  container.onmouseover=e=>{
+    const pair=e.target.closest('.spec-pair');
+    if(pair){pair.closest('.spec-formula')?.querySelectorAll('.spec-pair').forEach(n=>{if(n.dataset.pair===pair.dataset.pair)n.classList.add('is-match');});}
+    const tok=e.target.closest('.spec-tok[data-symbol]');
+    if(tok&&!gPopoverPinned)showSpecPopover(tok,tok.dataset.symbol,false);
+  };
+  container.onmouseout=e=>{
+    const pair=e.target.closest('.spec-pair');
+    if(pair){pair.closest('.spec-formula')?.querySelectorAll('.spec-pair').forEach(n=>{if(n.dataset.pair===pair.dataset.pair)n.classList.remove('is-match');});}
+    const tok=e.target.closest('.spec-tok[data-symbol]');
+    if(tok&&!gPopoverPinned){
+      if(gPopoverTimer)clearTimeout(gPopoverTimer);
+      gPopoverTimer=setTimeout(()=>hideSpecPopover(false),140);
+    }
+  };
+  container.onfocusin=e=>{
+    const tok=e.target.closest('.spec-tok[data-symbol]');
+    if(tok)showSpecPopover(tok,tok.dataset.symbol,false);
+  };
+  container.onfocusout=e=>{
+    if(!gPopoverPinned&&!e.relatedTarget?.closest?.('#spec-popover'))hideSpecPopover(false);
+  };
+  container.onclick=e=>{
+    const tok=e.target.closest('.spec-tok[data-symbol]');
+    if(!tok)return;
+    e.stopPropagation();
+    const sameOpen=gPopoverPinned&&!document.getElementById('spec-popover')?.hidden&&document.getElementById('spec-popover')?.querySelector('.spec-popover-head .spec-tok')?.textContent===lookupGlossarySymbol(tok.dataset.symbol,gSymbolGlossary)?.name;
+    if(sameOpen)hideSpecPopover(true);
+    else showSpecPopover(tok,tok.dataset.symbol,true);
+  };
+}
+const specPopEl=document.getElementById('spec-popover');
+if(specPopEl){
+  specPopEl.onmouseenter=()=>{if(gPopoverTimer){clearTimeout(gPopoverTimer);gPopoverTimer=null;}};
+  specPopEl.onmouseleave=()=>{if(!gPopoverPinned)hideSpecPopover(false);};
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')hideSpecPopover(true);});
+document.addEventListener('click',e=>{if(gPopoverPinned&&!e.target.closest?.('.spec-tok[data-symbol]')&&!e.target.closest?.('#spec-popover'))hideSpecPopover(true);});
+window.addEventListener('scroll',()=>{if(!gPopoverPinned)hideSpecPopover(false);},{passive:true});
+
 // Token-preserving formula presentation; never rewrite or evaluate source formulas.
-function formatSpec(formula){
-  const tokens=String(formula).match(/<->|->|<=|>=|!=|[0-9]+#[A-Fa-f0-9]+|[A-Za-z_][A-Za-z_0-9.]*|[0-9]+(?:\.[0-9]+)?|[^\s]/g)||[];
+function formatSpec(formula,glossary=gSymbolGlossary){
+  const tokens=String(formula).match(/<->|->|<=|>=|!=|previous-input|pre-output|[0-9]+#[A-Fa-f0-9]+|[A-Za-z_][A-Za-z_0-9.]*(?:#[A-Za-z0-9_.]+)?|[0-9]+(?:\.[0-9]+)?|[^\s]/g)||[];
   const colors=['#fcd34d','#c4b5fd','#6ee7b7','#fda4af','#93c5fd','#fdba74'];
   let depth=0,serial=0,stack=[],parts=[];
   tokens.forEach(t=>{
     if(t==='('){const pair=serial++;stack.push(pair);parts.push(`<span class="spec-pair" data-pair="${pair}" style="color:${colors[depth%colors.length]}">(</span>`);depth++;}
     else if(t===')'){depth=Math.max(0,depth-1);const pair=stack.length?stack.pop():'unmatched';parts.push(`<span class="spec-pair" data-pair="${pair}" style="color:${colors[depth%colors.length]}">)</span>`);}
     else if(['->','<->','&','|'].includes(t))parts.push('\n'+'  '.repeat(Math.min(depth,8))+`<span class="spec-op">${esc(t)}</span> `);
-    else parts.push(/^(G|F|X|U|R|!)$/.test(t)?`<span class="spec-op">${esc(t)}</span>`:esc(t));
+    else if(/^(G|F|X|U|R|V|W|!)$/.test(t))parts.push(`<span class="spec-op">${esc(t)}</span>`);
+    else{
+      const meta=lookupGlossarySymbol(t,glossary);
+      if(meta){
+        parts.push(`<button type="button" class="spec-tok spec-tok--${esc(meta.category)}${meta.is_persistent?' is-persistent':''}" data-symbol="${esc(t)}">${esc(t)}</button>`);
+      }else{
+        parts.push(esc(t));
+      }
+    }
   });return parts.join(' ');
 }
-function specReviewGuide(task){
-  return `<details class="spec-help" open><summary>${tr('如何审核规约（组内整理，待人工确认）','How to review a specification (group-authored guidance)')}</summary><p>${tr('符号：G 始终；F 最终（无固定期限）；X 下一拍；! 非；& 同时满足；| 或；→ 如果…那么…；↔ 当且仅当；U 直到。同色括号是一对，悬停可定位。','Symbols: G always; F eventually (no fixed deadline); X next scan; ! not; & and; | or; → implies; ↔ iff; U until. Matching brackets share a color; hover to locate a pair.')}</p><p>${tr('逐条核对：①在原题中找依据；②分开前提和结论，确认本拍/下拍；③检查边界、长按、乱序与优先级；④手写应通过/应失败轨迹；⑤找到触发前提的测试，避免前提永不发生而空泛通过。','For each property: find source support; separate premise and conclusion; identify current/next-scan observations; check boundaries, held inputs and priorities; construct passing/failing traces; ensure tests activate the premise to avoid vacuous success.')}</p>${task.id==='PUB001'?`<p>${tr('PUB001：0空闲→1清洗→2灌装→3旋盖→4包装→5完成。phase是扫描前状态，输出在扫描后观测。P3中Pump_Motor是本拍输出，X(phase=1)是下拍开始阶段；确认全真仍只前进一步。','PUB001 phases: 0 idle → 1 clean → 2 fill → 3 cap → 4 pack → 5 complete. phase is pre-scan; outputs are post-scan. In P3, Pump_Motor is the current observed output and X(phase=1) is the next pre-state. All confirmations together still advance only one phase.')}</p>`:''}<p class="spec-hint">${tr('配色换行不改公式。完整行为谓词尚须展开编码；显示规约不等于完成形式证明。','Formatting preserves the formula. Complete-behavior predicates require explicit encoding; displaying properties does not prove the candidate.')}</p>${task.id==='PUB001'?`<button class="btn btn-secondary" id="check-reference-model" onclick="checkReferenceModel()">${tr('NuSMV：检查PUB001手写参考模型','NuSMV: Check PUB001 handwritten reference')}</button><p class="spec-hint">${tr('仅参考SMV的P2–P10共9条；不覆盖P1与完整谓词，不证明候选ST。','Only P2–P10 of the handwritten SMV model (9 properties). P1 and the complete predicate are excluded; candidate ST is not verified.')}</p><pre id="reference-model-result" class="spec-source"></pre>`:`<p class="spec-hint">${tr('本题尚无可执行的SMV编码。','No executable SMV encoding is available for this task.')}</p>`}</details>`;
+function renderGlossaryPanel(glossary){
+  const entries=Object.values(glossary||{});
+  const legendItems=SPEC_CAT_ORDER.map(cat=>{
+    const label=gLang==='zh'?SPEC_CAT_TEXT[cat].zh:SPEC_CAT_TEXT[cat].en;
+    const persistClass=(cat==='persistent_inout'||cat==='obs_history'||cat==='ghost_state')?' is-persistent':'';
+    return `<span class="spec-tok spec-tok--${cat}${persistClass}">${esc(label)}</span>`;
+  }).join('');
+  const legendHtml=`<div class="spec-legend" aria-label="Symbol Highlight Legend"><strong>${tr('高亮图例（悬停或点击公式符号查看中文浮窗）：','Highlight Legend (hover/click tokens for Chinese popover):')}</strong>${legendItems}</div>`;
+  if(!entries.length)return legendHtml;
+  const orderMap={persistent_inout:0,obs_history:1,ghost_state:2,input:3,output:4,alias:5};
+  const sorted=[...entries].sort((a,b)=>(orderMap[a.category]??9)-(orderMap[b.category]??9)||a.name.localeCompare(b.name));
+  const persistentCount=sorted.filter(e=>e.is_persistent).length;
+  const aliasCount=sorted.filter(e=>e.category==='alias').length;
+  const rows=sorted.map(e=>`<tr><td><button type="button" class="spec-tok spec-tok--${esc(e.category)}${e.is_persistent?' is-persistent':''}" data-symbol="${esc(e.name)}">${esc(e.name)}</button></td><td>${esc(e.category_zh||e.category)}${e.is_persistent?` <span class="smv-pill smv-tone-amber">${tr('持久化/跨拍','Persistent')}</span>`:''}</td><td><strong>${esc(e.label_zh||e.name)}</strong><div class="spec-hint" style="margin-top:2px">${esc(e.definition_zh||'')}</div>${e.persistence_warning_zh?`<div class="spec-hint" style="color:var(--amber);margin-top:2px">${esc(e.persistence_warning_zh)}</div>`:''}</td></tr>`).join('');
+  return `${legendHtml}<details class="spec-glossary-box"><summary>${tr(`查看全部接口变量、持久化状态 (${persistentCount}) 与规约别名 (${aliasCount}) 清单`,`Inspect interface pins, persistent states (${persistentCount}) & spec aliases (${aliasCount})`)}</summary><div class="review-table-wrap"><table class="data-table"><thead><tr><th>${tr('符号','Symbol')}</th><th>${tr('分类 / 持久性','Category / Persistence')}</th><th>${tr('中文定义与跨拍注意点','Chinese Definition & Persistence Notes')}</th></tr></thead><tbody>${rows}</tbody></table></div></details>`;
 }
-async function checkReferenceModel(){
-  const button=document.getElementById('check-reference-model'),target=document.getElementById('reference-model-result');button.disabled=true;
-  target.textContent=tr('检查中…','Checking…');
-  try{target.textContent=JSON.stringify(await api('/api/check-reference-model',{task_id:'PUB001'}),null,2);}catch(error){target.textContent=error.message;}finally{button.disabled=false;}
+function specReviewGuide(task,smv){
+  const variants=smv?.authored_variants||[];
+  const defaultVariant=variants.includes('reference')?'reference':(variants[0]||'reference');
+  const smvControls=variants.length?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin:6px 0">${variants.map(v=>`<button type="button" class="btn btn-secondary" data-smv-run="${esc(v)}">${tr(`${smv?.required_tool||'SMV'}：检查 ${task.id} (${variantLabel(v)})`,`${smv?.required_tool||'SMV'}: Check ${task.id} (${variantLabel(v)})`)}</button>`).join('')}</div><p class="spec-hint">${tr('仅验证 models/ 中的显式 SMV 模型（EXPLICIT_SMV_MODEL_ONLY），不覆盖未编译候选 ST 代码；校验结果会写入 configs/smv_verification_status.json。','Checks explicit SMV models in models/ only (EXPLICIT_SMV_MODEL_ONLY); candidate ST is NOT verified. Results persist to configs/smv_verification_status.json.')}</p><pre id="reference-model-result" class="spec-source">${smv?.last_run_attempt?.status==='CHECKER_MISSING'?esc(JSON.stringify(smv.last_run_attempt,null,2)):''}</pre>`:`<p class="spec-hint">${tr('本题尚无可执行的SMV编码。','No executable SMV encoding is available for this task.')}</p>`;
+  return `<details class="spec-help" open><summary>${tr('如何审核规约（组内整理，待人工确认）','How to review a specification (group-authored guidance)')}</summary><p>${tr('符号：G 始终；F 最终（无固定期限）；X 下一拍；! 非；& 同时满足；| 或；→ 如果…那么…；↔ 当且仅当；U 直到。同色括号是一对，悬停可定位；点击或悬停彩色变量/别名可查看中文定义与持久化警示。','Symbols: G always; F eventually (no fixed deadline); X next scan; ! not; & and; | or; → implies; ↔ iff; U until. Matching brackets share a color; hover/click highlighted symbols for Chinese definitions and persistence notes.')}</p><p>${tr('逐条核对：①在原题中找依据；②分开前提和结论，确认本拍/下拍；③检查边界、长按、乱序与优先级；④确认 IN_OUT、O[k-1] 与 Spre/q* 参考幽灵态未被候选内部私有变量混淆；⑤找到触发前提的测试，避免空泛通过。','For each property: find source support; separate premise and conclusion; check current/next-scan observations and boundaries; confirm IN_OUT, O[k-1], and Spre/q* ghost states are distinct from candidate internals; ensure tests activate premises.')}</p>${task.id==='PUB001'?`<p>${tr('PUB001：0空闲→1清洗→2灌装→3旋盖→4包装→5完成。phase是扫描前状态，输出在扫描后观测。P3中Pump_Motor是本拍输出，X(phase=1)是下拍开始阶段；确认全真仍只前进一步。','PUB001 phases: 0 idle → 1 clean → 2 fill → 3 cap → 4 pack → 5 complete. phase is pre-scan; outputs are post-scan. In P3, Pump_Motor is the current observed output and X(phase=1) is the next pre-state. All confirmations together still advance only one phase.')}</p>`:''}<p class="spec-hint">${tr('配色与符号高亮均保持原始公式一字不改；显示规约不等于完成候选 ST 形式证明。','Highlighting preserves source formulas verbatim; displaying properties does not prove candidate ST.')}</p>${smvControls}</details>`;
+}
+async function checkSmvModel(taskId,variant){
+  const target=document.getElementById('reference-model-result');
+  const liveBox=document.getElementById('overview-smv-live-status');
+  const btns=[...document.querySelectorAll(`[data-smv-run]`)];
+  btns.forEach(b=>b.disabled=true);
+  if(target)target.textContent=tr(`正在检查 ${taskId} (${variant})…`,`Checking ${taskId} (${variant})…`);
+  if(liveBox)liveBox.innerHTML=`<span class="smv-meta">${tr('执行中…','Running…')}</span>`;
+  try{
+    const resp=await fetch('/api/check-reference-model',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({task_id:taskId,variant})});
+    const payload=await resp.json();
+    if(payload?.smv_status&&gCurrentTask?.task.id===taskId){
+      gCurrentTask.smv_status=payload.smv_status;
+      gTasks=gTasks.map(t=>t.id===taskId?{...t,smv_status:payload.smv_status}:t);
+      renderTaskList(false);
+      renderTaskOverview(gCurrentTask);
+      bindSmvButtons(taskId);
+    }
+    if(target)target.textContent=JSON.stringify(payload,null,2);
+    const afterLive=document.getElementById('overview-smv-live-status');
+    if(afterLive){
+      if(payload?.verification_status==='CHECKER_MISSING')afterLive.innerHTML=`<span class="smv-meta" style="color:var(--amber)">${tr('已持久化 CHECKER_MISSING 记录（HTTP 503）','Persisted CHECKER_MISSING attempt (HTTP 503)')}</span>`;
+      else if(resp.ok)afterLive.innerHTML=`<span class="smv-meta" style="color:var(--green)">${tr(`已重验 ${variant} 并入库`, `Re-verified ${variant} and persisted`)}</span>`;
+      else afterLive.innerHTML=`<span class="smv-meta" style="color:var(--red)">${esc(payload?.error||resp.statusText)}</span>`;
+    }
+  }catch(error){
+    if(target)target.textContent=error.message;
+  }finally{
+    document.querySelectorAll(`[data-smv-run]`).forEach(b=>b.disabled=false);
+  }
+}
+function checkReferenceModel(){
+  if(!gCurrentTask)return;
+  const variants=gCurrentTask.smv_status?.authored_variants||[];
+  const variant=variants.includes('reference')?'reference':(variants[0]||'reference');
+  return checkSmvModel(gCurrentTask.task.id,variant);
+}
+function bindSmvButtons(taskId){
+  document.querySelectorAll('[data-smv-run]').forEach(btn=>{
+    btn.onclick=()=>checkSmvModel(taskId,btn.dataset.smvRun);
+  });
+}
+function renderTaskOverview(data){
+  const task=data.task,review=currentReview(data);
+  document.getElementById('task-overview').innerHTML=`<div class="overview-layout"><div class="overview-main"><p><span class="badge badge-pub">${esc(kind(task.kind))}</span> <span class="badge">${esc(difficulty(task.difficulty))}</span> <strong>${esc(task.id)} · ${esc(gLang==='zh'&&review?review.title_zh:task.title)}</strong></p><p>${data.tests.length} ${tr('固定用例','fixed cases')} · ${data.tests.reduce((n,c)=>n+c.steps.length,0)} ${tr('步','steps')} · ${task.ltl.length} ${tr('条属性','properties')}</p><p class="spec-hint">${tr('安全与错误优先级：详见补充约定及完整行为。','Safety and error priorities: see assumptions and the complete contract.')}</p></div>${renderOverviewSmvBox(task,data.smv_status)}</div>`;
 }
 function testName(test,review){return gLang==='zh'&&review?.tests_zh[test.id]?review.tests_zh[test.id].name:test.purpose||test.name||test.id;}
 function renderTaskDetails(data){
+  hideSpecPopover(true);
   const task=data.task,review=currentReview(data);
-  document.getElementById('task-overview').innerHTML=`<p><span class="badge badge-pub">${esc(kind(task.kind))}</span> <span class="badge">${esc(difficulty(task.difficulty))}</span> <strong>${esc(task.id)} · ${esc(gLang==='zh'&&review?review.title_zh:task.title)}</strong></p><p>${data.tests.length} ${tr('固定用例','fixed cases')} · ${data.tests.reduce((n,c)=>n+c.steps.length,0)} ${tr('步','steps')} · ${task.ltl.length} ${tr('条属性','properties')}</p><p class="spec-hint">${tr('安全与错误优先级：详见补充约定及完整行为。','Safety and error priorities: see assumptions and the complete contract.')}</p>`;
-  document.getElementById('interface-pins-container').innerHTML=`<div class="review-table-wrap"><table class="data-table"><thead><tr>${[tr('变量名','Name'),tr('类型','Type'),tr('方向','Direction'),tr('含义','Description')].map(v=>`<th>${v}</th>`).join('')}</tr></thead><tbody>${(task.interface||[]).map(p=>`<tr><td><code>${esc(p.name)}</code></td><td><code>${esc(p.type)}</code></td><td>${esc(gLang==='zh'?({INPUT:'输入',OUTPUT:'输出',IN_OUT:'输入/输出'})[p.direction]||p.direction:p.direction)}</td><td>${esc(gLang==='zh'&&review?review.interface_zh[p.name]:p.description||p.comment||'')}</td></tr>`).join('')}</tbody></table></div>`;
+  gSymbolGlossary=data.symbol_glossary||{};
+  renderTaskOverview(data);
+  const pinsContainer=document.getElementById('interface-pins-container');
+  pinsContainer.innerHTML=`<div class="review-table-wrap"><table class="data-table"><thead><tr>${[tr('变量名','Name'),tr('类型','Type'),tr('方向 / 持久性','Direction / Persistence'),tr('含义','Description')].map(v=>`<th>${v}</th>`).join('')}</tr></thead><tbody>${(task.interface||[]).map(p=>{
+    const meta=gSymbolGlossary[p.name];
+    const cat=meta?.category||(p.direction==='IN_OUT'?'persistent_inout':(p.direction==='OUTPUT'?'output':'input'));
+    const isPersist=Boolean(meta?.is_persistent||p.direction==='IN_OUT');
+    const dirZh=({INPUT:'输入 INPUT',OUTPUT:'输出 OUTPUT',IN_OUT:'输入/输出 IN_OUT（持久化存储）'})[p.direction]||p.direction;
+    const dirLabel=gLang==='zh'?dirZh:(p.direction==='IN_OUT'?'IN_OUT (Persistent Storage)':p.direction);
+    return `<tr><td><button type="button" class="spec-tok spec-tok--${esc(cat)}${isPersist?' is-persistent':''}" data-symbol="${esc(p.name)}">${esc(p.name)}</button></td><td><code>${esc(p.type)}</code></td><td>${esc(dirLabel)}${isPersist?` <span class="smv-pill smv-tone-amber">${tr('持久化','Persistent')}</span>`:''}</td><td>${esc(gLang==='zh'&&review?review.interface_zh[p.name]:p.description||p.comment||'')}</td></tr>`;
+  }).join('')}</tbody></table></div>`;
+  attachPopoverEvents(pinsContainer);
   const box=document.getElementById('ltl-container');
   const normalized=task.normalized_specification;
-  const normalizationHtml=normalized?`<p class="spec-hint">${tr('规范化已完成；人工审核待确认。244是材料条目总数，不是已证明的性质数量。','Normalized definitions; human review pending. Property count does not mean proved properties.')} ${esc(normalized.candidate_formal_verification)}</p><details class="review-section"><summary>${tr('查看精确行为定义、辅助状态初值与历史绑定','Exact behavior, reference initialization and history bindings')}</summary><pre class="review-json">${esc(normalized.rules_zh)}</pre><pre class="review-json">${esc(JSON.stringify({observation:normalized.observation,initial_observed:normalized.initial_observed,reference_state_initial:normalized.reference_state_initial,history_bindings:normalized.history_bindings,auxiliary_state_bindings:normalized.auxiliary_state_bindings,finite_conjunctions:normalized.finite_conjunctions,comparison:normalized.comparison,constrained_fields:normalized.constrained_observed_fields,unconstrained_representation:normalized.unconstrained_representation_fields,transition:normalized.transition,limitations:normalized.limitations},null,2))}</pre></details>`:'';
-  box.innerHTML=specReviewGuide(task)+normalizationHtml+`<div class="review-table-wrap"><table class="data-table spec-table"><thead><tr><th>${tr('属性','Property')}</th><th>${tr('规约公式 · 括号配色与换行','Formula · Colored bracket pairs')}</th><th>${tr('中文含义与审核要点','Meaning & review notes')}</th></tr></thead><tbody>${task.ltl.map(p=>{
+  const normalizationHtml=normalized?`<p class="spec-hint">${tr('规范化已完成；人工审核待确认。属性条数统计不代表候选 ST 已被形式证明。','Normalized definitions; human review pending. Property count does not mean candidate ST is proved.')} ${esc(normalized.candidate_formal_verification)}</p><details class="review-section"><summary>${tr('查看精确行为定义、辅助状态初值与历史绑定','Exact behavior, reference initialization and history bindings')}</summary><pre class="review-json">${esc(normalized.rules_zh)}</pre><pre class="review-json">${esc(JSON.stringify({observation:normalized.observation,initial_observed:normalized.initial_observed,reference_state_initial:normalized.reference_state_initial,history_bindings:normalized.history_bindings,auxiliary_state_bindings:normalized.auxiliary_state_bindings,finite_conjunctions:normalized.finite_conjunctions,comparison:normalized.comparison,constrained_fields:normalized.constrained_observed_fields,unconstrained_representation:normalized.unconstrained_representation_fields,transition:normalized.transition,limitations:normalized.limitations},null,2))}</pre></details>`:'';
+  box.innerHTML=specReviewGuide(task,data.smv_status)+renderGlossaryPanel(gSymbolGlossary)+normalizationHtml+`<div class="review-table-wrap"><table class="data-table spec-table"><thead><tr><th>${tr('属性','Property')}</th><th>${tr('规约公式 · 括号配色与符号高亮','Formula · Bracket pairs & symbol highlights')}</th><th>${tr('中文含义与审核要点','Meaning & review notes')}</th></tr></thead><tbody>${task.ltl.map(p=>{
     const item=review?.properties_zh[p.id],matched=item?.formula===p.formula;
     const meaning=gLang==='zh'?(matched?item.description:tr('译文缺失或公式已变化，请重新审核。','Translation missing or stale.')):p.explanation||p.description||'';
-    return `<tr><td>${esc(p.id)}</td><td><pre class="spec-formula">${formatSpec(p.formula)}</pre><details><summary>${tr('原始公式','Source formula')}</summary><code class="spec-source">${esc(p.formula)}</code></details></td><td>${esc(meaning)}<p class="spec-hint">${esc(gLang==='zh'&&matched?item.review:tr('','Check premise activation, history binding, boundaries and the complete contract.'))}</p><details><summary>${tr('原英文说明','Original description')}</summary>${esc(p.explanation||p.description||'')}</details></td></tr>`;
+    return `<tr><td>${esc(p.id)}</td><td><pre class="spec-formula">${formatSpec(p.formula,gSymbolGlossary)}</pre><details><summary>${tr('原始公式','Source formula')}</summary><code class="spec-source">${esc(p.formula)}</code></details></td><td>${esc(meaning)}<p class="spec-hint">${esc(gLang==='zh'&&matched?item.review:tr('','Check premise activation, history binding, boundaries and the complete contract.'))}</p><details><summary>${tr('原英文说明','Original description')}</summary>${esc(p.explanation||p.description||'')}</details></td></tr>`;
   }).join('')}</tbody></table></div>`;
-  const highlight=(event,active)=>{const node=event.target.closest('.spec-pair');if(!node)return;node.closest('.spec-formula').querySelectorAll('.spec-pair').forEach(n=>{if(n.dataset.pair===node.dataset.pair)n.classList.toggle('is-match',active);});};
-  box.onmouseover=e=>highlight(e,true);box.onmouseout=e=>highlight(e,false);
+  attachPopoverEvents(box);
+  bindSmvButtons(task.id);
+}
   const fixed=data.tests||[],random=data.random_cases||[];
   document.getElementById('tests-container').innerHTML=`<p>${tr('固定测试','Fixed tests')}: ${fixed.length} · ${tr('可生成随机差分用例','Available differential random cases')}: ${random.length}</p><table class="data-table"><thead><tr><th>${tr('用例编号','Case ID')}</th><th>${tr('类别','Kind')}</th><th>${tr('步数','Steps')}</th><th>${tr('场景说明','Scenario')}</th></tr></thead><tbody>${[...fixed,...random].map((t,i)=>`<tr><td>${esc(t.id)}</td><td>${i<fixed.length?tr('固定','Fixed'):tr('随机','Random')}</td><td>${t.steps.length}</td><td>${esc(i<fixed.length?testName(t,review):tr('随机差分输入序列','Random differential input sequence'))}</td></tr>`).join('')}</tbody></table><h3>${tr('固定测试 · 逐步输入与预期输出','Fixed tests · Inputs & expected outputs by step')}</h3><p class="spec-hint">${tr('从0编号；dt_ms为距上次调用时间。预期值供审核，不是实测输出。','Zero-based steps; dt_ms is time since the previous call. Expectations are for review, not observed outputs.')}</p>${fixed.map(t=>`<details class="review-section"><summary>${esc(t.id)} · ${esc(testName(t,review))} · ${t.steps.length} ${tr('步','steps')}</summary><div class="review-table-wrap"><table class="data-table"><thead><tr><th>${tr('步','Step')}</th><th>dt_ms</th><th>${tr('输入','Inputs')}</th><th>${tr('预期输出','Expected outputs')}</th></tr></thead><tbody>${t.steps.map((s,i)=>`<tr><td>${i}</td><td>${s.dt_ms==null?tr('未设置','Not set'):esc(s.dt_ms)}</td><td><pre class="review-json">${esc(JSON.stringify(s.inputs,null,2))}</pre></td><td><pre class="review-json">${esc(JSON.stringify(s.expected,null,2))}</pre></td></tr>`).join('')}</tbody></table></div></details>`).join('')}`;
 }
