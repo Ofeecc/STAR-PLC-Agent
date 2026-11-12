@@ -1,0 +1,32 @@
+-- Scope: EXPLICIT_SMV_MODEL_ONLY (not candidate ST verification).
+-- Task: PUB003 negative mutant: resets hiAlarm at <= boundary instead of strict <, violating P6.
+MODULE main
+VAR
+  Value : real;
+  hiLevel : real;
+  loLevel : real;
+  hystWindow : real;
+  hiPrev : boolean;
+  loPrev : boolean;
+
+INVAR hystWindow >= 0.0;
+
+ASSIGN
+  init(hiPrev) := FALSE;
+  init(loPrev) := FALSE;
+  next(hiPrev) := hiAlarm;
+  next(loPrev) := loAlarm;
+
+DEFINE
+  badRange := loLevel >= hiLevel;
+  badWindow := !badRange & (hystWindow >= hiLevel - loLevel);
+  valid := !badRange & !badWindow;
+  error := badRange | badWindow;
+  status := badRange ? 32769 : (badWindow ? 32770 : 0);
+  hiAlarm := !valid ? hiPrev : (Value > hiLevel ? TRUE : (Value <= hiLevel - hystWindow ? FALSE : hiPrev));
+  loAlarm := !valid ? loPrev : (Value < loLevel ? TRUE : (Value > loLevel + hystWindow ? FALSE : loPrev));
+  sameAlarms := (hiAlarm = hiPrev) & (loAlarm = loPrev);
+
+INVARSPEC NAME P1 := badRange -> (error & status = 32769 & sameAlarms);
+INVARSPEC NAME P4 := (valid & Value > hiLevel) -> hiAlarm;
+INVARSPEC NAME P6 := (valid & hiLevel - hystWindow <= Value & Value <= hiLevel) -> (hiAlarm = hiPrev);

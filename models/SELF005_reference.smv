@@ -1,0 +1,61 @@
+MODULE main
+VAR
+  Enable : boolean;
+  Tick : boolean;
+  first : boolean;
+  qPhase : 0..2;
+  qAge : 0..2;
+
+ASSIGN
+  init(first) := TRUE;
+  next(first) := FALSE;
+  init(qPhase) := 0;
+  init(qAge) := 0;
+  next(qPhase) := nextPhase;
+  next(qAge) := nextAge;
+
+DEFINE
+  nextPhase := case
+    !Enable : 0;
+    !Tick : qPhase;
+    qPhase = 0 & qAge = 1 : 1;
+    qPhase = 1 & qAge = 2 : 2;
+    qPhase = 2 : 0;
+    TRUE : qPhase;
+  esac;
+
+  nextAge := case
+    !Enable : 0;
+    !Tick : qAge;
+    qPhase = 0 & qAge = 1 : 0;
+    qPhase = 1 & qAge = 2 : 0;
+    qPhase = 2 : 0;
+    qAge < 2 : qAge + 1;
+    TRUE : 0;
+  esac;
+
+  Phase := nextPhase;
+  Red := nextPhase = 0;
+  Green := nextPhase = 1;
+  Amber := nextPhase = 2;
+
+  qRedLast := qPhase = 0 & qAge = 1;
+  qGreenLast := qPhase = 1 & qAge = 2;
+  qAmber := qPhase = 2;
+  oneColor := (Red & !Green & !Amber) | (!Red & Green & !Amber) | (!Red & !Green & Amber);
+
+INVARSPEC NAME P1 := oneColor;
+LTLSPEC NAME P2 := G(!Enable -> (Red & !Green & !Amber));
+LTLSPEC NAME P3 := G((Enable & !Tick) -> (Phase = qPhase));
+LTLSPEC NAME P4 := G((Enable & Tick & qRedLast) -> Green);
+LTLSPEC NAME P5 := G((Enable & Tick & qGreenLast) -> Amber);
+LTLSPEC NAME P6 := G((Enable & Tick & qAmber) -> Red);
+LTLSPEC NAME P7 := (G(Enable) & G(F(Tick))) -> (G(F(Red)) & G(F(Green)) & G(F(Amber)));
+
+-- V2 completeness additions: initial state, disable reset, pause age, durations (2/3/1), lamp-phase iff
+LTLSPEC NAME V2_init := first -> (qPhase = 0 & qAge = 0);
+LTLSPEC NAME V2_disable_resets := G(!Enable -> (Phase = 0 & X(qPhase = 0 & qAge = 0)));
+LTLSPEC NAME V2_pause_keeps_age := G((Enable & !Tick) -> ((qAge = 0 -> X(qAge = 0)) & (qAge = 1 -> X(qAge = 1)) & (qAge = 2 -> X(qAge = 2))));
+LTLSPEC NAME V2_red_duration_2 := G((Enable & Tick & qPhase = 0 & qAge = 0) -> (Red & X(qPhase = 0 & qAge = 1)));
+LTLSPEC NAME V2_green_duration_3 := G((Enable & Tick & qPhase = 1 & qAge < 2) -> (Green & X(qPhase = 1)));
+LTLSPEC NAME V2_outputs_iff := G((Red <-> Phase = 0) & (Green <-> Phase = 1) & (Amber <-> Phase = 2));

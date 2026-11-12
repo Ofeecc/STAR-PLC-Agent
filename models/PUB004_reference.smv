@@ -1,0 +1,44 @@
+-- Scope: EXPLICIT_SMV_MODEL_ONLY (not candidate ST verification).
+-- Task: PUB004 (Jam Pump Debouncing and Runtime Maintenance), nuXmv infinite-state SMT model.
+-- Abstraction note: clock, DebounceTime_ms, CycleTime_ms, and runtime are exact unbounded integers at millisecond scale (500h = 1800000000 ms, fitting nuXmv 32-bit integer literals). Liveness P7 models TimeTick as macro progress dt_ms >= DebounceTime_ms so K-Liveness terminates over parametric DebounceTime_ms.
+MODULE main
+FROZENVAR
+  DebounceTime_ms : integer;
+VAR
+  VISCOSITY_OK : boolean;
+  PASTE_E_STOP_NC : boolean;
+  dt_ms : integer;
+  CycleTime_ms : integer;
+  first_scan : boolean;
+  clk : integer;
+  have_since : boolean;
+  since : integer;
+  runtime : integer;
+
+INIT DebounceTime_ms > 0 & first_scan & clk = 0 & !have_since & since = 0 & runtime = 0;
+INVAR dt_ms >= 0 & CycleTime_ms > 0 & runtime >= 0;
+
+ASSIGN
+  next(first_scan) := FALSE;
+  next(clk) := clk_now;
+  next(have_since) := permit;
+  next(since) := since_now;
+  next(runtime) := accNext;
+
+DEFINE
+  permit := VISCOSITY_OK & PASTE_E_STOP_NC;
+  clk_now := first_scan ? 0 : clk + dt_ms;
+  since_now := permit ? (have_since ? since : clk_now) : 0;
+  qualified := permit & (have_since ? (clk_now - since >= DebounceTime_ms) : FALSE);
+  VFD_RUN := permit & qualified;
+  accNext := runtime + (VFD_RUN ? CycleTime_ms : 0);
+  PUMP_MAINT_DUE := accNext >= 1800000000;
+  coarse_tick := dt_ms >= DebounceTime_ms;
+
+INVARSPEC NAME P1 := VFD_RUN <-> (permit & qualified);
+INVARSPEC NAME P2 := !permit -> !VFD_RUN;
+INVARSPEC NAME P4 := VFD_RUN -> (accNext = runtime + CycleTime_ms);
+INVARSPEC NAME P5 := !VFD_RUN -> (accNext = runtime);
+INVARSPEC NAME P6 := PUMP_MAINT_DUE <-> (accNext >= 1800000000);
+LTLSPEC NAME P3 := G (!permit -> X (!qualified));
+LTLSPEC NAME P7 := G (F (coarse_tick)) -> G (G (permit) -> F (VFD_RUN));

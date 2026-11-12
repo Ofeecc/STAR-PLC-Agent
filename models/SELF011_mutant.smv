@@ -1,0 +1,58 @@
+-- Negative control mutant for SELF011: drops Clamp output when ClampDone is FALSE.
+-- Original P1..P9 all pass (only Extend hold was tested in P9), while V2_clamp_hold catches it.
+MODULE main
+VAR
+  Start : boolean;
+  Stop : boolean;
+  Reset : boolean;
+  ExtendDone : boolean;
+  ClampDone : boolean;
+  ReleaseDone : boolean;
+  RetractDone : boolean;
+  mode : {IDLE, EXTEND, CLAMP, RELEASE, RETRACT, DONE};
+
+ASSIGN
+  init(mode) := IDLE;
+  next(mode) := nextMode;
+
+DEFINE
+  normal := !Stop & !Reset;
+  nextMode := case
+    Stop | Reset : IDLE;
+    mode = IDLE & Start & RetractDone : EXTEND;
+    mode = EXTEND & ExtendDone : CLAMP;
+    mode = CLAMP & ClampDone : RELEASE;
+    mode = RELEASE & ReleaseDone : RETRACT;
+    mode = RETRACT & RetractDone : DONE;
+    TRUE : mode;
+  esac;
+
+  Extend := nextMode = EXTEND;
+  Clamp := normal & mode = EXTEND & ExtendDone;
+  Release := nextMode = RELEASE;
+  Retract := nextMode = RETRACT;
+  Busy := Extend | Clamp | Release | Retract;
+  Done := nextMode = DONE;
+
+  qIdle := mode = IDLE;
+  qExtend := mode = EXTEND;
+  qClamp := mode = CLAMP;
+  qRelease := mode = RELEASE;
+  qRetract := mode = RETRACT;
+  qDone := mode = DONE;
+
+  oneAction :=
+    !(Extend & (Clamp | Release | Retract)) &
+    !(Clamp & (Release | Retract)) &
+    !(Release & Retract);
+
+INVARSPEC NAME P1 := oneAction;
+LTLSPEC NAME P2 := G((Stop | Reset) -> (!Busy & !Done & !Extend & !Clamp & !Release & !Retract));
+LTLSPEC NAME P3 := G((normal & qIdle & Start & RetractDone) -> Extend);
+LTLSPEC NAME P4 := G((normal & qExtend & ExtendDone) -> Clamp);
+LTLSPEC NAME P5 := G((normal & qClamp & ClampDone) -> Release);
+LTLSPEC NAME P6 := G((normal & qRelease & ReleaseDone) -> Retract);
+LTLSPEC NAME P7 := G((normal & qRetract & RetractDone) -> Done);
+LTLSPEC NAME P8 := G((normal & qDone) -> Done);
+LTLSPEC NAME P9 := G((normal & qExtend & !ExtendDone) -> Extend);
+LTLSPEC NAME V2_clamp_hold := G((normal & qClamp & !ClampDone) -> (Clamp & Busy & !Done & X(qClamp)));

@@ -1,0 +1,42 @@
+-- Bounded Target domain 0..255 with valid subset 1..20 (exact IEC USINT semantics).
+MODULE main
+VAR
+  PartPulse : boolean;
+  Reset : boolean;
+  Target : 0..255;
+  first : boolean;
+  qPulse : boolean;
+  qCount : 0..20;
+
+ASSIGN
+  init(first) := TRUE;
+  next(first) := FALSE;
+  init(qPulse) := FALSE;
+  next(qPulse) := PartPulse;
+  init(qCount) := 0;
+  next(qCount) := Count;
+
+DEFINE
+  invalid := Target < 1 | Target > 20;
+  rise := PartPulse & !qPulse;
+  clampedTarget := case
+    Target = 1 : 1;   Target = 2 : 2;   Target = 3 : 3;   Target = 4 : 4;   Target = 5 : 5;
+    Target = 6 : 6;   Target = 7 : 7;   Target = 8 : 8;   Target = 9 : 9;   Target = 10 : 10;
+    Target = 11 : 11; Target = 12 : 12; Target = 13 : 13; Target = 14 : 14; Target = 15 : 15;
+    Target = 16 : 16; Target = 17 : 17; Target = 18 : 18; Target = 19 : 19; TRUE : 20;
+  esac;
+  countAfterEdge := case
+    qCount < Target & qCount < 20 & rise : qCount + 1;
+    qCount <= Target : qCount;
+    TRUE : clampedTarget;
+  esac;
+  Count := (Reset | invalid) ? 0 : countAfterEdge;
+  Error := invalid;
+  Complete := !Reset & !invalid & (Count >= Target);
+
+LTLSPEC NAME P1 := G(Error <-> invalid);
+LTLSPEC NAME P2 := G((Reset | invalid) -> (Count = 0 & !Complete));
+LTLSPEC NAME P3 := G((!Reset & !invalid) -> (Count = countAfterEdge));
+LTLSPEC NAME P4 := G((!Reset & !invalid) -> (Complete <-> (Count >= Target)));
+LTLSPEC NAME P5 := G(X(qPulse) <-> PartPulse);
+LTLSPEC NAME V2_init := first -> (qCount = 0 & !qPulse);

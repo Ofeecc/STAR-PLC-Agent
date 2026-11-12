@@ -1,0 +1,21 @@
+-- Scope: EXPLICIT_SMV_MODEL_ONLY (not candidate ST verification).
+-- Task: PUB008 negative mutant: checks hi <= lo (16#8002) before invalid measuringMode (16#8001),
+-- violating P3 priority when both mode and limits are invalid.
+MODULE main
+VAR
+  ch_count : 0..4;
+  raw0 : integer; en0 : boolean; hi0 : real; lo0 : real; bip0 : boolean; mode0 : integer;
+  in_ret0 : integer; in_out0 : real;
+
+INVAR raw0 >= -32768 & raw0 <= 32767;
+
+DEFINE
+  enabled0 := ch_count > 0 & en0;
+  mode_ok0 := mode0 = 0 | mode0 = 1 | mode0 = 2;
+  lim_ok0 := hi0 > lo0;
+  -- BUG: invalid limits checked before invalid mode.
+  post_ret0 := case !enabled0 : in_ret0; !lim_ok0 : 32770; !mode_ok0 : 32769; TRUE : 0; esac;
+  post_out0 := (enabled0 & mode_ok0 & lim_ok0) ? ((raw0 * 1.0) / 10.0) : in_out0;
+
+INVARSPEC NAME P2 := !enabled0 -> (post_ret0 = in_ret0 & post_out0 = in_out0);
+INVARSPEC NAME P3 := (enabled0 & !mode_ok0) -> (post_ret0 = 32769 & post_out0 = in_out0);

@@ -1,0 +1,48 @@
+-- Negative control mutant for PUB011: auto mode never leaves WAIT_A (matches counterexamples.json).
+-- Original PUB011.P1..P6 all pass vacuously/trivially, while V2_auto_start_A catches the bug.
+MODULE main
+VAR
+  Mode : boolean;
+  ForwardButton : boolean;
+  ReverseButton : boolean;
+  SensorA : boolean;
+  SensorB : boolean;
+  SensorC : boolean;
+  ButtonA : boolean;
+  ButtonB : boolean;
+  ButtonC : boolean;
+  phase : {WAIT_A, MOVE_AB, WAIT_B, MOVE_BC, WAIT_C, DONE};
+
+ASSIGN
+  init(phase) := WAIT_A;
+  next(phase) := nextPhase;
+
+DEFINE
+  nextPhase := case
+    !Mode : WAIT_A;
+    phase = WAIT_C & SensorC & ButtonC : DONE;
+    phase = DONE & !SensorC : WAIT_A;
+    TRUE : WAIT_A;
+  esac;
+
+  MotorForward := Mode ? FALSE : (ForwardButton & !ReverseButton);
+  MotorReverse := Mode ? FALSE : (ReverseButton & !ForwardButton);
+  CompletionLight := Mode & (nextPhase = DONE);
+
+  auto := Mode;
+  fwd := MotorForward;
+  rev := MotorReverse;
+  mf := ForwardButton & !ReverseButton;
+  mr := ReverseButton & !ForwardButton;
+  arrive := (phase = MOVE_AB & SensorB) | (phase = MOVE_BC & SensorC);
+  finish := phase = WAIT_C & SensorC & ButtonC;
+  light := CompletionLight;
+  removed := !SensorC;
+
+LTLSPEC NAME P1 := G(!(fwd & rev));
+LTLSPEC NAME P2 := G(!auto -> ((fwd <-> mf) & (rev <-> mr)));
+LTLSPEC NAME P3 := G(auto -> !rev);
+LTLSPEC NAME P4 := G((auto & arrive) -> !fwd);
+LTLSPEC NAME P5 := G((auto & finish) -> light);
+LTLSPEC NAME P6 := G((auto & removed) -> !light);
+LTLSPEC NAME V2_auto_start_A := G((auto & phase = WAIT_A & SensorA & ButtonA) -> (fwd & !rev & !light & X(phase = MOVE_AB)));

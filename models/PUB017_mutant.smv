@@ -1,0 +1,49 @@
+-- Scope: EXPLICIT_SMV_MODEL_ONLY (not candidate ST verification).
+-- Task: PUB017 negative mutant: checks full-database (16#8003) before duplicate ID (16#8002),
+-- returning 16#8003 when adding a duplicate ID to a full database and violating P1.
+MODULE main
+VAR
+  addRecipe : boolean; in_id : integer; prev_add : boolean;
+  id1  : integer; id2  : integer; id3  : integer; id4  : integer; id5  : integer;
+  id6  : integer; id7  : integer; id8  : integer; id9  : integer; id10 : integer;
+
+INIT
+  !prev_add & id1=0 & id2=0 & id3=0 & id4=0 & id5=0 & id6=0 & id7=0 & id8=0 & id9=0 & id10=0;
+
+DEFINE
+  r_add := addRecipe & !prev_add;
+INVAR r_add -> in_id > 0;
+
+DEFINE
+  found := id1=in_id | id2=in_id | id3=in_id | id4=in_id | id5=in_id |
+           id6=in_id | id7=in_id | id8=in_id | id9=in_id | id10=in_id;
+  e1 := id1=0; e2 := id2=0; e3 := id3=0; e4 := id4=0; e5 := id5=0;
+  e6 := id6=0; e7 := id7=0; e8 := id8=0; e9 := id9=0; e10 := id10=0;
+  has_empty := e1 | e2 | e3 | e4 | e5 | e6 | e7 | e8 | e9 | e10;
+
+  a_dup  := r_add & found;
+  a_full := r_add & !found & !has_empty;
+  add_ok := r_add & !found & has_empty;
+
+  -- BUG: checks !has_empty before found (16#8003 shadows 16#8002 on full DB).
+  out_error := a_dup | a_full;
+  out_status := case
+    r_add & !has_empty : 32771;
+    r_add & found      : 32770;
+    TRUE               : 0;
+  esac;
+
+  ins1:=e1; ins2:=!e1&e2; ins3:=!e1&!e2&e3; ins4:=!e1&!e2&!e3&e4; ins5:=!e1&!e2&!e3&!e4&e5;
+  ins6:=!e1&!e2&!e3&!e4&!e5&e6; ins7:=!e1&!e2&!e3&!e4&!e5&!e6&e7; ins8:=!e1&!e2&!e3&!e4&!e5&!e6&!e7&e8;
+  ins9:=!e1&!e2&!e3&!e4&!e5&!e6&!e7&!e8&e9; ins10:=!e1&!e2&!e3&!e4&!e5&!e6&!e7&!e8&!e9&e10;
+
+ASSIGN
+  next(prev_add) := addRecipe;
+  next(id1) := (add_ok & ins1) ? in_id : id1;   next(id2) := (add_ok & ins2) ? in_id : id2;
+  next(id3) := (add_ok & ins3) ? in_id : id3;   next(id4) := (add_ok & ins4) ? in_id : id4;
+  next(id5) := (add_ok & ins5) ? in_id : id5;   next(id6) := (add_ok & ins6) ? in_id : id6;
+  next(id7) := (add_ok & ins7) ? in_id : id7;   next(id8) := (add_ok & ins8) ? in_id : id8;
+  next(id9) := (add_ok & ins9) ? in_id : id9;   next(id10):= (add_ok & ins10)? in_id : id10;
+
+INVARSPEC NAME P5 := !r_add -> (!out_error & out_status = 0);
+INVARSPEC NAME P1 := (a_dup -> (out_error & out_status = 32770)) & (a_full -> (out_error & out_status = 32771));

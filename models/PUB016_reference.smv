@@ -1,0 +1,114 @@
+-- Scope: EXPLICIT_SMV_MODEL_ONLY (not candidate ST verification).
+-- Task: PUB016 (Flexible Processing Control).
+-- Soundness & abstraction note:
+--   Unbounded/explicit 8-slot route storage (processLength=1..8, processSeq[1..8] in 2..4 ending in 5)
+--   is abstracted via exact remaining-station counter rem in 0..7 plus nondeterministic step oracle
+--   next_station_in in 2..5 constrained so the final remaining step (rem = 1) selects terminal
+--   station 5, preserving every reachable station transition sequence and enabling fast finite/IC3 proof
+--   of P1..P6 including P6 liveness.
+MODULE main
+VAR
+  sensor1 : boolean; sensor2 : boolean; sensor3 : boolean; sensor4 : boolean; sensor5 : boolean;
+  station1Start : boolean;
+  station2Complete : boolean;
+  station3Complete : boolean;
+  station4Complete : boolean;
+
+  phase : {IDLE, MOVING, WAIT_PROCESS};
+  rem : 0..7;
+  station : 1..5;
+  target : 1..5;
+  next_station_in : 2..5;
+  init_rem_in : 1..7;
+
+  prev_start : boolean;
+  prev_c2 : boolean;
+  prev_c3 : boolean;
+  prev_c4 : boolean;
+
+INIT phase = IDLE & rem = 0 & station = 1 & target = 1 &
+     !prev_start & !prev_c2 & !prev_c3 & !prev_c4;
+
+-- Contract invariant: while processing a non-terminal station (target != 5), at least 1 step remains.
+INVAR (phase != IDLE & target != 5) -> rem >= 1;
+
+DEFINE
+  rise_start := station1Start & !prev_start;
+  rise_c2 := station2Complete & !prev_c2;
+  rise_c3 := station3Complete & !prev_c3;
+  rise_c4 := station4Complete & !prev_c4;
+  station_done_edge := case
+    station = 2 : rise_c2;
+    station = 3 : rise_c3;
+    station = 4 : rise_c4;
+    TRUE : FALSE;
+  esac;
+  target_sensor := case
+    target = 1 : sensor1;
+    target = 2 : sensor2;
+    target = 3 : sensor3;
+    target = 4 : sensor4;
+    TRUE : sensor5;
+  esac;
+
+  started := phase = IDLE & rise_start & sensor1;
+  arrive := phase = MOVING & target_sensor;
+  proceed := phase = WAIT_PROCESS & station_done_edge;
+
+  -- When rem = 1, the last station in the sequence MUST be exit station 5;
+  -- otherwise select an intermediate processing station in 2..4.
+  chosen_step := (rem = 1) ? 5 : ((next_station_in = 5) ? 2 : next_station_in);
+  rem_dec := case
+    rem = 1 : 0;
+    rem = 2 : 1;
+    rem = 3 : 2;
+    rem = 4 : 3;
+    rem = 5 : 4;
+    rem = 6 : 5;
+    rem = 7 : 6;
+    TRUE : 0;
+  esac;
+
+  post_target := case
+    started : next_station_in;
+    proceed : chosen_step;
+    TRUE : target;
+  esac;
+  post_phase := case
+    started : MOVING;
+    arrive : (target = 5 ? IDLE : WAIT_PROCESS);
+    proceed : (post_target = station ? WAIT_PROCESS : MOVING);
+    TRUE : phase;
+  esac;
+  post_station := arrive ? target : (started ? 1 : station);
+  post_target_sensor := case
+    post_target = 1 : sensor1;
+    post_target = 2 : sensor2;
+    post_target = 3 : sensor3;
+    post_target = 4 : sensor4;
+    TRUE : sensor5;
+  esac;
+  moving_out := post_phase = MOVING & !post_target_sensor;
+  conveyorLeft := moving_out & post_target < post_station;
+  conveyorRight := moving_out & post_target > post_station;
+  stop_out := !conveyorLeft & !conveyorRight;
+
+ASSIGN
+  next(phase) := post_phase;
+  next(rem) := started ? ((next_station_in = 5) ? 0 : init_rem_in) : (proceed ? rem_dec : rem);
+  next(station) := post_station;
+  next(target) := post_target;
+  next(prev_start) := station1Start;
+  next(prev_c2) := station2Complete;
+  next(prev_c3) := station3Complete;
+  next(prev_c4) := station4Complete;
+
+INVARSPEC NAME P1 := !(conveyorLeft & conveyorRight);
+INVARSPEC NAME P2 := (moving_out & post_target > post_station -> (conveyorRight & !conveyorLeft)) &
+                     (moving_out & post_target < post_station -> (conveyorLeft & !conveyorRight));
+INVARSPEC NAME P3 := arrive -> stop_out;
+INVARSPEC NAME P4 := (post_phase = WAIT_PROCESS) -> stop_out;
+INVARSPEC NAME P5 := (arrive & target = 5) -> (post_phase = IDLE & stop_out);
+LTLSPEC NAME P6 := (G (post_phase = MOVING -> F post_target_sensor) &
+                    G (post_phase = WAIT_PROCESS -> F station_done_edge)) ->
+                    G (started -> F (phase != IDLE & post_phase = IDLE));

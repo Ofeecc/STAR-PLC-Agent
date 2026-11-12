@@ -1,0 +1,69 @@
+-- Scope: EXPLICIT_SMV_MODEL_ONLY (not candidate ST verification).
+-- Task: PUB012 (Slab Thickness Alarm and Fault History), nuXmv infinite-state SMT model.
+-- Abstraction note: clock, CycleTime_ms, and runtime are exact integers at ms scale (500ms hold window); UINT count bounded to 0..65535 domain assumption.
+MODULE main
+VAR
+  THICKNESS_FAULT : boolean;
+  THICKNESS_SIGNAL_VALID : boolean;
+  CUTTING_RUN : boolean;
+  FaultTimestamp : integer;
+  CycleTime_ms : integer;
+  dt_ms : integer;
+  first_scan : boolean;
+  clk : integer;
+  have_hold : boolean;
+  since : integer;
+  prev_fault : boolean;
+  fault_count : integer;
+  runtime : integer;
+  hist0 : integer;
+  hist1 : integer;
+  hist2 : integer;
+  hist3 : integer;
+  hist4 : integer;
+
+INIT first_scan & clk = 0 & !have_hold & since = 0 & !prev_fault & fault_count = 0 & runtime = 0 &
+     hist0 = 0 & hist1 = 0 & hist2 = 0 & hist3 = 0 & hist4 = 0;
+INVAR dt_ms >= 0 & CycleTime_ms > 0 & clk >= 0 & runtime >= 0 & fault_count >= 0 & fault_count <= 65535 & (fault_count = 65535 -> !rise);
+
+ASSIGN
+  next(first_scan) := FALSE;
+  next(clk) := clk_now;
+  next(have_hold) := have_hold_now;
+  next(since) := since_now;
+  next(prev_fault) := fault;
+  next(fault_count) := count_now;
+  next(runtime) := runtime_now;
+  next(hist0) := hist0_now;
+  next(hist1) := hist1_now;
+  next(hist2) := hist2_now;
+  next(hist3) := hist3_now;
+  next(hist4) := hist4_now;
+
+DEFINE
+  clk_now := first_scan ? 0 : clk + dt_ms;
+  valid := THICKNESS_SIGNAL_VALID;
+  fault := valid & THICKNESS_FAULT;
+  rise := fault & !prev_fault;
+  count_now := fault_count + (rise ? 1 : 0);
+  hist0_now := rise ? FaultTimestamp : hist0;
+  hist1_now := rise ? hist0 : hist1;
+  hist2_now := rise ? hist1 : hist2;
+  hist3_now := rise ? hist2 : hist3;
+  hist4_now := rise ? hist3 : hist4;
+  have_hold_now := !valid ? FALSE : (rise ? TRUE : have_hold);
+  since_now := !valid ? 0 : (rise ? clk_now : since);
+  hold := valid & have_hold_now & (clk_now - since_now < 500);
+  THICKNESS_ALARM := valid & (fault | hold);
+  normal := valid & !fault & CUTTING_RUN;
+  runtime_now := runtime + (normal ? CycleTime_ms : 0);
+  Slab_Fault_Counter := count_now;
+  Slab_Runtime_Accumulator := runtime_now;
+
+INVARSPEC NAME P1 := !valid -> !THICKNESS_ALARM;
+INVARSPEC NAME P2 := (valid & (fault | hold)) -> THICKNESS_ALARM;
+INVARSPEC NAME P3 := rise -> (count_now = fault_count + 1 & hist0_now = FaultTimestamp & hist1_now = hist0 & hist2_now = hist1 & hist3_now = hist2 & hist4_now = hist3);
+INVARSPEC NAME P4 := !rise -> (count_now = fault_count & hist0_now = hist0 & hist1_now = hist1 & hist2_now = hist2 & hist3_now = hist3 & hist4_now = hist4);
+INVARSPEC NAME P5 := (normal -> runtime_now = runtime + CycleTime_ms) & (!normal -> runtime_now = runtime);
+INVARSPEC NAME P6 := (valid & !fault & !hold) -> !THICKNESS_ALARM;
+LTLSPEC NAME V2_shift_next := G (rise -> (next(hist0) = FaultTimestamp & next(hist1) = hist0));

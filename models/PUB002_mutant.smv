@@ -1,0 +1,35 @@
+-- Scope: EXPLICIT_SMV_MODEL_ONLY (not candidate ST verification).
+-- Task: PUB002 negative mutant: inverted fallingBits masks (!prev & val), violating P2 and P3.
+MODULE main
+VAR
+  val : unsigned word[32];
+  prev : unsigned word[32];
+
+ASSIGN
+  init(prev) := 0ud32_0;
+  next(prev) := val;
+
+DEFINE
+  risingBits := val & !prev;
+  fallingBits := !prev & val;
+  hasChanged := val != prev;
+  hasRisingEdges := risingBits != 0ud32_0;
+  hasFallingEdges := fallingBits != 0ud32_0;
+  pop_rising :=
+    toint(risingBits[0:0]) + toint(risingBits[1:1]) + toint(risingBits[2:2]) + toint(risingBits[3:3]) +
+    toint(risingBits[4:4]) + toint(risingBits[5:5]) + toint(risingBits[6:6]) + toint(risingBits[7:7]) +
+    toint(risingBits[8:8]) + toint(risingBits[9:9]) + toint(risingBits[10:10]) + toint(risingBits[11:11]) +
+    toint(risingBits[12:12]) + toint(risingBits[13:13]) + toint(risingBits[14:14]) + toint(risingBits[15:15]) +
+    toint(risingBits[16:16]) + toint(risingBits[17:17]) + toint(risingBits[18:18]) + toint(risingBits[19:19]) +
+    toint(risingBits[20:20]) + toint(risingBits[21:21]) + toint(risingBits[22:22]) + toint(risingBits[23:23]) +
+    toint(risingBits[24:24]) + toint(risingBits[25:25]) + toint(risingBits[26:26]) + toint(risingBits[27:27]) +
+    toint(risingBits[28:28]) + toint(risingBits[29:29]) + toint(risingBits[30:30]) + toint(risingBits[31:31]);
+  noOfRisingBits := pop_rising;
+  noOfFallingBits := pop_rising;
+
+INVARSPEC NAME P1 := risingBits = (val & !prev);
+INVARSPEC NAME P2 := fallingBits = (prev & !val);
+INVARSPEC NAME P3 := (risingBits & fallingBits) = 0ud32_0;
+INVARSPEC NAME P4 := noOfRisingBits = pop_rising;
+INVARSPEC NAME P5 := (hasRisingEdges <-> risingBits != 0ud32_0) & (hasFallingEdges <-> fallingBits != 0ud32_0) & (hasChanged <-> val != prev);
+LTLSPEC NAME P6 := G (val = next(prev));

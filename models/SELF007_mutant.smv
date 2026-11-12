@@ -1,0 +1,39 @@
+-- Negative control mutant for SELF007: omits healthy standby fallback (matches counterexamples.json).
+-- Original P1..P7 all hold, while V2_1 and V2_2 catch the missing fallback.
+MODULE main
+VAR
+  Demand : boolean;
+  FaultA : boolean;
+  FaultB : boolean;
+  first : boolean;
+  qLeadA : boolean;
+  prevDemand : boolean;
+  served : boolean;
+
+ASSIGN
+  init(first) := TRUE;
+  next(first) := FALSE;
+  init(qLeadA) := TRUE;
+  next(qLeadA) := LeadA;
+  init(prevDemand) := FALSE;
+  next(prevDemand) := Demand;
+  init(served) := FALSE;
+  next(served) := nextServed;
+
+DEFINE
+  completedServed := prevDemand & !Demand & served;
+  LeadA := !Demand ? (completedServed ? !qLeadA : qLeadA) : qLeadA;
+  PumpA := Demand & !FaultA & qLeadA;
+  PumpB := Demand & !FaultB & !qLeadA;
+  servedBefore := prevDemand ? served : FALSE;
+  nextServed := Demand ? (servedBefore | PumpA | PumpB) : FALSE;
+
+INVARSPEC NAME P1 := !(PumpA & PumpB);
+LTLSPEC NAME P2 := G((!Demand | FaultA) -> !PumpA);
+LTLSPEC NAME P3 := G((!Demand | FaultB) -> !PumpB);
+LTLSPEC NAME P4 := G((Demand & LeadA & !FaultA) -> PumpA);
+LTLSPEC NAME P5 := G((Demand & !LeadA & !FaultB) -> PumpB);
+LTLSPEC NAME P6 := G(completedServed -> (LeadA <-> !qLeadA));
+LTLSPEC NAME P7 := G(!completedServed -> (LeadA <-> qLeadA));
+LTLSPEC NAME V2_1 := G((Demand & FaultA & !FaultB) -> PumpB);
+LTLSPEC NAME V2_2 := G((Demand & FaultB & !FaultA) -> PumpA);

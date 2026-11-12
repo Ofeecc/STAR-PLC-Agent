@@ -1,0 +1,39 @@
+-- Negative control mutant for SELF012: stays in IDLE with Run=FALSE, Locked=FALSE, Attempts=0 (matches counterexamples.json).
+-- Original P1..P7 all hold, while V2_start_from_idle detects the dead machine.
+MODULE main
+VAR
+  Start : boolean;
+  Stop : boolean;
+  Fault : boolean;
+  Reset : boolean;
+  mode : {IDLE, RUNNING, WAIT, LOCKED};
+  qAttempts : 0..2;
+  qFree : 0..2;
+
+ASSIGN
+  init(mode) := IDLE;
+  next(mode) := IDLE;
+  init(qAttempts) := 0;
+  next(qAttempts) := 0;
+  init(qFree) := 0;
+  next(qFree) := 0;
+
+DEFINE
+  validReset := Reset & !Fault & !Start;
+  normal := !validReset & !Stop;
+  qLocked := mode = LOCKED;
+  qRunning := mode = RUNNING;
+  qWait := mode = WAIT;
+  retryDue := qWait & !Fault & qFree >= 1;
+  Run := FALSE;
+  Locked := FALSE;
+  Attempts := 0;
+
+LTLSPEC NAME P1 := G(Fault -> !Run);
+INVARSPEC NAME P2 := Attempts >= 0 & Attempts <= 2;
+LTLSPEC NAME P3 := G(validReset -> (!Run & !Locked & Attempts = 0));
+LTLSPEC NAME P4 := G((qLocked & !validReset) -> (Locked & !Run));
+LTLSPEC NAME P5 := G((qRunning & Fault & normal & qAttempts = 2) -> Locked);
+LTLSPEC NAME P6 := G((retryDue & normal) -> (Run & Attempts = qAttempts + 1));
+LTLSPEC NAME P7 := G((qWait & Fault & normal) -> !Run);
+LTLSPEC NAME V2_start_from_idle := G((normal & mode = IDLE & Start & !Fault) -> (Run & !Locked & X(qRunning)));

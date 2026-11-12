@@ -1,0 +1,46 @@
+MODULE main
+VAR
+  Fault : boolean;
+  Ack : boolean;
+  Reset : boolean;
+  first : boolean;
+  qFault : boolean;
+  qAlarm : boolean;
+  qAck : boolean;
+
+ASSIGN
+  init(first) := TRUE;
+  next(first) := FALSE;
+  init(qFault) := FALSE;
+  next(qFault) := Fault;
+  init(qAlarm) := FALSE;
+  next(qAlarm) := Alarm;
+  init(qAck) := FALSE;
+  next(qAck) := Acknowledged;
+
+DEFINE
+  validReset := Reset & !Fault;
+  rise := Fault & !qFault;
+  Alarm := !validReset & (Fault | qAlarm);
+  Acknowledged := case
+    validReset : FALSE;
+    rise : FALSE;
+    Ack & (Fault | qAlarm) : TRUE;
+    TRUE : qAck;
+  esac;
+  Horn := Alarm & !Acknowledged;
+
+LTLSPEC NAME P1 := G(Horn <-> (Alarm & !Acknowledged));
+LTLSPEC NAME P2 := G(Fault -> Alarm);
+LTLSPEC NAME P3 := G(rise -> (Alarm & !Acknowledged & Horn));
+LTLSPEC NAME P4 := G((Reset & !Fault) -> (!Alarm & !Acknowledged & !Horn));
+LTLSPEC NAME P5 := G((!Fault & !Reset & qAlarm) -> Alarm);
+LTLSPEC NAME P6 := G((!rise & !(Reset & !Fault) & Ack & qAlarm) -> Acknowledged);
+
+-- V2 completeness additions: initial state, Ack during Fault & Reset, anti-spurious alarm/ack, holds, qFault iff
+LTLSPEC NAME V2_init := first -> (!qFault & !qAlarm & !qAck);
+LTLSPEC NAME V2_ack_during_fault_reset := G((!rise & Fault & Reset & Ack) -> Acknowledged);
+LTLSPEC NAME V2_no_spurious_alarm := G((!Fault & !qAlarm) -> (!Alarm & !Acknowledged & !Horn));
+LTLSPEC NAME V2_alarm_hold_without_reset := G((qAlarm & !validReset) -> Alarm);
+LTLSPEC NAME V2_ack_hold := G((!validReset & !rise & qAck) -> Acknowledged);
+LTLSPEC NAME V2_qfault_iff := G(X(qFault) <-> Fault);

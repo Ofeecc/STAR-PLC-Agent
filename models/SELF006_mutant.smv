@@ -1,0 +1,22 @@
+-- Negative control mutant for SELF006: drops middle-band hysteresis qFill.
+MODULE main
+VAR
+  LowWet : boolean;
+  HighWet : boolean;
+  Inhibit : boolean;
+  first : boolean;
+  qFill : boolean;
+
+ASSIGN
+  init(first) := TRUE;
+  next(first) := FALSE;
+  init(qFill) := FALSE;
+  next(qFill) := Fill;
+
+DEFINE
+  SensorFault := HighWet & !LowWet;
+  middle := LowWet & !HighWet;
+  Fill := !(SensorFault | Inhibit | HighWet) & !LowWet;
+
+LTLSPEC NAME P1 := G(SensorFault <-> (HighWet & !LowWet));
+LTLSPEC NAME P4 := G((middle & !Inhibit) -> (Fill <-> qFill));

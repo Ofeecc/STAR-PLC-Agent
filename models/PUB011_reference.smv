@@ -1,0 +1,59 @@
+MODULE main
+VAR
+  Mode : boolean;
+  ForwardButton : boolean;
+  ReverseButton : boolean;
+  SensorA : boolean;
+  SensorB : boolean;
+  SensorC : boolean;
+  ButtonA : boolean;
+  ButtonB : boolean;
+  ButtonC : boolean;
+  phase : {WAIT_A, MOVE_AB, WAIT_B, MOVE_BC, WAIT_C, DONE};
+
+ASSIGN
+  init(phase) := WAIT_A;
+  next(phase) := nextPhase;
+
+DEFINE
+  nextPhase := case
+    !Mode : WAIT_A;
+    phase = WAIT_A & SensorA & ButtonA : MOVE_AB;
+    phase = MOVE_AB & SensorB : WAIT_B;
+    phase = WAIT_B & SensorB & ButtonB : MOVE_BC;
+    phase = MOVE_BC & SensorC : WAIT_C;
+    phase = WAIT_C & SensorC & ButtonC : DONE;
+    phase = DONE & !SensorC : WAIT_A;
+    TRUE : phase;
+  esac;
+
+  MotorForward := Mode ? (nextPhase = MOVE_AB | nextPhase = MOVE_BC) : (ForwardButton & !ReverseButton);
+  MotorReverse := Mode ? FALSE : (ReverseButton & !ForwardButton);
+  CompletionLight := Mode & (nextPhase = DONE);
+
+  auto := Mode;
+  fwd := MotorForward;
+  rev := MotorReverse;
+  mf := ForwardButton & !ReverseButton;
+  mr := ReverseButton & !ForwardButton;
+  arrive := (phase = MOVE_AB & SensorB) | (phase = MOVE_BC & SensorC);
+  finish := phase = WAIT_C & SensorC & ButtonC;
+  light := CompletionLight;
+  removed := !SensorC;
+
+LTLSPEC NAME P1 := G(!(fwd & rev));
+LTLSPEC NAME P2 := G(!auto -> ((fwd <-> mf) & (rev <-> mr)));
+LTLSPEC NAME P3 := G(auto -> !rev);
+LTLSPEC NAME P4 := G((auto & arrive) -> !fwd);
+LTLSPEC NAME P5 := G((auto & finish) -> light);
+LTLSPEC NAME P6 := G((auto & removed) -> !light);
+
+-- V2 completeness additions: initial phase, manual light off, auto starts, travel holds, and completion hold
+LTLSPEC NAME V2_init := phase = WAIT_A;
+LTLSPEC NAME V2_manual_light_off := G(!auto -> !light);
+LTLSPEC NAME V2_auto_start_A := G((auto & phase = WAIT_A & SensorA & ButtonA) -> (fwd & !rev & !light & X(phase = MOVE_AB)));
+LTLSPEC NAME V2_auto_move_AB_hold := G((auto & phase = MOVE_AB & !SensorB) -> (fwd & !rev & !light & X(phase = MOVE_AB)));
+LTLSPEC NAME V2_auto_start_B := G((auto & phase = WAIT_B & SensorB & ButtonB) -> (fwd & !rev & !light & X(phase = MOVE_BC)));
+LTLSPEC NAME V2_auto_move_BC_hold := G((auto & phase = MOVE_BC & !SensorC) -> (fwd & !rev & !light & X(phase = MOVE_BC)));
+LTLSPEC NAME V2_auto_done_hold := G((auto & phase = DONE & SensorC) -> (!fwd & !rev & light & X(phase = DONE)));
+LTLSPEC NAME V2_outputs_iff := G((fwd <-> (auto ? (nextPhase = MOVE_AB | nextPhase = MOVE_BC) : mf)) & (rev <-> (auto ? FALSE : mr)) & (light <-> (auto & nextPhase = DONE)));

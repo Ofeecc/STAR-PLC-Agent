@@ -1,0 +1,103 @@
+-- Scope: EXPLICIT_SMV_MODEL_ONLY (not candidate ST verification).
+-- Task: PUB008 (Analog Batch Processing).
+-- Soundness & abstraction note:
+--   Variable-length ARRAY[*] parameters are bounded to N=4 ordinal channels (ch_count in 0..4),
+--   using exact real arithmetic (no floating-point rounding) and exact IEC INT range (-32768..32767)
+--   for raw analogValues. Error codes: 16#8001 = 32769, 16#8002 = 32770.
+MODULE main
+VAR
+  ch_count : 0..4;
+  raw0 : integer; raw1 : integer; raw2 : integer; raw3 : integer;
+  en0 : boolean; en1 : boolean; en2 : boolean; en3 : boolean;
+  hi0 : real; hi1 : real; hi2 : real; hi3 : real;
+  lo0 : real; lo1 : real; lo2 : real; lo3 : real;
+  bip0 : boolean; bip1 : boolean; bip2 : boolean; bip3 : boolean;
+  mode0 : integer; mode1 : integer; mode2 : integer; mode3 : integer;
+  in_ret0 : integer; in_ret1 : integer; in_ret2 : integer; in_ret3 : integer;
+  in_out0 : real; in_out1 : real; in_out2 : real; in_out3 : real;
+
+INVAR
+  raw0 >= -32768 & raw0 <= 32767 &
+  raw1 >= -32768 & raw1 <= 32767 &
+  raw2 >= -32768 & raw2 <= 32767 &
+  raw3 >= -32768 & raw3 <= 32767;
+
+DEFINE
+  enabled0 := ch_count > 0 & en0;
+  enabled1 := ch_count > 1 & en1;
+  enabled2 := ch_count > 2 & en2;
+  enabled3 := ch_count > 3 & en3;
+
+  mode_ok0 := mode0 = 0 | mode0 = 1 | mode0 = 2;
+  mode_ok1 := mode1 = 0 | mode1 = 1 | mode1 = 2;
+  mode_ok2 := mode2 = 0 | mode2 = 1 | mode2 = 2;
+  mode_ok3 := mode3 = 0 | mode3 = 1 | mode3 = 2;
+
+  lim_ok0 := hi0 > lo0;
+  lim_ok1 := hi1 > lo1;
+  lim_ok2 := hi2 > lo2;
+  lim_ok3 := hi3 > lo3;
+
+  scaled0 := bip0 ? (lo0 + (((raw0 * 1.0) + 27648.0) / 55296.0) * (hi0 - lo0)) : (lo0 + ((raw0 * 1.0) / 27648.0) * (hi0 - lo0));
+  scaled1 := bip1 ? (lo1 + (((raw1 * 1.0) + 27648.0) / 55296.0) * (hi1 - lo1)) : (lo1 + ((raw1 * 1.0) / 27648.0) * (hi1 - lo1));
+  scaled2 := bip2 ? (lo2 + (((raw2 * 1.0) + 27648.0) / 55296.0) * (hi2 - lo2)) : (lo2 + ((raw2 * 1.0) / 27648.0) * (hi2 - lo2));
+  scaled3 := bip3 ? (lo3 + (((raw3 * 1.0) + 27648.0) / 55296.0) * (hi3 - lo3)) : (lo3 + ((raw3 * 1.0) / 27648.0) * (hi3 - lo3));
+
+  conv0 := case mode0 = 0 : scaled0; mode0 = 1 : (raw0 * 1.0) / 10.0; TRUE : (raw0 * 1.0) / 100.0; esac;
+  conv1 := case mode1 = 0 : scaled1; mode1 = 1 : (raw1 * 1.0) / 10.0; TRUE : (raw1 * 1.0) / 100.0; esac;
+  conv2 := case mode2 = 0 : scaled2; mode2 = 1 : (raw2 * 1.0) / 10.0; TRUE : (raw2 * 1.0) / 100.0; esac;
+  conv3 := case mode3 = 0 : scaled3; mode3 = 1 : (raw3 * 1.0) / 10.0; TRUE : (raw3 * 1.0) / 100.0; esac;
+
+  post_ret0 := case !enabled0 : in_ret0; !mode_ok0 : 32769; !lim_ok0 : 32770; TRUE : 0; esac;
+  post_ret1 := case !enabled1 : in_ret1; !mode_ok1 : 32769; !lim_ok1 : 32770; TRUE : 0; esac;
+  post_ret2 := case !enabled2 : in_ret2; !mode_ok2 : 32769; !lim_ok2 : 32770; TRUE : 0; esac;
+  post_ret3 := case !enabled3 : in_ret3; !mode_ok3 : 32769; !lim_ok3 : 32770; TRUE : 0; esac;
+
+  post_out0 := (enabled0 & mode_ok0 & lim_ok0) ? conv0 : in_out0;
+  post_out1 := (enabled1 & mode_ok1 & lim_ok1) ? conv1 : in_out1;
+  post_out2 := (enabled2 & mode_ok2 & lim_ok2) ? conv2 : in_out2;
+  post_out3 := (enabled3 & mode_ok3 & lim_ok3) ? conv3 : in_out3;
+
+  out_raw0 := raw0; out_raw1 := raw1; out_raw2 := raw2; out_raw3 := raw3;
+  out_en0 := en0; out_en1 := en1; out_en2 := en2; out_en3 := en3;
+  out_hi0 := hi0; out_hi1 := hi1; out_hi2 := hi2; out_hi3 := hi3;
+  out_lo0 := lo0; out_lo1 := lo1; out_lo2 := lo2; out_lo3 := lo3;
+  out_bip0 := bip0; out_bip1 := bip1; out_bip2 := bip2; out_bip3 := bip3;
+  out_mode0 := mode0; out_mode1 := mode1; out_mode2 := mode2; out_mode3 := mode3;
+
+  -- Read-only configuration & raw values preserved unchanged across all 4 channels.
+  ro_ok :=
+    (out_raw0 = raw0 & out_en0 = en0 & out_hi0 = hi0 & out_lo0 = lo0 & out_bip0 = bip0 & out_mode0 = mode0) &
+    (out_raw1 = raw1 & out_en1 = en1 & out_hi1 = hi1 & out_lo1 = lo1 & out_bip1 = bip1 & out_mode1 = mode1) &
+    (out_raw2 = raw2 & out_en2 = en2 & out_hi2 = hi2 & out_lo2 = lo2 & out_bip2 = bip2 & out_mode2 = mode2) &
+    (out_raw3 = raw3 & out_en3 = en3 & out_hi3 = hi3 & out_lo3 = lo3 & out_bip3 = bip3 & out_mode3 = mode3);
+
+INVARSPEC NAME P1 := ro_ok;
+INVARSPEC NAME P2 := (!enabled0 -> (post_ret0 = in_ret0 & post_out0 = in_out0)) &
+                     (!enabled1 -> (post_ret1 = in_ret1 & post_out1 = in_out1)) &
+                     (!enabled2 -> (post_ret2 = in_ret2 & post_out2 = in_out2)) &
+                     (!enabled3 -> (post_ret3 = in_ret3 & post_out3 = in_out3));
+INVARSPEC NAME P3 := ((enabled0 & !mode_ok0) -> (post_ret0 = 32769 & post_out0 = in_out0)) &
+                     ((enabled1 & !mode_ok1) -> (post_ret1 = 32769 & post_out1 = in_out1)) &
+                     ((enabled2 & !mode_ok2) -> (post_ret2 = 32769 & post_out2 = in_out2)) &
+                     ((enabled3 & !mode_ok3) -> (post_ret3 = 32769 & post_out3 = in_out3));
+INVARSPEC NAME P4 := ((enabled0 & mode_ok0 & !lim_ok0) -> (post_ret0 = 32770 & post_out0 = in_out0)) &
+                     ((enabled1 & mode_ok1 & !lim_ok1) -> (post_ret1 = 32770 & post_out1 = in_out1)) &
+                     ((enabled2 & mode_ok2 & !lim_ok2) -> (post_ret2 = 32770 & post_out2 = in_out2)) &
+                     ((enabled3 & mode_ok3 & !lim_ok3) -> (post_ret3 = 32770 & post_out3 = in_out3));
+INVARSPEC NAME P5 := ((enabled0 & mode_ok0 & lim_ok0) -> post_ret0 = 0) &
+                     ((enabled1 & mode_ok1 & lim_ok1) -> post_ret1 = 0) &
+                     ((enabled2 & mode_ok2 & lim_ok2) -> post_ret2 = 0) &
+                     ((enabled3 & mode_ok3 & lim_ok3) -> post_ret3 = 0);
+INVARSPEC NAME P6 := ((enabled0 & lim_ok0 & mode0 = 0) -> post_out0 = scaled0) &
+                     ((enabled1 & lim_ok1 & mode1 = 0) -> post_out1 = scaled1) &
+                     ((enabled2 & lim_ok2 & mode2 = 0) -> post_out2 = scaled2) &
+                     ((enabled3 & lim_ok3 & mode3 = 0) -> post_out3 = scaled3);
+INVARSPEC NAME P7 := ((enabled0 & lim_ok0 & mode0 = 1) -> post_out0 = ((raw0 * 1.0) / 10.0)) &
+                     ((enabled1 & lim_ok1 & mode1 = 1) -> post_out1 = ((raw1 * 1.0) / 10.0)) &
+                     ((enabled2 & lim_ok2 & mode2 = 1) -> post_out2 = ((raw2 * 1.0) / 10.0)) &
+                     ((enabled3 & lim_ok3 & mode3 = 1) -> post_out3 = ((raw3 * 1.0) / 10.0));
+INVARSPEC NAME P8 := ((enabled0 & lim_ok0 & mode0 = 2) -> post_out0 = ((raw0 * 1.0) / 100.0)) &
+                     ((enabled1 & lim_ok1 & mode1 = 2) -> post_out1 = ((raw1 * 1.0) / 100.0)) &
+                     ((enabled2 & lim_ok2 & mode2 = 2) -> post_out2 = ((raw2 * 1.0) / 100.0)) &
+                     ((enabled3 & lim_ok3 & mode3 = 2) -> post_out3 = ((raw3 * 1.0) / 100.0));

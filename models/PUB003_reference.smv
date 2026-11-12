@@ -1,0 +1,41 @@
+-- Scope: EXPLICIT_SMV_MODEL_ONLY (not candidate ST verification).
+-- Task: PUB003 (Alarm Handling), nuXmv infinite-state SMT model.
+-- Abstraction note: REAL inputs/arithmetic use exact mathematical rational reals (no IEEE binary32 rounding).
+MODULE main
+VAR
+  Value : real;
+  hiLevel : real;
+  loLevel : real;
+  hystWindow : real;
+  hiPrev : boolean;
+  loPrev : boolean;
+
+INVAR hystWindow >= 0.0;
+
+ASSIGN
+  init(hiPrev) := FALSE;
+  init(loPrev) := FALSE;
+  next(hiPrev) := hiAlarm;
+  next(loPrev) := loAlarm;
+
+DEFINE
+  badRange := loLevel >= hiLevel;
+  badWindow := !badRange & (hystWindow >= hiLevel - loLevel);
+  valid := !badRange & !badWindow;
+  error := badRange | badWindow;
+  status := badRange ? 32769 : (badWindow ? 32770 : 0);
+  hiAlarm := !valid ? hiPrev : (Value > hiLevel ? TRUE : (Value < hiLevel - hystWindow ? FALSE : hiPrev));
+  loAlarm := !valid ? loPrev : (Value < loLevel ? TRUE : (Value > loLevel + hystWindow ? FALSE : loPrev));
+  sameAlarms := (hiAlarm = hiPrev) & (loAlarm = loPrev);
+
+INVARSPEC NAME P1 := badRange -> (error & status = 32769 & sameAlarms);
+INVARSPEC NAME P2 := (!badRange & badWindow) -> (error & status = 32770 & sameAlarms);
+INVARSPEC NAME P3 := valid -> (!error & status = 0);
+INVARSPEC NAME P4 := (valid & Value > hiLevel) -> hiAlarm;
+INVARSPEC NAME P5 := (valid & Value < hiLevel - hystWindow) -> !hiAlarm;
+INVARSPEC NAME P6 := (valid & hiLevel - hystWindow <= Value & Value <= hiLevel) -> (hiAlarm = hiPrev);
+INVARSPEC NAME P7 := (valid & Value < loLevel) -> loAlarm;
+INVARSPEC NAME P8 := (valid & Value > loLevel + hystWindow) -> !loAlarm;
+INVARSPEC NAME P9 := (valid & loLevel <= Value & Value <= loLevel + hystWindow) -> (loAlarm = loPrev);
+LTLSPEC NAME V2_init := !hiPrev & !loPrev;
+LTLSPEC NAME V2_next := G ((hiAlarm = next(hiPrev)) & (loAlarm = next(loPrev)));

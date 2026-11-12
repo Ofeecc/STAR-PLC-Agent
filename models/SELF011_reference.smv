@@ -1,0 +1,66 @@
+MODULE main
+VAR
+  Start : boolean;
+  Stop : boolean;
+  Reset : boolean;
+  ExtendDone : boolean;
+  ClampDone : boolean;
+  ReleaseDone : boolean;
+  RetractDone : boolean;
+  first : boolean;
+  mode : {IDLE, EXTEND, CLAMP, RELEASE, RETRACT, DONE};
+
+ASSIGN
+  init(first) := TRUE;
+  next(first) := FALSE;
+  init(mode) := IDLE;
+  next(mode) := nextMode;
+
+DEFINE
+  normal := !Stop & !Reset;
+  nextMode := case
+    Stop | Reset : IDLE;
+    mode = IDLE & Start & RetractDone : EXTEND;
+    mode = EXTEND & ExtendDone : CLAMP;
+    mode = CLAMP & ClampDone : RELEASE;
+    mode = RELEASE & ReleaseDone : RETRACT;
+    mode = RETRACT & RetractDone : DONE;
+    TRUE : mode;
+  esac;
+
+  Extend := nextMode = EXTEND;
+  Clamp := nextMode = CLAMP;
+  Release := nextMode = RELEASE;
+  Retract := nextMode = RETRACT;
+  Busy := nextMode = EXTEND | nextMode = CLAMP | nextMode = RELEASE | nextMode = RETRACT;
+  Done := nextMode = DONE;
+
+  qIdle := mode = IDLE;
+  qExtend := mode = EXTEND;
+  qClamp := mode = CLAMP;
+  qRelease := mode = RELEASE;
+  qRetract := mode = RETRACT;
+  qDone := mode = DONE;
+
+  oneAction :=
+    !(Extend & (Clamp | Release | Retract)) &
+    !(Clamp & (Release | Retract)) &
+    !(Release & Retract);
+
+INVARSPEC NAME P1 := oneAction;
+LTLSPEC NAME P2 := G((Stop | Reset) -> (!Busy & !Done & !Extend & !Clamp & !Release & !Retract));
+LTLSPEC NAME P3 := G((normal & qIdle & Start & RetractDone) -> Extend);
+LTLSPEC NAME P4 := G((normal & qExtend & ExtendDone) -> Clamp);
+LTLSPEC NAME P5 := G((normal & qClamp & ClampDone) -> Release);
+LTLSPEC NAME P6 := G((normal & qRelease & ReleaseDone) -> Retract);
+LTLSPEC NAME P7 := G((normal & qRetract & RetractDone) -> Done);
+LTLSPEC NAME P8 := G((normal & qDone) -> Done);
+LTLSPEC NAME P9 := G((normal & qExtend & !ExtendDone) -> Extend);
+
+-- V2 completeness additions: init, remaining stage waits, IDLE off when unstarted, Busy/Done iff
+LTLSPEC NAME V2_init := first -> qIdle;
+LTLSPEC NAME V2_idle_stay := G((normal & qIdle & !(Start & RetractDone)) -> (!Extend & !Clamp & !Release & !Retract & !Busy & !Done & X(qIdle)));
+LTLSPEC NAME V2_clamp_hold := G((normal & qClamp & !ClampDone) -> (Clamp & Busy & !Done & X(qClamp)));
+LTLSPEC NAME V2_release_hold := G((normal & qRelease & !ReleaseDone) -> (Release & Busy & !Done & X(qRelease)));
+LTLSPEC NAME V2_retract_hold := G((normal & qRetract & !RetractDone) -> (Retract & Busy & !Done & X(qRetract)));
+LTLSPEC NAME V2_outputs_iff := G((Extend <-> nextMode = EXTEND) & (Clamp <-> nextMode = CLAMP) & (Release <-> nextMode = RELEASE) & (Retract <-> nextMode = RETRACT) & (Busy <-> (nextMode = EXTEND | nextMode = CLAMP | nextMode = RELEASE | nextMode = RETRACT)) & (Done <-> nextMode = DONE));

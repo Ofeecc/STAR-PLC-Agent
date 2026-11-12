@@ -1,0 +1,102 @@
+-- Scope: EXPLICIT_SMV_MODEL_ONLY (not candidate ST verification).
+-- Task: PUB015 (Material Proportioning Process Control), nuXmv SMT model using unbounded integer levelSensor.
+MODULE main
+VAR
+  estop : boolean;
+  opeMode : boolean;
+  valveAStart : boolean;
+  valveBStart : boolean;
+  valveCStart : boolean;
+  valveDStart : boolean;
+  mixMotorStart : boolean;
+  autoStart : boolean;
+  processMode : boolean;
+  levelSensor : integer;
+  mixMotorComplete : boolean;
+
+  phase : {IDLE, FILL_A, FILL_B, FILL_C, MIX, DRAIN};
+  mode_est : boolean;
+  prev_mode : boolean;
+  has_batch : boolean;
+  batch_mode : boolean;
+  latchA : boolean;
+  latchB : boolean;
+  latchC : boolean;
+  latchD : boolean;
+  latchM : boolean;
+  prevA : boolean;
+  prevB : boolean;
+  prevC : boolean;
+  prevD : boolean;
+  prevM : boolean;
+  prevAuto : boolean;
+
+INIT phase = IDLE & !mode_est & !prev_mode & !has_batch & !batch_mode &
+     !latchA & !latchB & !latchC & !latchD & !latchM &
+     !prevA & !prevB & !prevC & !prevD & !prevM & !prevAuto;
+
+INVAR (!reset_cond & opeMode & (phase = FILL_A | phase = FILL_B | phase = FILL_C | phase = MIX) & has_batch) -> (processMode = batch_mode);
+
+ASSIGN
+  next(phase) := nextPhase;
+  next(mode_est) := TRUE;
+  next(prev_mode) := opeMode;
+  next(has_batch) := reset_cond ? FALSE : ((!opeMode) ? has_batch : ((phase = IDLE & autoRise) ? TRUE : has_batch));
+  next(batch_mode) := reset_cond ? FALSE : ((!opeMode) ? batch_mode : ((phase = IDLE & autoRise) ? processMode : batch_mode));
+  next(latchA) := latchA_after;
+  next(latchB) := latchB_after;
+  next(latchC) := latchC_after;
+  next(latchD) := latchD_after;
+  next(latchM) := latchM_after;
+  next(prevA) := valveAStart;
+  next(prevB) := valveBStart;
+  next(prevC) := valveCStart;
+  next(prevD) := valveDStart;
+  next(prevM) := mixMotorStart;
+  next(prevAuto) := autoStart;
+
+DEFINE
+  riseA := valveAStart & !prevA;
+  riseB := valveBStart & !prevB;
+  riseC := valveCStart & !prevC;
+  riseD := valveDStart & !prevD;
+  riseM := mixMotorStart & !prevM;
+  autoRise := autoStart & !prevAuto;
+
+  changed := mode_est & (opeMode != prev_mode);
+  reset_cond := !estop | changed;
+  manual := !reset_cond & !opeMode;
+  auto := !reset_cond & opeMode;
+
+  latchA_after := reset_cond ? FALSE : (manual ? (latchA != riseA) : latchA);
+  latchB_after := reset_cond ? FALSE : (manual ? (latchB != riseB) : latchB);
+  latchC_after := reset_cond ? FALSE : (manual ? (latchC != riseC) : latchC);
+  latchD_after := reset_cond ? FALSE : (manual ? (latchD != riseD) : latchD);
+  latchM_after := reset_cond ? FALSE : (manual ? (latchM != riseM) : latchM);
+
+  nextPhase := case
+    reset_cond : IDLE;
+    manual : phase;
+    phase = IDLE & autoRise : FILL_A;
+    phase = FILL_A & levelSensor >= 50 : FILL_B;
+    phase = FILL_B & levelSensor >= 80 : (batch_mode ? FILL_C : MIX);
+    phase = FILL_C & levelSensor >= 100 : MIX;
+    phase = MIX & mixMotorComplete : DRAIN;
+    TRUE : phase;
+  esac;
+
+  valveARun := reset_cond ? FALSE : (manual ? latchA_after : nextPhase = FILL_A);
+  valveBRun := reset_cond ? FALSE : (manual ? latchB_after : nextPhase = FILL_B);
+  valveCRun := reset_cond ? FALSE : (manual ? latchC_after : nextPhase = FILL_C);
+  valveDRun := reset_cond ? FALSE : (manual ? latchD_after : nextPhase = DRAIN);
+  mixMotorRun := reset_cond ? FALSE : (manual ? latchM_after : nextPhase = MIX);
+  all_off := !valveARun & !valveBRun & !valveCRun & !valveDRun & !mixMotorRun;
+
+INVARSPEC NAME P1 := reset_cond -> all_off;
+INVARSPEC NAME P2 := manual -> ((riseA -> valveARun != latchA) & (!riseA -> valveARun = latchA) & (riseD -> valveDRun != latchD) & (!riseD -> valveDRun = latchD));
+INVARSPEC NAME P3 := (auto & phase = FILL_A & levelSensor >= 50) -> (valveBRun & !valveARun & !valveCRun & !valveDRun & !mixMotorRun);
+INVARSPEC NAME P4 := (auto & phase = FILL_B & levelSensor >= 80 & !batch_mode) -> (mixMotorRun & !valveCRun & !valveDRun);
+INVARSPEC NAME P5 := (auto & phase = FILL_B & levelSensor >= 80 & batch_mode -> valveCRun) & (auto & phase = FILL_C & levelSensor >= 100 -> mixMotorRun);
+INVARSPEC NAME P6 := (auto & phase = MIX & mixMotorComplete) -> valveDRun;
+INVARSPEC NAME V2_auto_mutex := auto -> (toint(valveARun) + toint(valveBRun) + toint(valveCRun) + toint(valveDRun) + toint(mixMotorRun) <= 1);
+LTLSPEC NAME V2_reset_clears_next := G (reset_cond -> (next(phase) = IDLE & !next(latchA) & !next(latchM)));

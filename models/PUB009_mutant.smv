@@ -1,0 +1,65 @@
+-- Scope: EXPLICIT_SMV_MODEL_ONLY (not candidate ST verification).
+-- Task: PUB009 negative mutant: fails to clear history when valid windowSize changes,
+-- violating P5 (windowSizeReached vs true cleared count) and P4.
+MODULE main
+VAR
+  cyclicExecution : boolean;
+  trigger : boolean;
+  val : real;
+  windowSize : integer;
+  reset : boolean;
+
+  b0 : real; b1 : real; b2 : real; b3 : real; b4 : real;
+  buf_len : integer;
+  cfg_win : integer;
+  prev_trig : boolean;
+  last_avg : real;
+  last_reached : boolean;
+
+INVAR
+  buf_len >= 0 & buf_len <= 5 &
+  cfg_win >= 0 & cfg_win <= 5 &
+  (windowSize <= 5 | windowSize > 100);
+
+INIT
+  b0 = 0.0 & b1 = 0.0 & b2 = 0.0 & b3 = 0.0 & b4 = 0.0 &
+  buf_len = 0 & cfg_win = 0 & !prev_trig & last_avg = 0.0 & !last_reached;
+
+DEFINE
+  valid := windowSize >= 1 & windowSize <= 100;
+  trig_rise := trigger & !prev_trig;
+  win_changed := valid & (cfg_win != windowSize);
+  accept := valid & !reset & (cyclicExecution | trig_rise);
+
+  -- Reference expected sample count after proper window-change clear.
+  expected_len := case
+    !valid : buf_len;
+    reset : 0;
+    !accept : (win_changed ? 0 : buf_len);
+    (win_changed ? 0 : buf_len) < windowSize : (win_changed ? 0 : buf_len) + 1;
+    TRUE : windowSize;
+  esac;
+
+  -- BUG: keeps stale buf_len across window change instead of resetting base_len to 0.
+  mut_len := case
+    !valid : buf_len;
+    reset : 0;
+    !accept : (buf_len <= windowSize ? buf_len : windowSize);
+    buf_len < windowSize : buf_len + 1;
+    TRUE : windowSize;
+  esac;
+
+  post_reached := !valid ? last_reached : (reset ? FALSE : (mut_len = windowSize));
+  out_error := !valid;
+  out_status := valid ? 0 : 33280;
+
+ASSIGN
+  next(b0) := b0; next(b1) := b1; next(b2) := b2; next(b3) := b3; next(b4) := b4;
+  next(buf_len) := mut_len;
+  next(cfg_win) := valid ? windowSize : cfg_win;
+  next(prev_trig) := trigger;
+  next(last_avg) := last_avg;
+  next(last_reached) := post_reached;
+
+INVARSPEC NAME P2 := valid -> (!out_error & out_status = 0);
+INVARSPEC NAME P5 := valid -> (post_reached <-> (expected_len = windowSize));

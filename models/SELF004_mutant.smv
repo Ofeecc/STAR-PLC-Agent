@@ -1,0 +1,42 @@
+-- Negative control mutant for SELF004: Stop fails to return MOVING to IDLE.
+-- Original P1..P7 still pass, while V2_stop_resets catches the missing Stop behavior.
+MODULE main
+VAR
+  Start : boolean;
+  Stop : boolean;
+  AtExit : boolean;
+  Jam : boolean;
+  Reset : boolean;
+  mode : {IDLE, MOVING, COMPLETE, FAULT};
+
+ASSIGN
+  init(mode) := IDLE;
+  next(mode) := nextMode;
+
+DEFINE
+  nextMode := case
+    Jam : FAULT;
+    Reset : IDLE;
+    mode = FAULT : FAULT;
+    mode = IDLE & Start & !AtExit : MOVING;
+    mode = MOVING & AtExit : COMPLETE;
+    TRUE : mode;
+  esac;
+
+  Belt := nextMode = MOVING;
+  Complete := nextMode = COMPLETE;
+  Fault := nextMode = FAULT;
+
+  qIdle := mode = IDLE;
+  qMoving := mode = MOVING;
+  qComplete := mode = COMPLETE;
+  qFault := mode = FAULT;
+
+LTLSPEC NAME P1 := G(Jam -> (Fault & !Belt & !Complete));
+LTLSPEC NAME P2 := G((qFault & !Reset) -> Fault);
+LTLSPEC NAME P3 := G((!Jam & Reset) -> (!Belt & !Complete & !Fault));
+LTLSPEC NAME P4 := G((qIdle & !Jam & !Reset & !Stop & Start & !AtExit) -> Belt);
+LTLSPEC NAME P5 := G((qMoving & AtExit & !Jam & !Reset & !Stop) -> (Complete & !Belt));
+INVARSPEC NAME P6 := !(Belt & (Complete | Fault));
+LTLSPEC NAME P7 := G(Fault -> (G(Fault) | (Fault U (!Jam & Reset))));
+LTLSPEC NAME V2_stop_resets := G((!Jam & !Reset & !qFault & Stop) -> (!Belt & !Complete & !Fault & X(qIdle)));

@@ -1,0 +1,57 @@
+-- Scope: EXPLICIT_SMV_MODEL_ONLY (not candidate ST verification).
+-- Task: PUB012 negative mutant: holds alarm during invalid signal and drops shift history order, violating P1 and P3.
+MODULE main
+VAR
+  THICKNESS_FAULT : boolean;
+  THICKNESS_SIGNAL_VALID : boolean;
+  CUTTING_RUN : boolean;
+  FaultTimestamp : integer;
+  CycleTime_ms : integer;
+  dt_ms : integer;
+  first_scan : boolean;
+  clk : integer;
+  have_hold : boolean;
+  since : integer;
+  prev_fault : boolean;
+  fault_count : integer;
+  runtime : integer;
+  hist0 : integer;
+  hist1 : integer;
+  hist2 : integer;
+  hist3 : integer;
+  hist4 : integer;
+
+INIT first_scan & clk = 0 & !have_hold & since = 0 & !prev_fault & fault_count = 0 & runtime = 0 &
+     hist0 = 0 & hist1 = 0 & hist2 = 0 & hist3 = 0 & hist4 = 0;
+INVAR dt_ms >= 0 & CycleTime_ms > 0 & clk >= 0 & runtime >= 0 & fault_count >= 0 & fault_count <= 65535;
+
+ASSIGN
+  next(first_scan) := FALSE;
+  next(clk) := clk_now;
+  next(have_hold) := have_hold | rise;
+  next(since) := rise ? clk_now : since;
+  next(prev_fault) := fault;
+  next(fault_count) := fault_count + (rise ? 1 : 0);
+  next(runtime) := runtime + ((valid & !fault & CUTTING_RUN) ? CycleTime_ms : 0);
+  next(hist0) := hist0;
+  next(hist1) := hist1;
+  next(hist2) := hist2;
+  next(hist3) := hist3;
+  next(hist4) := rise ? FaultTimestamp : hist4;
+
+DEFINE
+  clk_now := first_scan ? 0 : clk + dt_ms;
+  valid := THICKNESS_SIGNAL_VALID;
+  fault := valid & THICKNESS_FAULT;
+  rise := fault & !prev_fault;
+  count_now := fault_count + (rise ? 1 : 0);
+  hist0_now := hist0;
+  hist1_now := hist1;
+  hist2_now := hist2;
+  hist3_now := hist3;
+  hist4_now := rise ? FaultTimestamp : hist4;
+  hold := have_hold & (clk_now - since < 500);
+  THICKNESS_ALARM := fault | hold;
+
+INVARSPEC NAME P1 := !valid -> !THICKNESS_ALARM;
+INVARSPEC NAME P3 := rise -> (hist0_now = FaultTimestamp);

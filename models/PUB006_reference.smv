@@ -1,0 +1,43 @@
+-- Scope: EXPLICIT_SMV_MODEL_ONLY (not candidate ST verification).
+-- Task: PUB006 (Aeration Blower Delayed Start), nuXmv infinite-state SMT model.
+-- Abstraction note: clock in ms (5s = 5000 ms), UINT count bounded by 0..65535 domain assumption, TimeTick modeled as dt_ms >= 5000.
+MODULE main
+VAR
+  DO_LOW : boolean;
+  AERATION_E_STOP_NC : boolean;
+  dt_ms : integer;
+  first_scan : boolean;
+  clk : integer;
+  have_since : boolean;
+  since : integer;
+  runPrev : boolean;
+  countPrev : integer;
+
+INIT first_scan & clk = 0 & !have_since & since = 0 & !runPrev & countPrev = 0;
+INVAR dt_ms >= 0 & clk >= 0 & countPrev >= 0 & countPrev <= 65535 & (countPrev = 65535 -> !risingRun);
+
+ASSIGN
+  next(first_scan) := FALSE;
+  next(clk) := clk_now;
+  next(have_since) := permit;
+  next(since) := since_now;
+  next(runPrev) := BLOWER_RUN;
+  next(countPrev) := countAfter;
+
+DEFINE
+  permit := DO_LOW & AERATION_E_STOP_NC;
+  clk_now := first_scan ? 0 : clk + dt_ms;
+  since_now := permit ? (have_since ? since : clk_now) : 0;
+  delayDone := permit & (have_since ? (clk_now - since >= 5000) : FALSE);
+  BLOWER_RUN := permit & delayDone;
+  risingRun := BLOWER_RUN & !runPrev;
+  countAfter := countPrev + (risingRun ? 1 : 0);
+  AERATION_BLOWER_CYCLE_COUNT := countAfter;
+  coarse_tick := dt_ms >= 5000;
+
+INVARSPEC NAME P1 := BLOWER_RUN <-> (permit & delayDone);
+INVARSPEC NAME P3 := (!runPrev & BLOWER_RUN) -> (AERATION_BLOWER_CYCLE_COUNT = countPrev + 1);
+INVARSPEC NAME P4 := (runPrev | !BLOWER_RUN) -> (AERATION_BLOWER_CYCLE_COUNT = countPrev);
+INVARSPEC NAME V2_bounds := AERATION_BLOWER_CYCLE_COUNT >= 0 & AERATION_BLOWER_CYCLE_COUNT <= 65535;
+LTLSPEC NAME P2 := G (!permit -> (!BLOWER_RUN & X (!delayDone)));
+LTLSPEC NAME P5 := G (F (coarse_tick)) -> G (G (permit) -> F (BLOWER_RUN));

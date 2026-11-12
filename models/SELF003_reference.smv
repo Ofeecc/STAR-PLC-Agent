@@ -1,0 +1,32 @@
+MODULE main
+VAR
+  Start : boolean;
+  Stop : boolean;
+  EStopNC : boolean;
+  Reset : boolean;
+  first : boolean;
+  qRequired : boolean;
+  qRun : boolean;
+
+ASSIGN
+  init(first) := TRUE;
+  next(first) := FALSE;
+  init(qRequired) := TRUE;
+  next(qRequired) := ResetRequired;
+  init(qRun) := FALSE;
+  next(qRun) := Run;
+
+DEFINE
+  validReset := EStopNC & Reset & !Start & !Stop;
+  ResetRequired := !EStopNC | (qRequired & !validReset);
+  Run := EStopNC & !qRequired & !Stop & (Start | qRun);
+
+LTLSPEC NAME P1 := G(first -> (qRequired & !qRun));
+LTLSPEC NAME P2 := G(!EStopNC -> (!Run & ResetRequired));
+LTLSPEC NAME P3 := G(qRequired -> !Run);
+LTLSPEC NAME P4 := G((qRequired & EStopNC) -> (ResetRequired <-> !validReset));
+LTLSPEC NAME P5 := G((!qRequired & EStopNC & !Stop & Start) -> Run);
+LTLSPEC NAME P6 := G((!qRequired & EStopNC & Stop) -> !Run);
+LTLSPEC NAME V2_1 := G((!qRequired & EStopNC) -> !ResetRequired);
+LTLSPEC NAME V2_2 := G((!qRequired & EStopNC & !Stop & !Start) -> (Run <-> qRun));
+LTLSPEC NAME V2_complete := G((ResetRequired <-> (!EStopNC | (qRequired & !validReset))) & (Run <-> (EStopNC & !qRequired & !Stop & (Start | qRun))));

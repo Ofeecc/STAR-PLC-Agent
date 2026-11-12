@@ -1,0 +1,56 @@
+MODULE main
+VAR
+  bottleSensor : boolean;
+  cleaningConfirmButton : boolean;
+  fillingConfirmButton : boolean;
+  cappingConfirmButton : boolean;
+  packingConfirmButton : boolean;
+  finishedButton : boolean;
+  phase : 0..5;
+
+ASSIGN
+  init(phase) := 0;
+  next(phase) := nextPhase;
+
+DEFINE
+  nextPhase := case
+    phase = 0 & bottleSensor : 1;
+    phase = 1 & cleaningConfirmButton : 2;
+    phase = 2 & fillingConfirmButton : 3;
+    phase = 3 & cappingConfirmButton : 4;
+    phase = 4 & packingConfirmButton : 5;
+    phase = 5 & finishedButton : 0;
+    TRUE : phase;
+  esac;
+
+  Pump_Motor := nextPhase = 1;
+  Filling_Valve := nextPhase = 2;
+  Capping_Machine := nextPhase = 3;
+  Packing_Machine := nextPhase = 4;
+  Completion_Light := nextPhase = 5;
+
+  oneHotOutputs :=
+    !(Pump_Motor & (Filling_Valve | Capping_Machine | Packing_Machine | Completion_Light)) &
+    !(Filling_Valve & (Capping_Machine | Packing_Machine | Completion_Light)) &
+    !(Capping_Machine & (Packing_Machine | Completion_Light)) &
+    !(Packing_Machine & Completion_Light);
+
+LTLSPEC NAME P1_init := phase = 0;
+INVARSPEC NAME P2 := oneHotOutputs;
+LTLSPEC NAME P3 := G((phase=0 & bottleSensor) -> (Pump_Motor & X(phase=1)));
+LTLSPEC NAME P4 := G((phase=1 & cleaningConfirmButton) -> (Filling_Valve & X(phase=2)));
+LTLSPEC NAME P5 := G((phase=2 & fillingConfirmButton) -> (Capping_Machine & X(phase=3)));
+LTLSPEC NAME P6 := G((phase=3 & cappingConfirmButton) -> (Packing_Machine & X(phase=4)));
+LTLSPEC NAME P7 := G((phase=4 & packingConfirmButton) -> (Completion_Light & X(phase=5)));
+LTLSPEC NAME P8 := G((phase=5 & !finishedButton) -> (Completion_Light & X(phase=5)));
+LTLSPEC NAME P9 := G((phase=5 & finishedButton) -> (!Completion_Light & X(phase=0)));
+LTLSPEC NAME P10 := G((phase=1 & G((phase=1) -> F(cleaningConfirmButton)) & G((phase=2) -> F(fillingConfirmButton)) & G((phase=3) -> F(cappingConfirmButton)) & G((phase=4) -> F(packingConfirmButton))) -> F(Completion_Light));
+
+-- V2 completeness additions: unconfirmed holds, idle all-off, reset all-off, and output-phase equivalence
+LTLSPEC NAME V2_idle_hold := G((phase=0 & !bottleSensor) -> (!Pump_Motor & !Filling_Valve & !Capping_Machine & !Packing_Machine & !Completion_Light & X(phase=0)));
+LTLSPEC NAME V2_clean_hold := G((phase=1 & !cleaningConfirmButton) -> (Pump_Motor & X(phase=1)));
+LTLSPEC NAME V2_fill_hold := G((phase=2 & !fillingConfirmButton) -> (Filling_Valve & X(phase=2)));
+LTLSPEC NAME V2_cap_hold := G((phase=3 & !cappingConfirmButton) -> (Capping_Machine & X(phase=3)));
+LTLSPEC NAME V2_pack_hold := G((phase=4 & !packingConfirmButton) -> (Packing_Machine & X(phase=4)));
+LTLSPEC NAME V2_reset_all_off := G((phase=5 & finishedButton) -> (!Pump_Motor & !Filling_Valve & !Capping_Machine & !Packing_Machine & !Completion_Light & X(phase=0)));
+LTLSPEC NAME V2_outputs_iff := G((Pump_Motor <-> nextPhase=1) & (Filling_Valve <-> nextPhase=2) & (Capping_Machine <-> nextPhase=3) & (Packing_Machine <-> nextPhase=4) & (Completion_Light <-> nextPhase=5));

@@ -1,0 +1,31 @@
+MODULE main
+VAR
+  ForwardButton : boolean;
+  ReverseButton : boolean;
+  Stop : boolean;
+  first : boolean;
+  qForward : boolean;
+  qReverse : boolean;
+
+ASSIGN
+  init(first) := TRUE;
+  next(first) := FALSE;
+  init(qForward) := FALSE;
+  next(qForward) := Forward;
+  init(qReverse) := FALSE;
+  next(qReverse) := Reverse;
+
+DEFINE
+  fwdOnly := ForwardButton & !ReverseButton & !Stop;
+  revOnly := ReverseButton & !ForwardButton & !Stop;
+  Forward := fwdOnly & !qReverse;
+  Reverse := revOnly & !qForward;
+
+INVARSPEC NAME P1 := !(Forward & Reverse);
+LTLSPEC NAME P2 := G((Stop | (ForwardButton <-> ReverseButton)) -> (!Forward & !Reverse));
+LTLSPEC NAME P3 := G((fwdOnly & qReverse) -> (!Forward & !Reverse));
+LTLSPEC NAME P4 := G((revOnly & qForward) -> (!Forward & !Reverse));
+LTLSPEC NAME P5 := G((fwdOnly & !qReverse) -> Forward);
+LTLSPEC NAME P6 := G((revOnly & !qForward) -> Reverse);
+LTLSPEC NAME V2_init := first -> (!qForward & !qReverse);
+LTLSPEC NAME V2_complete := G((Forward <-> (fwdOnly & !qReverse)) & (Reverse <-> (revOnly & !qForward)));

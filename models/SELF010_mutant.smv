@@ -1,0 +1,41 @@
+-- Negative control mutant for SELF010: fails to latch Acknowledged after Ack button is released.
+-- Current P1..P6 in dataset/self_built/SELF010.json all pass, while V2_ack_hold catches the missing hold.
+MODULE main
+VAR
+  Fault : boolean;
+  Ack : boolean;
+  Reset : boolean;
+  first : boolean;
+  qFault : boolean;
+  qAlarm : boolean;
+  qAck : boolean;
+
+ASSIGN
+  init(first) := TRUE;
+  next(first) := FALSE;
+  init(qFault) := FALSE;
+  next(qFault) := Fault;
+  init(qAlarm) := FALSE;
+  next(qAlarm) := Alarm;
+  init(qAck) := FALSE;
+  next(qAck) := Acknowledged;
+
+DEFINE
+  validReset := Reset & !Fault;
+  rise := Fault & !qFault;
+  Alarm := !validReset & (Fault | qAlarm);
+  Acknowledged := case
+    validReset : FALSE;
+    rise : FALSE;
+    Ack & (Fault | qAlarm) : TRUE;
+    TRUE : FALSE;
+  esac;
+  Horn := Alarm & !Acknowledged;
+
+LTLSPEC NAME P1 := G(Horn <-> (Alarm & !Acknowledged));
+LTLSPEC NAME P2 := G(Fault -> Alarm);
+LTLSPEC NAME P3 := G(rise -> (Alarm & !Acknowledged & Horn));
+LTLSPEC NAME P4 := G((Reset & !Fault) -> (!Alarm & !Acknowledged & !Horn));
+LTLSPEC NAME P5 := G((!Fault & !Reset & qAlarm) -> Alarm);
+LTLSPEC NAME P6 := G((!rise & !(Reset & !Fault) & Ack & qAlarm) -> Acknowledged);
+LTLSPEC NAME V2_ack_hold := G((!validReset & !rise & qAck) -> Acknowledged);

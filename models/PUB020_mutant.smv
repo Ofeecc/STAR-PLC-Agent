@@ -1,0 +1,56 @@
+-- Scope: EXPLICIT_SMV_MODEL_ONLY (not candidate ST verification).
+-- Task: PUB020 negative mutant: overwrites firingTemp even on rejected weight and fails to stop on manual mode, violating P5 and P6.
+MODULE main
+VAR
+  Mode : boolean;
+  ForwardButton : boolean;
+  ReverseButton : boolean;
+  SensorFeed : boolean;
+  SensorWash : boolean;
+  SensorWeight : boolean;
+  SensorFiring : boolean;
+  SensorOutput : boolean;
+  washComplete : boolean;
+  weightComplete : boolean;
+  weight : real;
+  firingComplete : boolean;
+
+  phase : {WAIT_FEED, MOVE_WASH, WAIT_WASH, MOVE_WEIGHT, WAIT_WEIGHT, REJECT, MOVE_FIRING, WAIT_FIRING, MOVE_OUTPUT, OUTPUT_DONE};
+  temp : real;
+
+INIT phase = WAIT_FEED & temp = 0.0;
+
+ASSIGN
+  next(phase) := nextPhase;
+  next(temp) := firingTemp;
+
+DEFINE
+  auto := Mode;
+  mf := ForwardButton & !ReverseButton;
+  mr := ReverseButton & !ForwardButton;
+  valid_weight := weight >= 100.0 & weight <= 200.0;
+  judged := auto & phase = WAIT_WEIGHT & SensorWeight & weightComplete;
+
+  nextPhase := case
+    !auto : WAIT_FEED;
+    phase = WAIT_FEED & SensorFeed : MOVE_WASH;
+    phase = MOVE_WASH & SensorWash : WAIT_WASH;
+    phase = WAIT_WASH & SensorWash & washComplete : MOVE_WEIGHT;
+    phase = MOVE_WEIGHT & SensorWeight : WAIT_WEIGHT;
+    phase = WAIT_WEIGHT & SensorWeight & weightComplete : (valid_weight ? MOVE_FIRING : REJECT);
+    phase = REJECT & !SensorWeight : WAIT_FEED;
+    phase = MOVE_FIRING & SensorFiring : WAIT_FIRING;
+    phase = WAIT_FIRING & SensorFiring & firingComplete : MOVE_OUTPUT;
+    phase = MOVE_OUTPUT & SensorOutput : OUTPUT_DONE;
+    phase = OUTPUT_DONE & !SensorOutput : WAIT_FEED;
+    TRUE : phase;
+  esac;
+
+  firingTemp := judged ? (500.0 + (weight - 100.0) * 0.5) : temp;
+  MotorForward := auto ? (nextPhase = MOVE_WASH | nextPhase = MOVE_WEIGHT | nextPhase = MOVE_FIRING | nextPhase = MOVE_OUTPUT) : mf;
+  MotorReverse := auto ? FALSE : mr;
+  kick := auto & (nextPhase = REJECT);
+  CompletionLight := auto & (nextPhase = OUTPUT_DONE);
+
+INVARSPEC NAME P5 := judged -> (valid_weight ? !kick : firingTemp = temp);
+INVARSPEC NAME P6 := (!judged | !valid_weight) -> (firingTemp = temp);

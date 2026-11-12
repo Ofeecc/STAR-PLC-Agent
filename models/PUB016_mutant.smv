@@ -1,0 +1,98 @@
+-- Scope: EXPLICIT_SMV_MODEL_ONLY (not candidate ST verification).
+-- Task: PUB016 negative mutant: misses stop-at-arrival and keeps conveyor driving when target arrives, violating P3.
+MODULE main
+VAR
+  processLength : 1..8;
+  s1 : 2..5; s2 : 2..5; s3 : 2..5; s4 : 2..5;
+  s5 : 2..5; s6 : 2..5; s7 : 2..5; s8 : 2..5;
+  sensor1 : boolean; sensor2 : boolean; sensor3 : boolean; sensor4 : boolean; sensor5 : boolean;
+  station1Start : boolean;
+  station2Complete : boolean;
+  station3Complete : boolean;
+  station4Complete : boolean;
+
+  phase : {IDLE, MOVING, WAIT_PROCESS};
+  idx : integer;
+  station : 1..5;
+  target : 1..5;
+  rlen : 1..8;
+  r1 : 2..5; r2 : 2..5; r3 : 2..5; r4 : 2..5;
+  r5 : 2..5; r6 : 2..5; r7 : 2..5; r8 : 2..5;
+  prev_start : boolean;
+  prev_c2 : boolean;
+  prev_c3 : boolean;
+  prev_c4 : boolean;
+
+INIT phase = IDLE & idx = 0 & station = 1 & target = 1 &
+     rlen = 1 & r1 = 5 & r2 = 5 & r3 = 5 & r4 = 5 & r5 = 5 & r6 = 5 & r7 = 5 & r8 = 5 &
+     !prev_start & !prev_c2 & !prev_c3 & !prev_c4;
+
+INVAR
+  (processLength = 1 ? s1 = 5 : s1 in {2, 3, 4}) &
+  (processLength = 2 ? s2 = 5 : (processLength > 2 -> s2 in {2, 3, 4})) &
+  (processLength = 3 ? s3 = 5 : (processLength > 3 -> s3 in {2, 3, 4})) &
+  (processLength = 4 ? s4 = 5 : (processLength > 4 -> s4 in {2, 3, 4})) &
+  (processLength = 5 ? s5 = 5 : (processLength > 5 -> s5 in {2, 3, 4})) &
+  (processLength = 6 ? s6 = 5 : (processLength > 6 -> s6 in {2, 3, 4})) &
+  (processLength = 7 ? s7 = 5 : (processLength > 7 -> s7 in {2, 3, 4})) &
+  (processLength = 8 -> s8 = 5);
+
+DEFINE
+  rise_start := station1Start & !prev_start;
+  rise_c2 := station2Complete & !prev_c2;
+  rise_c3 := station3Complete & !prev_c3;
+  rise_c4 := station4Complete & !prev_c4;
+  station_done_edge := case
+    station = 2 : rise_c2;
+    station = 3 : rise_c3;
+    station = 4 : rise_c4;
+    TRUE : FALSE;
+  esac;
+  target_sensor := case
+    target = 1 : sensor1;
+    target = 2 : sensor2;
+    target = 3 : sensor3;
+    target = 4 : sensor4;
+    TRUE : sensor5;
+  esac;
+  next_idx := (phase = WAIT_PROCESS & station_done_edge & idx < 7) ? idx + 1 : idx;
+  next_seq_elem := case
+    next_idx = 0 : r1; next_idx = 1 : r2; next_idx = 2 : r3; next_idx = 3 : r4;
+    next_idx = 4 : r5; next_idx = 5 : r6; next_idx = 6 : r7; TRUE : r8;
+  esac;
+  started := phase = IDLE & rise_start & sensor1;
+  arrive := phase = MOVING & target_sensor;
+  proceed_step := phase = WAIT_PROCESS & station_done_edge;
+  post_phase := case
+    started : MOVING;
+    arrive : (target = 5 ? IDLE : WAIT_PROCESS);
+    proceed_step : (next_seq_elem = station ? WAIT_PROCESS : MOVING);
+    TRUE : phase;
+  esac;
+  post_station := arrive ? target : (started ? 1 : station);
+  post_target := started ? s1 : (proceed_step ? next_seq_elem : target);
+  conveyorLeft := phase = MOVING & target < station;
+  conveyorRight := phase = MOVING & target > station;
+  stop_out := !conveyorLeft & !conveyorRight;
+
+ASSIGN
+  next(phase) := post_phase;
+  next(idx) := started ? 0 : next_idx;
+  next(station) := post_station;
+  next(target) := post_target;
+  next(rlen) := started ? processLength : rlen;
+  next(r1) := started ? s1 : r1;
+  next(r2) := started ? s2 : r2;
+  next(r3) := started ? s3 : r3;
+  next(r4) := started ? s4 : r4;
+  next(r5) := started ? s5 : r5;
+  next(r6) := started ? s6 : r6;
+  next(r7) := started ? s7 : r7;
+  next(r8) := started ? s8 : r8;
+  next(prev_start) := station1Start;
+  next(prev_c2) := station2Complete;
+  next(prev_c3) := station3Complete;
+  next(prev_c4) := station4Complete;
+
+INVARSPEC NAME P1 := !(conveyorLeft & conveyorRight);
+INVARSPEC NAME P3 := arrive -> stop_out;

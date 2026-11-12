@@ -184,11 +184,13 @@ def main():
     imp_verify.add_argument("--bundle-dir", required=True, help="Verification bundle directory")
     imp_verify.add_argument("--evidence", required=True, help="Verification evidence file")
 
-    model_check = sub.add_parser("check-model", help="Check an explicitly encoded SMV model using local NuSMV")
+    model_check = sub.add_parser("check-model", help="Check an explicitly encoded SMV model using local NuSMV or nuXmv")
     model_check.add_argument("--model", required=True, help="SMV model path (not ST)")
     model_check.add_argument("--out-dir", required=True)
-    model_check.add_argument("--executable", default=None, help="NuSMV.exe; otherwise use NUSMV_EXE or local installation")
+    model_check.add_argument("--executable", default=None, help="NuSMV/nuXmv executable path or name; otherwise use NUXMV_EXE/NUSMV_EXE, local installation, or PATH")
     model_check.add_argument("--timeout", type=int, default=60)
+    model_check.add_argument("--tool", choices=["auto", "nusmv", "nuxmv"], default="auto", help="Model checker backend (default: auto)")
+    model_check.add_argument("--engine", choices=["auto", "bdd", "smt"], default="auto", help="Verification engine (default: auto selects smt for integer/real/array/word models)")
 
     rand_test = sub.add_parser("random-test")
     rand_test.add_argument("--task", "--task-id", dest="task", required=True, help="Task ID (e.g. PUB001)")
@@ -224,7 +226,14 @@ def main():
             result = doctor(cfg)
         elif args.command == "check-model":
             from .model_checker import check_model
-            result = check_model(args.model, args.out_dir, args.executable, args.timeout)
+            result = check_model(
+                args.model,
+                args.out_dir,
+                args.executable,
+                args.timeout,
+                tool=args.tool,
+                engine=args.engine,
+            )
         elif args.command == "validate-dataset":
             result = validate(tasks)
             source = ROOT.parent / "大作业题库json/大作业题库json/大作业题库.json"

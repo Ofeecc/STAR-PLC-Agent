@@ -1,0 +1,51 @@
+MODULE main
+VAR
+  Start : boolean;
+  Stop : boolean;
+  AtExit : boolean;
+  Jam : boolean;
+  Reset : boolean;
+  first : boolean;
+  mode : {IDLE, MOVING, COMPLETE, FAULT};
+
+ASSIGN
+  init(first) := TRUE;
+  next(first) := FALSE;
+  init(mode) := IDLE;
+  next(mode) := nextMode;
+
+DEFINE
+  nextMode := case
+    Jam : FAULT;
+    Reset : IDLE;
+    mode = FAULT : FAULT;
+    Stop : IDLE;
+    mode = IDLE & Start & !AtExit : MOVING;
+    mode = MOVING & AtExit : COMPLETE;
+    TRUE : mode;
+  esac;
+
+  Belt := nextMode = MOVING;
+  Complete := nextMode = COMPLETE;
+  Fault := nextMode = FAULT;
+
+  qIdle := mode = IDLE;
+  qMoving := mode = MOVING;
+  qComplete := mode = COMPLETE;
+  qFault := mode = FAULT;
+
+LTLSPEC NAME P1 := G(Jam -> (Fault & !Belt & !Complete));
+LTLSPEC NAME P2 := G((qFault & !Reset) -> Fault);
+LTLSPEC NAME P3 := G((!Jam & Reset) -> (!Belt & !Complete & !Fault));
+LTLSPEC NAME P4 := G((qIdle & !Jam & !Reset & !Stop & Start & !AtExit) -> Belt);
+LTLSPEC NAME P5 := G((qMoving & AtExit & !Jam & !Reset & !Stop) -> (Complete & !Belt));
+INVARSPEC NAME P6 := !(Belt & (Complete | Fault));
+LTLSPEC NAME P7 := G(Fault -> (G(Fault) | (Fault U (!Jam & Reset))));
+
+-- V2 completeness additions: initial mode, Stop reset, holds, full output exclusion/equivalence
+LTLSPEC NAME V2_init := first -> qIdle;
+LTLSPEC NAME V2_stop_resets := G((!Jam & !Reset & !qFault & Stop) -> (!Belt & !Complete & !Fault & X(qIdle)));
+LTLSPEC NAME V2_moving_hold := G((qMoving & !Jam & !Reset & !Stop & !AtExit) -> (Belt & !Complete & !Fault & X(qMoving)));
+LTLSPEC NAME V2_complete_hold := G((qComplete & !Jam & !Reset & !Stop) -> (Complete & !Belt & !Fault & X(qComplete)));
+INVARSPEC NAME V2_outputs_mutex := !(Complete & Fault) & !(Belt & (Complete | Fault));
+LTLSPEC NAME V2_outputs_iff := G((Belt <-> nextMode = MOVING) & (Complete <-> nextMode = COMPLETE) & (Fault <-> nextMode = FAULT));

@@ -1,0 +1,37 @@
+-- Scope: EXPLICIT_SMV_MODEL_ONLY (not candidate ST verification).
+-- Task: PUB004 negative mutant: omits clearing timer anchor on !permit, violating P2/P3.
+MODULE main
+FROZENVAR
+  DebounceTime_ms : integer;
+VAR
+  VISCOSITY_OK : boolean;
+  PASTE_E_STOP_NC : boolean;
+  dt_ms : integer;
+  CycleTime_ms : integer;
+  first_scan : boolean;
+  clk : integer;
+  have_since : boolean;
+  since : integer;
+  runtime : integer;
+
+INIT DebounceTime_ms > 0 & first_scan & clk = 0 & !have_since & since = 0 & runtime = 0;
+INVAR dt_ms >= 0 & CycleTime_ms > 0 & runtime >= 0;
+
+ASSIGN
+  next(first_scan) := FALSE;
+  next(clk) := clk_now;
+  next(have_since) := have_since | permit;
+  next(since) := have_since ? since : (permit ? clk_now : 0);
+  next(runtime) := accNext;
+
+DEFINE
+  permit := VISCOSITY_OK & PASTE_E_STOP_NC;
+  clk_now := first_scan ? 0 : clk + dt_ms;
+  qualified := have_since & (clk_now - since >= DebounceTime_ms);
+  VFD_RUN := qualified;
+  accNext := runtime + (VFD_RUN ? CycleTime_ms : 0);
+  PUMP_MAINT_DUE := accNext >= 1800000000;
+
+INVARSPEC NAME P1 := VFD_RUN <-> (permit & qualified);
+INVARSPEC NAME P2 := !permit -> !VFD_RUN;
+LTLSPEC NAME P3 := G (!permit -> X (!qualified));

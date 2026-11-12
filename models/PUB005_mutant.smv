@@ -1,0 +1,34 @@
+-- Scope: EXPLICIT_SMV_MODEL_ONLY (not candidate ST verification).
+-- Task: PUB005 negative mutant: E-stop resets startup clock, violating startup clock independence (V2_clock_monotonic / P1 stability).
+MODULE main
+FROZENVAR
+  DebounceTime_ms : integer;
+VAR
+  Gap_Exceeded : boolean;
+  Weld_E_Stop_NC : boolean;
+  dt_ms : integer;
+  first_scan : boolean;
+  clk : integer;
+  have_since : boolean;
+  since : integer;
+
+INIT DebounceTime_ms > 0 & first_scan & clk = 0 & !have_since & since = 0;
+INVAR dt_ms >= 0 & clk >= 0;
+
+ASSIGN
+  next(first_scan) := FALSE;
+  next(clk) := Weld_E_Stop_NC ? clk_now : 0;
+  next(have_since) := gapPermit;
+  next(since) := since_now;
+
+DEFINE
+  clk_now := first_scan ? 0 : clk + dt_ms;
+  startup := clk_now < 5000;
+  gapPermit := !startup & Gap_Exceeded & Weld_E_Stop_NC;
+  since_now := gapPermit ? (have_since ? since : clk_now) : 0;
+  gapQualified := gapPermit & (have_since ? (clk_now - since >= DebounceTime_ms) : FALSE);
+  Operator_Alert := gapPermit & gapQualified;
+  Weld_Soft_Start_Active := startup;
+
+INVARSPEC NAME P1 := Weld_Soft_Start_Active <-> startup;
+LTLSPEC NAME V2_clock_monotonic := G (!first_scan -> next(clk) >= clk);

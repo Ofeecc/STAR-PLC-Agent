@@ -1,0 +1,94 @@
+-- Scope: EXPLICIT_SMV_MODEL_ONLY (not candidate ST verification).
+-- Task: PUB015 negative mutant: mode change fails to clear phase/latches/outputs on transition scan, violating P1 and V2_reset_clears_next.
+MODULE main
+VAR
+  estop : boolean;
+  opeMode : boolean;
+  valveAStart : boolean;
+  valveBStart : boolean;
+  valveCStart : boolean;
+  valveDStart : boolean;
+  mixMotorStart : boolean;
+  autoStart : boolean;
+  processMode : boolean;
+  levelSensor : integer;
+  mixMotorComplete : boolean;
+
+  phase : {IDLE, FILL_A, FILL_B, FILL_C, MIX, DRAIN};
+  mode_est : boolean;
+  prev_mode : boolean;
+  has_batch : boolean;
+  batch_mode : boolean;
+  latchA : boolean;
+  latchB : boolean;
+  latchC : boolean;
+  latchD : boolean;
+  latchM : boolean;
+  prevA : boolean;
+  prevB : boolean;
+  prevC : boolean;
+  prevD : boolean;
+  prevM : boolean;
+  prevAuto : boolean;
+
+INIT phase = IDLE & !mode_est & !prev_mode & !has_batch & !batch_mode &
+     !latchA & !latchB & !latchC & !latchD & !latchM &
+     !prevA & !prevB & !prevC & !prevD & !prevM & !prevAuto;
+
+ASSIGN
+  next(phase) := nextPhase;
+  next(mode_est) := TRUE;
+  next(prev_mode) := opeMode;
+  next(has_batch) := !estop ? FALSE : (opeMode & phase = IDLE & autoRise ? TRUE : has_batch);
+  next(batch_mode) := !estop ? FALSE : (opeMode & phase = IDLE & autoRise ? processMode : batch_mode);
+  next(latchA) := latchA_after;
+  next(latchB) := latchB_after;
+  next(latchC) := latchC_after;
+  next(latchD) := latchD_after;
+  next(latchM) := latchM_after;
+  next(prevA) := valveAStart;
+  next(prevB) := valveBStart;
+  next(prevC) := valveCStart;
+  next(prevD) := valveDStart;
+  next(prevM) := mixMotorStart;
+  next(prevAuto) := autoStart;
+
+DEFINE
+  riseA := valveAStart & !prevA;
+  riseB := valveBStart & !prevB;
+  riseC := valveCStart & !prevC;
+  riseD := valveDStart & !prevD;
+  riseM := mixMotorStart & !prevM;
+  autoRise := autoStart & !prevAuto;
+
+  changed := mode_est & (opeMode != prev_mode);
+  reset_cond := !estop | changed;
+  manual := estop & !opeMode;
+  auto := estop & opeMode;
+
+  latchA_after := !estop ? FALSE : (manual ? (latchA != riseA) : latchA);
+  latchB_after := !estop ? FALSE : (manual ? (latchB != riseB) : latchB);
+  latchC_after := !estop ? FALSE : (manual ? (latchC != riseC) : latchC);
+  latchD_after := !estop ? FALSE : (manual ? (latchD != riseD) : latchD);
+  latchM_after := !estop ? FALSE : (manual ? (latchM != riseM) : latchM);
+
+  nextPhase := case
+    !estop : IDLE;
+    !opeMode : phase;
+    phase = IDLE & autoRise : FILL_A;
+    phase = FILL_A & levelSensor >= 50 : FILL_B;
+    phase = FILL_B & levelSensor >= 80 : (batch_mode ? FILL_C : MIX);
+    phase = FILL_C & levelSensor >= 100 : MIX;
+    phase = MIX & mixMotorComplete : DRAIN;
+    TRUE : phase;
+  esac;
+
+  valveARun := !estop ? FALSE : (manual ? latchA_after : nextPhase = FILL_A);
+  valveBRun := !estop ? FALSE : (manual ? latchB_after : nextPhase = FILL_B);
+  valveCRun := !estop ? FALSE : (manual ? latchC_after : nextPhase = FILL_C);
+  valveDRun := !estop ? FALSE : (manual ? latchD_after : nextPhase = DRAIN);
+  mixMotorRun := !estop ? FALSE : (manual ? latchM_after : nextPhase = MIX);
+  all_off := !valveARun & !valveBRun & !valveCRun & !valveDRun & !mixMotorRun;
+
+INVARSPEC NAME P1 := reset_cond -> all_off;
+LTLSPEC NAME V2_reset_clears_next := G (reset_cond -> (next(phase) = IDLE & !next(latchA) & !next(latchM)));

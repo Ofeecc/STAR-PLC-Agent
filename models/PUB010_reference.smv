@@ -1,0 +1,51 @@
+-- Scope: EXPLICIT_SMV_MODEL_ONLY (not candidate ST verification).
+-- Task: PUB010 (Temperature Logic Control), nuXmv infinite-state SMT model.
+-- Abstraction note: temperatures use mathematical rational reals; clock uses exact integers in ms (3000ms cooldown, 5000ms continuous heat limit). Liveness P8 uses dt_ms >= 3000 as coarse TimeTick.
+MODULE main
+VAR
+  TemperatureSensorInput : real;
+  SetTemperature : real;
+  dt_ms : integer;
+  clk : integer;
+  demandPrev : boolean;
+  have_heat : boolean;
+  heat_start : integer;
+  have_prot : boolean;
+  prot_start : integer;
+
+INIT clk = 0 & !demandPrev & !have_heat & heat_start = 0 & !have_prot & prot_start = 0;
+INVAR dt_ms >= 0 & clk >= 0;
+
+ASSIGN
+  next(clk) := clk_now;
+  next(demandPrev) := demand;
+  next(have_heat) := HeaterOutput;
+  next(heat_start) := heat_start_now;
+  next(have_prot) := have_prot_now;
+  next(prot_start) := prot_start_now;
+
+DEFINE
+  clk_now := clk + dt_ms;
+  sensorFault := TemperatureSensorInput < 0.0 | TemperatureSensorInput > 100.0;
+  demand := TemperatureSensorInput < SetTemperature ? TRUE : (TemperatureSensorInput > SetTemperature ? FALSE : demandPrev);
+  cooldownDone := have_prot & (clk_now - prot_start >= 3000);
+  heatLimitReached := !have_prot & have_heat & (clk_now - heat_start >= 5000);
+  have_prot_now := have_prot ? !cooldownDone : heatLimitReached;
+  prot_start_now := have_prot ? (cooldownDone ? 0 : prot_start) : (heatLimitReached ? clk_now : 0);
+  HeaterOutput := !sensorFault & demand & !have_prot_now;
+  HeaterStatus := HeaterOutput;
+  OverheatProtection := have_prot_now;
+  CurrentTemperature := TemperatureSensorInput;
+  SetTempDisplay := SetTemperature;
+  heat_start_now := HeaterOutput ? (have_heat ? heat_start : clk_now) : 0;
+  coarse_tick := dt_ms >= 3000;
+
+INVARSPEC NAME P1 := sensorFault -> !HeaterOutput;
+INVARSPEC NAME P2 := OverheatProtection -> !HeaterOutput;
+INVARSPEC NAME P3 := HeaterStatus = HeaterOutput;
+INVARSPEC NAME P4 := (CurrentTemperature = TemperatureSensorInput) & (SetTempDisplay = SetTemperature);
+INVARSPEC NAME P5 := (!sensorFault & !OverheatProtection & demand & !heatLimitReached) -> HeaterOutput;
+INVARSPEC NAME P6 := heatLimitReached -> (OverheatProtection & !HeaterOutput);
+INVARSPEC NAME P7 := (have_prot & !cooldownDone) -> OverheatProtection;
+INVARSPEC NAME V2_1 := (TemperatureSensorInput > SetTemperature) -> !HeaterOutput;
+LTLSPEC NAME P8 := G (F (coarse_tick)) -> G ((OverheatProtection & G (!sensorFault & demand)) -> F (HeaterOutput));

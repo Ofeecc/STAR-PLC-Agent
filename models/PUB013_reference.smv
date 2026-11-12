@@ -1,0 +1,49 @@
+-- Scope: EXPLICIT_SMV_MODEL_ONLY (not candidate ST verification).
+-- Task: PUB013 (Office HVAC Multi-mode Energy-Saving Control), nuXmv infinite-state SMT model.
+-- Abstraction note: clock in ms (30s = 30000 ms). P6 models TimeTick as dt_ms >= 30000.
+MODULE main
+VAR
+  OCCUPANCY_DETECTED : boolean;
+  ENERGY_SAVING_MODE : boolean;
+  HVAC_MODE_SELECTOR : 0..3;
+  dt_ms : integer;
+  first_scan : boolean;
+  clk : integer;
+  have_since : boolean;
+  since : integer;
+  adjust_reg : 0..4;
+
+INIT first_scan & clk = 0 & !have_since & since = 0 & adjust_reg = 0;
+INVAR dt_ms >= 0 & clk >= 0;
+
+ASSIGN
+  next(first_scan) := FALSE;
+  next(clk) := clk_now;
+  next(have_since) := permit;
+  next(since) := since_now;
+  next(adjust_reg) := TEMP_SETPOINT_ADJUST;
+
+DEFINE
+  clk_now := first_scan ? 0 : clk + dt_ms;
+  occupied := OCCUPANCY_DETECTED;
+  night := HVAC_MODE_SELECTOR = 3;
+  permit := occupied & !night;
+  since_now := permit ? (have_since ? since : clk_now) : 0;
+  mature := permit & (have_since ? (clk_now - since >= 30000) : FALSE);
+  SUPPLY_FAN_RUN := permit & mature;
+  TEMP_SETPOINT_ADJUST := case
+    HVAC_MODE_SELECTOR = 3 : 4;
+    OCCUPANCY_DETECTED : 0;
+    HVAC_MODE_SELECTOR = 0 : (ENERGY_SAVING_MODE ? 3 : 2);
+    HVAC_MODE_SELECTOR = 1 : 1;
+    TRUE : 4;
+  esac;
+  coarse_tick := dt_ms >= 30000;
+
+INVARSPEC NAME P1 := SUPPLY_FAN_RUN <-> (permit & mature);
+INVARSPEC NAME P2 := TEMP_SETPOINT_ADJUST >= 0 & TEMP_SETPOINT_ADJUST <= 4;
+INVARSPEC NAME P3 := (occupied -> (night -> TEMP_SETPOINT_ADJUST = 4)) & (!night & occupied -> TEMP_SETPOINT_ADJUST = 0) & (night -> TEMP_SETPOINT_ADJUST = 4);
+INVARSPEC NAME P4 := (!night & !occupied & HVAC_MODE_SELECTOR = 0) -> (ENERGY_SAVING_MODE ? TEMP_SETPOINT_ADJUST = 3 : TEMP_SETPOINT_ADJUST = 2);
+INVARSPEC NAME P5 := (!night & !occupied & HVAC_MODE_SELECTOR = 1 -> TEMP_SETPOINT_ADJUST = 1) & (!night & !occupied & HVAC_MODE_SELECTOR = 2 -> TEMP_SETPOINT_ADJUST = 4);
+LTLSPEC NAME V2_init := adjust_reg = 0;
+LTLSPEC NAME P6 := G (F (coarse_tick)) -> G (G (permit) -> F (SUPPLY_FAN_RUN));

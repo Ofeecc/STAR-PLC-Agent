@@ -1,0 +1,196 @@
+-- Scope: EXPLICIT_SMV_MODEL_ONLY (not candidate ST verification).
+-- Task: PUB017 (Recipe Management System).
+-- Exact N=10 slots (ST_Recipe[1..10]), positive recipeID on active commands, at most one rising
+-- request edge per scan, exact priority dup(8002) > full(8003), delete clears recipeID=0 only.
+-- Status codes: 16#8001=32769 .. 16#8005=32773.
+MODULE main
+VAR
+  addRecipe : boolean; deleteRecipe : boolean; modifyRecipe : boolean; queryRecipe : boolean;
+  in_id : integer; in_typ : integer; in_rat : real; in_tmp : real;
+
+  prev_add : boolean; prev_del : boolean; prev_mod : boolean; prev_qry : boolean;
+
+  id1  : integer; id2  : integer; id3  : integer; id4  : integer; id5  : integer;
+  id6  : integer; id7  : integer; id8  : integer; id9  : integer; id10 : integer;
+  typ1 : integer; typ2 : integer; typ3 : integer; typ4 : integer; typ5 : integer;
+  typ6 : integer; typ7 : integer; typ8 : integer; typ9 : integer; typ10: integer;
+  rat1 : real;    rat2 : real;    rat3 : real;    rat4 : real;    rat5 : real;
+  rat6 : real;    rat7 : real;    rat8 : real;    rat9 : real;    rat10: real;
+  tmp1 : real;    tmp2 : real;    tmp3 : real;    tmp4 : real;    tmp5 : real;
+  tmp6 : real;    tmp7 : real;    tmp8 : real;    tmp9 : real;    tmp10: real;
+
+  qres_id : integer; qres_typ : integer; qres_rat : real; qres_tmp : real;
+
+INIT
+  !prev_add & !prev_del & !prev_mod & !prev_qry &
+  id1=0 & id2=0 & id3=0 & id4=0 & id5=0 & id6=0 & id7=0 & id8=0 & id9=0 & id10=0 &
+  typ1=0 & typ2=0 & typ3=0 & typ4=0 & typ5=0 & typ6=0 & typ7=0 & typ8=0 & typ9=0 & typ10=0 &
+  rat1=0.0 & rat2=0.0 & rat3=0.0 & rat4=0.0 & rat5=0.0 & rat6=0.0 & rat7=0.0 & rat8=0.0 & rat9=0.0 & rat10=0.0 &
+  tmp1=0.0 & tmp2=0.0 & tmp3=0.0 & tmp4=0.0 & tmp5=0.0 & tmp6=0.0 & tmp7=0.0 & tmp8=0.0 & tmp9=0.0 & tmp10=0.0 &
+  qres_id=0 & qres_typ=0 & qres_rat=0.0 & qres_tmp=0.0;
+
+DEFINE
+  r_qry := queryRecipe  & !prev_qry;
+  r_add := addRecipe    & !prev_add;
+  r_del := deleteRecipe & !prev_del;
+  r_mod := modifyRecipe & !prev_mod;
+
+INVAR
+  ((r_qry ? 1 : 0) + (r_add ? 1 : 0) + (r_del ? 1 : 0) + (r_mod ? 1 : 0)) <= 1 &
+  ((r_qry | r_add | r_del | r_mod) -> in_id > 0);
+
+DEFINE
+  m1  := (id1  = in_id); m2  := (id2  = in_id); m3  := (id3  = in_id); m4  := (id4  = in_id); m5  := (id5  = in_id);
+  m6  := (id6  = in_id); m7  := (id7  = in_id); m8  := (id8  = in_id); m9  := (id9  = in_id); m10 := (id10 = in_id);
+  found := m1 | m2 | m3 | m4 | m5 | m6 | m7 | m8 | m9 | m10;
+
+  e1  := (id1  = 0); e2  := (id2  = 0); e3  := (id3  = 0); e4  := (id4  = 0); e5  := (id5  = 0);
+  e6  := (id6  = 0); e7  := (id7  = 0); e8  := (id8  = 0); e9  := (id9  = 0); e10 := (id10 = 0);
+  has_empty := e1 | e2 | e3 | e4 | e5 | e6 | e7 | e8 | e9 | e10;
+
+  ins1  := e1;
+  ins2  := !e1 & e2;
+  ins3  := !e1 & !e2 & e3;
+  ins4  := !e1 & !e2 & !e3 & e4;
+  ins5  := !e1 & !e2 & !e3 & !e4 & e5;
+  ins6  := !e1 & !e2 & !e3 & !e4 & !e5 & e6;
+  ins7  := !e1 & !e2 & !e3 & !e4 & !e5 & !e6 & e7;
+  ins8  := !e1 & !e2 & !e3 & !e4 & !e5 & !e6 & !e7 & e8;
+  ins9  := !e1 & !e2 & !e3 & !e4 & !e5 & !e6 & !e7 & !e8 & e9;
+  ins10 := !e1 & !e2 & !e3 & !e4 & !e5 & !e6 & !e7 & !e8 & !e9 & e10;
+
+  q_missing := r_qry & !found;
+  a_dup     := r_add & found;
+  a_full    := r_add & !found & !has_empty;
+  d_missing := r_del & !found;
+  m_missing := r_mod & !found;
+
+  qry_ok := r_qry & found;
+  add_ok := r_add & !found & has_empty;
+  del_ok := r_del & found;
+  mod_ok := r_mod & found;
+  idle   := !r_qry & !r_add & !r_del & !r_mod;
+
+  out_error := q_missing | a_dup | a_full | d_missing | m_missing;
+  out_status := case
+    q_missing : 32769;
+    a_dup     : 32770;
+    a_full    : 32771;
+    d_missing : 32772;
+    m_missing : 32773;
+    TRUE      : 0;
+  esac;
+  out_added    := add_ok;
+  out_deleted  := del_ok;
+  out_modified := mod_ok;
+
+  post_id1  := (add_ok & ins1)  ? in_id : ((del_ok & m1)  ? 0 : ((mod_ok & m1)  ? in_id : id1));
+  post_id2  := (add_ok & ins2)  ? in_id : ((del_ok & m2)  ? 0 : ((mod_ok & m2)  ? in_id : id2));
+  post_id3  := (add_ok & ins3)  ? in_id : ((del_ok & m3)  ? 0 : ((mod_ok & m3)  ? in_id : id3));
+  post_id4  := (add_ok & ins4)  ? in_id : ((del_ok & m4)  ? 0 : ((mod_ok & m4)  ? in_id : id4));
+  post_id5  := (add_ok & ins5)  ? in_id : ((del_ok & m5)  ? 0 : ((mod_ok & m5)  ? in_id : id5));
+  post_id6  := (add_ok & ins6)  ? in_id : ((del_ok & m6)  ? 0 : ((mod_ok & m6)  ? in_id : id6));
+  post_id7  := (add_ok & ins7)  ? in_id : ((del_ok & m7)  ? 0 : ((mod_ok & m7)  ? in_id : id7));
+  post_id8  := (add_ok & ins8)  ? in_id : ((del_ok & m8)  ? 0 : ((mod_ok & m8)  ? in_id : id8));
+  post_id9  := (add_ok & ins9)  ? in_id : ((del_ok & m9)  ? 0 : ((mod_ok & m9)  ? in_id : id9));
+  post_id10 := (add_ok & ins10) ? in_id : ((del_ok & m10) ? 0 : ((mod_ok & m10) ? in_id : id10));
+
+  w1 := (add_ok & ins1) | (mod_ok & m1); w2 := (add_ok & ins2) | (mod_ok & m2);
+  w3 := (add_ok & ins3) | (mod_ok & m3); w4 := (add_ok & ins4) | (mod_ok & m4);
+  w5 := (add_ok & ins5) | (mod_ok & m5); w6 := (add_ok & ins6) | (mod_ok & m6);
+  w7 := (add_ok & ins7) | (mod_ok & m7); w8 := (add_ok & ins8) | (mod_ok & m8);
+  w9 := (add_ok & ins9) | (mod_ok & m9); w10:= (add_ok & ins10)| (mod_ok & m10);
+
+  post_typ1 := w1 ? in_typ : typ1; post_typ2 := w2 ? in_typ : typ2; post_typ3 := w3 ? in_typ : typ3;
+  post_typ4 := w4 ? in_typ : typ4; post_typ5 := w5 ? in_typ : typ5; post_typ6 := w6 ? in_typ : typ6;
+  post_typ7 := w7 ? in_typ : typ7; post_typ8 := w8 ? in_typ : typ8; post_typ9 := w9 ? in_typ : typ9;
+  post_typ10:= w10? in_typ : typ10;
+
+  post_rat1 := w1 ? in_rat : rat1; post_rat2 := w2 ? in_rat : rat2; post_rat3 := w3 ? in_rat : rat3;
+  post_rat4 := w4 ? in_rat : rat4; post_rat5 := w5 ? in_rat : rat5; post_rat6 := w6 ? in_rat : rat6;
+  post_rat7 := w7 ? in_rat : rat7; post_rat8 := w8 ? in_rat : rat8; post_rat9 := w9 ? in_rat : rat9;
+  post_rat10:= w10? in_rat : rat10;
+
+  post_tmp1 := w1 ? in_tmp : tmp1; post_tmp2 := w2 ? in_tmp : tmp2; post_tmp3 := w3 ? in_tmp : tmp3;
+  post_tmp4 := w4 ? in_tmp : tmp4; post_tmp5 := w5 ? in_tmp : tmp5; post_tmp6 := w6 ? in_tmp : tmp6;
+  post_tmp7 := w7 ? in_tmp : tmp7; post_tmp8 := w8 ? in_tmp : tmp8; post_tmp9 := w9 ? in_tmp : tmp9;
+  post_tmp10:= w10? in_tmp : tmp10;
+
+  match_typ := case m1:typ1; m2:typ2; m3:typ3; m4:typ4; m5:typ5; m6:typ6; m7:typ7; m8:typ8; m9:typ9; TRUE:typ10; esac;
+  match_rat := case m1:rat1; m2:rat2; m3:rat3; m4:rat4; m5:rat5; m6:rat6; m7:rat7; m8:rat8; m9:rat9; TRUE:rat10; esac;
+  match_tmp := case m1:tmp1; m2:tmp2; m3:tmp3; m4:tmp4; m5:tmp5; m6:tmp6; m7:tmp7; m8:tmp8; m9:tmp9; TRUE:tmp10; esac;
+
+  post_qres_id  := qry_ok ? in_id     : qres_id;
+  post_qres_typ := qry_ok ? match_typ : qres_typ;
+  post_qres_rat := qry_ok ? match_rat : qres_rat;
+  post_qres_tmp := qry_ok ? match_tmp : qres_tmp;
+
+  same_db :=
+    post_id1=id1 & post_id2=id2 & post_id3=id3 & post_id4=id4 & post_id5=id5 &
+    post_id6=id6 & post_id7=id7 & post_id8=id8 & post_id9=id9 & post_id10=id10 &
+    post_typ1=typ1 & post_typ2=typ2 & post_typ3=typ3 & post_typ4=typ4 & post_typ5=typ5 &
+    post_typ6=typ6 & post_typ7=typ7 & post_typ8=typ8 & post_typ9=typ9 & post_typ10=typ10 &
+    post_rat1=rat1 & post_rat2=rat2 & post_rat3=rat3 & post_rat4=rat4 & post_rat5=rat5 &
+    post_rat6=rat6 & post_rat7=rat7 & post_rat8=rat8 & post_rat9=rat9 & post_rat10=rat10 &
+    post_tmp1=tmp1 & post_tmp2=tmp2 & post_tmp3=tmp3 & post_tmp4=tmp4 & post_tmp5=tmp5 &
+    post_tmp6=tmp6 & post_tmp7=tmp7 & post_tmp8=tmp8 & post_tmp9=tmp9 & post_tmp10=tmp10;
+
+  unique_ids :=
+    (post_id1=0 | post_id2=0 | post_id1!=post_id2) & (post_id1=0 | post_id3=0 | post_id1!=post_id3) &
+    (post_id1=0 | post_id4=0 | post_id1!=post_id4) & (post_id1=0 | post_id5=0 | post_id1!=post_id5) &
+    (post_id1=0 | post_id6=0 | post_id1!=post_id6) & (post_id1=0 | post_id7=0 | post_id1!=post_id7) &
+    (post_id1=0 | post_id8=0 | post_id1!=post_id8) & (post_id1=0 | post_id9=0 | post_id1!=post_id9) &
+    (post_id1=0 | post_id10=0| post_id1!=post_id10)& (post_id2=0 | post_id3=0 | post_id2!=post_id3) &
+    (post_id2=0 | post_id4=0 | post_id2!=post_id4) & (post_id2=0 | post_id5=0 | post_id2!=post_id5) &
+    (post_id2=0 | post_id6=0 | post_id2!=post_id6) & (post_id2=0 | post_id7=0 | post_id2!=post_id7) &
+    (post_id2=0 | post_id8=0 | post_id2!=post_id8) & (post_id2=0 | post_id9=0 | post_id2!=post_id9) &
+    (post_id2=0 | post_id10=0| post_id2!=post_id10)& (post_id3=0 | post_id4=0 | post_id3!=post_id4) &
+    (post_id3=0 | post_id5=0 | post_id3!=post_id5) & (post_id3=0 | post_id6=0 | post_id3!=post_id6) &
+    (post_id3=0 | post_id7=0 | post_id3!=post_id7) & (post_id3=0 | post_id8=0 | post_id3!=post_id8) &
+    (post_id3=0 | post_id9=0 | post_id3!=post_id9) & (post_id3=0 | post_id10=0| post_id3!=post_id10)&
+    (post_id4=0 | post_id5=0 | post_id4!=post_id5) & (post_id4=0 | post_id6=0 | post_id4!=post_id6) &
+    (post_id4=0 | post_id7=0 | post_id4!=post_id7) & (post_id4=0 | post_id8=0 | post_id4!=post_id8) &
+    (post_id4=0 | post_id9=0 | post_id4!=post_id9) & (post_id4=0 | post_id10=0| post_id4!=post_id10)&
+    (post_id5=0 | post_id6=0 | post_id5!=post_id6) & (post_id5=0 | post_id7=0 | post_id5!=post_id7) &
+    (post_id5=0 | post_id8=0 | post_id5!=post_id8) & (post_id5=0 | post_id9=0 | post_id5!=post_id9) &
+    (post_id5=0 | post_id10=0| post_id5!=post_id10)& (post_id6=0 | post_id7=0 | post_id6!=post_id7) &
+    (post_id6=0 | post_id8=0 | post_id6!=post_id8) & (post_id6=0 | post_id9=0 | post_id6!=post_id9) &
+    (post_id6=0 | post_id10=0| post_id6!=post_id10)& (post_id7=0 | post_id8=0 | post_id7!=post_id8) &
+    (post_id7=0 | post_id9=0 | post_id7!=post_id9) & (post_id7=0 | post_id10=0| post_id7!=post_id10)&
+    (post_id8=0 | post_id9=0 | post_id8!=post_id9) & (post_id8=0 | post_id10=0| post_id8!=post_id10)&
+    (post_id9=0 | post_id10=0| post_id9!=post_id10);
+
+ASSIGN
+  next(prev_add) := addRecipe; next(prev_del) := deleteRecipe;
+  next(prev_mod) := modifyRecipe; next(prev_qry) := queryRecipe;
+  next(id1) := post_id1; next(id2) := post_id2; next(id3) := post_id3; next(id4) := post_id4; next(id5) := post_id5;
+  next(id6) := post_id6; next(id7) := post_id7; next(id8) := post_id8; next(id9) := post_id9; next(id10):= post_id10;
+  next(typ1):= post_typ1;next(typ2):= post_typ2;next(typ3):= post_typ3;next(typ4):= post_typ4;next(typ5):= post_typ5;
+  next(typ6):= post_typ6;next(typ7):= post_typ7;next(typ8):= post_typ8;next(typ9):= post_typ9;next(typ10):=post_typ10;
+  next(rat1):= post_rat1;next(rat2):= post_rat2;next(rat3):= post_rat3;next(rat4):= post_rat4;next(rat5):= post_rat5;
+  next(rat6):= post_rat6;next(rat7):= post_rat7;next(rat8):= post_rat8;next(rat9):= post_rat9;next(rat10):=post_rat10;
+  next(tmp1):= post_tmp1;next(tmp2):= post_tmp2;next(tmp3):= post_tmp3;next(tmp4):= post_tmp4;next(tmp5):= post_tmp5;
+  next(tmp6):= post_tmp6;next(tmp7):= post_tmp7;next(tmp8):= post_tmp8;next(tmp9):= post_tmp9;next(tmp10):=post_tmp10;
+  next(qres_id)  := post_qres_id; next(qres_typ) := post_qres_typ;
+  next(qres_rat) := post_qres_rat;next(qres_tmp) := post_qres_tmp;
+
+INVARSPEC NAME P1 := (q_missing -> (out_error & out_status = 32769)) &
+                     (a_dup     -> (out_error & out_status = 32770)) &
+                     (a_full    -> (out_error & out_status = 32771)) &
+                     (d_missing -> (out_error & out_status = 32772)) &
+                     (m_missing -> (out_error & out_status = 32773));
+INVARSPEC NAME P2 := out_error -> same_db;
+INVARSPEC NAME P3 := add_ok -> (out_added & !out_error & out_status = 0 &
+  (ins1  ? (post_id1=in_id  & post_typ1=in_typ  & post_rat1=in_rat  & post_tmp1=in_tmp)  : (post_id1=id1   & post_typ1=typ1   & post_rat1=rat1   & post_tmp1=tmp1)) &
+  (ins2  ? (post_id2=in_id  & post_typ2=in_typ  & post_rat2=in_rat  & post_tmp2=in_tmp)  : (post_id2=id2   & post_typ2=typ2   & post_rat2=rat2   & post_tmp2=tmp2)) &
+  (ins3  ? (post_id3=in_id  & post_typ3=in_typ  & post_rat3=in_rat  & post_tmp3=in_tmp)  : (post_id3=id3   & post_typ3=typ3   & post_rat3=rat3   & post_tmp3=tmp3)) &
+  (ins4  ? (post_id4=in_id  & post_typ4=in_typ  & post_rat4=in_rat  & post_tmp4=in_tmp)  : (post_id4=id4   & post_typ4=typ4   & post_rat4=rat4   & post_tmp4=tmp4)) &
+  (ins5  ? (post_id5=in_id  & post_typ5=in_typ  & post_rat5=in_rat  & post_tmp5=in_tmp)  : (post_id5=id5   & post_typ5=typ5   & post_rat5=rat5   & post_tmp5=tmp5)) &
+  (ins6  ? (post_id6=in_id  & post_typ6=in_typ  & post_rat6=in_rat  & post_tmp6=in_tmp)  : (post_id6=id6   & post_typ6=typ6   & post_rat6=rat6   & post_tmp6=tmp6)) &
+  (ins7  ? (post_id7=in_id  & post_typ7=in_typ  & post_rat7=in_rat  & post_tmp7=in_tmp)  : (post_id7=id7   & post_typ7=typ7   & post_rat7=rat7   & post_tmp7=tmp7)) &
+  (ins8  ? (post_id8=in_id  & post_typ8=in_typ  & post_rat8=in_rat  & post_tmp8=in_tmp)  : (post_id8=id8   & post_typ8=typ8   & post_rat8=rat8   & post_tmp8=tmp8)) &
+  (ins9  ? (post_id9=in_id  & post_typ9=in_typ  & post_rat9=in_rat  & post_tmp9=in_tmp)  : (post_id9=id9   & post_typ9=typ9   & post_rat9=rat9   & post_tmp9=tmp9)) &
+  (ins10 ? (post_id10=in_id & post_typ10=in_typ & post_rat10=in_rat & post_tmp10=in_tmp) : (post_id10=id10 & post_typ10=typ10 & post_rat10=rat10 & post_tmp10=tmp10)));
+INVARSPEC NAME P4 := qry_ok -> (post_qres_id = in_id & post_qres_typ = match_typ & post_qres_rat = match_rat & post_qres_tmp = match_tmp);
+INVARSPEC NAME P5 := idle -> (!out_error & out_status = 0 & !out_added & !out_deleted & !out_modified);
+INVARSPEC NAME P6 := unique_ids;

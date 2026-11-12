@@ -1,0 +1,43 @@
+-- Scope: EXPLICIT_SMV_MODEL_ONLY (not candidate ST verification).
+-- Task: PUB018 negative mutant: pops newest tail element (LIFO bug) instead of oldest front q0 (FIFO),
+-- violating P3.
+MODULE main
+FROZENVAR
+  cap : integer;
+VAR
+  enqueue : boolean; dequeue : boolean; reset : boolean; in_item : integer;
+  q0 : integer; q1 : integer; q2 : integer;
+  q_len : 0..3;
+  prev_enq : boolean; prev_deq : boolean;
+
+INIT (cap = 2 | cap = 3) & q0 = 0 & q1 = 0 & q2 = 0 & q_len = 0 & !prev_enq & !prev_deq;
+
+DEFINE
+  enq_rise := enqueue & !prev_enq;
+  deq_rise := dequeue & !prev_deq;
+
+INVAR !(enq_rise & deq_rise);
+
+DEFINE
+  push_ok   := !reset & enq_rise & q_len < cap;
+  push_full := !reset & enq_rise & q_len = cap;
+  pop_ok    := !reset & deq_rise & q_len > 0;
+  pop_empty := !reset & deq_rise & q_len = 0;
+
+  q_dec := case q_len = 3 : 2; q_len = 2 : 1; TRUE : 0; esac;
+  q_inc := case q_len = 0 : 1; q_len = 1 : 2; q_len = 2 : 3; TRUE : 3; esac;
+
+  post_len := reset ? 0 : (push_ok ? q_inc : (pop_ok ? q_dec : q_len));
+  post_q0 := case reset : 0; push_ok & q_len = 0 : in_item; TRUE : q0; esac;
+  post_q1 := case reset : 0; push_ok & q_len = 1 : in_item; pop_ok & q_len = 2 : 0; TRUE : q1; esac;
+  post_q2 := case reset : 0; push_ok & q_len = 2 : in_item; pop_ok & q_len = 3 : 0; TRUE : q2; esac;
+  -- BUG: LIFO pops most recently appended tail element rather than oldest q0.
+  post_item := pop_ok ? (case q_len = 3 : q2; q_len = 2 : q1; TRUE : q0; esac) : in_item;
+  out_status := pop_empty ? 32769 : (push_full ? 32770 : 0);
+
+ASSIGN
+  next(prev_enq) := enqueue; next(prev_deq) := dequeue;
+  next(q_len) := post_len; next(q0) := post_q0; next(q1) := post_q1; next(q2) := post_q2;
+
+INVARSPEC NAME P1 := reset -> (post_len = 0 & out_status = 0);
+INVARSPEC NAME P3 := pop_ok -> (post_len = q_len - 1 & out_status = 0 & post_item = q0 & post_q0 = q1 & post_q1 = q2);

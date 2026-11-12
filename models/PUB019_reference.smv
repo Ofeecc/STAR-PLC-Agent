@@ -1,0 +1,150 @@
+-- Scope: EXPLICIT_SMV_MODEL_ONLY (not candidate ST verification).
+-- Task: PUB019 (Mechanical Arm Control), finite-state model verified under BDD.
+MODULE main
+VAR
+  ManualMode : boolean;
+  SingleStepMode : boolean;
+  SingleCycleMode : boolean;
+  ContinuousMode : boolean;
+  EmergencyStop : boolean;
+  Start : boolean;
+  DownButton : boolean;
+  UpButton : boolean;
+  LeftButton : boolean;
+  RightButton : boolean;
+  GripButton : boolean;
+  ReleaseButton : boolean;
+  DownLimitSwitch : boolean;
+  UpLimitSwitch : boolean;
+  LeftLimitSwitch : boolean;
+  RightLimitSwitch : boolean;
+  GripLimitSwitch : boolean;
+  ReleaseLimitSwitch : boolean;
+
+  arm_step : 0..8;
+  step_index : 1..8;
+  step_busy : boolean;
+  has_mode : boolean;
+  prev_mode : {NONE, MANUAL, SINGLE_STEP, SINGLE_CYCLE, CONTINUOUS};
+  prev_start : boolean;
+
+INIT arm_step = 0 & step_index = 1 & !step_busy & !has_mode & prev_mode = NONE & !prev_start;
+
+DEFINE
+  cur_mode := case
+    ManualMode : MANUAL;
+    SingleStepMode : SINGLE_STEP;
+    SingleCycleMode : SINGLE_CYCLE;
+    ContinuousMode : CONTINUOUS;
+    TRUE : NONE;
+  esac;
+  safe := EmergencyStop;
+  no_mode := cur_mode = NONE;
+  mode_changed := safe & !no_mode & has_mode & (prev_mode != NONE) & (prev_mode != cur_mode);
+  reset_all := !safe | no_mode | mode_changed;
+  start_edge := Start & !prev_start;
+
+  -- Action table for steps 1..8: 1:Down, 2:Grip, 3:Up, 4:Right, 5:Down, 6:Release, 7:Up, 8:Left
+  step_idx_limit := case
+    step_index = 1 : DownLimitSwitch;
+    step_index = 2 : GripLimitSwitch;
+    step_index = 3 : UpLimitSwitch;
+    step_index = 4 : RightLimitSwitch;
+    step_index = 5 : DownLimitSwitch;
+    step_index = 6 : ReleaseLimitSwitch;
+    step_index = 7 : UpLimitSwitch;
+    TRUE : LeftLimitSwitch;
+  esac;
+  can_single_start := (step_index = 1) -> (UpLimitSwitch & LeftLimitSwitch);
+  single_step_starting := !reset_all & cur_mode = SINGLE_STEP & !step_busy & start_edge & can_single_start;
+  single_step_done := !reset_all & cur_mode = SINGLE_STEP &
+    ((step_busy & step_idx_limit) | (single_step_starting & step_idx_limit));
+  single_step_active := !reset_all & cur_mode = SINGLE_STEP &
+    ((step_busy & !step_idx_limit) | (single_step_starting & !step_idx_limit));
+  next_step_busy := reset_all ? FALSE :
+    (cur_mode = SINGLE_STEP ? single_step_active : FALSE);
+  next_step_index := reset_all ? 1 :
+    (single_step_done ? (step_index = 8 ? 1 : step_index + 1) : step_index);
+
+  auto_limit := case
+    arm_step = 1 : DownLimitSwitch;
+    arm_step = 2 : GripLimitSwitch;
+    arm_step = 3 : UpLimitSwitch;
+    arm_step = 4 : RightLimitSwitch;
+    arm_step = 5 : DownLimitSwitch;
+    arm_step = 6 : ReleaseLimitSwitch;
+    arm_step = 7 : UpLimitSwitch;
+    arm_step = 8 : LeftLimitSwitch;
+    TRUE : FALSE;
+  esac;
+  auto_mode := !reset_all & (cur_mode = SINGLE_CYCLE | cur_mode = CONTINUOUS);
+  auto_started := auto_mode & arm_step = 0 & start_edge & UpLimitSwitch & LeftLimitSwitch;
+  cycle_done := auto_mode & cur_mode = SINGLE_CYCLE & arm_step = 8 & auto_limit;
+  continuous_done := auto_mode & cur_mode = CONTINUOUS & arm_step = 8 & auto_limit;
+  next_arm_step := case
+    reset_all : 0;
+    !auto_mode : 0;
+    arm_step = 0 : (auto_started ? 1 : 0);
+    !auto_limit : arm_step;
+    arm_step < 8 : arm_step + 1;
+    cur_mode = CONTINUOUS : 1;
+    TRUE : 0;
+  esac;
+  post_auto_limit := case
+    next_arm_step = 1 : DownLimitSwitch;
+    next_arm_step = 2 : GripLimitSwitch;
+    next_arm_step = 3 : UpLimitSwitch;
+    next_arm_step = 4 : RightLimitSwitch;
+    next_arm_step = 5 : DownLimitSwitch;
+    next_arm_step = 6 : ReleaseLimitSwitch;
+    next_arm_step = 7 : UpLimitSwitch;
+    next_arm_step = 8 : LeftLimitSwitch;
+    TRUE : FALSE;
+  esac;
+
+  down_manual := DownButton & !UpButton & !DownLimitSwitch;
+  up_manual := UpButton & !DownButton & !UpLimitSwitch;
+  left_manual := LeftButton & !RightButton & !LeftLimitSwitch;
+  right_manual := RightButton & !LeftButton & !RightLimitSwitch;
+  grip_manual := GripButton & !ReleaseButton & !GripLimitSwitch;
+  release_manual := ReleaseButton & !GripButton & !ReleaseLimitSwitch;
+
+  active_cmd := case
+    reset_all : 0;
+    single_step_active : step_index;
+    auto_mode & next_arm_step != 0 & !post_auto_limit : next_arm_step;
+    TRUE : 0;
+  esac;
+
+  MoveDown := cur_mode = MANUAL & !reset_all ? down_manual : (active_cmd = 1 | active_cmd = 5);
+  MoveUp := cur_mode = MANUAL & !reset_all ? up_manual : (active_cmd = 3 | active_cmd = 7);
+  MoveLeft := cur_mode = MANUAL & !reset_all ? left_manual : (active_cmd = 8);
+  MoveRight := cur_mode = MANUAL & !reset_all ? right_manual : (active_cmd = 4);
+  ActivateGrip := cur_mode = MANUAL & !reset_all ? grip_manual : (active_cmd = 2);
+  ActivateRelease := cur_mode = MANUAL & !reset_all ? release_manual : (active_cmd = 6);
+
+  all_off := !MoveDown & !MoveUp & !MoveLeft & !MoveRight & !ActivateGrip & !ActivateRelease;
+  exclusive := !(MoveDown & MoveUp) & !(MoveLeft & MoveRight) & !(ActivateGrip & ActivateRelease);
+  active_count := toint(MoveDown) + toint(MoveUp) + toint(MoveLeft) + toint(MoveRight) + toint(ActivateGrip) + toint(ActivateRelease);
+  cur_feedback := single_step_active ? step_idx_limit : (auto_mode & arm_step != 0 ? auto_limit : FALSE);
+  busy_state := (safe & !mode_changed & cur_mode = SINGLE_CYCLE & arm_step != 0);
+
+ASSIGN
+  next(arm_step) := next_arm_step;
+  next(step_index) := next_step_index;
+  next(step_busy) := next_step_busy;
+  next(has_mode) := (!safe | no_mode) ? FALSE : TRUE;
+  next(prev_mode) := (!safe | no_mode) ? NONE : cur_mode;
+  next(prev_start) := Start;
+
+INVARSPEC NAME P1 := (!safe | no_mode | mode_changed) -> all_off;
+INVARSPEC NAME P2 := exclusive & (!reset_all & cur_mode != MANUAL -> active_count <= 1);
+INVARSPEC NAME P3 := (!reset_all & cur_mode = MANUAL) -> ((MoveDown <-> down_manual) & (MoveUp <-> up_manual) & (MoveLeft <-> left_manual) & (MoveRight <-> right_manual) & (ActivateGrip <-> grip_manual) & (ActivateRelease <-> release_manual));
+INVARSPEC NAME P4 := (DownLimitSwitch -> !MoveDown) & (UpLimitSwitch -> !MoveUp) & (LeftLimitSwitch -> !MoveLeft) & (RightLimitSwitch -> !MoveRight) & (GripLimitSwitch -> !ActivateGrip) & (ReleaseLimitSwitch -> !ActivateRelease);
+INVARSPEC NAME P5 := (!reset_all & cur_mode = SINGLE_STEP & !single_step_active) -> all_off;
+INVARSPEC NAME P6 := (!reset_all & auto_started) -> next_arm_step = 1;
+INVARSPEC NAME P8 := (!reset_all -> ((cycle_done -> (next_arm_step = 0 & all_off)) & (continuous_done -> next_arm_step = 1)));
+LTLSPEC NAME P7 := G (auto_mode & arm_step >= 1 & arm_step <= 7 & auto_limit -> next(arm_step) = arm_step + 1);
+LTLSPEC NAME P9 := (G (safe & SingleCycleMode & !ManualMode & !SingleStepMode & !ContinuousMode) &
+                    G (arm_step != 0 -> F auto_limit)) ->
+                    G (auto_started -> F (next_arm_step = 0));

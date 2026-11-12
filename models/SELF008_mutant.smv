@@ -1,0 +1,25 @@
+-- Negative control mutant for SELF008: forgets to clamp Count down when Preset decreases.
+MODULE main
+VAR
+  Request : boolean;
+  Trip : boolean;
+  Preset : 0..255;
+  qCount : 0..5;
+
+ASSIGN
+  init(qCount) := 0;
+  next(qCount) := Count;
+
+DEFINE
+  invalid := Preset < 1 | Preset > 5;
+  resetCond := Trip | !Request | invalid;
+  nextCount := case
+    qCount < 5 & qCount < Preset : qCount + 1;
+    TRUE : qCount;
+  esac;
+  Count := resetCond ? 0 : nextCount;
+  qualified := !invalid & (Count >= Preset);
+  Ready := Request & !Trip & qualified;
+
+LTLSPEC NAME P1 := G((Trip | !Request | invalid) -> (!Ready & Count = 0));
+LTLSPEC NAME P4 := G(!invalid -> (Count >= 0 & Count <= Preset));

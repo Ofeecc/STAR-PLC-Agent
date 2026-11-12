@@ -1,0 +1,103 @@
+-- Scope: EXPLICIT_SMV_MODEL_ONLY (not candidate ST verification).
+-- Task: PUB009 (Calculate Moving Average).
+-- Soundness & abstraction note:
+--   Maximum windowSize is bounded to W=5 (valid sizes 1..5, invalid domain win <= 0 or win > 100)
+--   so sample averaging can be expressed using linear real divisions without nonlinear general division.
+--   Status code 16#8200 = 33280.
+MODULE main
+VAR
+  cyclicExecution : boolean;
+  trigger : boolean;
+  val : real;
+  windowSize : integer;
+  reset : boolean;
+
+  b0 : real; b1 : real; b2 : real; b3 : real; b4 : real;
+  buf_len : integer;
+  cfg_win : integer;
+  prev_trig : boolean;
+  last_avg : real;
+  last_reached : boolean;
+
+INVAR
+  buf_len >= 0 & buf_len <= 5 &
+  cfg_win >= 0 & cfg_win <= 5 &
+  (windowSize <= 5 | windowSize > 100);
+
+INIT
+  b0 = 0.0 & b1 = 0.0 & b2 = 0.0 & b3 = 0.0 & b4 = 0.0 &
+  buf_len = 0 & cfg_win = 0 & !prev_trig & last_avg = 0.0 & !last_reached;
+
+DEFINE
+  valid := windowSize >= 1 & windowSize <= 100;
+  trig_rise := trigger & !prev_trig;
+  win_changed := valid & (cfg_win != windowSize);
+  accept := valid & !reset & (cyclicExecution | trig_rise);
+
+  base_len := (reset | win_changed) ? 0 : buf_len;
+  base_b0 := (reset | win_changed) ? 0.0 : b0;
+  base_b1 := (reset | win_changed) ? 0.0 : b1;
+  base_b2 := (reset | win_changed) ? 0.0 : b2;
+  base_b3 := (reset | win_changed) ? 0.0 : b3;
+
+  post_b0 := !valid ? b0 : (reset ? 0.0 : (accept ? val : base_b0));
+  post_b1 := !valid ? b1 : (reset ? 0.0 : (accept ? base_b0 : base_b1));
+  post_b2 := !valid ? b2 : (reset ? 0.0 : (accept ? base_b1 : base_b2));
+  post_b3 := !valid ? b3 : (reset ? 0.0 : (accept ? base_b2 : base_b3));
+  post_b4 := !valid ? b4 : (reset ? 0.0 : (accept ? base_b3 : (win_changed ? 0.0 : b4)));
+
+  post_len := case
+    !valid : buf_len;
+    reset : 0;
+    !accept : base_len;
+    base_len < windowSize : base_len + 1;
+    TRUE : windowSize;
+  esac;
+
+  active_sum :=
+    (post_len >= 1 ? post_b0 : 0.0) +
+    (post_len >= 2 ? post_b1 : 0.0) +
+    (post_len >= 3 ? post_b2 : 0.0) +
+    (post_len >= 4 ? post_b3 : 0.0) +
+    (post_len >= 5 ? post_b4 : 0.0);
+
+  post_avg := case
+    !valid : last_avg;
+    reset : 0.0;
+    post_len = 0 : 0.0;
+    post_len = 1 : active_sum;
+    post_len = 2 : active_sum / 2.0;
+    post_len = 3 : active_sum / 3.0;
+    post_len = 4 : active_sum / 4.0;
+    TRUE : active_sum / 5.0;
+  esac;
+  post_reached := !valid ? last_reached : (reset ? FALSE : (post_len = windowSize));
+  out_error := !valid;
+  out_status := valid ? 0 : 33280;
+
+ASSIGN
+  next(b0) := post_b0;
+  next(b1) := post_b1;
+  next(b2) := post_b2;
+  next(b3) := post_b3;
+  next(b4) := post_b4;
+  next(buf_len) := post_len;
+  next(cfg_win) := valid ? windowSize : cfg_win;
+  next(prev_trig) := trigger;
+  next(last_avg) := post_avg;
+  next(last_reached) := post_reached;
+
+INVARSPEC NAME P1 := !valid -> (out_error & out_status = 33280 & post_avg = last_avg & post_reached = last_reached);
+INVARSPEC NAME P2 := valid -> (!out_error & out_status = 0);
+INVARSPEC NAME P3 := (valid & reset) -> (post_avg = 0.0 & !post_reached);
+INVARSPEC NAME P4 := (valid & !reset) -> (
+  (post_len = 0 & post_avg = 0.0) |
+  (post_len = 1 & post_avg = active_sum) |
+  (post_len = 2 & post_avg = active_sum / 2.0) |
+  (post_len = 3 & post_avg = active_sum / 3.0) |
+  (post_len = 4 & post_avg = active_sum / 4.0) |
+  (post_len = 5 & post_avg = active_sum / 5.0));
+INVARSPEC NAME P5 := valid -> (post_reached <-> (post_len = windowSize));
+LTLSPEC NAME P6 := G(trigger <-> X(prev_trig));
+INVARSPEC NAME P7 := (valid & !reset & !cyclicExecution & !trig_rise & !win_changed) ->
+                     (post_avg = last_avg & post_reached = last_reached);

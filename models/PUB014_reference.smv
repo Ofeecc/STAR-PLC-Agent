@@ -1,0 +1,259 @@
+-- Scope: EXPLICIT_SMV_MODEL_ONLY (not candidate ST verification).
+-- Task: PUB014 (IPv4 Parsing with Format and Range Checks).
+-- Soundness & abstraction note:
+--   Input STRING(254) is bounded to L=16 ASCII bytes c0..c15 (0..255), covering every valid
+--   15-character dotted-decimal IPv4 string plus NUL terminator (0) as well as 16-character
+--   overlength/malformed inputs. Leading zeros are permitted; NUL terminates scanning early.
+MODULE main
+VAR
+  c0  : integer; c1  : integer; c2  : integer; c3  : integer;
+  c4  : integer; c5  : integer; c6  : integer; c7  : integer;
+  c8  : integer; c9  : integer; c10 : integer; c11 : integer;
+  c12 : integer; c13 : integer; c14 : integer; c15 : integer;
+
+  first_scan : boolean;
+  prev_c0  : integer; prev_c1  : integer; prev_c2  : integer; prev_c3  : integer;
+  prev_c4  : integer; prev_c5  : integer; prev_c6  : integer; prev_c7  : integer;
+  prev_c8  : integer; prev_c9  : integer; prev_c10 : integer; prev_c11 : integer;
+  prev_c12 : integer; prev_c13 : integer; prev_c14 : integer; prev_c15 : integer;
+  last_ipValue : integer;
+
+INVAR
+  c0  >= 0 & c0  <= 255 & c1  >= 0 & c1  <= 255 & c2  >= 0 & c2  <= 255 & c3  >= 0 & c3  <= 255 &
+  c4  >= 0 & c4  <= 255 & c5  >= 0 & c5  <= 255 & c6  >= 0 & c6  <= 255 & c7  >= 0 & c7  <= 255 &
+  c8  >= 0 & c8  <= 255 & c9  >= 0 & c9  <= 255 & c10 >= 0 & c10 <= 255 & c11 >= 0 & c11 <= 255 &
+  c12 >= 0 & c12 <= 255 & c13 >= 0 & c13 <= 255 & c14 >= 0 & c14 <= 255 & c15 >= 0 & c15 <= 255;
+
+INIT first_scan & last_ipValue = 0 &
+     prev_c0  = 0 & prev_c1  = 0 & prev_c2  = 0 & prev_c3  = 0 &
+     prev_c4  = 0 & prev_c5  = 0 & prev_c6  = 0 & prev_c7  = 0 &
+     prev_c8  = 0 & prev_c9  = 0 & prev_c10 = 0 & prev_c11 = 0 &
+     prev_c12 = 0 & prev_c13 = 0 & prev_c14 = 0 & prev_c15 = 0;
+
+DEFINE
+  is_nul0  := (c0  = 0); is_dot0  := (c0  = 46); is_dig0  := (c0  >= 48 & c0  <= 57);
+  is_nul1  := (c1  = 0); is_dot1  := (c1  = 46); is_dig1  := (c1  >= 48 & c1  <= 57);
+  is_nul2  := (c2  = 0); is_dot2  := (c2  = 46); is_dig2  := (c2  >= 48 & c2  <= 57);
+  is_nul3  := (c3  = 0); is_dot3  := (c3  = 46); is_dig3  := (c3  >= 48 & c3  <= 57);
+  is_nul4  := (c4  = 0); is_dot4  := (c4  = 46); is_dig4  := (c4  >= 48 & c4  <= 57);
+  is_nul5  := (c5  = 0); is_dot5  := (c5  = 46); is_dig5  := (c5  >= 48 & c5  <= 57);
+  is_nul6  := (c6  = 0); is_dot6  := (c6  = 46); is_dig6  := (c6  >= 48 & c6  <= 57);
+  is_nul7  := (c7  = 0); is_dot7  := (c7  = 46); is_dig7  := (c7  >= 48 & c7  <= 57);
+  is_nul8  := (c8  = 0); is_dot8  := (c8  = 46); is_dig8  := (c8  >= 48 & c8  <= 57);
+  is_nul9  := (c9  = 0); is_dot9  := (c9  = 46); is_dig9  := (c9  >= 48 & c9  <= 57);
+  is_nul10 := (c10 = 0); is_dot10 := (c10 = 46); is_dig10 := (c10 >= 48 & c10 <= 57);
+  is_nul11 := (c11 = 0); is_dot11 := (c11 = 46); is_dig11 := (c11 >= 48 & c11 <= 57);
+  is_nul12 := (c12 = 0); is_dot12 := (c12 = 46); is_dig12 := (c12 >= 48 & c12 <= 57);
+  is_nul13 := (c13 = 0); is_dot13 := (c13 = 46); is_dig13 := (c13 >= 48 & c13 <= 57);
+  is_nul14 := (c14 = 0); is_dot14 := (c14 = 46); is_dig14 := (c14 >= 48 & c14 <= 57);
+  is_nul15 := (c15 = 0); is_dot15 := (c15 = 46); is_dig15 := (c15 >= 48 & c15 <= 57);
+
+  -- Byte 0
+  end_1  := is_nul0;
+  bad_1  := is_nul0 | is_dot0 | !is_dig0;
+  seg_1  := 0;
+  hasd_1 := is_dig0;
+  cur_1  := is_dig0 ? (c0 - 48) : 0;
+  o0_1   := 0; o1_1 := 0; o2_1 := 0;
+
+  -- Byte 1
+  act1   := !end_1 & !bad_1;
+  nv1    := cur_1 * 10 + (c1 - 48);
+  end_2  := end_1 | (act1 & is_nul1);
+  bad_2  := bad_1 | (act1 & ((is_nul1 & (seg_1 != 3 | !hasd_1)) | (is_dot1 & (seg_1 = 3 | !hasd_1)) | (is_dig1 & nv1 > 255) | (!is_nul1 & !is_dot1 & !is_dig1)));
+  o0_2   := (act1 & is_dot1 & seg_1 = 0) ? cur_1 : o0_1;
+  o1_2   := (act1 & is_dot1 & seg_1 = 1) ? cur_1 : o1_1;
+  o2_2   := (act1 & is_dot1 & seg_1 = 2) ? cur_1 : o2_1;
+  seg_2  := (act1 & is_dot1 & seg_1 < 3) ? (seg_1 + 1) : seg_1;
+  hasd_2 := act1 ? (is_dot1 ? FALSE : (is_dig1 ? TRUE : hasd_1)) : hasd_1;
+  cur_2  := act1 ? (is_dot1 ? 0 : (is_dig1 ? nv1 : cur_1)) : cur_1;
+
+  -- Byte 2
+  act2   := !end_2 & !bad_2;
+  nv2    := cur_2 * 10 + (c2 - 48);
+  end_3  := end_2 | (act2 & is_nul2);
+  bad_3  := bad_2 | (act2 & ((is_nul2 & (seg_2 != 3 | !hasd_2)) | (is_dot2 & (seg_2 = 3 | !hasd_2)) | (is_dig2 & nv2 > 255) | (!is_nul2 & !is_dot2 & !is_dig2)));
+  o0_3   := (act2 & is_dot2 & seg_2 = 0) ? cur_2 : o0_2;
+  o1_3   := (act2 & is_dot2 & seg_2 = 1) ? cur_2 : o1_2;
+  o2_3   := (act2 & is_dot2 & seg_2 = 2) ? cur_2 : o2_2;
+  seg_3  := (act2 & is_dot2 & seg_2 < 3) ? (seg_2 + 1) : seg_2;
+  hasd_3 := act2 ? (is_dot2 ? FALSE : (is_dig2 ? TRUE : hasd_2)) : hasd_2;
+  cur_3  := act2 ? (is_dot2 ? 0 : (is_dig2 ? nv2 : cur_2)) : cur_2;
+
+  -- Byte 3
+  act3   := !end_3 & !bad_3;
+  nv3    := cur_3 * 10 + (c3 - 48);
+  end_4  := end_3 | (act3 & is_nul3);
+  bad_4  := bad_3 | (act3 & ((is_nul3 & (seg_3 != 3 | !hasd_3)) | (is_dot3 & (seg_3 = 3 | !hasd_3)) | (is_dig3 & nv3 > 255) | (!is_nul3 & !is_dot3 & !is_dig3)));
+  o0_4   := (act3 & is_dot3 & seg_3 = 0) ? cur_3 : o0_3;
+  o1_4   := (act3 & is_dot3 & seg_3 = 1) ? cur_3 : o1_3;
+  o2_4   := (act3 & is_dot3 & seg_3 = 2) ? cur_3 : o2_3;
+  seg_4  := (act3 & is_dot3 & seg_3 < 3) ? (seg_3 + 1) : seg_3;
+  hasd_4 := act3 ? (is_dot3 ? FALSE : (is_dig3 ? TRUE : hasd_3)) : hasd_3;
+  cur_4  := act3 ? (is_dot3 ? 0 : (is_dig3 ? nv3 : cur_3)) : cur_3;
+
+  -- Byte 4
+  act4   := !end_4 & !bad_4;
+  nv4    := cur_4 * 10 + (c4 - 48);
+  end_5  := end_4 | (act4 & is_nul4);
+  bad_5  := bad_4 | (act4 & ((is_nul4 & (seg_4 != 3 | !hasd_4)) | (is_dot4 & (seg_4 = 3 | !hasd_4)) | (is_dig4 & nv4 > 255) | (!is_nul4 & !is_dot4 & !is_dig4)));
+  o0_5   := (act4 & is_dot4 & seg_4 = 0) ? cur_4 : o0_4;
+  o1_5   := (act4 & is_dot4 & seg_4 = 1) ? cur_4 : o1_4;
+  o2_5   := (act4 & is_dot4 & seg_4 = 2) ? cur_4 : o2_4;
+  seg_5  := (act4 & is_dot4 & seg_4 < 3) ? (seg_4 + 1) : seg_4;
+  hasd_5 := act4 ? (is_dot4 ? FALSE : (is_dig4 ? TRUE : hasd_4)) : hasd_4;
+  cur_5  := act4 ? (is_dot4 ? 0 : (is_dig4 ? nv4 : cur_4)) : cur_4;
+
+  -- Byte 5
+  act5   := !end_5 & !bad_5;
+  nv5    := cur_5 * 10 + (c5 - 48);
+  end_6  := end_5 | (act5 & is_nul5);
+  bad_6  := bad_5 | (act5 & ((is_nul5 & (seg_5 != 3 | !hasd_5)) | (is_dot5 & (seg_5 = 3 | !hasd_5)) | (is_dig5 & nv5 > 255) | (!is_nul5 & !is_dot5 & !is_dig5)));
+  o0_6   := (act5 & is_dot5 & seg_5 = 0) ? cur_5 : o0_5;
+  o1_6   := (act5 & is_dot5 & seg_5 = 1) ? cur_5 : o1_5;
+  o2_6   := (act5 & is_dot5 & seg_5 = 2) ? cur_5 : o2_5;
+  seg_6  := (act5 & is_dot5 & seg_5 < 3) ? (seg_5 + 1) : seg_5;
+  hasd_6 := act5 ? (is_dot5 ? FALSE : (is_dig5 ? TRUE : hasd_5)) : hasd_5;
+  cur_6  := act5 ? (is_dot5 ? 0 : (is_dig5 ? nv5 : cur_5)) : cur_5;
+
+  -- Byte 6
+  act6   := !end_6 & !bad_6;
+  nv6    := cur_6 * 10 + (c6 - 48);
+  end_7  := end_6 | (act6 & is_nul6);
+  bad_7  := bad_6 | (act6 & ((is_nul6 & (seg_6 != 3 | !hasd_6)) | (is_dot6 & (seg_6 = 3 | !hasd_6)) | (is_dig6 & nv6 > 255) | (!is_nul6 & !is_dot6 & !is_dig6)));
+  o0_7   := (act6 & is_dot6 & seg_6 = 0) ? cur_6 : o0_6;
+  o1_7   := (act6 & is_dot6 & seg_6 = 1) ? cur_6 : o1_6;
+  o2_7   := (act6 & is_dot6 & seg_6 = 2) ? cur_6 : o2_6;
+  seg_7  := (act6 & is_dot6 & seg_6 < 3) ? (seg_6 + 1) : seg_6;
+  hasd_7 := act6 ? (is_dot6 ? FALSE : (is_dig6 ? TRUE : hasd_6)) : hasd_6;
+  cur_7  := act6 ? (is_dot6 ? 0 : (is_dig6 ? nv6 : cur_6)) : cur_6;
+
+  -- Byte 7
+  act7   := !end_7 & !bad_7;
+  nv7    := cur_7 * 10 + (c7 - 48);
+  end_8  := end_7 | (act7 & is_nul7);
+  bad_8  := bad_7 | (act7 & ((is_nul7 & (seg_7 != 3 | !hasd_7)) | (is_dot7 & (seg_7 = 3 | !hasd_7)) | (is_dig7 & nv7 > 255) | (!is_nul7 & !is_dot7 & !is_dig7)));
+  o0_8   := (act7 & is_dot7 & seg_7 = 0) ? cur_7 : o0_7;
+  o1_8   := (act7 & is_dot7 & seg_7 = 1) ? cur_7 : o1_7;
+  o2_8   := (act7 & is_dot7 & seg_7 = 2) ? cur_7 : o2_7;
+  seg_8  := (act7 & is_dot7 & seg_7 < 3) ? (seg_7 + 1) : seg_7;
+  hasd_8 := act7 ? (is_dot7 ? FALSE : (is_dig7 ? TRUE : hasd_7)) : hasd_7;
+  cur_8  := act7 ? (is_dot7 ? 0 : (is_dig7 ? nv7 : cur_7)) : cur_7;
+
+  -- Byte 8
+  act8   := !end_8 & !bad_8;
+  nv8    := cur_8 * 10 + (c8 - 48);
+  end_9  := end_8 | (act8 & is_nul8);
+  bad_9  := bad_8 | (act8 & ((is_nul8 & (seg_8 != 3 | !hasd_8)) | (is_dot8 & (seg_8 = 3 | !hasd_8)) | (is_dig8 & nv8 > 255) | (!is_nul8 & !is_dot8 & !is_dig8)));
+  o0_9   := (act8 & is_dot8 & seg_8 = 0) ? cur_8 : o0_8;
+  o1_9   := (act8 & is_dot8 & seg_8 = 1) ? cur_8 : o1_8;
+  o2_9   := (act8 & is_dot8 & seg_8 = 2) ? cur_8 : o2_8;
+  seg_9  := (act8 & is_dot8 & seg_8 < 3) ? (seg_8 + 1) : seg_8;
+  hasd_9 := act8 ? (is_dot8 ? FALSE : (is_dig8 ? TRUE : hasd_8)) : hasd_8;
+  cur_9  := act8 ? (is_dot8 ? 0 : (is_dig8 ? nv8 : cur_8)) : cur_8;
+
+  -- Byte 9
+  act9   := !end_9 & !bad_9;
+  nv9    := cur_9 * 10 + (c9 - 48);
+  end_10 := end_9 | (act9 & is_nul9);
+  bad_10 := bad_9 | (act9 & ((is_nul9 & (seg_9 != 3 | !hasd_9)) | (is_dot9 & (seg_9 = 3 | !hasd_9)) | (is_dig9 & nv9 > 255) | (!is_nul9 & !is_dot9 & !is_dig9)));
+  o0_10  := (act9 & is_dot9 & seg_9 = 0) ? cur_9 : o0_9;
+  o1_10  := (act9 & is_dot9 & seg_9 = 1) ? cur_9 : o1_9;
+  o2_10  := (act9 & is_dot9 & seg_9 = 2) ? cur_9 : o2_9;
+  seg_10 := (act9 & is_dot9 & seg_9 < 3) ? (seg_9 + 1) : seg_9;
+  hasd_10 := act9 ? (is_dot9 ? FALSE : (is_dig9 ? TRUE : hasd_9)) : hasd_9;
+  cur_10 := act9 ? (is_dot9 ? 0 : (is_dig9 ? nv9 : cur_9)) : cur_9;
+
+  -- Byte 10
+  act10  := !end_10 & !bad_10;
+  nv10   := cur_10 * 10 + (c10 - 48);
+  end_11 := end_10 | (act10 & is_nul10);
+  bad_11 := bad_10 | (act10 & ((is_nul10 & (seg_10 != 3 | !hasd_10)) | (is_dot10 & (seg_10 = 3 | !hasd_10)) | (is_dig10 & nv10 > 255) | (!is_nul10 & !is_dot10 & !is_dig10)));
+  o0_11  := (act10 & is_dot10 & seg_10 = 0) ? cur_10 : o0_10;
+  o1_11  := (act10 & is_dot10 & seg_10 = 1) ? cur_10 : o1_10;
+  o2_11  := (act10 & is_dot10 & seg_10 = 2) ? cur_10 : o2_10;
+  seg_11 := (act10 & is_dot10 & seg_10 < 3) ? (seg_10 + 1) : seg_10;
+  hasd_11 := act10 ? (is_dot10 ? FALSE : (is_dig10 ? TRUE : hasd_10)) : hasd_10;
+  cur_11 := act10 ? (is_dot10 ? 0 : (is_dig10 ? nv10 : cur_10)) : cur_10;
+
+  -- Byte 11
+  act11  := !end_11 & !bad_11;
+  nv11   := cur_11 * 10 + (c11 - 48);
+  end_12 := end_11 | (act11 & is_nul11);
+  bad_12 := bad_11 | (act11 & ((is_nul11 & (seg_11 != 3 | !hasd_11)) | (is_dot11 & (seg_11 = 3 | !hasd_11)) | (is_dig11 & nv11 > 255) | (!is_nul11 & !is_dot11 & !is_dig11)));
+  o0_12  := (act11 & is_dot11 & seg_11 = 0) ? cur_11 : o0_11;
+  o1_12  := (act11 & is_dot11 & seg_11 = 1) ? cur_11 : o1_11;
+  o2_12  := (act11 & is_dot11 & seg_11 = 2) ? cur_11 : o2_11;
+  seg_12 := (act11 & is_dot11 & seg_11 < 3) ? (seg_11 + 1) : seg_11;
+  hasd_12 := act11 ? (is_dot11 ? FALSE : (is_dig11 ? TRUE : hasd_11)) : hasd_11;
+  cur_12 := act11 ? (is_dot11 ? 0 : (is_dig11 ? nv11 : cur_11)) : cur_11;
+
+  -- Byte 12
+  act12  := !end_12 & !bad_12;
+  nv12   := cur_12 * 10 + (c12 - 48);
+  end_13 := end_12 | (act12 & is_nul12);
+  bad_13 := bad_12 | (act12 & ((is_nul12 & (seg_12 != 3 | !hasd_12)) | (is_dot12 & (seg_12 = 3 | !hasd_12)) | (is_dig12 & nv12 > 255) | (!is_nul12 & !is_dot12 & !is_dig12)));
+  o0_13  := (act12 & is_dot12 & seg_12 = 0) ? cur_12 : o0_12;
+  o1_13  := (act12 & is_dot12 & seg_12 = 1) ? cur_12 : o1_12;
+  o2_13  := (act12 & is_dot12 & seg_12 = 2) ? cur_12 : o2_12;
+  seg_13 := (act12 & is_dot12 & seg_12 < 3) ? (seg_12 + 1) : seg_12;
+  hasd_13 := act12 ? (is_dot12 ? FALSE : (is_dig12 ? TRUE : hasd_12)) : hasd_12;
+  cur_13 := act12 ? (is_dot12 ? 0 : (is_dig12 ? nv12 : cur_12)) : cur_12;
+
+  -- Byte 13
+  act13  := !end_13 & !bad_13;
+  nv13   := cur_13 * 10 + (c13 - 48);
+  end_14 := end_13 | (act13 & is_nul13);
+  bad_14 := bad_13 | (act13 & ((is_nul13 & (seg_13 != 3 | !hasd_13)) | (is_dot13 & (seg_13 = 3 | !hasd_13)) | (is_dig13 & nv13 > 255) | (!is_nul13 & !is_dot13 & !is_dig13)));
+  o0_14  := (act13 & is_dot13 & seg_13 = 0) ? cur_13 : o0_13;
+  o1_14  := (act13 & is_dot13 & seg_13 = 1) ? cur_13 : o1_13;
+  o2_14  := (act13 & is_dot13 & seg_13 = 2) ? cur_13 : o2_13;
+  seg_14 := (act13 & is_dot13 & seg_13 < 3) ? (seg_13 + 1) : seg_13;
+  hasd_14 := act13 ? (is_dot13 ? FALSE : (is_dig13 ? TRUE : hasd_13)) : hasd_13;
+  cur_14 := act13 ? (is_dot13 ? 0 : (is_dig13 ? nv13 : cur_13)) : cur_13;
+
+  -- Byte 14
+  act14  := !end_14 & !bad_14;
+  nv14   := cur_14 * 10 + (c14 - 48);
+  end_15 := end_14 | (act14 & is_nul14);
+  bad_15 := bad_14 | (act14 & ((is_nul14 & (seg_14 != 3 | !hasd_14)) | (is_dot14 & (seg_14 = 3 | !hasd_14)) | (is_dig14 & nv14 > 255) | (!is_nul14 & !is_dot14 & !is_dig14)));
+  o0_15  := (act14 & is_dot14 & seg_14 = 0) ? cur_14 : o0_14;
+  o1_15  := (act14 & is_dot14 & seg_14 = 1) ? cur_14 : o1_14;
+  o2_15  := (act14 & is_dot14 & seg_14 = 2) ? cur_14 : o2_14;
+  seg_15 := (act14 & is_dot14 & seg_14 < 3) ? (seg_14 + 1) : seg_14;
+  hasd_15 := act14 ? (is_dot14 ? FALSE : (is_dig14 ? TRUE : hasd_14)) : hasd_14;
+  cur_15 := act14 ? (is_dot14 ? 0 : (is_dig14 ? nv14 : cur_14)) : cur_14;
+
+  -- Byte 15 (trailing NUL / end of bounded 16-byte string)
+  act15  := !end_15 & !bad_15;
+  nv15   := cur_15 * 10 + (c15 - 48);
+  end_16 := end_15 | (act15 & is_nul15);
+  bad_16 := bad_15 | (act15 & ((is_nul15 & (seg_15 != 3 | !hasd_15)) | (is_dot15 & (seg_15 = 3 | !hasd_15)) | (is_dig15 & nv15 > 255) | (!is_nul15 & !is_dot15 & !is_dig15)));
+  o0     := (act15 & is_dot15 & seg_15 = 0) ? cur_15 : o0_15;
+  o1     := (act15 & is_dot15 & seg_15 = 1) ? cur_15 : o1_15;
+  o2     := (act15 & is_dot15 & seg_15 = 2) ? cur_15 : o2_15;
+  seg_16 := (act15 & is_dot15 & seg_15 < 3) ? (seg_15 + 1) : seg_15;
+  hasd_16 := act15 ? (is_dot15 ? FALSE : (is_dig15 ? TRUE : hasd_15)) : hasd_15;
+  o3     := act15 ? (is_dig15 ? nv15 : cur_15) : cur_15;
+
+  valid := !bad_16 & seg_16 = 3 & hasd_16;
+  packed := o0 * 16777216 + o1 * 65536 + o2 * 256 + o3;
+  ipValue := valid ? packed : 0;
+
+  same_input := !first_scan &
+    c0 = prev_c0 & c1 = prev_c1 & c2 = prev_c2 & c3 = prev_c3 &
+    c4 = prev_c4 & c5 = prev_c5 & c6 = prev_c6 & c7 = prev_c7 &
+    c8 = prev_c8 & c9 = prev_c9 & c10 = prev_c10 & c11 = prev_c11 &
+    c12 = prev_c12 & c13 = prev_c13 & c14 = prev_c14 & c15 = prev_c15;
+
+ASSIGN
+  next(first_scan) := FALSE;
+  next(prev_c0) := c0; next(prev_c1) := c1; next(prev_c2) := c2; next(prev_c3) := c3;
+  next(prev_c4) := c4; next(prev_c5) := c5; next(prev_c6) := c6; next(prev_c7) := c7;
+  next(prev_c8) := c8; next(prev_c9) := c9; next(prev_c10) := c10; next(prev_c11) := c11;
+  next(prev_c12) := c12; next(prev_c13) := c13; next(prev_c14) := c14; next(prev_c15) := c15;
+  next(last_ipValue) := ipValue;
+
+INVARSPEC NAME P1 := valid -> ipValue = packed;
+INVARSPEC NAME P2 := !valid -> ipValue = 0;
+INVARSPEC NAME P3 := same_input -> ipValue = last_ipValue;

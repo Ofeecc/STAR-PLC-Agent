@@ -1,0 +1,35 @@
+MODULE main
+VAR
+  Request : boolean;
+  Trip : boolean;
+  Preset : 0..255;
+  first : boolean;
+  qCount : 0..5;
+
+ASSIGN
+  init(first) := TRUE;
+  next(first) := FALSE;
+  init(qCount) := 0;
+  next(qCount) := Count;
+
+DEFINE
+  invalid := Preset < 1 | Preset > 5;
+  resetCond := Trip | !Request | invalid;
+  nextCount := case
+    qCount < 5 & qCount < Preset : qCount + 1;
+    Preset = 1 : 1;
+    Preset = 2 : 2;
+    Preset = 3 : 3;
+    Preset = 4 : 4;
+    TRUE : 5;
+  esac;
+  Count := resetCond ? 0 : nextCount;
+  qualified := !invalid & (Count >= Preset);
+  Ready := Request & !Trip & qualified;
+
+LTLSPEC NAME P1 := G((Trip | !Request | invalid) -> (!Ready & Count = 0));
+LTLSPEC NAME P2 := G((Request & !Trip & !invalid) -> (Count = nextCount));
+LTLSPEC NAME P3 := G(Ready <-> qualified);
+LTLSPEC NAME P4 := G(!invalid -> (Count >= 0 & Count <= Preset));
+LTLSPEC NAME P5 := G(Request & !Trip & !invalid) -> F(Ready);
+LTLSPEC NAME V2_init := first -> qCount = 0;

@@ -1,0 +1,59 @@
+-- Scope: EXPLICIT_SMV_MODEL_ONLY (not candidate ST verification).
+-- Task: PUB019 negative mutant: fails to gate manual MoveDown by !DownLimitSwitch and ignores mode_changed reset, violating P1 and P4.
+MODULE main
+VAR
+  ManualMode : boolean;
+  SingleStepMode : boolean;
+  SingleCycleMode : boolean;
+  ContinuousMode : boolean;
+  EmergencyStop : boolean;
+  Start : boolean;
+  DownButton : boolean;
+  UpButton : boolean;
+  LeftButton : boolean;
+  RightButton : boolean;
+  GripButton : boolean;
+  ReleaseButton : boolean;
+  DownLimitSwitch : boolean;
+  UpLimitSwitch : boolean;
+  LeftLimitSwitch : boolean;
+  RightLimitSwitch : boolean;
+  GripLimitSwitch : boolean;
+  ReleaseLimitSwitch : boolean;
+
+  arm_step : 0..8;
+  has_mode : boolean;
+  prev_mode : {NONE, MANUAL, SINGLE_STEP, SINGLE_CYCLE, CONTINUOUS};
+  prev_start : boolean;
+
+INIT arm_step = 0 & !has_mode & prev_mode = NONE & !prev_start;
+
+DEFINE
+  cur_mode := case
+    ManualMode : MANUAL;
+    SingleStepMode : SINGLE_STEP;
+    SingleCycleMode : SINGLE_CYCLE;
+    ContinuousMode : CONTINUOUS;
+    TRUE : NONE;
+  esac;
+  safe := EmergencyStop;
+  no_mode := cur_mode = NONE;
+  mode_changed := safe & !no_mode & has_mode & (prev_mode != NONE) & (prev_mode != cur_mode);
+  start_edge := Start & !prev_start;
+
+  MoveDown := (safe & !no_mode & cur_mode = MANUAL) & DownButton & !UpButton;
+  MoveUp := (safe & !no_mode & cur_mode = MANUAL) & UpButton & !DownButton & !UpLimitSwitch;
+  MoveLeft := FALSE;
+  MoveRight := FALSE;
+  ActivateGrip := FALSE;
+  ActivateRelease := FALSE;
+  all_off := !MoveDown & !MoveUp & !MoveLeft & !MoveRight & !ActivateGrip & !ActivateRelease;
+
+ASSIGN
+  next(arm_step) := 0;
+  next(has_mode) := (!safe | no_mode) ? FALSE : TRUE;
+  next(prev_mode) := (!safe | no_mode) ? NONE : cur_mode;
+  next(prev_start) := Start;
+
+INVARSPEC NAME P1 := (!safe | no_mode | mode_changed) -> all_off;
+INVARSPEC NAME P4 := DownLimitSwitch -> !MoveDown;

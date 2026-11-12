@@ -1,0 +1,37 @@
+-- Scope: EXPLICIT_SMV_MODEL_ONLY (not candidate ST verification).
+-- Task: PUB006 negative mutant: increments count on every scan BLOWER_RUN holds instead of rising edge, violating P4.
+MODULE main
+VAR
+  DO_LOW : boolean;
+  AERATION_E_STOP_NC : boolean;
+  dt_ms : integer;
+  first_scan : boolean;
+  clk : integer;
+  have_since : boolean;
+  since : integer;
+  runPrev : boolean;
+  countPrev : integer;
+
+INIT first_scan & clk = 0 & !have_since & since = 0 & !runPrev & countPrev = 0;
+INVAR dt_ms >= 0 & clk >= 0 & countPrev >= 0 & countPrev <= 65535;
+
+ASSIGN
+  next(first_scan) := FALSE;
+  next(clk) := clk_now;
+  next(have_since) := permit;
+  next(since) := since_now;
+  next(runPrev) := BLOWER_RUN;
+  next(countPrev) := countAfter;
+
+DEFINE
+  permit := DO_LOW & AERATION_E_STOP_NC;
+  clk_now := first_scan ? 0 : clk + dt_ms;
+  since_now := permit ? (have_since ? since : clk_now) : 0;
+  delayDone := permit & (have_since ? (clk_now - since >= 5000) : FALSE);
+  BLOWER_RUN := permit & delayDone;
+  countAfter := countPrev + (BLOWER_RUN ? 1 : 0);
+  AERATION_BLOWER_CYCLE_COUNT := countAfter;
+
+INVARSPEC NAME P1 := BLOWER_RUN <-> (permit & delayDone);
+INVARSPEC NAME P3 := (!runPrev & BLOWER_RUN) -> (AERATION_BLOWER_CYCLE_COUNT = countPrev + 1);
+INVARSPEC NAME P4 := (runPrev | !BLOWER_RUN) -> (AERATION_BLOWER_CYCLE_COUNT = countPrev);
