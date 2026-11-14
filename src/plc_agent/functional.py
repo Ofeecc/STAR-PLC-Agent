@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import hashlib
 import math
+import re
+import struct
 from pathlib import Path
 
 from .common import ROOT, digest, safe_child
@@ -85,6 +87,60 @@ def _same_inputs(actual, expected):
     return equal(actual, expected, tolerance=0)
 
 
+def same_declared_inputs(task, actual, expected):
+    """Compare REAL monitoring values as the declared binary32, not JSON float64.
+
+    This is exact binary32 equality, not a relaxed test tolerance. Adjacent
+    representable REAL inputs remain distinct. IEC time literals use exact
+    duration equality (TIME#2s and T#2000ms denote the same input).
+    """
+    if not isinstance(actual, dict) or actual.keys() != expected.keys():
+        return False
+    from .simulation import get_struct_defs
+
+    structs = get_struct_defs(task)
+    types = {f['name']: f['type'].upper() for f in task.get('interface', [])}
+    structs = {name.upper(): fields for name, fields in structs.items()}
+
+    def typed_equal(typ, observed, value):
+        array = re.fullmatch(r'ARRAY\s*\[.*\]\s+OF\s+(.+)', typ or '', re.I)
+        if array and isinstance(value, list):
+            return isinstance(observed, list) and len(observed) == len(value) and all(
+                typed_equal(array[1].upper(), a, e) for a, e in zip(observed, value))
+        if typ in structs and isinstance(value, dict):
+            fields = structs[typ]
+            return isinstance(observed, dict) and observed.keys() == value.keys() and all(
+                typed_equal(fields.get(k, '').upper(), observed[k], v) for k, v in value.items())
+        if typ == 'REAL':
+            if not _finite_number(observed) or not _finite_number(value):
+                return False
+            try:
+                if struct.pack('!f', observed) != struct.pack('!f', value):
+                    return False
+            except (OverflowError, struct.error):
+                return False
+        elif typ in ('TIME', 'LTIME'):
+            from .timed_contracts import duration_ns
+
+            def exact_duration(item):
+                if _finite_number(item) and float(item).is_integer():
+                    item = f'TIME#{int(item)}ms'
+                return duration_ns(item)
+            try:
+                if exact_duration(observed) != exact_duration(value):
+                    return False
+            except ValueError:
+                return False
+        elif typ and typ.startswith('STRING') and isinstance(value, str) and isinstance(observed, str):
+            if observed.split('\x00', 1)[0] != value.split('\x00', 1)[0]:
+                return False
+        elif not _same_inputs(observed, value):
+            return False
+        return True
+
+    return all(typed_equal(types.get(name), actual[name], value) for name, value in expected.items())
+
+
 def _evidence_files(trace, evidence_root):
     references = trace.get("evidence_files")
     if not isinstance(references, list) or not references:
@@ -104,7 +160,22 @@ def _evidence_files(trace, evidence_root):
     return files
 
 
-def evaluate_trace(task, source_hash, trace, evidence_root=ROOT):
+def _check_step_timing(task, case, step, row):
+    if "dt_ms" not in step:
+        return
+    observed, expected = row.get("dt_ms"), step["dt_ms"]
+    tolerance = step.get("dt_tolerance_ms", case.get("dt_tolerance_ms", task.get("dt_tolerance_ms")))
+    if tolerance is None:
+        tolerance = 0 if task.get("id") == "UNIT_REVIEW" else 25
+    if not _finite_number(expected) or expected < 0 or not _finite_number(tolerance) or tolerance < 0:
+        raise ValueError("Invalid preregistered test timing or timing tolerance")
+    if not _finite_number(observed) or observed < 0:
+        raise ValueError("Timed test requires a nonnegative observed dt_ms for every timed step")
+    if not math.isclose(observed, expected, rel_tol=0, abs_tol=tolerance):
+        raise ValueError("Observed dt_ms does not match fixed test timing")
+
+
+def evaluate_trace(task, source_hash, trace, evidence_root=ROOT, allow_timing_gaps=False):
     """Import actual observed outputs; never execute a Python oracle as the generated ST."""
     if (
         trace.get("task_id") != task["id"]
@@ -141,25 +212,23 @@ def evaluate_trace(task, source_hash, trace, evidence_root=ROOT):
             continue
         if len(rows) != len(case["steps"]):
             raise ValueError("Incomplete scan trace: " + case["id"])
+        if allow_timing_gaps:
+            timing_errors = []
+            for index, (row, step) in enumerate(zip(rows, case["steps"])):
+                try:
+                    _check_step_timing(task, case, step, row)
+                except ValueError as exc:
+                    timing_errors.append({"step": index, "reason": str(exc), "observed_dt_ms": row.get("dt_ms"),
+                                          "required_dt_ms": step.get("dt_ms")})
+            if timing_errors:
+                details.append({"case_id": case["id"], "status": "TIMING_NOT_REPRODUCED", "timing_errors": timing_errors})
+                continue
         good = []
         norm_monitor = norm_monitor_cls(task) if norm_monitor_cls is not None else None
         for row, step in zip(rows, case["steps"]):
-            if not _same_inputs(row.get("inputs"), step["inputs"]):
+            if not same_declared_inputs(task, row.get("inputs"), step["inputs"]):
                 raise ValueError("Observed inputs do not match fixed test")
-            if "dt_ms" in step:
-                observed = row.get("dt_ms")
-                expected = step["dt_ms"]
-                raw_tol = step.get("dt_tolerance_ms", case.get("dt_tolerance_ms", task.get("dt_tolerance_ms", None)))
-                if raw_tol is None:
-                    tolerance = 0 if task.get("id") == "UNIT_REVIEW" else 25
-                else:
-                    tolerance = raw_tol
-                if not _finite_number(expected) or expected < 0 or not _finite_number(tolerance) or tolerance < 0:
-                    raise ValueError("Invalid preregistered test timing or timing tolerance")
-                if not _finite_number(observed) or observed < 0:
-                    raise ValueError("Timed test requires a nonnegative observed dt_ms for every timed step")
-                if not math.isclose(observed, expected, rel_tol=0, abs_tol=tolerance):
-                    raise ValueError("Observed dt_ms does not match fixed test timing")
+            _check_step_timing(task, case, step, row)
             step_outs = row.get("outputs", {})
             step_ok = outputs_equal(task, step_outs, step["expected"], row["inputs"])
             if norm_monitor is not None:
@@ -189,6 +258,8 @@ def evaluate_trace(task, source_hash, trace, evidence_root=ROOT):
             }
         )
     status = "TEST_FAIL" if passed_cases != evaluated else ("PASS" if evaluated == len(task["tests"]) else "UNVERIFIED")
+    if allow_timing_gaps and status == "UNVERIFIED" and any(d["status"] == "TIMING_NOT_REPRODUCED" for d in details):
+        status = "PARTIAL"
     return {
         "status": status,
         "evidence": trace["backend"],

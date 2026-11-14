@@ -114,19 +114,31 @@ def verify_candidate(
 
     out = Path(out_dir).resolve()
     manifest = export_verification_bundle(task=task, candidate=candidate, out_dir=out)
-    result = verify_candidate_st(
-        task=task,
-        candidate=candidate,
-        out_dir=out,
-        timeout=timeout,
-        executable=executable,
-        tool=tool,
-        engine=engine,
-        bmc_bound=bmc_bound,
-        include_expected_observer=include_expected_observer,
-        use_observer_smv=use_observer_smv,
-        extra_assertions=extra_assertions,
-    )
+    try:
+        result = verify_candidate_st(
+            task=task,
+            candidate=candidate,
+            out_dir=out,
+            timeout=timeout,
+            executable=executable,
+            tool=tool,
+            engine=engine,
+            bmc_bound=bmc_bound,
+            include_expected_observer=include_expected_observer,
+            use_observer_smv=use_observer_smv,
+            extra_assertions=extra_assertions,
+        )
+    except (OSError, ValueError) as exc:
+        # Missing executables/configuration must not abort functional testing
+        # or be attributed to invalid model output by the caller.
+        result = {
+            "task_id": task.get("id"), "status": "TOOL_ERROR", "verified": False,
+            "candidate_st_verified": False, "reason": f"Verification infrastructure: {exc}",
+            "total_properties": len(task.get("ltl", [])), "passed_properties": 0,
+            "failed_properties": 0, "unknown_properties": len(task.get("ltl", [])),
+            "property_pass_ratio": None, "property_results": [],
+        }
+        write_json(out / "verification_result.json", result)
 
     if result.get("smv_path"):
         manifest["smv_path"] = result["smv_path"]

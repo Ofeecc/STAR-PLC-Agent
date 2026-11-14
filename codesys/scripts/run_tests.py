@@ -147,6 +147,14 @@ try:
     if len(programs) != 1:
         raise RuntimeError("Expected task-called PLC_PRG")
     plan = request["program"]
+    # A 50 ms template task cannot execute a 1 ms test step. Configure only
+    # the disposable simulation project, and retain actual timing in the trace.
+    tasks = [o for o in app.get_children(True) if getattr(o, "is_task", False)]
+    if len(tasks) != 1:
+        raise RuntimeError("Expected one simulation task")
+    tasks[0].kind_of_task = KindOfTask.Cyclic
+    tasks[0].interval = "t#1ms"
+    result["simulation_task_interval"] = text(tasks[0].interval)
     replace(programs[0].textual_declaration, plan["declaration"])
     replace(programs[0].textual_implementation, plan["implementation"])
     project.save()

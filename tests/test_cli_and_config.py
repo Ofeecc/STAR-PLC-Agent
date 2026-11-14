@@ -5,13 +5,38 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from plc_agent.cli import main
+from plc_agent.cli import main, prepare_campaign
 from plc_agent.common import digest, read_json, write_json
 from plc_agent.config import Settings, detect_codesys
 from plc_agent.harness import empty_result
 
 
 class CliAndConfigTests(unittest.TestCase):
+    def test_prepare_campaign_can_freeze_one_condition(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "configs").mkdir()
+            write_json(
+                root / "configs" / "experiments.json",
+                {"conditions": [
+                    {"id": "E1", "model": "model-a", "framework": "baseline"},
+                    {"id": "E3", "model": "model-b", "framework": "star"},
+                ]},
+            )
+            with patch("plc_agent.cli.ROOT", root):
+                manifest = prepare_campaign([{"id": "T1", "tests": []}], condition_filter="E3")
+            self.assertEqual([c["id"] for c in manifest["conditions"]], ["E3"])
+            self.assertEqual(set(manifest["records"]), {"E3/T1"})
+
+    def test_probe_models_cli_can_select_only_one_configured_model(self):
+        model = "deepseek-v4.1-flash-1017"
+        with (
+            patch("sys.argv", ["plc-agent", "--allow-model-api", "probe-models", "--tool-smoke", "--model", model]),
+            patch("plc_agent.cli.probe_models", return_value={"selected": [model]}) as probe,
+        ):
+            self.assertEqual(main(), 0)
+        self.assertEqual(probe.call_args.args[1:], (True, [model]))
+
     def test_settings_load_resolves_bundled_template(self):
         settings = Settings.load(load_api=False)
         self.assertTrue(Path(settings.codesys_template).is_file())

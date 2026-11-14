@@ -70,6 +70,9 @@ def verify_interface_signature(candidate: dict | str, interface: list[dict] | No
     decl_text = cand_norm.get("declaration", "")
     clean_decl = re.sub(r"\(\*.*?\*\)", " ", decl_text, flags=re.S)
     clean_decl = re.sub(r"//[^\n]*", "", clean_decl)
+    # CODESYS pragmas decorate declarations; they are not port names/types.
+    # Preserve the original candidate passed to CODESYS and the evidence hash.
+    clean_decl = re.sub(r"\{(?:[^{}'\"]|'[^']*'|\"[^\"]*\")*\}", " ", clean_decl)
     if not re.search(r"\bVAR_(?:INPUT|OUTPUT|IN_OUT)\b", clean_decl, re.I):
         return []
 
@@ -227,9 +230,9 @@ def verify_evidence(evidence, request):
 
 
 @contextmanager
-def compiler_lock(timeout=180):
-    path = ROOT / ".local/compiler.lock"
-    path.parent.mkdir(exist_ok=True)
+def compiler_lock(timeout=180, path=None):
+    path = Path(path) if path is not None else ROOT / ".local/compiler.lock"
+    path.parent.mkdir(parents=True, exist_ok=True)
     started = time.monotonic()
     with path.open("a+b") as lock:
         if lock.tell() == 0:
@@ -247,12 +250,25 @@ def compiler_lock(timeout=180):
                     if time.monotonic() - started >= timeout:
                         raise TimeoutError("Compiler lock wait deadline exceeded")
                     time.sleep(0.1)
+        else:
+            import fcntl
+
+            while True:
+                try:
+                    fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    break
+                except BlockingIOError:
+                    if time.monotonic() - started >= timeout:
+                        raise TimeoutError("Compiler lock wait deadline exceeded")
+                    time.sleep(0.1)
         try:
             yield time.monotonic() - started
         finally:
             if os.name == "nt":
                 lock.seek(0)
                 msvcrt.locking(lock.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
 
 
 ASCII_SYNC_FILES = (

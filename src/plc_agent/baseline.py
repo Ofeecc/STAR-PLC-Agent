@@ -7,7 +7,7 @@ import subprocess
 import sys
 import tempfile
 import time
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from pathlib import Path
 
 from .common import ROOT, now, read_json, redact, write_json
@@ -21,6 +21,17 @@ from .task_view import agent_view
 
 def toml_string(value):
     return json.dumps(str(value), ensure_ascii=False)
+
+
+def find_codex_executable():
+    executable = os.environ.get("PLC_CODEX_EXE") or shutil.which("codex")
+    if executable and os.name == "nt" and Path(executable).suffix.lower() != ".exe":
+        package = Path(executable).parent / "node_modules/@openai/codex"
+        if package.is_dir():
+            native = next(package.rglob("codex.exe"), None)
+            if native:
+                return str(native)
+    return executable
 
 
 def _extract_tool_calls(resp: dict) -> list[tuple[str | None, str, dict]]:
@@ -98,6 +109,7 @@ def run_baseline(
     prompt = (
         CODE_CONTRACT
         + "\nYou are the existing coding-agent baseline. The complete task is supplied below. "
+        + "The owner has already authorized this noninteractive benchmark and the supplied IDE-simulation tools within the stated limits. "
         + "Use the supplied compiler, simulator, and formal verification tools directly; shell commands are unnecessary for this task. "
         + (
             f"Use compile_st to compile each candidate. Maximum {settings.max_repairs + 1} total compiler calls. "
@@ -245,11 +257,22 @@ def run_baseline(
                 break
 
     elif driver == "codex_cli":
-        executable = shutil.which("codex")
+        from .codex_transport import CodexTransport
+
+        executable = find_codex_executable()
         if not executable:
             result["status"], result["reason"] = "TOOL_ERROR", "Codex CLI executable missing"
         else:
-            with tempfile.TemporaryDirectory() as mcp_dir:
+            # Codex adds its own native system prompt and tool schemas around
+            # the task. Do not apply the STAR harness's input/total-token
+            # reserves to this different native request; retain the shared
+            # per-call output ceiling, request count, timeout, and cost stop.
+            relay_settings = replace(
+                settings,
+                context_window_tokens=0,
+                max_total_tokens=0,
+            )
+            with tempfile.TemporaryDirectory() as mcp_dir, CodexTransport(relay_settings, model, workspace / "api_transport") as transport:
                 trusted_task_path = Path(mcp_dir) / "task.json"
                 write_json(trusted_task_path, task)
                 args = [
@@ -284,17 +307,22 @@ def run_baseline(
                     + ",args="
                     + json.dumps(args[1:], ensure_ascii=False)
                     + ",env={PYTHONPATH="
-                    + toml_string(ROOT / "src")
+                    + toml_string(Path(__file__).resolve().parent.parent)
                     + "},startup_timeout_sec=30,tool_timeout_sec="
                     + str(settings.compiler_timeout + 30)
-                    + "}"
+                    # The user authorized this benchmark's trusted compile
+                    # tool calls. Approve only this local MCP server so an
+                    # unattended exec does not cancel its own required tools.
+                    + ',default_tools_approval_mode="approve"}'
                 )
                 overrides = [
                     'model_provider="plc_relay"',
                     'model_providers.plc_relay={name="PLC relay",base_url='
-                    + toml_string(settings.base_url)
-                    + ',env_key="PLC_LLM_API_KEY",wire_api="responses",requires_openai_auth=false}',
+                    + toml_string(transport.base_url)
+                    + ',env_key="PLC_CODEX_PROXY_TOKEN",wire_api="responses",requires_openai_auth=false,request_max_retries=0,stream_max_retries=0}',
                     "model_reasoning_effort=" + toml_string(settings.reasoning_effort),
+                    "sandbox_workspace_write.network_access=true",
+                    'permissions.workspace.network={enabled=true,domains={"127.0.0.1"="allow","localhost"="allow"}}',
                     "mcp_servers.plc=" + server,
                     'web_search="disabled"',
                 ]
@@ -325,39 +353,46 @@ def run_baseline(
                         "differences": [
                             "Baseline controls context and tool selection; self harness uses deterministic control flow.",
                             "Same compiler-call budget and task timeout; Codex internal model calls/tool schemas are not identical.",
-                            "Codex does not expose a hard common per-response output-token cap; token usage is reported separately.",
+                            "The local relay keeps the shared per-call output and request limits; no Codex-only input/total-token cap is applied.",
+                            "Codex state is isolated under this task's output directory because the sandbox cannot write the user's global Codex state database.",
+                            "Sandbox network access is restricted to localhost for the model relay; external destinations remain blocked.",
                         ],
                     },
                 )
                 env = os.environ.copy()
-                env["PLC_LLM_API_KEY"] = settings.api_key
-                env["PYTHONPATH"] = str(ROOT / "src")
+                for secret_name in ("PLC_LLM_API_KEY", "PLC_API_CONFIG", "OPENAI_API_KEY"):
+                    env.pop(secret_name, None)
+                env["PLC_CODEX_PROXY_TOKEN"] = transport.token
+                env["PYTHONPATH"] = str(Path(__file__).resolve().parent.parent)
+                codex_home_dir = workspace / "codex_home"
+                codex_home_dir.mkdir(parents=True, exist_ok=True)
+                env["CODEX_HOME"] = str(codex_home_dir)
                 process = None
                 try:
-                    with (
-                        (workspace / "events.private.tmp").open("wb") as out,
-                        (workspace / "stderr.private.tmp").open("wb") as err,
-                    ):
-                        process = subprocess.Popen(
-                            command + ["-"],
-                            stdin=subprocess.PIPE,
-                            stdout=out,
-                            stderr=err,
-                            env=env,
-                            creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+                    process = subprocess.Popen(
+                        command + ["-"],
+                        stdin=subprocess.PIPE,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        env=env,
+                        creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+                    )
+                    try:
+                        stdout_bytes, stderr_bytes = process.communicate(
+                            prompt.encode("utf-8"), timeout=settings.task_timeout
                         )
-                        try:
-                            process.communicate(prompt.encode("utf-8"), timeout=settings.task_timeout)
-                        except subprocess.TimeoutExpired:
-                            _kill_tree(process)
-                            result["status"], result["reason"] = "TIMEOUT", "Codex task timeout"
-                    for old, new in (("events.private.tmp", "events.jsonl"), ("stderr.private.tmp", "stderr.log")):
-                        raw = workspace / old
-                        (workspace / new).write_text(
-                            redact(raw.read_text(encoding="utf-8", errors="replace"), [settings.api_key]),
-                            encoding="utf-8",
-                        )
-                        raw.unlink()
+                    except subprocess.TimeoutExpired:
+                        _kill_tree(process)
+                        stdout_bytes, stderr_bytes = process.communicate()
+                        result["status"], result["reason"] = "TIMEOUT", "Codex task timeout"
+                    (workspace / "events.jsonl").write_text(
+                        redact(stdout_bytes.decode("utf-8", errors="replace"), [settings.api_key]),
+                        encoding="utf-8",
+                    )
+                    (workspace / "stderr.log").write_text(
+                        redact(stderr_bytes.decode("utf-8", errors="replace"), [settings.api_key]),
+                        encoding="utf-8",
+                    )
                     result["baseline_exit_code"] = process.returncode
                     for line in (workspace / "events.jsonl").read_text(encoding="utf-8").splitlines():
                         try:
@@ -376,6 +411,13 @@ def run_baseline(
                             result["tool_call_count"] += 1
                 except (OSError, subprocess.SubprocessError) as exc:
                     result["status"], result["reason"] = "TOOL_ERROR", redact(str(exc), [settings.api_key])
+            result["llm_calls"] = transport.request_count
+            result["accounted_tokens"] = transport.total_tokens
+            result["usage"] = transport.usage
+            result["transport_policy"] = (
+                "LOCAL_RESPONSES_PROXY_NO_INPUT_OR_TOTAL_TOKEN_CAP; "
+                "SHARED_PER_CALL_OUTPUT_AND_REQUEST_LIMITS_RETAINED"
+            )
 
     elif driver == "claude_code":
         executable = shutil.which("claude")

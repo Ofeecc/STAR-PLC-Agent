@@ -363,7 +363,10 @@ def _build_star_stages(
         planner_status = "FAIL"
     else:
         planner_status = "PENDING"
-    states = (plan or {}).get("state_machine", {}).get("states", []) if isinstance(plan, dict) else []
+    state_machine = plan.get("state_machine", {}) if isinstance(plan, dict) else {}
+    states = state_machine.get("states", []) if isinstance(state_machine, dict) else state_machine
+    if not isinstance(states, list):
+        states = []
     planner_stage = {
         "id": "planner",
         "label_en": "1. Planner",

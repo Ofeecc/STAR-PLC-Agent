@@ -19,7 +19,7 @@ import uuid
 from pathlib import Path
 
 from .common import ROOT, digest, now, read_json, write_json
-from .compiler import _kill_tree, codesys_command, normalize_candidate, stage_ascii_workspace, sync_ascii_artifacts
+from .compiler import _kill_tree, codesys_command, compiler_lock, normalize_candidate, stage_ascii_workspace, sync_ascii_artifacts
 
 SCALAR_TYPES = {
     "BOOL",
@@ -146,7 +146,7 @@ def st_literal(value: object, type_name: str, task: dict | None = None) -> str:
     if up.startswith("STRING"):
         if not isinstance(value, str):
             raise ValueError("STRING input requires a string")
-        escaped = value.replace("$", "$$").replace("'", "$'").replace("\r", "$R").replace("\n", "$N")
+        escaped = value.replace("$", "$$").replace("'", "$'").replace("\x00", "$00").replace("\r", "$R").replace("\n", "$N")
         return "'" + escaped + "'"
     if up in TIME_TYPES:
         if isinstance(value, str):
@@ -353,6 +353,22 @@ def build_program(task: dict, cases: list[dict] | None = None) -> dict:
     sdefs = get_struct_defs(task)
 
     case_inouts_map = [get_case_inouts(task, c_idx, c) for c_idx, c in enumerate(cases)]
+    step_inouts_map = []
+    storage_types = {}
+    for c_idx, case in enumerate(cases):
+        per_step = []
+        for s_idx, step in enumerate(case["steps"]):
+            cin = get_case_inouts(task, c_idx, dict(case, steps=[step]))
+            for vname, info in cin.items():
+                base = case_inouts_map[c_idx][vname]
+                if base["retain_storage"]:
+                    info = dict(base)
+                    cin[vname] = info
+                suffix = f"_step{s_idx}" if info["type"] != base["type"] else ""
+                info["storage"] = f"Binding_{c_idx}_{vname}{suffix}"
+                storage_types[info["storage"]] = info["type"]
+            per_step.append(cin)
+        step_inouts_map.append(per_step)
 
     declarations = [
         "PROGRAM PLC_PRG",
@@ -364,15 +380,15 @@ def build_program(task: dict, cases: list[dict] | None = None) -> dict:
     if is_timed:
         declarations += [
             " BenchLastTime : TIME := T#0ms;",
+            " BenchClockReady : BOOL := FALSE;",
             " BenchCurrentTime : TIME := T#0ms;",
             f" TraceDt : ARRAY[0..{count - 1}] OF UDINT;",
         ]
     declarations += [f" BenchUut{i} : FB_Task;" for i, _ in enumerate(cases)]
 
     # Caller-owned storage for each case
-    for c_idx, cin in enumerate(case_inouts_map):
-        for vname, binfo in cin.items():
-            declarations.append(f" Binding_{c_idx}_{vname} : {binfo['type']};")
+    for name, typ in storage_types.items():
+        declarations.append(f" {name} : {typ};")
 
     # Trace arrays
     # 1. Inputs
@@ -383,7 +399,7 @@ def build_program(task: dict, cases: list[dict] | None = None) -> dict:
             low, high, elem_t = parse_array_type(ftyp)
             if low is None:
                 low = 1
-            max_len = max(len(c["steps"][0]["inputs"][fname]) for c in cases)
+            max_len = max(len(s["inputs"][fname]) for c in cases for s in c["steps"])
             for idx in range(max_len):
                 declarations.append(f" TraceIn_{fname}_{low + idx} : ARRAY[0..{count - 1}] OF {elem_t};")
         elif ftyp in sdefs:
@@ -421,11 +437,11 @@ def build_program(task: dict, cases: list[dict] | None = None) -> dict:
                 for sfname, sftype in sdefs["ST_Pump"].items():
                     declarations.append(f" TraceOut_pumpGroup_{idx}_{sfname} : ARRAY[0..{count - 1}] OF {sftype};")
         elif fname == "analogValues":
-            max_len = max(len(c["steps"][0]["inputs"]["analogValues"]) for c in cases)
+            max_len = max(len(s["inputs"]["analogValues"]) for c in cases for s in c["steps"])
             for idx in range(1, max_len + 1):
                 declarations.append(f" TraceOut_analogValues_{idx} : ARRAY[0..{count - 1}] OF INT;")
         elif fname == "channels":
-            max_len = max(len(c["steps"][0]["inputs"]["channels"]) for c in cases)
+            max_len = max(len(s["inputs"]["channels"]) for c in cases for s in c["steps"])
             for idx in range(1, max_len + 1):
                 for sfname, sftype in sdefs["ST_AnalogChannel"].items():
                     declarations.append(f" TraceOut_channels_{idx}_{sfname} : ARRAY[0..{count - 1}] OF {sftype};")
@@ -444,17 +460,40 @@ def build_program(task: dict, cases: list[dict] | None = None) -> dict:
     body = ["IF NOT BenchDone THEN"]
     if is_timed:
         body.append(" BenchCurrentTime := TIME();")
+        body += [" IF NOT BenchClockReady THEN", "  BenchLastTime := BenchCurrentTime;",
+                 "  BenchClockReady := TRUE;", " ELSE"]
     body.append(" CASE BenchStep OF")
 
     trace_expressions = []
     trace_mappings = []
+    input_monitor_types = {}
+
+    def monitor_input(expr, value, typ, prefix, index, indent):
+        if is_array_type(typ):
+            low, _, element = parse_array_type(typ)
+            return {"kind": "array", "elements": [
+                monitor_input(f"{expr}[{low + n}]", item, element, f"{prefix}_e{n}", index, indent)
+                for n, item in enumerate(value)]}
+        struct = sdefs.get(typ) or sdefs.get(typ.upper())
+        if struct:
+            return {"kind": "struct", "fields": {
+                name: monitor_input(expr + "." + name, item, struct[name], prefix + "_" + name, index, indent)
+                for name, item in value.items()}}
+        var = "TraceInIO_" + prefix + "_" + re.sub(r"[^A-Za-z0-9_]", "_", typ)
+        if var not in input_monitor_types:
+            input_monitor_types[var] = typ
+            declarations.insert(-1, f" {var} : ARRAY[0..{count - 1}] OF {typ};")
+        sample = f"PLC_PRG.{var}[{index}]"
+        body.append(f"{indent}{var}[{index}] := {expr};")
+        trace_expressions.append(sample)
+        return {"kind": "scalar", "expr": sample, "type": typ}
     step_index = 0
     steps = []
 
     for case_index, case in enumerate(cases):
         instance = "BenchUut" + str(case_index)
-        cin = case_inouts_map[case_index]
         for case_step, step in enumerate(case["steps"]):
+            cin = step_inouts_map[case_index][case_step]
             body.append(f" {step_index}:")
             step_map = {
                 "step_index": step_index,
@@ -467,17 +506,14 @@ def build_program(task: dict, cases: list[dict] | None = None) -> dict:
             indent = "   "
             if is_timed:
                 step_dt = step.get("dt_ms", 0)
-                body.append(f"  IF BenchStep = 0 OR (TIME() - BenchLastTime >= UDINT_TO_TIME({step_dt})) THEN")
-                if step_index == 0:
-                    body.append("   TraceDt[0] := 0;")
-                else:
-                    body.append(f"   TraceDt[{step_index}] := TIME_TO_UDINT(TIME() - BenchLastTime);")
-                body.append("   BenchLastTime := TIME();")
+                body.append(f"  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME({step_dt}) THEN")
+                body.append(f"   TraceDt[{step_index}] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);")
+                body.append("   BenchLastTime := BenchCurrentTime;")
                 trace_expressions.append(f"PLC_PRG.TraceDt[{step_index}]")
 
             # 1. Caller storage initialization
             for vname, binfo in cin.items():
-                b_var = f"Binding_{case_index}_{vname}"
+                b_var = binfo["storage"]
                 if binfo["retain_storage"]:
                     if case_step == 0 and binfo["initial"] is not None:
                         inits = generate_assignments(b_var, binfo["initial"], binfo["type"], task)
@@ -536,11 +572,16 @@ def build_program(task: dict, cases: list[dict] | None = None) -> dict:
             for field in in_outs:
                 vname = field["name"]
                 if vname in step["inputs"]:
-                    step_map["inputs"][vname] = {"kind": "raw", "value": step["inputs"][vname]}
+                    value = step["inputs"][vname]
+                    if isinstance(value, dict) and "$binding" in value:
+                        step_map["inputs"][vname] = {"kind": "raw", "value": value}
+                    else:
+                        step_map["inputs"][vname] = monitor_input(
+                            cin[vname]["storage"], value, cin[vname]["type"], vname, step_index, indent)
 
             # 4. Invoke FB
             if cin:
-                args = ", ".join(f"{vname} := Binding_{case_index}_{vname}" for vname in cin)
+                args = ", ".join(f"{vname} := {info['storage']}" for vname, info in cin.items())
                 body.append(f"{indent}{instance}({args});")
             else:
                 body.append(f"{indent}{instance}();")
@@ -585,7 +626,7 @@ def build_program(task: dict, cases: list[dict] | None = None) -> dict:
                 if fname == "item":
                     itype = cin["item"]["type"]
                     tr_var = f"TraceOut_item_{itype}"
-                    body.append(f"{indent}{tr_var}[{step_index}] := Binding_{case_index}_item;")
+                    body.append(f"{indent}{tr_var}[{step_index}] := {cin['item']['storage']};")
                     expr = f"PLC_PRG.{tr_var}[{step_index}]"
                     step_map["outputs"]["item"] = {"kind": "scalar", "expr": expr, "type": itype}
                     trace_expressions.append(expr)
@@ -596,7 +637,7 @@ def build_program(task: dict, cases: list[dict] | None = None) -> dict:
                         for sfname, sftype in sdefs["ST_Pump"].items():
                             tr_var = f"TraceOut_pumpGroup_{idx}_{sfname}"
                             body.append(
-                                f"{indent}{tr_var}[{step_index}] := Binding_{case_index}_pumpGroup[{idx}].{sfname};"
+                                f"{indent}{tr_var}[{step_index}] := {cin['pumpGroup']['storage']}[{idx}].{sfname};"
                             )
                             expr = f"PLC_PRG.{tr_var}[{step_index}]"
                             s_map[sfname] = {"kind": "scalar", "expr": expr, "type": sftype}
@@ -610,7 +651,7 @@ def build_program(task: dict, cases: list[dict] | None = None) -> dict:
                     for idx in range(1, cur_len + 1):
                         tr_var = f"TraceOut_analogValues_{idx}"
                         body.append(
-                            f"{indent}{tr_var}[{step_index}] := Binding_{case_index}_analogValues[{a_low + idx - 1}];"
+                            f"{indent}{tr_var}[{step_index}] := {cin['analogValues']['storage']}[{a_low + idx - 1}];"
                         )
                         expr = f"PLC_PRG.{tr_var}[{step_index}]"
                         elements.append({"kind": "scalar", "expr": expr, "type": "INT"})
@@ -625,7 +666,7 @@ def build_program(task: dict, cases: list[dict] | None = None) -> dict:
                         for sfname, sftype in sdefs["ST_AnalogChannel"].items():
                             tr_var = f"TraceOut_channels_{idx}_{sfname}"
                             body.append(
-                                f"{indent}{tr_var}[{step_index}] := Binding_{case_index}_channels[{c_low + idx - 1}].{sfname};"
+                                f"{indent}{tr_var}[{step_index}] := {cin['channels']['storage']}[{c_low + idx - 1}].{sfname};"
                             )
                             expr = f"PLC_PRG.{tr_var}[{step_index}]"
                             s_map[sfname] = {"kind": "scalar", "expr": expr, "type": sftype}
@@ -642,7 +683,7 @@ def build_program(task: dict, cases: list[dict] | None = None) -> dict:
                         for sfname, sftype in sdefs["ST_Recipe"].items():
                             tr_var = f"TraceOut_recipe_{idx}_{sfname}"
                             body.append(
-                                f"{indent}{tr_var}[{step_index}] := Binding_{case_index}_recipe[{idx}].{sfname};"
+                                f"{indent}{tr_var}[{step_index}] := {cin['recipe']['storage']}[{idx}].{sfname};"
                             )
                             expr = f"PLC_PRG.{tr_var}[{step_index}]"
                             s_map[sfname] = {"kind": "scalar", "expr": expr, "type": sftype}
@@ -663,6 +704,8 @@ def build_program(task: dict, cases: list[dict] | None = None) -> dict:
             step_index += 1
 
     body.append(" END_CASE;")
+    if is_timed:
+        body.append(" END_IF;")
     if not is_timed:
         body.append(" BenchStep := BenchStep + 1;")
     body += [f" IF BenchStep >= {count} THEN BenchDone := TRUE; END_IF;", "END_IF;"]
@@ -679,12 +722,28 @@ def build_program(task: dict, cases: list[dict] | None = None) -> dict:
     }
 
 
+def partition_wall_time_cases(cases, task_timeout):
+    """Keep physical scan intervals intact; never fast-forward unvalidated clocks."""
+    limit_ms = max(1, task_timeout - 90) * 1000
+    runnable, unsupported = [], []
+    for case in cases:
+        requested_ms = sum(step.get("dt_ms", 0) for step in case["steps"])
+        if requested_ms > limit_ms:
+            unsupported.append({"case_id": case["id"], "requested_wall_ms": requested_ms,
+                                "reason": "Exceeds physical execution budget; validated virtual clock is unavailable"})
+        else:
+            runnable.append(case)
+    return runnable, unsupported
+
+
 def run_functional(
     task: dict, candidate: dict | str, source_hash: str, workspace: Path, settings, cases: list[dict] | None = None
 ) -> dict:
     """Return real simulation trace/evidence. Unsupported tasks remain UNVERIFIED."""
     if cases is None:
         cases = task["tests"]
+    requested_cases = cases
+    cases, unsupported_wall_cases = partition_wall_time_cases(cases, settings.task_timeout)
     workspace = Path(workspace).resolve()
     workspace.mkdir(parents=True, exist_ok=False)
     started = time.monotonic()
@@ -698,10 +757,15 @@ def run_functional(
         "physical_connection_allowed": False,
         "trace_path": None,
         "reason": None,
+        "unsupported_wall_time_cases": unsupported_wall_cases,
     }
     reasons = eligibility(task, cases=cases)
     if reasons:
         result["reason"] = "; ".join(reasons)
+        write_json(workspace / "simulation_result.json", result)
+        return result
+    if not cases:
+        result.update(status="UNSUPPORTED_TIMING", reason="No cases fit real wall-time budget; no virtual clock substitution made")
         write_json(workspace / "simulation_result.json", result)
         return result
     candidate = normalize_candidate(candidate)
@@ -769,25 +833,8 @@ def run_functional(
     for key in ("PLC_LLM_API_KEY", "OPENAI_API_KEY", "PLC_API_CONFIG"):
         env.pop(key, None)
     try:
-        lock_path = ROOT / ".local/compiler.lock"
-        lock_path.parent.mkdir(exist_ok=True)
-        with lock_path.open("a+b") as lock:
-            if os.name == "nt":
-                import msvcrt
-
-                if lock.tell() == 0:
-                    lock.write(b"0")
-                    lock.flush()
-                lock.seek(0)
-                deadline = time.monotonic() + 900
-                while True:
-                    try:
-                        msvcrt.locking(lock.fileno(), msvcrt.LK_NBLCK, 1)
-                        break
-                    except OSError:
-                        if time.monotonic() >= deadline:
-                            raise TimeoutError("Shared CODESYS lock wait exceeded 900 seconds")
-                        time.sleep(0.25)
+        with compiler_lock(timeout=900) as lock_wait:
+            result["codesys_lock_wait_seconds"] = lock_wait
             with (exec_ws / "stdout.log").open("wb") as out, (exec_ws / "stderr.log").open("wb") as err:
                 proc = subprocess.Popen(
                     codesys_command(command),
@@ -797,7 +844,10 @@ def run_functional(
                     creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
                 )
                 try:
-                    result["process_exit_code"] = proc.wait(timeout=max(180, settings.compiler_timeout))
+                    expected_seconds = sum(s.get("dt_ms", 0) for s in program["steps"]) / 1000.0
+                    process_timeout = max(180, settings.compiler_timeout, expected_seconds * 1.5 + 90)
+                    result["process_timeout_seconds"] = process_timeout
+                    result["process_exit_code"] = proc.wait(timeout=process_timeout)
                 except subprocess.TimeoutExpired:
                     _kill_tree(proc)
                     result["status"], result["reason"] = "TIMEOUT", "CODESYS simulation process timeout"
@@ -831,9 +881,9 @@ def run_functional(
                             step_data["dt_ms"] = row["dt_ms"]
                         cases_dict[meta["case_id"]].append(step_data)
                     task_eval = task
-                    if cases != task.get("tests"):
+                    if requested_cases != task.get("tests"):
                         task_eval = dict(task)
-                        task_eval["tests"] = cases
+                        task_eval["tests"] = requested_cases
                     trace = {
                         "task_id": task["id"],
                         "task_sha256": digest(task_eval),
@@ -851,7 +901,12 @@ def run_functional(
                         sync_ascii_artifacts(exec_ws, workspace)
                     from .functional import evaluate_trace
 
-                    evaluated = evaluate_trace(task_eval, source_hash, trace, evidence_root=workspace)
+                    evaluated = evaluate_trace(task_eval, source_hash, trace, evidence_root=workspace, allow_timing_gaps=True)
+                    if unsupported_wall_cases:
+                        evaluated["unsupported_wall_time_cases"] = unsupported_wall_cases
+                        if evaluated["status"] == "UNVERIFIED":
+                            evaluated["status"] = "PARTIAL"
+                        evaluated["reason"] = "Long-duration fixed cases not executed; real wall-time semantics preserved"
                     result["status"] = evaluated["status"]
                     result["functional"] = evaluated
                     result["trace_path"] = str(workspace / "trace.json")

@@ -351,7 +351,7 @@ def run_harness(
                 return result
             if not settings.max_llm_calls or result["llm_calls"] < settings.max_llm_calls:
                 planner_prompt = (
-                    "You are a PLC control software architect. Analyze the requirements and produce an architecture plan in JSON format with keys:\n"
+                    "You are a PLC control software architect. Produce a concise architecture plan (at most 2000 words). Do not enumerate exhaustive traces. Return complete JSON with keys:\n"
                     "- state_machine: list of states and transitions\n"
                     "- timer_plan: timers required, PT durations, reset conditions\n"
                     "- priorities: safety and operational priorities\n"
@@ -367,13 +367,18 @@ def run_harness(
                     },
                     {"role": "user", "content": planner_prompt},
                 ]
-                reply = client.respond(
-                    model,
-                    planner_messages,
-                    workspace / "llm_planner",
-                    max_tokens=settings.output_limit("planner"),
-                    timeout=remaining_time(),
-                )
+                try:
+                    reply = client.respond(
+                        model, planner_messages, workspace / "llm_planner",
+                        max_tokens=settings.output_limit("planner"), timeout=remaining_time(),
+                    )
+                except ProviderError as exc:
+                    # An optional plan must not consume the entire synthesis run.
+                    # Do not feed truncated JSON to the coder or retry invisibly.
+                    if "incomplete" not in str(exc) or "length" not in str(exc):
+                        raise
+                    result["planner_warning"] = str(exc)
+                    reply = {"text": "{}"}
                 result["llm_calls"] += 1
                 if reply.get("usage"):
                     result["usage"].append(reply["usage"])
@@ -661,6 +666,9 @@ def run_harness(
                     break
                 cegar_hashes.add(new_hash)
 
+                if settings.max_repairs >= 0 and result["compiler_call_count"] >= settings.max_repairs + 1:
+                    attempt_ledger.append("Compile safety limit reached before CEGAR repair")
+                    break
                 comp_cegar = backend.compile(task, new_candidate, workspace / f"compile_cegar_{ver_idx:02d}")
                 result["tool_call_count"] += 1
                 result["compiler_call_count"] += 1
@@ -902,6 +910,9 @@ def run_harness(
                     candidate = best_candidate
                     break
 
+                if settings.max_repairs >= 0 and result["compiler_call_count"] >= settings.max_repairs + 1:
+                    candidate = best_candidate
+                    break
                 compile_ws = workspace / f"compile_sim_{sim_attempt:02d}"
                 comp_res = backend.compile(task, new_candidate, compile_ws)
                 result["tool_call_count"] += 1
@@ -951,6 +962,16 @@ def run_harness(
             "Invalid model output: " + str(exc),
         )
     finally:
+        # Successful and failed provider responses are both billable. The client
+        # journal/terminal responses are the source of truth, not return count.
+        if hasattr(client, "request_count"):
+            result["llm_calls"] = client.request_count
+            result["accounted_tokens"] = client.total_tokens
+            result["usage"] = []
+            for response_path in sorted(workspace.glob("llm_*/response.json")):
+                terminal = json.loads(response_path.read_text(encoding="utf-8-sig"))
+                if terminal.get("usage"):
+                    result["usage"].append(terminal["usage"])
         result["elapsed_seconds"] = time.monotonic() - started
         result["finished_utc"] = now()
         if result.get("final_candidate") is not None:

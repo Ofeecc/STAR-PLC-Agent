@@ -22,6 +22,7 @@ from .model_checker import (
     check_model,
     find_nusmv,
     find_nuxmv,
+    resolve_model_checker,
 )
 
 
@@ -625,6 +626,7 @@ class _STParser:
                             raise UnsupportedSTConstructError("Expected integer enum initializer")
                         next_val = -self.advance().value if neg else self.advance().value
                     self.enums[ev.upper()] = next_val
+                    self.enums[f"{type_key}.{ev.upper()}"] = next_val
                     enum_names.append(ev)
                     next_val += 1
                     if self.match_punct(","):
@@ -663,6 +665,10 @@ class _STParser:
         elif self.match_op("+"):
             self.advance()
         t = self.peek()
+        if t.kind == "ID" and t.value.upper() in self.enums:
+            self.advance()
+            value = self.enums[t.value.upper()]
+            return -value if neg else value
         if t.kind != "INT":
             raise UnsupportedSTConstructError(f"Expected integer bound, got {t.raw!r}")
         self.advance()
@@ -726,6 +732,23 @@ class _STParser:
         while self.match_kw("TYPE"):
             self._parse_type_block()
 
+        # Resolve qualified enum literals using their declared namespace, not
+        # arbitrary field references. CASE labels and initializers then share
+        # the same enum value semantics as ordinary expressions.
+        resolved_tokens = self.tokens[:self.pos]
+        i = self.pos
+        while i < len(self.tokens):
+            t = self.tokens[i]
+            if i + 2 < len(self.tokens) and t.kind == "ID" and self.tokens[i + 1].raw == "." and self.tokens[i + 2].kind == "ID":
+                key = f"{t.value}.{self.tokens[i + 2].value}".upper()
+                if key in self.enums:
+                    resolved_tokens.append(Token("INT", self.enums[key], key, t.pos))
+                    i += 3
+                    continue
+            resolved_tokens.append(t)
+            i += 1
+        self.tokens = resolved_tokens
+
         fb_name = "FB_Task"
         decls: list[STVarDecl] = []
         if self.match_kw("FUNCTION_BLOCK"):
@@ -758,6 +781,13 @@ class _STParser:
                     self.expect_punct(";")
                     for vn in var_names:
                         decls.append(STVarDecl(name=vn, section=section, st_type=st_type, init_expr=init_expr))
+                        if section == "CONSTANT" and init_expr is not None:
+                            try:
+                                value = _eval_const_expr(init_expr, self.enums)
+                            except UnsupportedSTConstructError:
+                                continue
+                            if isinstance(value, int) and not isinstance(value, bool):
+                                self.enums[vn.upper()] = value
                 self.expect_kw("END_VAR")
 
         stmts = self.parse_stmt_list(stop_kws=("END_FUNCTION_BLOCK",))
@@ -2381,6 +2411,10 @@ class _STToSMVCompiler:
             lc = self._coerce(l, target)
             rc = self._coerce(r, target)
             if op == "MOD":
+                if self.force_smt_integers and not target.startswith("word["):
+                    raise UnsupportedSTConstructError(
+                        "Integer MOD is unsupported by the nuXmv SMT backend; exact bit-vector lowering is required"
+                    )
                 return SMVExpr(target, f"(({lc.code}) mod ({rc.code}))")
             return SMVExpr(target, f"(({lc.code}) {op} ({rc.code}))")
 
@@ -2600,14 +2634,22 @@ def _detect_mapped_inputs_and_outputs(
         if not name:
             continue
         if direction == "INPUT":
-            if name in obs.var_types:
-                mapped_inputs[name.lower()] = (_var_type_to_sort(obs.var_types[name]), name)
+            # Explicit bindings to the packaged observers; never infer a match
+            # merely because there is an unused variable of the same type.
+            obs_name = "val" if task.get("id") in ("PUB002", "PUB009") and name == "value" else name
+            if obs_name in obs.var_types:
+                mapped_inputs[name.lower()] = (_var_type_to_sort(obs.var_types[obs_name]), obs_name)
             elif name in obs.define_map:
                 mapped_inputs[name.lower()] = ("int", name)
         elif direction == "OUTPUT":
             expected_outputs.add(name)
-            if name in obs.define_map:
-                output_bindings[name] = name
+            output_aliases = {'average': 'post_avg', 'windowSizeReached': 'post_reached',
+                              'error': 'out_error', 'status': 'out_status'} if task.get('id') == 'PUB009' else {}
+            obs_output = output_aliases.get(name, name)
+            if obs_output in obs.define_map:
+                output_bindings[obs_output] = name
+                expected_outputs.discard(name)
+                expected_outputs.add(obs_output)
         elif direction == "IN_OUT":
             decl = program.decls_by_lower.get(name.lower())
             if (
@@ -3166,6 +3208,15 @@ def compile_st_to_smv(
     obs = _parse_observer_smv(observer_smv_path.read_text(encoding="utf-8"))
     mapped_inputs, output_bindings, expected_outputs = _detect_mapped_inputs_and_outputs(program, task, obs)
 
+    for decl in program.decls:
+        if decl.section == "INPUT":
+            key = decl.name.lower()
+            if key not in mapped_inputs:
+                raise UnsupportedSTConstructError(f"Candidate input {decl.name} has no observer binding")
+            expected_sort = _STToSMVCompiler(program, force_smt_integers=obs.uses_smt)._smv_type_str(decl.st_type)[1]
+            if mapped_inputs[key][0] != expected_sort:
+                raise UnsupportedSTConstructError(f"Candidate input {decl.name} and observer binding have incompatible types")
+
     missing_outs = [o for o in expected_outputs if o not in output_bindings]
     if missing_outs:
         raise UnsupportedSTConstructError(
@@ -3254,12 +3305,23 @@ def compile_st_to_smv(
     # Rewritten DEFINEs: replace observer output DEFINEs with cand_out_<suffix>,
     # keeping non-output observer helper DEFINEs (nextMode, qRunning, clk_now, etc.).
     replaced_obs_defs: set[str] = set()
+    observer_has_words = bool(re.search(
+        r"(?:unsigned|signed)\s+word|0[us][bdho]\d+_|[us]wconst",
+        observer_smv_path.read_text(encoding="utf-8"), re.I,
+    ))
+
+    def observer_output_code(suffix: str) -> str:
+        expr = emitted_post[suffix.lower()]
+        # Preserve candidate bit-vector arithmetic; bridge its unsigned value
+        # only at a numeric observer boundary. Word observers keep word sorts.
+        return f"toint({expr.code})" if expr.sort.startswith("word[") and not observer_has_words else expr.code
+
     for dstmt in obs.define_stmts:
         if ":=" in dstmt:
             lhs = dstmt.split(":=", 1)[0].strip()
             if lhs in output_bindings:
                 cand_suffix = output_bindings[lhs]
-                cand_out_expr = emitted_post[cand_suffix.lower()].code
+                cand_out_expr = observer_output_code(cand_suffix)
                 lines.append(f"  {lhs} := {cand_out_expr};")
                 replaced_obs_defs.add(lhs)
                 continue
@@ -3268,7 +3330,7 @@ def compile_st_to_smv(
     lines.extend(compiled["define_clauses"])
     for obs_out, cand_suffix in output_bindings.items():
         if obs_out not in replaced_obs_defs:
-            cand_out_expr = emitted_post[cand_suffix.lower()].code
+            cand_out_expr = observer_output_code(cand_suffix)
             lines.append(f"  {obs_out} := {cand_out_expr};")
 
     lines.append("")
@@ -3764,14 +3826,16 @@ def verify_candidate_st(
         return result
 
     # 2. Check NuSMV/nuXmv availability before launching
-    if not executable and not (find_nusmv() or find_nuxmv()):
+    try:
+        resolve_model_checker(executable, tool, needs_smt=bool(compiled["uses_smt"]))
+    except (ValueError, OSError) as exc:
         result = {
             "task_id": task_id,
             "verifier": "self_developed_st_to_smv",
             "status": "TOOL_ERROR",
             "verified": False,
             "candidate_st_verified": False,
-            "reason": "Neither NuSMV nor nuXmv executable is available locally",
+            "reason": f"Model checker unavailable for this encoding: {exc}",
             "smv_path": str(smv_path),
             "total_properties": compiled["expected_spec_count"],
             "passed_properties": 0,
@@ -3902,10 +3966,21 @@ def verify_candidate_st(
         )
     )
 
+    requested_ids = {str(p['id']) for p in task.get('ltl', []) if isinstance(p, dict) and p.get('id')}
+    checked_ids = {str(p['id']) for p in prop_results if p.get('id') in requested_ids}
+    unproven_ids = sorted(requested_ids - checked_ids)
+    real_abstraction = any(d.st_type.kind == 'REAL' for d in compiled['program'].decls)
     result = {
         "task_id": task_id,
         "verifier": "self_developed_st_to_smv",
         "standalone_mode": not use_observer_smv,
+        "specification_coverage": {
+            "requested_ids": sorted(requested_ids), "mapped_checked_ids": sorted(checked_ids),
+            "unproven_or_unmapped_ids": unproven_ids,
+            "status": "COMPLETE" if requested_ids and not unproven_ids else "INCOMPLETE_OR_UNMAPPED",
+        },
+        "modeling_scope": "MATHEMATICAL_REALS_NOT_IEEE754" if real_abstraction else "SUPPORTED_SYMBOLIC_ST_FRAGMENT",
+        "full_specification_verified": bool(verified and requested_ids and not unproven_ids and not real_abstraction),
         "status": status,
         "verified": verified,
         "candidate_st_verified": verified,

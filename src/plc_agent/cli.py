@@ -109,15 +109,21 @@ def require_compiler_preflight(cfg):
         verify_evidence(read_json(evidence), read_json(evidence.parent / "request.json"))
 
 
-def prepare_campaign(tasks):
+def prepare_campaign(tasks, condition_filter="all"):
     path = ROOT / "results/summary/campaign.json"
     if path.is_file():
         manifest = read_json(path)
         if manifest["dataset_sha256"] != digest(tasks):
             raise ValueError("Dataset changed: archive campaign manifest before preparing a new campaign")
+        if condition_filter != "all" and condition_filter not in {c["id"] for c in manifest["conditions"]}:
+            raise ValueError(f"Existing campaign does not include requested condition {condition_filter}")
         return manifest
     name = "campaign_" + now().replace(":", "").replace(".", "")
     conditions = read_json(ROOT / "configs/experiments.json")["conditions"]
+    if condition_filter != "all":
+        conditions = [c for c in conditions if c["id"] == condition_filter]
+        if not conditions:
+            raise ValueError(f"Unknown experiment condition {condition_filter}")
     manifest = {
         "id": name,
         "created_utc": now(),
@@ -185,12 +191,16 @@ def summarize():
     return result
 
 
-def probe_models(cfg, smoke=False):
+def probe_models(cfg, smoke=False, requested_models=None):
     client = ResponsesClient(cfg)
     catalog = client.models()
     write_json(ROOT / "results/raw/provider_model_catalog.json", catalog)
     identifiers = [m.get("id") for m in catalog.get("data", [])]
-    selected = sorted({c["model"] for c in read_json(ROOT / "configs/experiments.json")["conditions"]})
+    available_models = sorted({c["model"] for c in read_json(ROOT / "configs/experiments.json")["conditions"]})
+    selected = sorted(set(requested_models)) if requested_models else available_models
+    unknown_models = sorted(set(selected) - set(available_models))
+    if unknown_models:
+        raise ValueError(f"Requested model(s) not present in experiment config: {', '.join(unknown_models)}")
     results = {
         "observed_utc": now(),
         "catalog_ids": identifiers,
@@ -264,10 +274,13 @@ def main():
     parser.add_argument("--config", default=None, help="Config file; defaults to runtime.local.json, then runtime.json")
     parser.add_argument("--allow-model-api", action="store_true", help="Use only after user authorization for this run")
     sub = parser.add_subparsers(dest="command", required=True)
-    for cmd in ("doctor", "validate-dataset", "compiler-smoke", "prepare", "aggregate"):
+    for cmd in ("doctor", "validate-dataset", "compiler-smoke", "aggregate"):
         sub.add_parser(cmd)
+    prep = sub.add_parser("prepare")
+    prep.add_argument("--condition", default="all", help="Prepare only this configured condition or all conditions")
     probe = sub.add_parser("probe-models")
     probe.add_argument("--tool-smoke", action="store_true")
+    probe.add_argument("--model", action="append", default=None, help="Probe only this configured model (repeatable)")
     run = sub.add_parser("run")
     run.add_argument("--condition", default="all", help="Condition ID or 'all'")
     run.add_argument("--task", "--task-id", dest="task", help="Optional single task ID")
@@ -380,14 +393,14 @@ def main():
                 result["public_coverage"] = public_coverage(tasks, read_json(source))
             write_json(ROOT / "results/summary/dataset_validation.json", result)
         elif args.command == "probe-models":
-            result = probe_models(cfg, args.tool_smoke)
+            result = probe_models(cfg, args.tool_smoke, args.model)
         elif args.command == "compiler-smoke":
             result = compiler_smoke(cfg)
         elif args.command == "prepare":
             report = validate(tasks)
             if report["errors"] or report["by_kind"].get("public") != 20 or report["by_kind"].get("self_built", 0) < 10:
                 raise ValueError("Dataset validation must pass with all20 official and >=10 self tasks")
-            result = prepare_campaign(tasks)
+            result = prepare_campaign(tasks, args.condition)
             result = {"campaign": result["id"], "planned_runs": len(result["records"])}
         elif args.command == "aggregate":
             result = summarize()
@@ -689,7 +702,7 @@ def main():
                 raise ValueError("API key missing")
             cap = read_json(ROOT / "results/summary/model_capabilities.json")
             ready = {x["model"] for x in cap["model_tests"] if x["tool_roundtrip"]}
-            manifest = prepare_campaign(tasks)
+            manifest = prepare_campaign(tasks, args.condition)
             selected_conditions = [c for c in manifest["conditions"] if args.condition in ("all", c["id"])]
             outcomes = []
             for condition in selected_conditions:

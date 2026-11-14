@@ -45,6 +45,25 @@ class STVerifierTests(unittest.TestCase):
         if not (find_nusmv() or find_nuxmv()):
             self.skipTest("Neither NuSMV nor nuXmv is available locally")
 
+    def test_pub002_input_alias_and_unmapped_input_rejection(self):
+        candidate = {
+            "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT value : DWORD; END_VAR\n"
+                "VAR_OUTPUT hasChanged : BOOL; hasRisingEdges : BOOL; risingBits : DWORD; "
+                "noOfRisingBits : USINT; hasFallingEdges : BOOL; fallingBits : DWORD; "
+                "noOfFallingBits : USINT; END_VAR\nVAR prev : DWORD := DWORD#0; END_VAR",
+            "implementation": "risingBits := value AND NOT prev; fallingBits := prev AND NOT value; "
+                "hasChanged := value <> prev; hasRisingEdges := risingBits <> DWORD#0; "
+                "hasFallingEdges := fallingBits <> DWORD#0; noOfRisingBits := 0; "
+                "noOfFallingBits := 0; prev := value;",
+        }
+        smv = compile_st_to_smv(candidate, self.tasks["PUB002"])["smv_text"]
+        self.assertNotIn("cand_in_value", smv)
+        self.assertIn("cand_post_prev := val;", smv)
+        other = read_json(ROOT / "codesys/examples/SELF001.json")
+        other["declaration"] += "\nVAR_INPUT extra : BOOL; END_VAR\n"
+        with self.assertRaisesRegex(UnsupportedSTConstructError, "no observer binding"):
+            compile_st_to_smv(other, self.tasks["SELF001"])
+
     def test_verify_candidate_st_passes_reference_and_pilot_examples(self):
         self._require_checkers()
         for tid in ("SELF001", "SELF005", "PUB006", "PUB007"):
