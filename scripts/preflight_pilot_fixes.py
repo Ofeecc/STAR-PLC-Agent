@@ -1,12 +1,13 @@
 """Offline rechecks on retained candidates; never counted as new agent runs."""
 from dataclasses import asdict
-from plc_agent.common import ROOT, read_json, write_json, digest
-from plc_agent.dataset import load_tasks
-from plc_agent.config import Settings
+
+from plc_agent.common import ROOT, digest, read_json, write_json
 from plc_agent.compiler import compile_st
+from plc_agent.config import Settings
+from plc_agent.dataset import load_tasks
 from plc_agent.formal_verify import verify_candidate
-from plc_agent.simulation import run_functional
 from plc_agent.model_checker import find_nusmv, find_nuxmv
+from plc_agent.simulation import run_functional
 
 cfg = Settings.load(load_api=False)
 tasks = {t['id']: t for t in load_tasks()}

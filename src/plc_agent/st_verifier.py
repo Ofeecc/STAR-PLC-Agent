@@ -20,9 +20,13 @@ from .model_checker import (
     LTL_RESULTS_MARKER,
     SBMC_START_MARKER,
     check_model,
-    find_nusmv,
-    find_nuxmv,
     resolve_model_checker,
+)
+from .model_checker import (
+    find_nusmv as find_nusmv,
+)
+from .model_checker import (
+    find_nuxmv as find_nuxmv,
 )
 
 
@@ -735,11 +739,16 @@ class _STParser:
         # Resolve qualified enum literals using their declared namespace, not
         # arbitrary field references. CASE labels and initializers then share
         # the same enum value semantics as ordinary expressions.
-        resolved_tokens = self.tokens[:self.pos]
+        resolved_tokens = self.tokens[: self.pos]
         i = self.pos
         while i < len(self.tokens):
             t = self.tokens[i]
-            if i + 2 < len(self.tokens) and t.kind == "ID" and self.tokens[i + 1].raw == "." and self.tokens[i + 2].kind == "ID":
+            if (
+                i + 2 < len(self.tokens)
+                and t.kind == "ID"
+                and self.tokens[i + 1].raw == "."
+                and self.tokens[i + 2].kind == "ID"
+            ):
                 key = f"{t.value}.{self.tokens[i + 2].value}".upper()
                 if key in self.enums:
                     resolved_tokens.append(Token("INT", self.enums[key], key, t.pos))
@@ -2643,8 +2652,16 @@ def _detect_mapped_inputs_and_outputs(
                 mapped_inputs[name.lower()] = ("int", name)
         elif direction == "OUTPUT":
             expected_outputs.add(name)
-            output_aliases = {'average': 'post_avg', 'windowSizeReached': 'post_reached',
-                              'error': 'out_error', 'status': 'out_status'} if task.get('id') == 'PUB009' else {}
+            output_aliases = (
+                {
+                    "average": "post_avg",
+                    "windowSizeReached": "post_reached",
+                    "error": "out_error",
+                    "status": "out_status",
+                }
+                if task.get("id") == "PUB009"
+                else {}
+            )
             obs_output = output_aliases.get(name, name)
             if obs_output in obs.define_map:
                 output_bindings[obs_output] = name
@@ -2826,24 +2843,548 @@ _SMV_EXPR_OPERATORS = frozenset(
 )
 
 
-def _translate_st_ltl_to_smv(expr_text: str) -> str:
-    """Translate lightweight ST/LTL boolean connectives into SMV syntax."""
+_ST_WORD_TYPE_PREFIX_BITS: dict[str, int] = {
+    "BYTE": 8,
+    "WORD": 16,
+    "DWORD": 32,
+    "LWORD": 64,
+}
+_ST_INT_TYPE_PREFIXES: frozenset[str] = frozenset({"SINT", "USINT", "INT", "UINT", "DINT", "UDINT", "LINT", "ULINT"})
+_SMV_UNARY_TEMPORAL: frozenset[str] = frozenset({"G", "F", "X", "H", "O", "Y", "Z"})
+_SMV_BINARY_TEMPORAL: frozenset[str] = frozenset({"U", "V", "W", "S", "T"})
+_SMV_SCALAR_FUNCS: frozenset[str] = frozenset(
+    {"min", "max", "abs", "floor", "toint", "toreal", "count", "uwconst", "swconst"}
+)
+_SMV_TOKEN_SPEC: list[tuple[str, str]] = [
+    ("SPACE", r"\s+"),
+    ("WORD_CONST", r"0[su][dhboDHBO]\d*_[0-9A-Fa-f_]+"),
+    ("TYPED_LIT", r"[A-Za-z_][A-Za-z0-9_]*#[+-]?(?:\d+#)?[0-9A-Za-z_]+"),
+    ("RADIX_LIT", r"\d+#[0-9A-Fa-f_]+"),
+    ("FLOAT", r"\d+\.\d+(?:[eE][+-]?\d+)?"),
+    ("INT", r"\d+"),
+    ("OP", r"<->|->|<=|>=|!=|<>|<<|>>|&&|\|\||==|[=<>!&|+\-*/?:,(){}]"),
+    ("IDENT", r"[A-Za-z_][A-Za-z0-9_]*"),
+    ("BAD", r"."),
+]
+_SMV_TOKEN_RE = re.compile("|".join(f"(?P<{name}>{pat})" for name, pat in _SMV_TOKEN_SPEC))
+
+
+class _SMVExprError(ValueError):
+    """Internal error when lowering or validating a standalone SMV/LTL expression."""
+
+
+@dataclass
+class _ParsedSMVExpr:
+    text: str
+    sort: str  # "bool", "int", "real", "word[N]", "int_literal", "set", "unknown"
+    int_val: int | None = None
+    hex_digits: str | None = None
+    contains_temporal: bool = False
+    contains_next: bool = False
+
+
+def _parse_st_typed_or_radix_literal(kind: str, raw: str) -> tuple[str, str, int, str | None]:
+    """Return (render_text, sort, int_val, hex_digits) for ST radix or typed literal."""
+    if kind == "RADIX_LIT":
+        base_str, digits = raw.split("#", 1)
+        base = int(base_str)
+        clean_digits = digits.replace("_", "")
+        if base not in (2, 8, 10, 16) or not clean_digits:
+            raise _SMVExprError(f"Unsupported radix literal: {raw}")
+        val = int(clean_digits, base)
+        return str(val), "int_literal", val, (clean_digits.upper() if base == 16 else None)
+
+    prefix, rest = raw.split("#", 1)
+    upper_prefix = prefix.upper()
+    if upper_prefix in _ST_WORD_TYPE_PREFIX_BITS:
+        bits = _ST_WORD_TYPE_PREFIX_BITS[upper_prefix]
+        if "#" in rest:
+            base_str, digits = rest.split("#", 1)
+            base = int(base_str)
+            clean_digits = digits.replace("_", "")
+            val = int(clean_digits, base)
+            hex_digits = clean_digits.upper() if base == 16 else None
+        else:
+            clean_digits = rest.replace("_", "")
+            val = int(clean_digits, 10)
+            hex_digits = None
+        if val < 0 or val >= (1 << bits):
+            raise _SMVExprError(f"Word literal out of {bits}-bit range: {raw}")
+        rendered = f"0uh{bits}_{hex_digits}" if hex_digits else f"0ud{bits}_{val}"
+        return rendered, f"word[{bits}]", val, hex_digits
+
+    if upper_prefix in _ST_INT_TYPE_PREFIXES:
+        sign = -1 if rest.startswith("-") else 1
+        unsigned = rest[1:] if rest[:1] in ("+", "-") else rest
+        if "#" in unsigned:
+            base_str, digits = unsigned.split("#", 1)
+            val = sign * int(digits.replace("_", ""), int(base_str))
+        else:
+            val = sign * int(unsigned.replace("_", ""), 10)
+        return str(val), "int_literal", val, None
+
+    raise _SMVExprError(f"Unsupported typed ST literal: {raw}")
+
+
+def _coerce_literal_to_word(node: _ParsedSMVExpr, target_word_sort: str) -> _ParsedSMVExpr:
+    """Promote an untyped integer or ST radix literal to SMV ``word[W]`` notation."""
+    if node.sort != "int_literal" or node.int_val is None:
+        return node
+    bits = int(target_word_sort[5:-1])
+    if node.int_val < 0 or node.int_val >= (1 << bits):
+        raise _SMVExprError(f"Integer literal {node.int_val} incompatible with {target_word_sort}")
+    rendered = f"0uh{bits}_{node.hex_digits}" if node.hex_digits else f"0ud{bits}_{node.int_val}"
+    return _ParsedSMVExpr(
+        text=rendered,
+        sort=target_word_sort,
+        contains_temporal=node.contains_temporal,
+        contains_next=node.contains_next,
+    )
+
+
+def _align_binary_word_operands(left: _ParsedSMVExpr, right: _ParsedSMVExpr) -> tuple[_ParsedSMVExpr, _ParsedSMVExpr]:
+    """Promote untyped integer literal paired with ``word[W]`` and validate word compatibility."""
+    l_word = left.sort.startswith("word[")
+    r_word = right.sort.startswith("word[")
+    if l_word and not r_word:
+        if right.sort == "int_literal":
+            right = _coerce_literal_to_word(right, left.sort)
+        elif right.sort in ("bool", "int", "subrange", "real"):
+            raise _SMVExprError(f"Incompatible types {left.sort} and {right.sort}")
+    elif r_word and not l_word:
+        if left.sort == "int_literal":
+            left = _coerce_literal_to_word(left, right.sort)
+        elif left.sort in ("bool", "int", "subrange", "real"):
+            raise _SMVExprError(f"Incompatible types {left.sort} and {right.sort}")
+    elif l_word and r_word and left.sort != right.sort:
+        raise _SMVExprError(f"Mismatched word widths {left.sort} and {right.sort}")
+    return left, right
+
+
+class _SMVExprParser:
+    """Minimal NuSMV/nuXmv LTL & expression parser for normalization and validation."""
+
+    def __init__(self, text: str, symbol_sorts: dict[str, str] | None = None) -> None:
+        self.tokens: list[tuple[str, str]] = []
+        for match in _SMV_TOKEN_RE.finditer(text):
+            kind = match.lastgroup or "BAD"
+            val = match.group()
+            if kind == "SPACE":
+                continue
+            if kind == "BAD":
+                raise _SMVExprError(f"Unexpected character in SMV expression: {val!r}")
+            self.tokens.append((kind, val))
+        self.pos = 0
+        self.symbol_sorts = dict(symbol_sorts or {})
+        self.symbol_sorts_lower = {k.lower(): v for k, v in self.symbol_sorts.items()}
+
+    def peek(self) -> tuple[str, str] | None:
+        return self.tokens[self.pos] if self.pos < len(self.tokens) else None
+
+    def consume(self) -> tuple[str, str]:
+        tok = self.tokens[self.pos]
+        self.pos += 1
+        return tok
+
+    def parse(self) -> _ParsedSMVExpr:
+        if not self.tokens:
+            raise _SMVExprError("Empty expression")
+        node = self._parse_equiv()
+        if self.pos != len(self.tokens):
+            raise _SMVExprError(f"Unexpected trailing token {self.tokens[self.pos]!r}")
+        return node
+
+    def _parse_equiv(self) -> _ParsedSMVExpr:
+        left = self._parse_implies()
+        while (tok := self.peek()) is not None and tok == ("OP", "<->"):
+            self.consume()
+            right = self._parse_implies()
+            left = _ParsedSMVExpr(
+                text=f"{left.text} <-> {right.text}",
+                sort="bool",
+                contains_temporal=left.contains_temporal or right.contains_temporal,
+                contains_next=left.contains_next or right.contains_next,
+            )
+        return left
+
+    def _parse_implies(self) -> _ParsedSMVExpr:
+        left = self._parse_temporal_bin()
+        if (tok := self.peek()) is not None and tok == ("OP", "->"):
+            self.consume()
+            right = self._parse_implies()
+            return _ParsedSMVExpr(
+                text=f"{left.text} -> {right.text}",
+                sort="bool",
+                contains_temporal=left.contains_temporal or right.contains_temporal,
+                contains_next=left.contains_next or right.contains_next,
+            )
+        return left
+
+    def _parse_temporal_bin(self) -> _ParsedSMVExpr:
+        left = self._parse_ternary()
+        while (tok := self.peek()) is not None and tok[0] == "IDENT" and tok[1] in _SMV_BINARY_TEMPORAL:
+            _, op = self.consume()
+            right = self._parse_ternary()
+            left = _ParsedSMVExpr(
+                text=f"{left.text} {op} {right.text}",
+                sort="bool",
+                contains_temporal=True,
+                contains_next=left.contains_next or right.contains_next,
+            )
+        return left
+
+    def _parse_ternary(self) -> _ParsedSMVExpr:
+        cond = self._parse_or()
+        if (tok := self.peek()) is not None and tok == ("OP", "?"):
+            self.consume()
+            t_branch = self._parse_equiv()
+            colon = self.peek()
+            if colon != ("OP", ":"):
+                raise _SMVExprError("Expected ':' in ternary expression")
+            self.consume()
+            e_branch = self._parse_ternary()
+            t_branch, e_branch = _align_binary_word_operands(t_branch, e_branch)
+            sort = t_branch.sort if t_branch.sort != "int_literal" else e_branch.sort
+            return _ParsedSMVExpr(
+                text=f"{cond.text} ? {t_branch.text} : {e_branch.text}",
+                sort=sort,
+                contains_temporal=cond.contains_temporal or t_branch.contains_temporal or e_branch.contains_temporal,
+                contains_next=cond.contains_next or t_branch.contains_next or e_branch.contains_next,
+            )
+        return cond
+
+    def _parse_or(self) -> _ParsedSMVExpr:
+        left = self._parse_and()
+        while (tok := self.peek()) is not None and (
+            tok == ("OP", "|") or tok == ("OP", "||") or (tok[0] == "IDENT" and tok[1] in ("xor", "xnor"))
+        ):
+            _, op = self.consume()
+            norm_op = "|" if op == "||" else op
+            right = self._parse_and()
+            left, right = _align_binary_word_operands(left, right)
+            sort = left.sort if left.sort.startswith("word[") else "bool"
+            left = _ParsedSMVExpr(
+                text=f"{left.text} {norm_op} {right.text}",
+                sort=sort,
+                contains_temporal=left.contains_temporal or right.contains_temporal,
+                contains_next=left.contains_next or right.contains_next,
+            )
+        return left
+
+    def _parse_and(self) -> _ParsedSMVExpr:
+        left = self._parse_rel()
+        while (tok := self.peek()) is not None and tok in (("OP", "&"), ("OP", "&&")):
+            self.consume()
+            right = self._parse_rel()
+            left, right = _align_binary_word_operands(left, right)
+            sort = left.sort if left.sort.startswith("word[") else "bool"
+            left = _ParsedSMVExpr(
+                text=f"{left.text} & {right.text}",
+                sort=sort,
+                contains_temporal=left.contains_temporal or right.contains_temporal,
+                contains_next=left.contains_next or right.contains_next,
+            )
+        return left
+
+    def _parse_rel(self) -> _ParsedSMVExpr:
+        operands = [self._parse_shift()]
+        ops: list[str] = []
+        while (tok := self.peek()) is not None:
+            if tok[0] == "OP" and tok[1] in ("=", "==", "!=", "<>", "<", "<=", ">", ">="):
+                op_raw = self.consume()[1]
+                op = "!=" if op_raw == "<>" else ("=" if op_raw == "==" else op_raw)
+                ops.append(op)
+                operands.append(self._parse_shift())
+            elif tok == ("IDENT", "in"):
+                self.consume()
+                ops.append("in")
+                operands.append(self._parse_shift())
+            else:
+                break
+
+        if not ops:
+            return operands[0]
+
+        has_temporal = any(o.contains_temporal for o in operands)
+        has_next = any(o.contains_next for o in operands)
+
+        if len(ops) == 1:
+            l_node, r_node = _align_binary_word_operands(operands[0], operands[1])
+            return _ParsedSMVExpr(
+                text=f"{l_node.text} {ops[0]} {r_node.text}",
+                sort="bool",
+                contains_temporal=has_temporal,
+                contains_next=has_next,
+            )
+
+        if any(op not in ("<", "<=", ">", ">=") for op in ops):
+            raise _SMVExprError("Mixed chained relational operators require explicit parentheses")
+
+        clauses: list[str] = []
+        for idx, op in enumerate(ops):
+            l_node, r_node = _align_binary_word_operands(operands[idx], operands[idx + 1])
+            clauses.append(f"({l_node.text} {op} {r_node.text})")
+        return _ParsedSMVExpr(
+            text="(" + " & ".join(clauses) + ")",
+            sort="bool",
+            contains_temporal=has_temporal,
+            contains_next=has_next,
+        )
+
+    def _parse_shift(self) -> _ParsedSMVExpr:
+        left = self._parse_add()
+        while (tok := self.peek()) is not None and tok in (("OP", "<<"), ("OP", ">>")):
+            _, op = self.consume()
+            right = self._parse_add()
+            left = _ParsedSMVExpr(
+                text=f"{left.text} {op} {right.text}",
+                sort=left.sort,
+                contains_temporal=left.contains_temporal or right.contains_temporal,
+                contains_next=left.contains_next or right.contains_next,
+            )
+        return left
+
+    def _parse_add(self) -> _ParsedSMVExpr:
+        left = self._parse_mul()
+        while (tok := self.peek()) is not None and tok in (("OP", "+"), ("OP", "-")):
+            _, op = self.consume()
+            right = self._parse_mul()
+            left, right = _align_binary_word_operands(left, right)
+            sort = (
+                left.sort if left.sort.startswith("word[") else ("real" if "real" in (left.sort, right.sort) else "int")
+            )
+            left = _ParsedSMVExpr(
+                text=f"{left.text} {op} {right.text}",
+                sort=sort,
+                contains_temporal=left.contains_temporal or right.contains_temporal,
+                contains_next=left.contains_next or right.contains_next,
+            )
+        return left
+
+    def _parse_mul(self) -> _ParsedSMVExpr:
+        left = self._parse_unary()
+        while (tok := self.peek()) is not None and (tok in (("OP", "*"), ("OP", "/")) or tok == ("IDENT", "mod")):
+            _, op = self.consume()
+            right = self._parse_unary()
+            left, right = _align_binary_word_operands(left, right)
+            sort = (
+                left.sort if left.sort.startswith("word[") else ("real" if "real" in (left.sort, right.sort) else "int")
+            )
+            left = _ParsedSMVExpr(
+                text=f"{left.text} {op} {right.text}",
+                sort=sort,
+                contains_temporal=left.contains_temporal or right.contains_temporal,
+                contains_next=left.contains_next or right.contains_next,
+            )
+        return left
+
+    def _parse_unary(self) -> _ParsedSMVExpr:
+        tok = self.peek()
+        if tok is None:
+            raise _SMVExprError("Unexpected end of expression")
+        if tok == ("OP", "!"):
+            self.consume()
+            operand = self._parse_unary()
+            if operand.sort in ("int", "subrange", "real", "int_literal"):
+                raise _SMVExprError(f"Logical '!' applied to numeric expression: {operand.text}")
+            sort = operand.sort if operand.sort.startswith("word[") else "bool"
+            return _ParsedSMVExpr(
+                text=f"!{operand.text}",
+                sort=sort,
+                contains_temporal=operand.contains_temporal,
+                contains_next=operand.contains_next,
+            )
+        if tok == ("OP", "-"):
+            self.consume()
+            operand = self._parse_unary()
+            if operand.sort == "int_literal" and operand.int_val is not None:
+                val = -operand.int_val
+                return _ParsedSMVExpr(
+                    text=str(val),
+                    sort="int_literal",
+                    int_val=val,
+                    contains_temporal=operand.contains_temporal,
+                    contains_next=operand.contains_next,
+                )
+            sort = operand.sort if operand.sort in ("real", "int", "subrange") else "int"
+            return _ParsedSMVExpr(
+                text=f"-{operand.text}",
+                sort=sort,
+                contains_temporal=operand.contains_temporal,
+                contains_next=operand.contains_next,
+            )
+        if tok == ("OP", "+"):
+            self.consume()
+            return self._parse_unary()
+        if tok[0] == "IDENT" and tok[1] in _SMV_UNARY_TEMPORAL:
+            _, op = self.consume()
+            operand = self._parse_unary()
+            rendered = f"{op}{operand.text}" if operand.text.startswith("(") else f"{op} {operand.text}"
+            sort = "bool" if operand.sort in ("unknown", "bool") else operand.sort
+            return _ParsedSMVExpr(
+                text=rendered,
+                sort=sort,
+                contains_temporal=True,
+                contains_next=operand.contains_next,
+            )
+        return self._parse_primary()
+
+    def _parse_primary(self) -> _ParsedSMVExpr:
+        tok = self.peek()
+        if tok is None:
+            raise _SMVExprError("Unexpected end of expression")
+        kind, val = tok
+        if tok == ("OP", "("):
+            self.consume()
+            inner = self._parse_equiv()
+            if self.peek() != ("OP", ")"):
+                raise _SMVExprError("Missing ')'")
+            self.consume()
+            rendered = inner.text if (inner.text.startswith("((") and inner.text.endswith("))")) else f"({inner.text})"
+            return _ParsedSMVExpr(
+                text=rendered,
+                sort=inner.sort,
+                int_val=inner.int_val,
+                hex_digits=inner.hex_digits,
+                contains_temporal=inner.contains_temporal,
+                contains_next=inner.contains_next,
+            )
+        if tok == ("OP", "{"):
+            self.consume()
+            items: list[_ParsedSMVExpr] = []
+            if self.peek() != ("OP", "}"):
+                items.append(self._parse_equiv())
+                while self.peek() == ("OP", ","):
+                    self.consume()
+                    items.append(self._parse_equiv())
+            if self.peek() != ("OP", "}"):
+                raise _SMVExprError("Missing '}'")
+            self.consume()
+            return _ParsedSMVExpr(
+                text="{" + ", ".join(item.text for item in items) + "}",
+                sort="set",
+                contains_temporal=any(i.contains_temporal for i in items),
+                contains_next=any(i.contains_next for i in items),
+            )
+        self.consume()
+        if kind == "WORD_CONST":
+            m_width = re.match(r"^0[su][dhboDHBO](\d+)_", val)
+            bits = int(m_width.group(1)) if m_width else 32
+            return _ParsedSMVExpr(text=val, sort=f"word[{bits}]")
+        if kind in ("TYPED_LIT", "RADIX_LIT"):
+            rendered, sort, int_val, hex_digits = _parse_st_typed_or_radix_literal(kind, val)
+            return _ParsedSMVExpr(text=rendered, sort=sort, int_val=int_val, hex_digits=hex_digits)
+        if kind == "INT":
+            return _ParsedSMVExpr(text=val, sort="int_literal", int_val=int(val))
+        if kind == "FLOAT":
+            return _ParsedSMVExpr(text=val, sort="real")
+        if kind == "IDENT":
+            if self.peek() == ("OP", "("):
+                self.consume()
+                args: list[_ParsedSMVExpr] = []
+                if self.peek() != ("OP", ")"):
+                    args.append(self._parse_equiv())
+                    while self.peek() == ("OP", ","):
+                        self.consume()
+                        args.append(self._parse_equiv())
+                if self.peek() != ("OP", ")"):
+                    raise _SMVExprError(f"Missing ')' in call to {val}")
+                self.consume()
+                if val == "next" and len(args) == 1:
+                    return _ParsedSMVExpr(
+                        text=f"next({args[0].text})",
+                        sort=args[0].sort,
+                        contains_temporal=args[0].contains_temporal,
+                        contains_next=True,
+                    )
+                if val not in _SMV_SCALAR_FUNCS:
+                    raise _SMVExprError(f"Unsupported function call in standalone SMV: {val}")
+                if any(a.contains_temporal for a in args):
+                    raise _SMVExprError(f"Temporal operator inside scalar function {val}()")
+                if val in ("floor", "toint", "count"):
+                    ret_sort = "int"
+                elif val == "toreal":
+                    ret_sort = "real"
+                elif val in ("uwconst", "swconst") and len(args) == 2 and args[1].int_val:
+                    ret_sort = f"word[{args[1].int_val}]"
+                elif any(a.sort.startswith("word[") for a in args):
+                    ret_sort = next(a.sort for a in args if a.sort.startswith("word["))
+                elif any(a.sort == "real" for a in args):
+                    ret_sort = "real"
+                else:
+                    ret_sort = "int"
+                return _ParsedSMVExpr(
+                    text=f"{val}(" + ", ".join(a.text for a in args) + ")",
+                    sort=ret_sort,
+                    contains_next=any(a.contains_next for a in args),
+                )
+            if val in ("TRUE", "FALSE"):
+                return _ParsedSMVExpr(text=val, sort="bool")
+            sort = self.symbol_sorts.get(val) or self.symbol_sorts_lower.get(val.lower()) or "unknown"
+            return _ParsedSMVExpr(text=val, sort=sort)
+        raise _SMVExprError(f"Unexpected token {(kind, val)!r}")
+
+
+def _infer_standalone_smv_expr_sort(expr_text: str, symbol_sorts: dict[str, str] | None = None) -> str:
+    """Return inferred SMV sort for an already-translated standalone expression."""
+    try:
+        return _SMVExprParser(expr_text, symbol_sorts=symbol_sorts).parse().sort
+    except _SMVExprError:
+        return "bool"
+
+
+def _translate_st_ltl_to_smv(expr_text: str, symbol_sorts: dict[str, str] | None = None) -> str:
+    """Translate lightweight ST/LTL boolean connectives, chained comparisons, and literals to SMV."""
     s = expr_text.strip()
     s = s.replace("<>", "!=")
+    s = s.replace("&&", "&").replace("||", "|").replace("==", "=")
     s = re.sub(r"\bAND\b", "&", s, flags=re.IGNORECASE)
     s = re.sub(r"\bOR\b", "|", s, flags=re.IGNORECASE)
     s = re.sub(r"\bNOT\b", "!", s, flags=re.IGNORECASE)
+    s = re.sub(r"\bXOR\b", "xor", s)
+    s = re.sub(r"\bXNOR\b", "xnor", s)
+    s = re.sub(r"\bMOD\b", "mod", s)
     s = re.sub(r"\btrue\b", "TRUE", s, flags=re.IGNORECASE)
     s = re.sub(r"\bfalse\b", "FALSE", s, flags=re.IGNORECASE)
-    return s
+    try:
+        parsed = _SMVExprParser(s, symbol_sorts=symbol_sorts).parse()
+        return parsed.text
+    except _SMVExprError:
+        return s
 
 
-def _is_valid_standalone_smv_expr(raw_text: str, translated: str, known_symbols: set[str]) -> bool:
+def _is_valid_standalone_smv_expr(
+    raw_text: str,
+    translated: str,
+    known_symbols: set[str],
+    symbol_sorts: dict[str, str] | None = None,
+    spec_kind: str | None = None,
+) -> bool:
     """Return True iff *translated* uses only declared SMV symbols and valid basic syntax."""
     if not translated or "\n" in translated or ";" in translated:
         return False
-    forbidden_substrings = ("I[", "O[", "Sref", "Spre", "Spost", "reference", "sum(", "for ", "..", "[", "]")
-    if any(tok in raw_text or tok in translated for tok in forbidden_substrings):
+    forbidden_substrings = (
+        "I[",
+        "O[",
+        "Sref",
+        "Spre",
+        "Spost",
+        "reference",
+        "sum(",
+        "for ",
+        "..",
+        "[",
+        "]",
+        "#",
+        "&&",
+        "||",
+        "==",
+    )
+    if any(
+        tok in raw_text for tok in ("I[", "O[", "Sref", "Spre", "Spost", "reference", "sum(", "for ", "..", "[", "]")
+    ):
+        return False
+    if any(tok in translated for tok in forbidden_substrings):
         return False
     depth = 0
     for ch in translated:
@@ -2859,7 +3400,7 @@ def _is_valid_standalone_smv_expr(raw_text: str, translated: str, known_symbols:
     if not ident_tokens:
         return False
     for tok in ident_tokens:
-        if tok not in known_symbols and tok not in _SMV_EXPR_OPERATORS:
+        if tok not in known_symbols and tok not in _SMV_EXPR_OPERATORS and tok != "next":
             return False
     for m_adj in re.finditer(
         r"(?<![A-Za-z0-9_])([A-Za-z_][A-Za-z0-9_]*)\s+([A-Za-z_][A-Za-z0-9_]*)(?![A-Za-z0-9_])",
@@ -2868,6 +3409,12 @@ def _is_valid_standalone_smv_expr(raw_text: str, translated: str, known_symbols:
         left_tok, right_tok = m_adj.group(1), m_adj.group(2)
         if left_tok not in _SMV_EXPR_OPERATORS and right_tok not in _SMV_EXPR_OPERATORS:
             return False
+    try:
+        parsed = _SMVExprParser(translated, symbol_sorts=symbol_sorts).parse()
+    except _SMVExprError:
+        return False
+    if spec_kind == "INVARSPEC" and (parsed.contains_temporal or parsed.contains_next):
+        return False
     return True
 
 
@@ -2947,6 +3494,7 @@ def _compile_st_to_smv_standalone(
     mapped_inputs: dict[str, tuple[str, str]] = {}
     standalone_var_decls: list[str] = []
     known_symbols: set[str] = set()
+    symbol_sorts: dict[str, str] = {}
     declared_lower: set[str] = set()
     input_names: list[str] = []
 
@@ -2960,6 +3508,7 @@ def _compile_st_to_smv_standalone(
         mapped_inputs[decl.name.lower()] = (sort, canonical_name)
         standalone_var_decls.append(f"  {canonical_name} : {smv_type_str};")
         known_symbols.add(canonical_name)
+        symbol_sorts[canonical_name] = sort
         declared_lower.add(canonical_name.lower())
         input_names.append(canonical_name)
 
@@ -2988,6 +3537,7 @@ def _compile_st_to_smv_standalone(
         )
         standalone_define.append("  clk_now := first_scan ? 0 : clk + dt_ms;")
         known_symbols.update({"dt_ms", "first_scan"})
+        symbol_sorts.update({"dt_ms": "int", "first_scan": "bool", "clk": "int", "clk_now": "int"})
         declared_lower.update({"dt_ms", "first_scan", "clk", "clk_now"})
 
     compiler = _STToSMVCompiler(
@@ -3008,6 +3558,7 @@ def _compile_st_to_smv_standalone(
         standalone_var_decls.append("  first : boolean;")
         standalone_assign.extend(["  init(first) := TRUE;", "  next(first) := FALSE;"])
         known_symbols.add("first")
+        symbol_sorts["first"] = "bool"
         declared_lower.add("first")
 
     init_conds = task.get("initial_conditions") if isinstance(task.get("initial_conditions"), dict) else {}
@@ -3030,6 +3581,8 @@ def _compile_st_to_smv_standalone(
 
         q_name = f"q{out_name}"
         smv_type_str, sort = compiler._smv_type_str(decl.st_type)
+        symbol_sorts[out_name] = sort
+        symbol_sorts[q_name] = sort
         if q_name.lower() not in declared_lower:
             init_lit = _format_standalone_init_val(
                 init_conds_lower.get(out_name.lower()),
@@ -3071,6 +3624,7 @@ def _compile_st_to_smv_standalone(
                     if out_info and ap_name != out_info[1]:
                         standalone_define.append(f"  {ap_name} := {out_info[1]};")
                         known_symbols.add(ap_name)
+                        symbol_sorts[ap_name] = symbol_sorts.get(out_info[1], "bool")
                         declared_lower.add(ap_name.lower())
             continue
         if isinstance(ap_val, str):
@@ -3082,10 +3636,11 @@ def _compile_st_to_smv_standalone(
         progressed = False
         next_pending: list[tuple[str, str]] = []
         for ap_name, raw_ap in pending_ap_exprs:
-            translated_ap = _translate_st_ltl_to_smv(raw_ap)
-            if _is_valid_standalone_smv_expr(raw_ap, translated_ap, known_symbols):
+            translated_ap = _translate_st_ltl_to_smv(raw_ap, symbol_sorts=symbol_sorts)
+            if _is_valid_standalone_smv_expr(raw_ap, translated_ap, known_symbols, symbol_sorts=symbol_sorts):
                 standalone_define.append(f"  {ap_name} := ({translated_ap});")
                 known_symbols.add(ap_name)
+                symbol_sorts[ap_name] = _infer_standalone_smv_expr_sort(translated_ap, symbol_sorts=symbol_sorts)
                 declared_lower.add(ap_name.lower())
                 progressed = True
             else:
@@ -3112,8 +3667,15 @@ def _compile_st_to_smv_standalone(
         if formula.lower() == "init":
             # Checked directly on ST declarations via check_st_initial_instance()
             continue
-        translated = _translate_st_ltl_to_smv(formula)
-        if not _is_valid_standalone_smv_expr(formula, translated, known_symbols):
+        kind_kw = "INVARSPEC" if str(item.get("kind", "")).lower() == "invar" else "LTLSPEC"
+        translated = _translate_st_ltl_to_smv(formula, symbol_sorts=symbol_sorts)
+        if not _is_valid_standalone_smv_expr(
+            formula,
+            translated,
+            known_symbols,
+            symbol_sorts=symbol_sorts,
+            spec_kind=kind_kw,
+        ):
             skipped_spec_ids.append(raw_id)
             warnings.append(f"Skipped non-standalone spec '{raw_id}': unlowered symbols or prose predicates.")
             continue
@@ -3124,7 +3686,6 @@ def _compile_st_to_smv_standalone(
         while sname in used_snames:
             sname = f"{sname}_{idx}"
         used_snames.add(sname)
-        kind_kw = "INVARSPEC" if str(item.get("kind", "")).lower() == "invar" else "LTLSPEC"
         lowered_specs.append(f"{kind_kw} NAME {sname} := {translated};")
         lowered_spec_ids.append(raw_id)
 
@@ -3215,7 +3776,9 @@ def compile_st_to_smv(
                 raise UnsupportedSTConstructError(f"Candidate input {decl.name} has no observer binding")
             expected_sort = _STToSMVCompiler(program, force_smt_integers=obs.uses_smt)._smv_type_str(decl.st_type)[1]
             if mapped_inputs[key][0] != expected_sort:
-                raise UnsupportedSTConstructError(f"Candidate input {decl.name} and observer binding have incompatible types")
+                raise UnsupportedSTConstructError(
+                    f"Candidate input {decl.name} and observer binding have incompatible types"
+                )
 
     missing_outs = [o for o in expected_outputs if o not in output_bindings]
     if missing_outs:
@@ -3305,10 +3868,13 @@ def compile_st_to_smv(
     # Rewritten DEFINEs: replace observer output DEFINEs with cand_out_<suffix>,
     # keeping non-output observer helper DEFINEs (nextMode, qRunning, clk_now, etc.).
     replaced_obs_defs: set[str] = set()
-    observer_has_words = bool(re.search(
-        r"(?:unsigned|signed)\s+word|0[us][bdho]\d+_|[us]wconst",
-        observer_smv_path.read_text(encoding="utf-8"), re.I,
-    ))
+    observer_has_words = bool(
+        re.search(
+            r"(?:unsigned|signed)\s+word|0[us][bdho]\d+_|[us]wconst",
+            observer_smv_path.read_text(encoding="utf-8"),
+            re.I,
+        )
+    )
 
     def observer_output_code(suffix: str) -> str:
         expr = emitted_post[suffix.lower()]
@@ -3852,29 +4418,47 @@ def verify_candidate_st(
 
     # 3. Run model checker (use short initial probe on multi-INVAR SMT models so relational
     # INVAR conjunctions like PUB006 solve in <4s instead of waiting out the full timeout).
-    _, parsed_specs = _extract_smv_specs_by_kind(compiled["smv_text"])
-    multi_invar_smt = bool(compiled["uses_smt"] and sum(1 for k, _, _ in parsed_specs if k == "INVARSPEC") >= 2)
-    initial_timeout = min(timeout, 3) if multi_invar_smt and timeout > 3 else timeout
-    mc = check_model(
-        model=smv_path,
-        out_dir=out,
-        executable=executable,
-        timeout=initial_timeout,
-        tool=tool,
-        engine=engine,
-        bmc_bound=bmc_bound,
-    )
-    if mc.get("status") == "TIMEOUT" and multi_invar_smt:
-        conj_mc = _run_conjunction_smt_verification(
-            smv_text=compiled["smv_text"],
-            out=out,
-            timeout=max(8, timeout - initial_timeout),
+    def _run_model_check(cur_compiled: dict[str, Any], cur_smv_path: Path) -> dict[str, Any]:
+        _, parsed_specs = _extract_smv_specs_by_kind(cur_compiled["smv_text"])
+        multi_invar_smt = bool(cur_compiled["uses_smt"] and sum(1 for k, _, _ in parsed_specs if k == "INVARSPEC") >= 2)
+        initial_timeout = min(timeout, 3) if multi_invar_smt and timeout > 3 else timeout
+        res = check_model(
+            model=cur_smv_path,
+            out_dir=out,
             executable=executable,
+            timeout=initial_timeout,
             tool=tool,
+            engine=engine,
             bmc_bound=bmc_bound,
         )
-        if conj_mc is not None:
-            mc = conj_mc
+        if res.get("status") == "TIMEOUT" and multi_invar_smt:
+            conj_mc = _run_conjunction_smt_verification(
+                smv_text=cur_compiled["smv_text"],
+                out=out,
+                timeout=max(8, timeout - initial_timeout),
+                executable=executable,
+                tool=tool,
+                bmc_bound=bmc_bound,
+            )
+            if conj_mc is not None:
+                res = conj_mc
+        return res
+
+    mc = _run_model_check(compiled, smv_path)
+    if mc.get("status") == "TOOL_ERROR" and not use_observer_smv and extra_assertions:
+        # An invalid planner assertion must not crash standalone verification of public specs.
+        clean_compiled = compile_st_to_smv(
+            candidate=candidate,
+            task=task,
+            use_observer_smv=False,
+            extra_assertions=None,
+        )
+        smv_path.write_text(clean_compiled["smv_text"], encoding="utf-8")
+        clean_compiled.setdefault("warnings", []).append(
+            "Dropped planner formal_assertions after model checker error; verified task/sanity specifications only."
+        )
+        compiled = clean_compiled
+        mc = _run_model_check(compiled, smv_path)
 
     prop_results = _map_ltl_ids(
         task,
@@ -3966,16 +4550,17 @@ def verify_candidate_st(
         )
     )
 
-    requested_ids = {str(p['id']) for p in task.get('ltl', []) if isinstance(p, dict) and p.get('id')}
-    checked_ids = {str(p['id']) for p in prop_results if p.get('id') in requested_ids}
+    requested_ids = {str(p["id"]) for p in task.get("ltl", []) if isinstance(p, dict) and p.get("id")}
+    checked_ids = {str(p["id"]) for p in prop_results if p.get("id") in requested_ids}
     unproven_ids = sorted(requested_ids - checked_ids)
-    real_abstraction = any(d.st_type.kind == 'REAL' for d in compiled['program'].decls)
+    real_abstraction = any(d.st_type.kind == "REAL" for d in compiled["program"].decls)
     result = {
         "task_id": task_id,
         "verifier": "self_developed_st_to_smv",
         "standalone_mode": not use_observer_smv,
         "specification_coverage": {
-            "requested_ids": sorted(requested_ids), "mapped_checked_ids": sorted(checked_ids),
+            "requested_ids": sorted(requested_ids),
+            "mapped_checked_ids": sorted(checked_ids),
             "unproven_or_unmapped_ids": unproven_ids,
             "status": "COMPLETE" if requested_ids and not unproven_ids else "INCOMPLETE_OR_UNMAPPED",
         },

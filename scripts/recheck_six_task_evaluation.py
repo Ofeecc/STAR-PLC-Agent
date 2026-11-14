@@ -4,11 +4,12 @@ No model access. Original stage evidence remains immutable. Corrected evaluation
 is stored separately and merged only when requested after the batch completes.
 """
 import argparse
-from plc_agent.common import ROOT, read_json, write_json, digest, now
-from plc_agent.dataset import load_tasks
-from plc_agent.functional import evaluate_trace
-from plc_agent.formal_verify import verify_candidate
+
 from plc_agent.cli import _selected_candidate_and_hash
+from plc_agent.common import ROOT, now, read_json, write_json
+from plc_agent.dataset import load_tasks
+from plc_agent.formal_verify import verify_candidate
+from plc_agent.functional import evaluate_trace
 
 p = argparse.ArgumentParser(); p.add_argument('--task'); p.add_argument('--merge', action='store_true'); args = p.parse_args()
 base = ROOT/'results/raw/six_task_fullflow_20261114'

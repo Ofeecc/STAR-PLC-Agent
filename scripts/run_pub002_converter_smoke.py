@@ -1,5 +1,6 @@
 """Reproduce PUB002 DWORD smoke test against the new self-developed converter."""
 from __future__ import annotations
+
 import json
 import re
 import sys
@@ -7,8 +8,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
-from plc_agent.st_verifier import compile_st_to_smv, verify_candidate_st, UnsupportedSTConstructError
 from plc_agent.model_checker import check_model
+from plc_agent.st_verifier import compile_st_to_smv, verify_candidate_st
+
 
 def main() -> None:
     source_path = Path(sys.argv[1])

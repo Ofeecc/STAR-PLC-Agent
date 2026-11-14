@@ -65,6 +65,7 @@ class Settings:
     additional_folder: str = ""
     ascii_work_root: str = ""
     compiler_timeout: int = 180
+    compiler_lock_timeout: int = 960
     llm_timeout: int = 420
     task_timeout: int = 2400
     max_repairs: int = 3

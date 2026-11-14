@@ -1,15 +1,13 @@
 import tempfile
 import unittest
+from pathlib import Path
 
 from plc_agent.codex_transport import CodexTransport
-from plc_agent.config import Settings
-from plc_agent.simulation import partition_wall_time_cases
-from plc_agent.simulation import build_program
-from plc_agent.dataset import load_tasks
-from plc_agent.functional import same_declared_inputs
-from plc_agent.functional import evaluate_trace
 from plc_agent.common import digest
-from pathlib import Path
+from plc_agent.config import Settings
+from plc_agent.dataset import load_tasks
+from plc_agent.functional import evaluate_trace, same_declared_inputs
+from plc_agent.simulation import build_program, partition_wall_time_cases
 
 
 class CodexTransportTests(unittest.TestCase):

@@ -2,7 +2,8 @@
 import csv
 import json
 from collections import Counter
-from plc_agent.common import ROOT, read_json, write_json, now
+
+from plc_agent.common import ROOT, now, read_json, write_json
 
 base = ROOT/'results/raw/six_task_fullflow_20261114'
 summary = read_json(base/'summary.json')

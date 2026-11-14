@@ -356,8 +356,13 @@ def run_harness(
                     "- timer_plan: timers required, PT durations, reset conditions\n"
                     "- priorities: safety and operational priorities\n"
                     "- initial_values: initial values for variables\n"
-                    "- scan_execution_order: explicit 4-stage scan order (1. edge sampling, 2. safety/reset priority & state transitions, 3. unconditional top-level timer FB calls outside CASE/IF, 4. unified output assignments)\n"
-                    '- formal_assertions: optional list of {"id": "A1", "formula": "G(...)"} temporal/invariant assertions over declared VAR_INPUT/VAR_OUTPUT port names\n\n'
+                    "- scan_execution_order: explicit 4-stage scan order (1. edge sampling, "
+                    "2. safety/reset priority & state transitions, "
+                    "3. unconditional top-level timer FB calls outside CASE/IF, 4. unified output assignments)\n"
+                    '- formal_assertions: optional list of {"id": "A1", "formula": "G(...)"} '
+                    "SMV temporal/invariant assertions over declared VAR_INPUT/VAR_OUTPUT port names "
+                    "(use SMV operators &, |, !, ->, <->, =, !=; never &&/||, never chained a<=x<=b, "
+                    "never X/G/F inside min()/max(), never ST radix literals like 16#8001 — use 0uh16_8001)\n\n"
                     f"SPECIFICATIONS:\n{json.dumps(view, indent=2)}"
                 )
                 planner_messages = [
@@ -369,8 +374,11 @@ def run_harness(
                 ]
                 try:
                     reply = client.respond(
-                        model, planner_messages, workspace / "llm_planner",
-                        max_tokens=settings.output_limit("planner"), timeout=remaining_time(),
+                        model,
+                        planner_messages,
+                        workspace / "llm_planner",
+                        max_tokens=settings.output_limit("planner"),
+                        timeout=remaining_time(),
                     )
                 except ProviderError as exc:
                     # An optional plan must not consume the entire synthesis run.

@@ -6,8 +6,8 @@ resumes missing stages; completed synthesis is never silently paid for again.
 import argparse
 from pathlib import Path
 
-from plc_agent.cli import require_compiler_preflight, _selected_candidate_and_hash
-from plc_agent.common import ROOT, now, digest, read_json, write_json
+from plc_agent.cli import _selected_candidate_and_hash, require_compiler_preflight
+from plc_agent.common import ROOT, digest, now, read_json, write_json
 from plc_agent.config import Settings
 from plc_agent.dataset import load_tasks, validate
 from plc_agent.formal_verify import verify_candidate

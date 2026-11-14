@@ -19,7 +19,14 @@ import uuid
 from pathlib import Path
 
 from .common import ROOT, digest, now, read_json, write_json
-from .compiler import _kill_tree, codesys_command, compiler_lock, normalize_candidate, stage_ascii_workspace, sync_ascii_artifacts
+from .compiler import (
+    _kill_tree,
+    codesys_command,
+    compiler_lock,
+    normalize_candidate,
+    stage_ascii_workspace,
+    sync_ascii_artifacts,
+)
 
 SCALAR_TYPES = {
     "BOOL",
@@ -146,7 +153,9 @@ def st_literal(value: object, type_name: str, task: dict | None = None) -> str:
     if up.startswith("STRING"):
         if not isinstance(value, str):
             raise ValueError("STRING input requires a string")
-        escaped = value.replace("$", "$$").replace("'", "$'").replace("\x00", "$00").replace("\r", "$R").replace("\n", "$N")
+        escaped = (
+            value.replace("$", "$$").replace("'", "$'").replace("\x00", "$00").replace("\r", "$R").replace("\n", "$N")
+        )
         return "'" + escaped + "'"
     if up in TIME_TYPES:
         if isinstance(value, str):
@@ -460,8 +469,12 @@ def build_program(task: dict, cases: list[dict] | None = None) -> dict:
     body = ["IF NOT BenchDone THEN"]
     if is_timed:
         body.append(" BenchCurrentTime := TIME();")
-        body += [" IF NOT BenchClockReady THEN", "  BenchLastTime := BenchCurrentTime;",
-                 "  BenchClockReady := TRUE;", " ELSE"]
+        body += [
+            " IF NOT BenchClockReady THEN",
+            "  BenchLastTime := BenchCurrentTime;",
+            "  BenchClockReady := TRUE;",
+            " ELSE",
+        ]
     body.append(" CASE BenchStep OF")
 
     trace_expressions = []
@@ -471,14 +484,22 @@ def build_program(task: dict, cases: list[dict] | None = None) -> dict:
     def monitor_input(expr, value, typ, prefix, index, indent):
         if is_array_type(typ):
             low, _, element = parse_array_type(typ)
-            return {"kind": "array", "elements": [
-                monitor_input(f"{expr}[{low + n}]", item, element, f"{prefix}_e{n}", index, indent)
-                for n, item in enumerate(value)]}
+            return {
+                "kind": "array",
+                "elements": [
+                    monitor_input(f"{expr}[{low + n}]", item, element, f"{prefix}_e{n}", index, indent)
+                    for n, item in enumerate(value)
+                ],
+            }
         struct = sdefs.get(typ) or sdefs.get(typ.upper())
         if struct:
-            return {"kind": "struct", "fields": {
-                name: monitor_input(expr + "." + name, item, struct[name], prefix + "_" + name, index, indent)
-                for name, item in value.items()}}
+            return {
+                "kind": "struct",
+                "fields": {
+                    name: monitor_input(expr + "." + name, item, struct[name], prefix + "_" + name, index, indent)
+                    for name, item in value.items()
+                },
+            }
         var = "TraceInIO_" + prefix + "_" + re.sub(r"[^A-Za-z0-9_]", "_", typ)
         if var not in input_monitor_types:
             input_monitor_types[var] = typ
@@ -487,6 +508,7 @@ def build_program(task: dict, cases: list[dict] | None = None) -> dict:
         body.append(f"{indent}{var}[{index}] := {expr};")
         trace_expressions.append(sample)
         return {"kind": "scalar", "expr": sample, "type": typ}
+
     step_index = 0
     steps = []
 
@@ -577,7 +599,8 @@ def build_program(task: dict, cases: list[dict] | None = None) -> dict:
                         step_map["inputs"][vname] = {"kind": "raw", "value": value}
                     else:
                         step_map["inputs"][vname] = monitor_input(
-                            cin[vname]["storage"], value, cin[vname]["type"], vname, step_index, indent)
+                            cin[vname]["storage"], value, cin[vname]["type"], vname, step_index, indent
+                        )
 
             # 4. Invoke FB
             if cin:
@@ -729,8 +752,13 @@ def partition_wall_time_cases(cases, task_timeout):
     for case in cases:
         requested_ms = sum(step.get("dt_ms", 0) for step in case["steps"])
         if requested_ms > limit_ms:
-            unsupported.append({"case_id": case["id"], "requested_wall_ms": requested_ms,
-                                "reason": "Exceeds physical execution budget; validated virtual clock is unavailable"})
+            unsupported.append(
+                {
+                    "case_id": case["id"],
+                    "requested_wall_ms": requested_ms,
+                    "reason": "Exceeds physical execution budget; validated virtual clock is unavailable",
+                }
+            )
         else:
             runnable.append(case)
     return runnable, unsupported
@@ -765,7 +793,9 @@ def run_functional(
         write_json(workspace / "simulation_result.json", result)
         return result
     if not cases:
-        result.update(status="UNSUPPORTED_TIMING", reason="No cases fit real wall-time budget; no virtual clock substitution made")
+        result.update(
+            status="UNSUPPORTED_TIMING", reason="No cases fit real wall-time budget; no virtual clock substitution made"
+        )
         write_json(workspace / "simulation_result.json", result)
         return result
     candidate = normalize_candidate(candidate)
@@ -832,8 +862,10 @@ def run_functional(
     env["PLC_CODESYS_TEST_REQUEST"] = str(exec_ws / "request.json")
     for key in ("PLC_LLM_API_KEY", "OPENAI_API_KEY", "PLC_API_CONFIG"):
         env.pop(key, None)
+    expected_seconds = sum(s.get("dt_ms", 0) for s in program["steps"]) / 1000.0
+    process_timeout = max(180, settings.compiler_timeout, expected_seconds * 1.5 + 90)
     try:
-        with compiler_lock(timeout=900) as lock_wait:
+        with compiler_lock(timeout=max(900, settings.compiler_lock_timeout, int(process_timeout) + 60)) as lock_wait:
             result["codesys_lock_wait_seconds"] = lock_wait
             with (exec_ws / "stdout.log").open("wb") as out, (exec_ws / "stderr.log").open("wb") as err:
                 proc = subprocess.Popen(
@@ -844,8 +876,6 @@ def run_functional(
                     creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
                 )
                 try:
-                    expected_seconds = sum(s.get("dt_ms", 0) for s in program["steps"]) / 1000.0
-                    process_timeout = max(180, settings.compiler_timeout, expected_seconds * 1.5 + 90)
                     result["process_timeout_seconds"] = process_timeout
                     result["process_exit_code"] = proc.wait(timeout=process_timeout)
                 except subprocess.TimeoutExpired:
@@ -901,12 +931,16 @@ def run_functional(
                         sync_ascii_artifacts(exec_ws, workspace)
                     from .functional import evaluate_trace
 
-                    evaluated = evaluate_trace(task_eval, source_hash, trace, evidence_root=workspace, allow_timing_gaps=True)
+                    evaluated = evaluate_trace(
+                        task_eval, source_hash, trace, evidence_root=workspace, allow_timing_gaps=True
+                    )
                     if unsupported_wall_cases:
                         evaluated["unsupported_wall_time_cases"] = unsupported_wall_cases
                         if evaluated["status"] == "UNVERIFIED":
                             evaluated["status"] = "PARTIAL"
-                        evaluated["reason"] = "Long-duration fixed cases not executed; real wall-time semantics preserved"
+                        evaluated["reason"] = (
+                            "Long-duration fixed cases not executed; real wall-time semantics preserved"
+                        )
                     result["status"] = evaluated["status"]
                     result["functional"] = evaluated
                     result["trace_path"] = str(workspace / "trace.json")

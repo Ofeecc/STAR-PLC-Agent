@@ -93,17 +93,18 @@ records[1] := records[1] + 1;
     "string_parsing": {
         "id": "string_parsing",
         "title": "IEC 61131-3 String Manipulation and Parsing",
-        "body": """// IEC string operations: FIND, MID, LEFT, RIGHT, LEN, STRING(n)
+        "body": """// IEC strings: FIND/MID/LEFT/RIGHT are 1-based; direct byte indexing s[i] is 0-based (0..LEN(s)-1)!
 VAR
     s : STRING(80);
-    pos, length : INT;
+    pos, length, i : INT;
     sub : STRING(20);
 END_VAR
 length := LEN(s);
 pos := FIND(s, '.'); // 1-based index; returns 0 if not found
-IF pos > 1 THEN
-    sub := LEFT(s, pos - 1); // extracts prefix
-END_IF;""",
+IF pos > 1 THEN sub := LEFT(s, pos - 1); END_IF;
+FOR i := 0 TO length - 1 DO // 0-based byte scan: s[0] is first char
+    // inspect byte s[i]
+END_FOR;""",
     },
     "case_state_machine": {
         "id": "case_state_machine",
@@ -113,6 +114,7 @@ END_IF;""",
 VAR
     state : INT := 0; // 0=IDLE, 1=RUN, 2=FAULT
 END_VAR
+// Do mode/reset normalization BEFORE CASE (do NOT gate CASE in ELSE if same-scan transitions are expected):
 IF emergencyStop THEN state := 2; END_IF;
 CASE state OF
     0: IF startCmd AND NOT fault THEN state := 1; END_IF;

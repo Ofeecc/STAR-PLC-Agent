@@ -404,7 +404,7 @@ def _compile_st(task, source_code, workspace, settings=None):
         )
         try:
             # Global serial lock prevents concurrent IDE repository access.
-            with compiler_lock(cfg.compiler_timeout):
+            with compiler_lock(max(cfg.compiler_timeout, cfg.compiler_lock_timeout)):
                 with (exec_ws / "stdout.log").open("wb") as out, (exec_ws / "stderr.log").open("wb") as err:
                     process = subprocess.Popen(
                         codesys_command(command),

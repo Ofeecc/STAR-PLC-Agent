@@ -7,8 +7,8 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from plc_agent.backend import FakeBackend, SimCaseFailure, SimResult
-from plc_agent.common import ROOT, read_json
-from plc_agent.compiler import verify_interface_signature
+from plc_agent.common import ROOT, digest, read_json
+from plc_agent.compiler import compile_st, normalize_candidate, verify_interface_signature
 from plc_agent.config import Settings
 from plc_agent.dataset import load_tasks
 from plc_agent.dialect_cards import (
@@ -22,8 +22,11 @@ from plc_agent.llm import ProviderError, ResponsesClient
 from plc_agent.mcp_server import dispatch
 from plc_agent.metrics import aggregate
 from plc_agent.model_checker import LTL_RESULTS_MARKER, SBMC_START_MARKER, parse_results
+from plc_agent.simulation import run_functional
 from plc_agent.st_verifier import (
     UnsupportedSTConstructError,
+    _is_valid_standalone_smv_expr,
+    _translate_st_ltl_to_smv,
     compile_st_to_smv,
     find_nusmv,
     find_nuxmv,
@@ -920,6 +923,235 @@ class STVerifierTests(unittest.TestCase):
         self.assertTrue(any("INTERFACE_VIOLATION" in str(d.get("text", "")) for d in payload["diagnostics"]))
         # Must NOT consume any compile_st quota slots
         self.assertEqual(list(trusted.glob("compile_*")), [])
+
+    def test_compiler_lock_timeout_budget_prevents_simulation_starvation(self):
+        cfg = Settings()
+        self.assertGreater(cfg.compiler_lock_timeout, cfg.compiler_timeout)
+        self.assertGreaterEqual(cfg.compiler_lock_timeout, 900)
+
+        fake_template = self.work_dir / "tpl.project"
+        fake_template.write_text("tpl", encoding="utf-8")
+        fake_exe = self.work_dir / "codesys.exe"
+        fake_exe.write_text("exe", encoding="utf-8")
+        cfg = Settings(
+            codesys_exe=str(fake_exe),
+            codesys_profile="P",
+            codesys_template=str(fake_template),
+            ascii_work_root=str(self.work_dir / "ascii"),
+            compiler_timeout=180,
+            compiler_lock_timeout=960,
+        )
+
+        lock_timeouts: list[float] = []
+
+        class _FakeLock:
+            def __init__(self, timeout: float = 0.0):
+                lock_timeouts.append(float(timeout))
+
+            def __enter__(self):
+                return 0.0
+
+            def __exit__(self, *args):
+                return False
+
+        class _FakeProc:
+            def wait(self, timeout=None):
+                return 0
+
+        cand = read_json(ROOT / "codesys/examples/SELF001.json")
+        with (
+            patch("plc_agent.compiler.compiler_lock", side_effect=lambda t=180: _FakeLock(t)),
+            patch("plc_agent.compiler.subprocess.Popen", return_value=_FakeProc()),
+            patch("plc_agent.compiler.codesys_command", side_effect=lambda cmd: cmd),
+            patch("plc_agent.compiler.sync_ascii_artifacts"),
+        ):
+            compile_st(self.tasks["SELF001"], cand, self.work_dir / "comp_ws", settings=cfg)
+
+        self.assertEqual(lock_timeouts[-1], 960.0)
+
+        # Simulation lock budget also exceeds long timed process timeout
+        sim_lock_timeouts: list[float] = []
+
+        class _FakeSimLock:
+            def __init__(self, timeout: float = 0.0):
+                sim_lock_timeouts.append(float(timeout))
+
+            def __enter__(self):
+                return 0.0
+
+            def __exit__(self, *args):
+                return False
+
+        timed_case = [
+            {
+                "id": "t1",
+                "steps": [
+                    {
+                        "dt_ms": 600000,
+                        "inputs": {"Start": True, "Stop": False, "GuardClosed": True},
+                        "expected": {"Run": True},
+                    }
+                ],
+            }
+        ]
+        norm_cand = normalize_candidate(cand)
+        with (
+            patch("plc_agent.simulation.compiler_lock", side_effect=lambda timeout=900: _FakeSimLock(timeout)),
+            patch("plc_agent.simulation.subprocess.Popen", return_value=_FakeProc()),
+            patch("plc_agent.simulation.codesys_command", side_effect=lambda cmd: cmd),
+            patch("plc_agent.simulation.sync_ascii_artifacts"),
+        ):
+            run_functional(
+                self.tasks["SELF001"],
+                norm_cand,
+                digest(norm_cand),
+                self.work_dir / "sim_ws",
+                cfg,
+                cases=timed_case,
+            )
+
+        self.assertGreaterEqual(sim_lock_timeouts[-1], 990 + 60)
+
+    def test_standalone_smv_lowering_chained_words_and_temporal_call_guard(self):
+        # C operators + chained inequalities
+        self.assertEqual(_translate_st_ltl_to_smv("a && b || !c"), "a & b | !c")
+        self.assertEqual(
+            _translate_st_ltl_to_smv("-4<=TEMP_SETPOINT_ADJUST<=4"),
+            "((-4 <= TEMP_SETPOINT_ADJUST) & (TEMP_SETPOINT_ADJUST <= 4))",
+        )
+        # ST hex literal & bare integer comparison against word[16]/word[32]
+        self.assertEqual(
+            _translate_st_ltl_to_smv("status=16#8001", {"status": "word[16]"}),
+            "status = 0uh16_8001",
+        )
+        self.assertEqual(
+            _translate_st_ltl_to_smv("G((risingBits & fallingBits)=0)", {"risingBits": "word[32]", "fallingBits": "word[32]"}),
+            "G((risingBits & fallingBits) = 0ud32_0)",
+        )
+        # Temporal operator nested inside scalar function must be rejected
+        bad_expr = "G(X(Count) = min(Count + 1, X(Target)))"
+        self.assertFalse(
+            _is_valid_standalone_smv_expr(
+                bad_expr,
+                _translate_st_ltl_to_smv(bad_expr),
+                {"Count", "Target"},
+            )
+        )
+
+        # Standalone compilation of PUB002, PUB003, PUB013 avoids '#' & expands chained/word literals
+        cand_pub002 = {
+            "declaration": (
+                "FUNCTION_BLOCK FB_Task\nVAR_INPUT value : DWORD; END_VAR\n"
+                "VAR_OUTPUT hasChanged : BOOL; hasRisingEdges : BOOL; risingBits : DWORD; "
+                "noOfRisingBits : USINT; hasFallingEdges : BOOL; fallingBits : DWORD; "
+                "noOfFallingBits : USINT; END_VAR\nVAR prev : DWORD := DWORD#0; END_VAR"
+            ),
+            "implementation": (
+                "risingBits := value AND NOT prev; fallingBits := prev AND NOT value; "
+                "hasChanged := value <> prev; hasRisingEdges := risingBits <> DWORD#0; "
+                "hasFallingEdges := fallingBits <> DWORD#0; noOfRisingBits := 0; "
+                "noOfFallingBits := 0; prev := value;"
+            ),
+            "supporting_objects": [],
+        }
+        cand_pub003 = {
+            "declaration": (
+                "FUNCTION_BLOCK FB_Task\n"
+                "VAR_INPUT Value, hiLevel, loLevel, hystWindow : REAL; END_VAR\n"
+                "VAR_OUTPUT hiAlarm, loAlarm, error : BOOL; status : WORD; END_VAR\n"
+            ),
+            "implementation": "hiAlarm := FALSE; loAlarm := FALSE; error := FALSE; status := WORD#0;",
+            "supporting_objects": [],
+        }
+        cand_pub013 = {
+            "declaration": (
+                "FUNCTION_BLOCK FB_Task\n"
+                "VAR_INPUT OCCUPANCY_DETECTED, ENERGY_SAVING_MODE : BOOL; HVAC_MODE_SELECTOR : INT; END_VAR\n"
+                "VAR_OUTPUT SUPPLY_FAN_RUN : BOOL; TEMP_SETPOINT_ADJUST : INT; END_VAR\n"
+            ),
+            "implementation": "SUPPLY_FAN_RUN := OCCUPANCY_DETECTED; TEMP_SETPOINT_ADJUST := 0;",
+            "supporting_objects": [],
+        }
+        for tid, cand_obj, expected_token in (
+            ("PUB002", cand_pub002, "0ud32_0"),
+            ("PUB003", cand_pub003, "0uh16_8001"),
+            ("PUB013", cand_pub013, "((-4 <= TEMP_SETPOINT_ADJUST) & (TEMP_SETPOINT_ADJUST <= 4))"),
+        ):
+            compiled = compile_st_to_smv(cand_obj, self.tasks[tid], use_observer_smv=False)
+            self.assertNotIn("#", compiled["smv_text"])
+            self.assertIn(expected_token, compiled["smv_text"])
+
+    def test_standalone_verify_drops_crashing_planner_assertions_and_skips_nested_temporal_min(self):
+        self._require_checkers()
+        cand_self009 = {
+            "declaration": (
+                "FUNCTION_BLOCK FB_Task\n"
+                "VAR_INPUT\n"
+                "    PartPulse, Reset : BOOL;\n"
+                "    Target : INT;\n"
+                "END_VAR\n"
+                "VAR_OUTPUT\n"
+                "    Count : INT := 0;\n"
+                "    Complete, Error : BOOL := FALSE;\n"
+                "END_VAR\n"
+                "VAR\n"
+                "    prevPulse : BOOL := FALSE;\n"
+                "END_VAR\n"
+            ),
+            "implementation": (
+                "Error := (Target < 1) OR (Target > 20);\n"
+                "IF Error OR Reset THEN\n"
+                "    Count := 0;\n"
+                "ELSE\n"
+                "    IF PartPulse AND NOT prevPulse AND Count < Target THEN\n"
+                "        Count := Count + 1;\n"
+                "    END_IF;\n"
+                "END_IF;\n"
+                "Complete := (NOT Error) AND (NOT Reset) AND (Count >= Target);\n"
+                "prevPulse := PartPulse;\n"
+            ),
+            "supporting_objects": [],
+        }
+        bad_assertions = [
+            {"id": "A_bad_min", "formula": "G((!Reset & PartPulse) -> X(Count) = min(Count + 1, X(Target)))"},
+            {"id": "A_ok", "formula": "G(Error -> Count = 0)"},
+        ]
+        res = verify_candidate_st(
+            task=self.tasks["SELF009"],
+            candidate=cand_self009,
+            out_dir=self.work_dir / "self009_bad_assert",
+            use_observer_smv=False,
+            extra_assertions=bad_assertions,
+        )
+        self.assertEqual(res["status"], "PASS", res)
+        self.assertTrue(any("A_bad_min" in w for w in res.get("warnings", [])))
+
+        # Runtime TOOL_ERROR caused solely by extra_assertions falls back cleanly to public/sanity verification
+        cand_self001 = read_json(ROOT / "codesys/examples/SELF001.json")
+        calls = {"n": 0}
+
+        def _fake_check_model(**kwargs):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                return {"status": "TOOL_ERROR", "property_results": [], "expected_properties": 1, "tool": "NuSMV"}
+            return {
+                "status": "MODEL_PROPERTIES_TRUE",
+                "property_results": [{"id": "P_sanity", "holds": True}],
+                "expected_properties": 1,
+                "tool": "NuSMV",
+            }
+
+        with patch("plc_agent.st_verifier.check_model", side_effect=_fake_check_model):
+            fb_res = verify_candidate_st(
+                task=self.tasks["SELF001"],
+                candidate=cand_self001,
+                out_dir=self.work_dir / "self001_extra_fallback",
+                use_observer_smv=False,
+                extra_assertions=[{"id": "A_oops", "formula": "G(Start -> Run)"}],
+            )
+        self.assertEqual(calls["n"], 2)
+        self.assertEqual(fb_res["status"], "PASS")
+        self.assertTrue(any("Dropped planner formal_assertions" in w for w in fb_res.get("warnings", [])))
 
 
 if __name__ == "__main__":
