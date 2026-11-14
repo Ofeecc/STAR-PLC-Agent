@@ -170,7 +170,7 @@
     "processing_wait": "pre-phase is WAIT_WASH, WAIT_WEIGHT or WAIT_FIRING",
     "matching_completion": "matching station sensor and processing completion are TRUE in the corresponding wait",
     "order": "automatic route is FEED, WASH, WEIGHT, FIRING, OUTPUT; rejected weights cannot enter FIRING",
-    "CompleteBehaviorV2": "令(Sref[k+1], E[k])=T_PUB020(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\n参考阶段WAIT_FEED→MOVE_WASH→WAIT_WASH→MOVE_WEIGHT→WAIT_WEIGHT→REJECT或MOVE_FIRING→WAIT_FIRING→MOVE_OUTPUT→OUTPUT_DONE；每拍按旧阶段只推进一阶。重量100..200含边界合格，合格温度real32(500+real32(real32(weight-100)*0.5))；不合格保持温度并剔除至SensorWeight假。完成取走后回初始。手动清流程、方向按钮互锁、kick/灯关闭、温度保持。自动仅运输阶段正转、不反转；kick对应REJECT、灯对应OUTPUT_DONE。",
+    "CompleteBehavior": "令(Sref[k+1], E[k])=T_PUB020(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\n参考阶段WAIT_FEED→MOVE_WASH→WAIT_WASH→MOVE_WEIGHT→WAIT_WEIGHT→REJECT或MOVE_FIRING→WAIT_FIRING→MOVE_OUTPUT→OUTPUT_DONE；每拍按旧阶段只推进一阶。重量100..200含边界合格，合格温度real32(500+real32(real32(weight-100)*0.5))；不合格保持温度并剔除至SensorWeight假。完成取走后回初始。手动清流程、方向按钮互锁、kick/灯关闭、温度保持。自动仅运输阶段正转、不反转；kick对应REJECT、灯对应OUTPUT_DONE。",
     "Mode": "I[k].Mode: sampled input (BOOL).",
     "ForwardButton": "I[k].ForwardButton: sampled input (BOOL).",
     "ReverseButton": "I[k].ReverseButton: sampled input (BOOL).",
@@ -295,8 +295,8 @@
       "scope": "SCAN_SEQUENCE"
     },
     {
-      "id": "PUB020.V2.COMPLETE",
-      "formula": "G(CompleteBehaviorV2)",
+      "id": "PUB020.COMPLETE",
+      "formula": "G(CompleteBehavior)",
       "explanation": "Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.",
       "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
       "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
@@ -1711,7 +1711,8 @@
       ]
     },
     {
-      "id": "V2_process_history_regression",
+      "id": "PUB020.T8",
+      "name": "process_history_regression",
       "purpose": "Mode/edge reset, repeated station or prior-batch retained setpoint regression.",
       "steps": [
         {
@@ -2085,7 +2086,8 @@
       ]
     },
     {
-      "id": "PUB020.T8",
+      "id": "PUB020.T9",
+      "purpose": "Verify continuous forward transport across sensor gaps, delayed completion handshake, 99.9999/100.0001/200.0001 weight edges, and manual/auto temp retention (14 steps).",
       "description": "Multi-scan transit with empty intermediate scans, simultaneous arrival+completion hold, boundary weights 99.9999/100.0001/200.0001, and Auto->Manual->Auto firingTemp retention.",
       "steps": [
         {
@@ -2413,9 +2415,9 @@
       ]
     },
     {
-      "id": "PUB020.R22.all_transport",
-      "name": "四段持续运输、加工等待与完整第二批次",
-      "purpose": "四段持续运输、加工等待与完整第二批次",
+      "id": "PUB020.T10",
+      "name": "all_transport",
+      "purpose": "Continuous 4-stage transport holds, station waits, and full second batch cycle",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -3813,9 +3815,9 @@
       ]
     },
     {
-      "id": "PUB020.R22.mode_reset",
-      "name": "运输中切手动再切自动、路线复位且温度保持",
-      "purpose": "运输中切手动再切自动、路线复位且温度保持",
+      "id": "PUB020.T11",
+      "name": "mode_reset",
+      "purpose": "Switch Auto->Manual->Auto mid-transport resets sequence while preserving firingTemp",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -4037,10 +4039,10 @@
       ]
     }
   ],
-  "specification_version": "2.2-normalized-20261112",
+  "specification_version": "normalized-20261114",
   "specification_contract": {
     "observation": "I[k] is sampled before execution; O[k] is observed after execution. Initial conditions apply before invocation zero.",
-    "normative_completion": "令(Sref[k+1], E[k])=T_PUB020(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\n参考阶段WAIT_FEED→MOVE_WASH→WAIT_WASH→MOVE_WEIGHT→WAIT_WEIGHT→REJECT或MOVE_FIRING→WAIT_FIRING→MOVE_OUTPUT→OUTPUT_DONE；每拍按旧阶段只推进一阶。重量100..200含边界合格，合格温度real32(500+real32(real32(weight-100)*0.5))；不合格保持温度并剔除至SensorWeight假。完成取走后回初始。手动清流程、方向按钮互锁、kick/灯关闭、温度保持。自动仅运输阶段正转、不反转；kick对应REJECT、灯对应OUTPUT_DONE。",
+    "normative_completion": "令(Sref[k+1], E[k])=T_PUB020(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\n参考阶段WAIT_FEED→MOVE_WASH→WAIT_WASH→MOVE_WEIGHT→WAIT_WEIGHT→REJECT或MOVE_FIRING→WAIT_FIRING→MOVE_OUTPUT→OUTPUT_DONE；每拍按旧阶段只推进一阶。重量100..200含边界合格，合格温度real32(500+real32(real32(weight-100)*0.5))；不合格保持温度并剔除至SensorWeight假。完成取走后回初始。手动清流程、方向按钮互锁、kick/灯关闭、温度保持。自动仅运输阶段正转、不反转；kick对应REJECT、灯对应OUTPUT_DONE。",
     "history_binding": "I, O and Sref namespaces, initialization and updates are defined in normalized_specification.observation, history_bindings and reference_state_initial. Candidate output never drives Sref.",
     "evaluation_scope": "Versioned executable scan predicate plus LTL over interpreted predicates. No native checker encoding or completed formal proof is claimed.",
     "review_source": "docs/规约逐题审查_20261106/PUB020.md",
@@ -4114,10 +4116,10 @@
         "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
         "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
         "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-        "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
+        "normalized_spec.py": "3c13590145597ad26cf537ff76c44e22f06abf7720e04d2ea262ac347be9d9cd"
       },
       "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-      "frozen_sources": "dataset/specifications/normalized_transition_v2"
+      "frozen_sources": "dataset/specifications/normalized_transition"
     },
     "constrained_observed_fields": [
       "CompletionLight",

@@ -69,12 +69,12 @@
     "qualified": "Count >= Preset and Preset is valid.",
     "qCount": "{\"kind\": \"previous_observed_output\", \"source\": \"O[k-1].Count\", \"initial\": 0, \"update\": \"After comparing scan k, store ACTUAL O[k].Count; never write into reference state.\"}",
     "nextCount": "min(qCount+1, Preset) as an integer expression.",
-    "CompleteBehaviorV2": "令(Sref[k+1], E[k])=T_SELF008(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\ncount初值0；Preset有效域1..5。!Request或Trip或非法Preset时countAfter=0，否则min(countBefore+1,Preset)；Count比较该值，Ready=有效且countAfter>=Preset。",
+    "CompleteBehavior": "令(Sref[k+1], E[k])=T_SELF008(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\ncount初值0；Preset有效域1..5。!Request或Trip或非法Preset时countAfter=0，否则min(countBefore+1,Preset)；Count比较该值，Ready=有效且countAfter>=Preset。",
     "init": "At the separate pre-invocation initial observation before scan k=0: O_init.Ready=false, O_init.Count=0."
   },
   "ltl": [
     {
-      "id": "P_init",
+      "id": "SELF008.P_init",
       "kind": "safety",
       "formula": "init",
       "description": "Before the first scan invocation, all declared OUTPUT variables and initial instance state hold their declared initial values.",
@@ -84,7 +84,7 @@
       "scope": "INITIAL_INSTANCE"
     },
     {
-      "id": "P1",
+      "id": "SELF008.P1",
       "formula": "G((Trip | !Request | invalid) -> (!Ready & (Count = 0)))",
       "explanation": "Every interruption clears qualification immediately.",
       "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
@@ -92,7 +92,7 @@
       "scope": "SCAN_SEQUENCE"
     },
     {
-      "id": "P2",
+      "id": "SELF008.P2",
       "formula": "G((Request & !Trip & !invalid) -> (Count = nextCount))",
       "explanation": "Healthy scans increment and saturate precisely.",
       "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
@@ -100,7 +100,7 @@
       "scope": "SCAN_SEQUENCE"
     },
     {
-      "id": "P3",
+      "id": "SELF008.P3",
       "formula": "G(Ready <-> qualified)",
       "explanation": "The indication agrees with the post-scan count.",
       "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
@@ -108,7 +108,7 @@
       "scope": "SCAN_SEQUENCE"
     },
     {
-      "id": "P4",
+      "id": "SELF008.P4",
       "formula": "G(!invalid -> ((Count >= 0) & (Count <= Preset)))",
       "explanation": "The counter stays within bounds.",
       "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
@@ -116,7 +116,7 @@
       "scope": "SCAN_SEQUENCE"
     },
     {
-      "id": "P5",
+      "id": "SELF008.P5",
       "formula": "(G(Request & !Trip & !invalid)) -> F Ready",
       "explanation": "A perpetually valid request qualifies within at most five scans, even if valid Preset varies.",
       "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
@@ -124,8 +124,8 @@
       "scope": "SCAN_SEQUENCE"
     },
     {
-      "id": "SELF008.V2.COMPLETE",
-      "formula": "G(CompleteBehaviorV2)",
+      "id": "SELF008.COMPLETE",
+      "formula": "G(CompleteBehavior)",
       "explanation": "Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.",
       "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
       "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
@@ -134,7 +134,8 @@
   ],
   "tests": [
     {
-      "id": "delay",
+      "id": "SELF008.T1",
+      "name": "delay",
       "purpose": "Three scans qualify, hold saturates, trip clears",
       "steps": [
         {
@@ -206,7 +207,8 @@
       ]
     },
     {
-      "id": "bounds",
+      "id": "SELF008.T2",
+      "name": "bounds",
       "purpose": "Invalid presets and immediate reduced threshold",
       "steps": [
         {
@@ -267,7 +269,9 @@
       ]
     },
     {
-      "id": "SELF008.boundary_preset_resize",
+      "id": "SELF008.T3",
+      "name": "boundary_preset_resize",
+      "purpose": "Verify raising Preset while Ready revokes Ready and keeps count, lowering Preset clamps count cleanly, and invalid Preset=255 resets and recovers (7 steps).",
       "description": "Preset growth Ready=T->F retaining Count, shrinking clamping Count, Preset=255 invalid then recovery.",
       "steps": [
         {
@@ -350,9 +354,9 @@
       ]
     },
     {
-      "id": "SELF008.R22.normal_changes",
-      "name": "Ready后提高阈值、降低阈值与非法清零",
-      "purpose": "Ready后提高阈值、降低阈值与非法清零",
+      "id": "SELF008.T4",
+      "name": "normal_changes",
+      "purpose": "Raise/lower Preset around Ready and zero count on invalid Preset input",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -418,9 +422,9 @@
       ]
     },
     {
-      "id": "SELF008.R22.tail_Request",
-      "name": "完成主流程后改变并保持 Request",
-      "purpose": "完成主流程后改变并保持 Request",
+      "id": "SELF008.T5",
+      "name": "tail_Request",
+      "purpose": "After completing main sequence, toggle and hold Request",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -522,9 +526,9 @@
       ]
     },
     {
-      "id": "SELF008.R22.tail_Trip",
-      "name": "完成主流程后改变并保持 Trip",
-      "purpose": "完成主流程后改变并保持 Trip",
+      "id": "SELF008.T6",
+      "name": "tail_Trip",
+      "purpose": "After completing main sequence, toggle and hold Trip",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -626,7 +630,8 @@
       ]
     },
     {
-      "id": "SELF008.boundary_preset_hold_and_zero",
+      "id": "SELF008.T7",
+      "name": "boundary_preset_hold_and_zero",
       "purpose": "Invalid presets (0 and 6) force zero clear, valid recovery counts to Preset=2, and live Preset reduction saturates Count while staying Ready.",
       "steps": [
         {
@@ -698,10 +703,10 @@
       ]
     }
   ],
-  "specification_version": "2.2-normalized-20261112",
+  "specification_version": "normalized-20261114",
   "specification_contract": {
     "observation": "I[k] is sampled before execution; O[k] is observed after execution. Initial conditions apply before invocation zero.",
-    "normative_completion": "令(Sref[k+1], E[k])=T_SELF008(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\ncount初值0；Preset有效域1..5。!Request或Trip或非法Preset时countAfter=0，否则min(countBefore+1,Preset)；Count比较该值，Ready=有效且countAfter>=Preset。",
+    "normative_completion": "令(Sref[k+1], E[k])=T_SELF008(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\ncount初值0；Preset有效域1..5。!Request或Trip或非法Preset时countAfter=0，否则min(countBefore+1,Preset)；Count比较该值，Ready=有效且countAfter>=Preset。",
     "history_binding": "I, O and Sref namespaces, initialization and updates are defined in normalized_specification.observation, history_bindings and reference_state_initial. Candidate output never drives Sref.",
     "evaluation_scope": "Versioned executable scan predicate plus LTL over interpreted predicates. No native checker encoding or completed formal proof is claimed.",
     "review_source": "docs/规约逐题审查_20261106/SELF008.md",
@@ -756,10 +761,10 @@
         "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
         "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
         "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-        "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
+        "normalized_spec.py": "3c13590145597ad26cf537ff76c44e22f06abf7720e04d2ea262ac347be9d9cd"
       },
       "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-      "frozen_sources": "dataset/specifications/normalized_transition_v2"
+      "frozen_sources": "dataset/specifications/normalized_transition"
     },
     "constrained_observed_fields": [
       "Count",

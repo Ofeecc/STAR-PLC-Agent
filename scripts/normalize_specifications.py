@@ -13,9 +13,9 @@ from plc_agent.dataset import load_tasks, validate
 from plc_agent.normalized_spec import CONTRACT_FILES, NormalizedScanMonitor, canonical_source_bytes, reference_step
 from plc_agent.scan_contract import ScanContract
 
-VERSION = '2.2-normalized-20261112'
+VERSION = 'normalized-20261114'
 ARCHIVE = ROOT / 'dataset_versions/before_normalization_20261111'
-FROZEN = ROOT / 'dataset/specifications/normalized_transition_v2'
+FROZEN = ROOT / 'dataset/specifications/normalized_transition'
 
 # These are descriptions of fixed definitions, not instructions to finish them.
 RULES = {
@@ -196,7 +196,7 @@ def main():
         rule=RULES[tid]
         relation=('令(Sref[k+1], E[k])=T_'+tid+'(Sref[k], deepCopy(I[k]), dt_ms[k])。'
                   'T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。'
-                  'CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。'
+                  'CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。'
                   'Sref只由采样输入推进，绝不由O或候选内部变量推进。\n'+rule)
         quantified=deepcopy(current.get('normalized_specification',{}).get('finite_conjunctions',{}))
         t['specification_version']=VERSION
@@ -242,7 +242,8 @@ def main():
             p['language']='LTL_OVER_TYPED_SCAN_PREDICATES'
             p['encoding_status']='NOT_LOWERED_TO_MODEL_CHECKER'
             p['scope']='INITIAL_INSTANCE' if p['formula']=='init' else 'SCAN_SEQUENCE'
-            if p['formula']=='G(CompleteBehaviorV2)':
+            if p['formula'] in ('G(CompleteBehavior)', 'G(CompleteBehaviorV2)'):
+                p['formula']='G(CompleteBehavior)'
                 p['explanation']='Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.'
         # Interface symbols always denote observations, not oracle expressions.
         for name,f in fields.items():
@@ -259,7 +260,7 @@ def main():
             t['atomic_propositions'].update(mode='I[k].HVAC_MODE_SELECTOR',occupancy='I[k].OCCUPANCY_DETECTED',adjust='O[k].TEMP_SETPOINT_ADJUST')
         if tid=='PUB012':
             t['atomic_propositions'].update(count='O[k].Slab_Fault_Counter',history='O[k].Slab_Fault_History',runtime='O[k].Slab_Runtime_Accumulator')
-        t['atomic_propositions']['CompleteBehaviorV2']=relation
+        t['atomic_propositions']['CompleteBehavior']=relation
         normalized={'schema_version':1,'status':'NORMALIZED_HUMAN_REVIEWED',
             'language':'LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.',
             'candidate_formal_verification':'UNVERIFIED','initial_observed':initial,

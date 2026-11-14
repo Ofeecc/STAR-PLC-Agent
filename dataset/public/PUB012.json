@@ -110,7 +110,7 @@
     "normal": "valid AND NOT fault AND CUTTING_RUN",
     "add": "runtime=pre-runtime+CycleTime",
     "same_time": "runtime=pre-runtime",
-    "CompleteBehaviorV2": "令(Sref[k+1], E[k])=T_PUB012(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\nvalidFault=VALID & FAULT，其新上升沿count加1，历史=[FaultTimestamp]+旧历史前4项，并记录hold起点。无效清hold；alarm=valid & (fault或hold年龄<500ms)。valid & !fault & CUTTING_RUN时runtime加CycleTime（约定与dt_ms一致），否则保持。初始count/runtime=0、历史五个0、previousValidFault=FALSE。计数/累计不得溢出，FaultTimestamp为DINT。",
+    "CompleteBehavior": "令(Sref[k+1], E[k])=T_PUB012(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\nvalidFault=VALID & FAULT，其新上升沿count加1，历史=[FaultTimestamp]+旧历史前4项，并记录hold起点。无效清hold；alarm=valid & (fault或hold年龄<500ms)。valid & !fault & CUTTING_RUN时runtime加CycleTime（约定与dt_ms一致），否则保持。初始count/runtime=0、历史五个0、previousValidFault=FALSE。计数/累计不得溢出，FaultTimestamp为DINT。",
     "THICKNESS_FAULT": "I[k].THICKNESS_FAULT: sampled input (BOOL).",
     "THICKNESS_SIGNAL_VALID": "I[k].THICKNESS_SIGNAL_VALID: sampled input (BOOL).",
     "CUTTING_RUN": "I[k].CUTTING_RUN: sampled input (BOOL).",
@@ -192,8 +192,8 @@
       "scope": "SCAN_SEQUENCE"
     },
     {
-      "id": "PUB012.V2.COMPLETE",
-      "formula": "G(CompleteBehaviorV2)",
+      "id": "PUB012.COMPLETE",
+      "formula": "G(CompleteBehavior)",
       "explanation": "Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.",
       "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
       "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
@@ -799,6 +799,7 @@
     },
     {
       "id": "PUB012.T4",
+      "purpose": "Distinguish non-retriggerable TP vs TOF off-delay faults cleanly and verify zero false counts when invalid input clears and recovers (11 steps).",
       "description": "Retriggered 500ms hold (distinguishes TP), >500ms sustained fault clear (distinguishes TOF), signal loss clearing hold, and 499/500 ms boundary.",
       "steps": [
         {
@@ -1057,9 +1058,9 @@
       ]
     },
     {
-      "id": "PUB012.R22.retrigger",
-      "name": "持续故障仅计一次、保持内重触发、信号恢复仍故障",
-      "purpose": "持续故障仅计一次、保持内重触发、信号恢复仍故障",
+      "id": "PUB012.T5",
+      "name": "retrigger",
+      "purpose": "Count sustained fault once per episode, retrigger within hold, and stay faulted until clear",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -1318,7 +1319,7 @@
       ]
     },
     {
-      "id": "PUB012.T5",
+      "id": "PUB012.T6",
       "purpose": "Seven valid rising fault edges push oldest timestamps out of the 5-entry Slab_Fault_History shift window.",
       "steps": [
         {
@@ -1646,7 +1647,7 @@
       ]
     },
     {
-      "id": "PUB012.T6",
+      "id": "PUB012.T7",
       "purpose": "Invalid signal suppresses alarm, count, timestamp and runtime accumulation; normal running cut accumulates time.",
       "steps": [
         {
@@ -1767,7 +1768,7 @@
       ]
     },
     {
-      "id": "PUB012.T7",
+      "id": "PUB012.T8",
       "purpose": "Sustained high fault counts only once; 499ms/500ms hold window boundary releases alarm cleanly.",
       "steps": [
         {
@@ -1865,10 +1866,10 @@
       ]
     }
   ],
-  "specification_version": "2.2-normalized-20261112",
+  "specification_version": "normalized-20261114",
   "specification_contract": {
     "observation": "I[k] is sampled before execution; O[k] is observed after execution. Initial conditions apply before invocation zero.",
-    "normative_completion": "令(Sref[k+1], E[k])=T_PUB012(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\nvalidFault=VALID & FAULT，其新上升沿count加1，历史=[FaultTimestamp]+旧历史前4项，并记录hold起点。无效清hold；alarm=valid & (fault或hold年龄<500ms)。valid & !fault & CUTTING_RUN时runtime加CycleTime（约定与dt_ms一致），否则保持。初始count/runtime=0、历史五个0、previousValidFault=FALSE。计数/累计不得溢出，FaultTimestamp为DINT。",
+    "normative_completion": "令(Sref[k+1], E[k])=T_PUB012(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\nvalidFault=VALID & FAULT，其新上升沿count加1，历史=[FaultTimestamp]+旧历史前4项，并记录hold起点。无效清hold；alarm=valid & (fault或hold年龄<500ms)。valid & !fault & CUTTING_RUN时runtime加CycleTime（约定与dt_ms一致），否则保持。初始count/runtime=0、历史五个0、previousValidFault=FALSE。计数/累计不得溢出，FaultTimestamp为DINT。",
     "history_binding": "I, O and Sref namespaces, initialization and updates are defined in normalized_specification.observation, history_bindings and reference_state_initial. Candidate output never drives Sref.",
     "evaluation_scope": "Versioned executable scan predicate plus LTL over interpreted predicates. No native checker encoding or completed formal proof is claimed.",
     "review_source": "docs/规约逐题审查_20261106/PUB012.md",
@@ -1944,10 +1945,10 @@
         "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
         "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
         "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-        "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
+        "normalized_spec.py": "3c13590145597ad26cf537ff76c44e22f06abf7720e04d2ea262ac347be9d9cd"
       },
       "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-      "frozen_sources": "dataset/specifications/normalized_transition_v2"
+      "frozen_sources": "dataset/specifications/normalized_transition"
     },
     "constrained_observed_fields": [
       "Slab_Fault_Counter",

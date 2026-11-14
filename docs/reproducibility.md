@@ -1,4 +1,4 @@
-# Reproducing and Auditing the Benchmark (STAR v2)
+# Reproducing and Auditing the Benchmark (STAR)
 
 The submitted repository preserves frozen task specifications, generated Structured Text versions, compiler diagnostics, and audited campaign records. A package marked `PARTIAL` is a reproducible work snapshot; it is not a completed benchmark or final report.
 

@@ -99,8 +99,8 @@ _OBS_HISTORY_NAMES = {
 }
 
 _COMMON_ZH: dict[str, tuple[str, str, str | None]] = {
-    "CompleteBehaviorV2": (
-        "完整单拍行为关系 (V2)",
+    "CompleteBehavior": (
+        "完整单拍行为关系",
         "固定 Python 参考转移 T 与初始状态共同定义的完整扫描判定谓词：输入 I[k] 推进参考状态 Sref[k]->Sref[k+1] 与预期输出 E[k]，要求实际输出 O[k] 的所有受约束字段均严格匹配；绝对不允许用实际输出 O 反向推进参考状态。",
         "参考状态 Sref 跨拍演进且仅由采样输入驱动，防止与候选 ST 内部变量混淆。",
     ),
@@ -148,8 +148,8 @@ _COMMON_ZH: dict[str, tuple[str, str, str | None]] = {
 
 
 _COMMON_EN: dict[str, tuple[str, str, str | None]] = {
-    "CompleteBehaviorV2": (
-        "Complete Single-Scan Contract (V2)",
+    "CompleteBehavior": (
+        "Complete Single-Scan Contract",
         "Executable scan judgment predicate defined by the pinned Python reference transition T and initial state: sampled inputs I[k] advance Sref[k] -> Sref[k+1] and expected outputs E[k], requiring all constrained observed fields in O[k] to match under the explicit comparison policy. Actual outputs O never feed back into Sref.",
         "Sref evolves across scan cycles driven strictly by sampled inputs, never by candidate outputs or internal variable names.",
     ),

@@ -134,7 +134,7 @@
     "Thresholds are >=50, >=80 and >=100 cm. One logical phase transition occurs per invocation.",
     "In DRAIN, valveDRun remains TRUE until emergency stop (estop=FALSE), mode switch to manual (opeMode=FALSE), or a fresh autoStart rising edge starting a new batch.",
     "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
-    "V2 mode-change priority: emergency stop first; then a change of mode after the first invocation clears sequence/latches and suppresses commands for that invocation; edge memories still update. The first invocation establishes the selected mode and executes normally. New commands are accepted on subsequent invocations subject to their edge rules.",
+    "Mode-change priority: emergency stop first; then a change of mode after the first invocation clears sequence/latches and suppresses commands for that invocation; edge memories still update. The first invocation establishes the selected mode and executes normally. New commands are accepted on subsequent invocations subject to their edge rules.",
     "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
   ],
   "atomic_propositions": {
@@ -153,7 +153,7 @@
     "fromC": "No mode change this invocation AND (safe AND opeMode AND pre-phase FILL_C AND levelSensor>=100)",
     "mixed": "No mode change this invocation AND (safe AND opeMode AND pre-phase MIX AND mixMotorComplete)",
     "Drain": "valveDRun only",
-    "CompleteBehaviorV2": "令(Sref[k+1], E[k])=T_PUB015(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\n五按钮及autoStart历史初值FALSE、每拍更新。急停优先，其次已建立模式的变化；二者清阶段/五锁存且当拍全关。手动逐项latchAfter=latchBefore XOR buttonRise。自动IDLE或DRAIN遇autoStartRise进A（新批次），A液位>=50进B，B>=80按批次processMode进C或MIX，C>=100进MIX，MIX完成进DRAIN；每拍一阶，DRAIN保持valveDRun=TRUE至切换手动、急停或autoStart上升沿重起。五输出对应转移后A/B/C/DRAIN/MIX。批次模式在活动批次(1..4)内固定。",
+    "CompleteBehavior": "令(Sref[k+1], E[k])=T_PUB015(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\n五按钮及autoStart历史初值FALSE、每拍更新。急停优先，其次已建立模式的变化；二者清阶段/五锁存且当拍全关。手动逐项latchAfter=latchBefore XOR buttonRise。自动IDLE或DRAIN遇autoStartRise进A（新批次），A液位>=50进B，B>=80按批次processMode进C或MIX，C>=100进MIX，MIX完成进DRAIN；每拍一阶，DRAIN保持valveDRun=TRUE至切换手动、急停或autoStart上升沿重起。五输出对应转移后A/B/C/DRAIN/MIX。批次模式在活动批次(1..4)内固定。",
     "estop": "I[k].estop: sampled input (BOOL).",
     "opeMode": "I[k].opeMode: sampled input (BOOL).",
     "valveAStart": "I[k].valveAStart: sampled input (BOOL).",
@@ -260,8 +260,8 @@
       "scope": "SCAN_SEQUENCE"
     },
     {
-      "id": "PUB015.V2.COMPLETE",
-      "formula": "G(CompleteBehaviorV2)",
+      "id": "PUB015.COMPLETE",
+      "formula": "G(CompleteBehavior)",
       "explanation": "Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.",
       "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
       "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
@@ -775,7 +775,8 @@
       ]
     },
     {
-      "id": "V2_process_history_regression",
+      "id": "PUB015.T4",
+      "name": "process_history_regression",
       "purpose": "Mode/edge reset, repeated station or prior-batch retained setpoint regression.",
       "steps": [
         {
@@ -1002,6 +1003,7 @@
     },
     {
       "id": "PUB015.T5",
+      "purpose": "Verify all 5 manual button toggles, Mode 2 branching, FILL_A level=120 advancing only one phase per scan, new batch after DRAIN, and E-stop recovery (14 steps).",
       "description": "Manual B/C/D/Mix toggles and hold, level jumping to >=100 in FILL_A (single transition), Mode 2 full batch, DRAIN restart via autoStart, and E-stop recovery.",
       "steps": [
         {
@@ -1315,9 +1317,9 @@
       ]
     },
     {
-      "id": "PUB015.R22.manual_mix_hold",
-      "name": "手动搅拌按钮持续按住，不能每拍翻转",
-      "purpose": "手动搅拌按钮持续按住，不能每拍翻转",
+      "id": "PUB015.T6",
+      "name": "manual_mix_hold",
+      "purpose": "Hold manual mixMotorStart button steady without toggling every scan",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -1484,9 +1486,9 @@
       ]
     },
     {
-      "id": "PUB015.R22.valveAStart",
-      "name": "手动独立翻转、长按与再次关闭：valveAStart",
-      "purpose": "手动独立翻转、长按与再次关闭：valveAStart",
+      "id": "PUB015.T7",
+      "name": "valveAStart",
+      "purpose": "Manual independent toggle, hold suppression, and second-press off: valveAStart",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -1676,9 +1678,9 @@
       ]
     },
     {
-      "id": "PUB015.R22.valveBStart",
-      "name": "手动独立翻转、长按与再次关闭：valveBStart",
-      "purpose": "手动独立翻转、长按与再次关闭：valveBStart",
+      "id": "PUB015.T8",
+      "name": "valveBStart",
+      "purpose": "Manual independent toggle, hold suppression, and second-press off: valveBStart",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -1868,9 +1870,9 @@
       ]
     },
     {
-      "id": "PUB015.R22.valveCStart",
-      "name": "手动独立翻转、长按与再次关闭：valveCStart",
-      "purpose": "手动独立翻转、长按与再次关闭：valveCStart",
+      "id": "PUB015.T9",
+      "name": "valveCStart",
+      "purpose": "Manual independent toggle, hold suppression, and second-press off: valveCStart",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -2060,9 +2062,9 @@
       ]
     },
     {
-      "id": "PUB015.R22.valveDStart",
-      "name": "手动独立翻转、长按与再次关闭：valveDStart",
-      "purpose": "手动独立翻转、长按与再次关闭：valveDStart",
+      "id": "PUB015.T10",
+      "name": "valveDStart",
+      "purpose": "Manual independent toggle, hold suppression, and second-press off: valveDStart",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -2252,9 +2254,9 @@
       ]
     },
     {
-      "id": "PUB015.R22.mixMotorStart",
-      "name": "手动独立翻转、长按与再次关闭：mixMotorStart",
-      "purpose": "手动独立翻转、长按与再次关闭：mixMotorStart",
+      "id": "PUB015.T11",
+      "name": "mixMotorStart",
+      "purpose": "Manual independent toggle, hold suppression, and second-press off: mixMotorStart",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -2444,9 +2446,9 @@
       ]
     },
     {
-      "id": "PUB015.R22.auto_wait_False",
-      "name": "配料完整路线、各阶段等待及切换模式后新批次",
-      "purpose": "配料完整路线、各阶段等待及切换模式后新批次",
+      "id": "PUB015.T12",
+      "name": "auto_wait_False",
+      "purpose": "Full batching route, per-stage waits, and new batch after mode switch",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -2820,9 +2822,9 @@
       ]
     },
     {
-      "id": "PUB015.R22.auto_wait_True",
-      "name": "配料完整路线、各阶段等待及切换模式后新批次",
-      "purpose": "配料完整路线、各阶段等待及切换模式后新批次",
+      "id": "PUB015.T13",
+      "name": "auto_wait_True",
+      "purpose": "Full batching route, per-stage waits, and new batch after mode switch",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -3242,10 +3244,10 @@
       ]
     }
   ],
-  "specification_version": "2.2-normalized-20261112",
+  "specification_version": "normalized-20261114",
   "specification_contract": {
     "observation": "I[k] is sampled before execution; O[k] is observed after execution. Initial conditions apply before invocation zero.",
-    "normative_completion": "令(Sref[k+1], E[k])=T_PUB015(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\n五按钮及autoStart历史初值FALSE、每拍更新。急停优先，其次已建立模式的变化；二者清阶段/五锁存且当拍全关。手动逐项latchAfter=latchBefore XOR buttonRise。自动IDLE或DRAIN遇autoStartRise进A（新批次），A液位>=50进B，B>=80按批次processMode进C或MIX，C>=100进MIX，MIX完成进DRAIN；每拍一阶，DRAIN保持valveDRun=TRUE至切换手动、急停或autoStart上升沿重起。五输出对应转移后A/B/C/DRAIN/MIX。批次模式在活动批次(1..4)内固定。",
+    "normative_completion": "令(Sref[k+1], E[k])=T_PUB015(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\n五按钮及autoStart历史初值FALSE、每拍更新。急停优先，其次已建立模式的变化；二者清阶段/五锁存且当拍全关。手动逐项latchAfter=latchBefore XOR buttonRise。自动IDLE或DRAIN遇autoStartRise进A（新批次），A液位>=50进B，B>=80按批次processMode进C或MIX，C>=100进MIX，MIX完成进DRAIN；每拍一阶，DRAIN保持valveDRun=TRUE至切换手动、急停或autoStart上升沿重起。五输出对应转移后A/B/C/DRAIN/MIX。批次模式在活动批次(1..4)内固定。",
     "history_binding": "I, O and Sref namespaces, initialization and updates are defined in normalized_specification.observation, history_bindings and reference_state_initial. Candidate output never drives Sref.",
     "evaluation_scope": "Versioned executable scan predicate plus LTL over interpreted predicates. No native checker encoding or completed formal proof is claimed.",
     "review_source": "docs/规约逐题审查_20261106/PUB015.md",
@@ -3319,10 +3321,10 @@
         "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
         "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
         "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-        "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
+        "normalized_spec.py": "3c13590145597ad26cf537ff76c44e22f06abf7720e04d2ea262ac347be9d9cd"
       },
       "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-      "frozen_sources": "dataset/specifications/normalized_transition_v2"
+      "frozen_sources": "dataset/specifications/normalized_transition"
     },
     "constrained_observed_fields": [
       "mixMotorRun",
@@ -3388,7 +3390,7 @@
       "Thresholds are >=50, >=80 and >=100 cm. One logical phase transition occurs per invocation.",
       "In DRAIN, valveDRun remains TRUE until emergency stop (estop=FALSE), mode switch to manual (opeMode=FALSE), or a fresh autoStart rising edge starting a new batch.",
       "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
-      "V2 mode-change priority: emergency stop first; then a change of mode after the first invocation clears sequence/latches and suppresses commands for that invocation; edge memories still update. The first invocation establishes the selected mode and executes normally. New commands are accepted on subsequent invocations subject to their edge rules.",
+      "Mode-change priority: emergency stop first; then a change of mode after the first invocation clears sequence/latches and suppresses commands for that invocation; edge memories still update. The first invocation establishes the selected mode and executes normally. New commands are accepted on subsequent invocations subject to their edge rules.",
       "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
     ],
     "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",

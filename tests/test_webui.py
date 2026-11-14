@@ -270,7 +270,7 @@ class WebUITests(unittest.TestCase):
         html = render_index_html()
         self.assertIsInstance(html, str)
         self.assertIn('<html lang="en">', html)
-        self.assertIn("STAR-PLC v2 | Agent Workflow, Benchmark &amp; Waveform Inspector", html)
+        self.assertIn("STAR-PLC | Agent Workflow, Benchmark &amp; Waveform Inspector", html)
         self.assertIn("Dataset &amp; Specs", html)
         self.assertIn("Workflow &amp; Benchmark", html)
         self.assertIn("Sandbox &amp; Waveform Lab", html)
@@ -386,6 +386,10 @@ globalThis.fetch = async (url) => ({{
     if (url === '/api/runs') return globalThis.RUNS_DATA;
     if (url === '/api/experiments') return globalThis.EXP_DATA;
     if (url.startsWith('/api/run-trace?')) return globalThis.TRACE_DATA;
+    if (url === '/api/check-reference-model') return {{
+      status: 'MODEL_PROPERTIES_TRUE', tool: 'NuSMV', verification_status: 'VERIFIED_BOTH',
+      smv_status: globalThis.TASK_DETAIL.smv_status
+    }};
     return {{}};
   }}
 }});
@@ -405,8 +409,8 @@ const check = [
   'populateSandboxTemplate(globalThis.TASK_DETAIL);',
   'if (!globalThis.elements["st-highlight-code"].innerHTML.includes("st-kw-block") || !globalThis.elements["st-highlight-code"].innerHTML.includes("st-kw-type")) throw new Error("Missing ST syntax highlighting");',
   'if (!globalThis.elements["tests-container"].innerHTML.includes("wave-table") || !globalThis.elements["tests-container"].innerHTML.includes("openTestWaveform")) throw new Error("Missing inline test signal table or jump button");',
-  'openTestWaveform("T1");',
-  'if (globalThis.elements["waveform-case-select"].value !== "T1" || !globalThis.elements["waveform-display"].innerHTML.includes("wave-table")) throw new Error("openTestWaveform did not select T1");',
+  'openTestWaveform("PUB001.T1");',
+  'if (globalThis.elements["waveform-case-select"].value !== "PUB001.T1" || !globalThis.elements["waveform-display"].innerHTML.includes("wave-table")) throw new Error("openTestWaveform did not select PUB001.T1");',
   'if (!globalThis.elements["pilot-grid"].innerHTML.includes("Human reviewed")) throw new Error("Missing English Human reviewed badge");',
   'if (globalThis.elements["tests-container"].innerHTML.includes("固定测试")) throw new Error("Chinese text leaked in EN mode");',
   'showSpecPopover(globalThis.makeEl("anchor"), "Spre", true);',
@@ -431,6 +435,11 @@ const check = [
   'if (cards !== 32 || activeCards !== 1 || opts !== 32) throw new Error("Expected 32/1/32 cards/active/options, got " + cards + "/" + activeCards + "/" + opts);',
   'if (!popOpen) throw new Error("Popover did not open cleanly in EN");',
   'if (!globalThis.elements["task-overview"].innerHTML.includes("overview-smv-box")) throw new Error("Missing SMV box");',
+  'if (!globalThis.elements["task-overview"].innerHTML.includes("PASS") || globalThis.elements["task-overview"].innerHTML.includes(">UNVERIFIED<")) throw new Error("SMV panel showed UNVERIFIED instead of PASS: " + globalThis.elements["task-overview"].innerHTML);',
+  'const noCompHtml = renderSmvBoxInner("PUB002", {{ verification_status: "VERIFIED_BOTH", badge_tone: "green", badge_text_en: "Verified", models: {{ reference: globalThis.TASK_DETAIL.smv_status.models.reference, mutant: globalThis.TASK_DETAIL.smv_status.models.mutant }} }});',
+  'if (noCompHtml.includes("complete.smv")) throw new Error("Unexpected complete.smv row for task without complete.smv");',
+  'runSmvCheck("reference");',
+  'if (!globalThis.elements["overview-smv-box"].innerHTML.includes("smv-action-feedback") || !globalThis.elements["overview-smv-box"].innerHTML.includes("Running...")) throw new Error("Missing instant SMV busy feedback: " + globalThis.elements["overview-smv-box"].innerHTML);',
   'if (!globalThis.elements["ltl-container"].innerHTML.includes("spec-tok--")) throw new Error("Missing highlighted tokens");',
   'print("JS_DOM_OK", cards, opts);'
 ].join('\\n');
@@ -619,7 +628,7 @@ const check = [
         )
         self.assertEqual(st, 200)
         self.assertEqual(trace["task_id"], "PUB001")
-        self.assertEqual(trace["framework_kind"], "star_v2")
+        self.assertEqual(trace["framework_kind"], "star")
         self.assertEqual([s["id"] for s in trace["stages"]], ["planner", "dialect", "coder", "tester", "ratchet"])
         self.assertEqual(trace["stages"][0]["status"], "DONE")
         self.assertEqual(trace["stages"][4]["status"], "PASS")
@@ -761,7 +770,7 @@ const check = [
             content_type = response.headers.get("Content-Type", "")
             self.assertIn("text/html", content_type)
             body = response.read().decode("utf-8")
-            self.assertIn("STAR-PLC v2 | Agent Workflow, Benchmark &amp; Waveform Inspector", body)
+            self.assertIn("STAR-PLC | Agent Workflow, Benchmark &amp; Waveform Inspector", body)
 
         # 2. Fetch /api/tasks
         api_url = f"http://127.0.0.1:{port}/api/tasks"

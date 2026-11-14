@@ -118,7 +118,7 @@ def check_definition_binding(task):
 
 
 class NormalizedScanMonitor:
-    """Evaluates CompleteBehaviorV2 on observations, not all legacy LTL clauses."""
+    """Evaluates CompleteBehavior on observations, not all legacy LTL clauses."""
     def __init__(self, task):
         check_definition_binding(task)
         self.task = deepcopy(task)
@@ -164,7 +164,7 @@ class NormalizedScanMonitor:
                         wanted[j] = {**deepcopy(source),'recipeID':0}
             checks['recipe'] = ('recipe' in observed and output_matches(self.task['id'],
                                 'recipe', observed['recipe'], wanted, sampled))
-        result = {'scan': self.scan, 'predicate': 'CompleteBehaviorV2',
+        result = {'scan': self.scan, 'predicate': 'CompleteBehavior',
                   'holds': all(checks.values()), 'field_results': checks,
                   'expected': deepcopy(expected), 'observed': deepcopy(observed),
                   'scope': 'FINITE_OBSERVATION_ONLY_NOT_LTL_PROOF'}

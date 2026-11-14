@@ -96,7 +96,7 @@
     "popped": "item=pre-front AND post-queue=pre-queue without front AND count=pre-count-1 AND status=0",
     "bounded": "0<=elementCount<=actual buffer length",
     "idle": "NOT reset AND no request rising edge",
-    "CompleteBehaviorV2": "令(Sref[k+1], E[k])=T_PUB018(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\n独立逻辑队列Q初始空、enqPrev/deqPrev=FALSE。非reset下严禁同拍enqueue/dequeue同时上升沿。reset优先QAfter=[]；否则单个enqueue新沿且未满时追加采样item，满报8002；dequeue新沿且非空时返回旧队首并去首，空报8001；其余状态0。elementCount=|QAfter|；仅成功pop改变实际item，其余等于采样item。buffer物理布局不受约束，其正确性由完整可观察出队行为约束。绑定A容量2(DINT)、B容量3(BOOL)，其余正整数容量由实际buffer元数据固定。",
+    "CompleteBehavior": "令(Sref[k+1], E[k])=T_PUB018(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\n独立逻辑队列Q初始空、enqPrev/deqPrev=FALSE。非reset下严禁同拍enqueue/dequeue同时上升沿。reset优先QAfter=[]；否则单个enqueue新沿且未满时追加采样item，满报8002；dequeue新沿且非空时返回旧队首并去首，空报8001；其余状态0。elementCount=|QAfter|；仅成功pop改变实际item，其余等于采样item。buffer物理布局不受约束，其正确性由完整可观察出队行为约束。绑定A容量2(DINT)、B容量3(BOOL)，其余正整数容量由实际buffer元数据固定。",
     "enqueue": "I[k].enqueue: sampled input (BOOL).",
     "dequeue": "I[k].dequeue: sampled input (BOOL).",
     "elementCount": "O[k].elementCount: independently observed post-scan candidate value (DINT); never defined as expected output.",
@@ -173,8 +173,8 @@
       "scope": "SCAN_SEQUENCE"
     },
     {
-      "id": "PUB018.V2.COMPLETE",
-      "formula": "G(CompleteBehaviorV2)",
+      "id": "PUB018.COMPLETE",
+      "formula": "G(CompleteBehavior)",
       "explanation": "Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.",
       "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
       "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
@@ -186,6 +186,7 @@
       "id": "PUB018.T1",
       "name": "wrap_full_empty",
       "purpose": "Capacity-two FIFO preserves order through wrap, full and empty rejection.",
+      "binding_id": "A",
       "steps": [
         {
           "inputs": {
@@ -481,13 +482,13 @@
             "item": 77
           }
         }
-      ],
-      "binding_id": "A"
+      ]
     },
     {
       "id": "PUB018.T2",
       "name": "reset_priority",
       "purpose": "Reset coincides with request; held request after reset does not execute.",
+      "binding_id": "A",
       "steps": [
         {
           "inputs": {
@@ -627,13 +628,13 @@
             "item": 50
           }
         }
-      ],
-      "binding_id": "A"
+      ]
     },
     {
       "id": "PUB018.T3",
       "name": "generic_BOOL",
       "purpose": "Second element type and lower-bound-one buffer.",
+      "binding_id": "B",
       "steps": [
         {
           "inputs": {
@@ -790,11 +791,11 @@
             "status": 0
           }
         }
-      ],
-      "binding_id": "B"
+      ]
     },
     {
       "id": "PUB018.T4",
+      "purpose": "Cover full BOOL FIFO saturation, 8002 full error, sequential FIFO drain, ring wrap-around, 8001 empty error, and reset clearing priority (18 steps).",
       "description": "Binding B (BOOL, ARRAY[1..3] OF BOOL, capacity 3): fill 3 items, full 8002, FIFO dequeue of 3 items, empty 8001, wrap-around, and reset.",
       "steps": [
         {
@@ -1106,9 +1107,9 @@
       ]
     },
     {
-      "id": "PUB018.R22.capacity1",
-      "name": "容量1入队、满、出队、回绕及复位后重用",
-      "purpose": "容量1入队、满、出队、回绕及复位后重用",
+      "id": "PUB018.T5",
+      "name": "capacity1",
+      "purpose": "Capacity-1 queue enqueue, full saturation, dequeue, wrap-around, and post-reset reuse",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -1334,9 +1335,9 @@
       ]
     },
     {
-      "id": "PUB018.R22.drain_T1",
-      "name": "逐项排空并检查末元素：PUB018.T1",
-      "purpose": "逐项排空并检查末元素：PUB018.T1",
+      "id": "PUB018.T6",
+      "name": "drain_T1",
+      "purpose": "Drain FIFO item by item and verify tail element: PUB018.T1",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -1817,9 +1818,9 @@
       ]
     },
     {
-      "id": "PUB018.R22.drain_T2",
-      "name": "逐项排空并检查末元素：PUB018.T2",
-      "purpose": "逐项排空并检查末元素：PUB018.T2",
+      "id": "PUB018.T7",
+      "name": "drain_T2",
+      "purpose": "Drain FIFO item by item and verify tail element: PUB018.T2",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -2129,9 +2130,9 @@
       ]
     },
     {
-      "id": "PUB018.R22.drain_T3",
-      "name": "逐项排空并检查末元素：PUB018.T3",
-      "purpose": "逐项排空并检查末元素：PUB018.T3",
+      "id": "PUB018.T8",
+      "name": "drain_T3",
+      "purpose": "Drain FIFO item by item and verify tail element: PUB018.T3",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -2460,9 +2461,9 @@
       ]
     },
     {
-      "id": "PUB018.R22.drain_capacity1",
-      "name": "逐项排空并检查末元素：PUB018.R22.capacity1",
-      "purpose": "逐项排空并检查末元素：PUB018.R22.capacity1",
+      "id": "PUB018.T9",
+      "name": "drain_capacity1",
+      "purpose": "Drain FIFO item by item and verify tail element: PUB018.T5",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -2876,10 +2877,10 @@
       "capacity": 3
     }
   ],
-  "specification_version": "2.2-normalized-20261112",
+  "specification_version": "normalized-20261114",
   "specification_contract": {
     "observation": "I[k] is sampled before execution; O[k] is observed after execution. Initial conditions apply before invocation zero.",
-    "normative_completion": "令(Sref[k+1], E[k])=T_PUB018(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\n独立逻辑队列Q初始空、enqPrev/deqPrev=FALSE。非reset下严禁同拍enqueue/dequeue同时上升沿。reset优先QAfter=[]；否则单个enqueue新沿且未满时追加采样item，满报8002；dequeue新沿且非空时返回旧队首并去首，空报8001；其余状态0。elementCount=|QAfter|；仅成功pop改变实际item，其余等于采样item。buffer物理布局不受约束，其正确性由完整可观察出队行为约束。绑定A容量2(DINT)、B容量3(BOOL)，其余正整数容量由实际buffer元数据固定。",
+    "normative_completion": "令(Sref[k+1], E[k])=T_PUB018(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\n独立逻辑队列Q初始空、enqPrev/deqPrev=FALSE。非reset下严禁同拍enqueue/dequeue同时上升沿。reset优先QAfter=[]；否则单个enqueue新沿且未满时追加采样item，满报8002；dequeue新沿且非空时返回旧队首并去首，空报8001；其余状态0。elementCount=|QAfter|；仅成功pop改变实际item，其余等于采样item。buffer物理布局不受约束，其正确性由完整可观察出队行为约束。绑定A容量2(DINT)、B容量3(BOOL)，其余正整数容量由实际buffer元数据固定。",
     "history_binding": "I, O and Sref namespaces, initialization and updates are defined in normalized_specification.observation, history_bindings and reference_state_initial. Candidate output never drives Sref.",
     "evaluation_scope": "Versioned executable scan predicate plus LTL over interpreted predicates. No native checker encoding or completed formal proof is claimed.",
     "review_source": "docs/规约逐题审查_20261106/PUB018.md",
@@ -3012,10 +3013,10 @@
         "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
         "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
         "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-        "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
+        "normalized_spec.py": "3c13590145597ad26cf537ff76c44e22f06abf7720e04d2ea262ac347be9d9cd"
       },
       "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-      "frozen_sources": "dataset/specifications/normalized_transition_v2"
+      "frozen_sources": "dataset/specifications/normalized_transition"
     },
     "constrained_observed_fields": [
       "elementCount",

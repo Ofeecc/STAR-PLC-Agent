@@ -96,12 +96,12 @@
     "qMoving": "Spre.reference.state.mode=1",
     "qComplete": "Spre.reference.state.mode=2",
     "qFault": "Spre.reference.state.mode=3",
-    "CompleteBehaviorV2": "令(Sref[k+1], E[k])=T_SELF004(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\nmode初值IDLE。优先Jam→FAULT，其次Reset→IDLE，其次旧FAULT保持，其次Stop→IDLE，其次旧MOVING且AtExit→COMPLETE，其次旧IDLE且Start且!AtExit→MOVING，其余保持。Belt/Complete/Fault分别等价于新mode为MOVING/COMPLETE/FAULT。",
+    "CompleteBehavior": "令(Sref[k+1], E[k])=T_SELF004(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\nmode初值IDLE。优先Jam→FAULT，其次Reset→IDLE，其次旧FAULT保持，其次Stop→IDLE，其次旧MOVING且AtExit→COMPLETE，其次旧IDLE且Start且!AtExit→MOVING，其余保持。Belt/Complete/Fault分别等价于新mode为MOVING/COMPLETE/FAULT。",
     "init": "At the separate pre-invocation initial observation before scan k=0: Spre.mode=IDLE, O_init.Belt=false, O_init.Complete=false, O_init.Fault=false."
   },
   "ltl": [
     {
-      "id": "P_init",
+      "id": "SELF004.P_init",
       "kind": "safety",
       "formula": "init",
       "description": "Before the first scan invocation, all declared OUTPUT variables and initial instance state hold their declared initial values.",
@@ -111,7 +111,7 @@
       "scope": "INITIAL_INSTANCE"
     },
     {
-      "id": "P1",
+      "id": "SELF004.P1",
       "formula": "G(Jam -> (Fault & !Belt & !Complete))",
       "explanation": "Jam wins over Reset and Start.",
       "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
@@ -119,7 +119,7 @@
       "scope": "SCAN_SEQUENCE"
     },
     {
-      "id": "P2",
+      "id": "SELF004.P2",
       "formula": "G((qFault & !Reset) -> Fault)",
       "explanation": "Fault requires an explicit clear operation.",
       "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
@@ -127,7 +127,7 @@
       "scope": "SCAN_SEQUENCE"
     },
     {
-      "id": "P3",
+      "id": "SELF004.P3",
       "formula": "G((!Jam & Reset) -> (!Belt & !Complete & !Fault))",
       "explanation": "A cleared-jam reset returns IDLE.",
       "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
@@ -135,7 +135,7 @@
       "scope": "SCAN_SEQUENCE"
     },
     {
-      "id": "P4",
+      "id": "SELF004.P4",
       "formula": "G((qIdle & !Jam & !Reset & !Stop & Start & !AtExit) -> Belt)",
       "explanation": "A valid idle start moves the pallet.",
       "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
@@ -143,7 +143,7 @@
       "scope": "SCAN_SEQUENCE"
     },
     {
-      "id": "P5",
+      "id": "SELF004.P5",
       "formula": "G((qMoving & AtExit & !Jam & !Reset & !Stop) -> (Complete & !Belt))",
       "explanation": "Exit arrival stops indexing in the same scan.",
       "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
@@ -151,7 +151,7 @@
       "scope": "SCAN_SEQUENCE"
     },
     {
-      "id": "P6",
+      "id": "SELF004.P6",
       "formula": "G(!(Belt & (Complete | Fault)))",
       "explanation": "Movement excludes completion and fault outputs.",
       "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
@@ -159,7 +159,7 @@
       "scope": "SCAN_SEQUENCE"
     },
     {
-      "id": "P7",
+      "id": "SELF004.P7",
       "formula": "G(Fault -> (G Fault | (Fault U (!Jam & Reset))))",
       "explanation": "A latched jam remains until a cleared-jam reset, or forever if no such reset occurs; this does not assume eventual reset.",
       "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
@@ -167,7 +167,7 @@
       "scope": "SCAN_SEQUENCE"
     },
     {
-      "id": "P8",
+      "id": "SELF004.P8",
       "kind": "safety",
       "formula": "G((!Jam & !Reset & !qFault & Stop -> (!Belt & !Complete & !Fault)) & (qIdle & !Jam & !Reset & (!Start | AtExit) -> (!Belt & !Complete & !Fault)) & (qMoving & !Jam & !Reset & !Stop & !AtExit -> (Belt & !Complete & !Fault)) & (qComplete & !Jam & !Reset & !Stop -> (Complete & !Belt & !Fault)))",
       "description": "Covers Stop returning to IDLE from MOVING/COMPLETE, IDLE holding when unstarted or blocked at exit, MOVING holding before AtExit, and COMPLETE holding until Stop/Reset/Jam.",
@@ -177,7 +177,7 @@
       "scope": "SCAN_SEQUENCE"
     },
     {
-      "id": "P9",
+      "id": "SELF004.P9",
       "kind": "safety",
       "formula": "G(!(Belt & Complete) & (!(Jam | qFault) -> !Fault) & ((qIdle | qFault | Stop | Reset) -> !Complete))",
       "description": "Guarantees Belt/Complete mutual exclusion, forbids spontaneous Fault, and prevents spurious Complete without moving to AtExit.",
@@ -187,8 +187,8 @@
       "scope": "SCAN_SEQUENCE"
     },
     {
-      "id": "SELF004.V2.COMPLETE",
-      "formula": "G(CompleteBehaviorV2)",
+      "id": "SELF004.COMPLETE",
+      "formula": "G(CompleteBehavior)",
       "explanation": "Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.",
       "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
       "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
@@ -197,7 +197,8 @@
   ],
   "tests": [
     {
-      "id": "index",
+      "id": "SELF004.T1",
+      "name": "index",
       "purpose": "One pallet and retained completion",
       "steps": [
         {
@@ -273,7 +274,8 @@
       ]
     },
     {
-      "id": "jam",
+      "id": "SELF004.T2",
+      "name": "jam",
       "purpose": "Jam priority, retained fault and safe reset",
       "steps": [
         {
@@ -363,7 +365,9 @@
       ]
     },
     {
-      "id": "SELF004.boundary_stop_and_fault",
+      "id": "SELF004.T3",
+      "name": "boundary_stop_and_fault",
+      "purpose": "Verify Stop overrides AtExit during MOVING, clean stop at COMPLETE, and Stop held in FAULT preserves alarm until Reset (10 steps).",
       "description": "MOVING Stop, Stop+AtExit priority, COMPLETE Stop, FAULT ignoring Stop until Reset, and MOVING Reset.",
       "steps": [
         {
@@ -509,9 +513,9 @@
       ]
     },
     {
-      "id": "SELF004.R22.tail_Start",
-      "name": "完成主流程后改变并保持 Start",
-      "purpose": "完成主流程后改变并保持 Start",
+      "id": "SELF004.T4",
+      "name": "tail_Start",
+      "purpose": "After completing main sequence, toggle and hold Start",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -622,9 +626,9 @@
       ]
     },
     {
-      "id": "SELF004.R22.tail_Stop",
-      "name": "完成主流程后改变并保持 Stop",
-      "purpose": "完成主流程后改变并保持 Stop",
+      "id": "SELF004.T5",
+      "name": "tail_Stop",
+      "purpose": "After completing main sequence, toggle and hold Stop",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -735,9 +739,9 @@
       ]
     },
     {
-      "id": "SELF004.R22.tail_AtExit",
-      "name": "完成主流程后改变并保持 AtExit",
-      "purpose": "完成主流程后改变并保持 AtExit",
+      "id": "SELF004.T6",
+      "name": "tail_AtExit",
+      "purpose": "After completing main sequence, toggle and hold AtExit",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -848,9 +852,9 @@
       ]
     },
     {
-      "id": "SELF004.R22.tail_Jam",
-      "name": "完成主流程后改变并保持 Jam",
-      "purpose": "完成主流程后改变并保持 Jam",
+      "id": "SELF004.T7",
+      "name": "tail_Jam",
+      "purpose": "After completing main sequence, toggle and hold Jam",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -961,9 +965,9 @@
       ]
     },
     {
-      "id": "SELF004.R22.tail_Reset",
-      "name": "完成主流程后改变并保持 Reset",
-      "purpose": "完成主流程后改变并保持 Reset",
+      "id": "SELF004.T8",
+      "name": "tail_Reset",
+      "purpose": "After completing main sequence, toggle and hold Reset",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -1074,9 +1078,9 @@
       ]
     },
     {
-      "id": "SELF004.R22.priority_recovery",
-      "name": "动作中停止／矛盾信号与恢复",
-      "purpose": "动作中停止／矛盾信号与恢复",
+      "id": "SELF004.T9",
+      "name": "priority_recovery",
+      "purpose": "Mid-action Stop or conflicting safety signals followed by clean recovery",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -1157,10 +1161,10 @@
       ]
     }
   ],
-  "specification_version": "2.2-normalized-20261112",
+  "specification_version": "normalized-20261114",
   "specification_contract": {
     "observation": "I[k] is sampled before execution; O[k] is observed after execution. Initial conditions apply before invocation zero.",
-    "normative_completion": "令(Sref[k+1], E[k])=T_SELF004(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\nmode初值IDLE。优先Jam→FAULT，其次Reset→IDLE，其次旧FAULT保持，其次Stop→IDLE，其次旧MOVING且AtExit→COMPLETE，其次旧IDLE且Start且!AtExit→MOVING，其余保持。Belt/Complete/Fault分别等价于新mode为MOVING/COMPLETE/FAULT。",
+    "normative_completion": "令(Sref[k+1], E[k])=T_SELF004(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\nmode初值IDLE。优先Jam→FAULT，其次Reset→IDLE，其次旧FAULT保持，其次Stop→IDLE，其次旧MOVING且AtExit→COMPLETE，其次旧IDLE且Start且!AtExit→MOVING，其余保持。Belt/Complete/Fault分别等价于新mode为MOVING/COMPLETE/FAULT。",
     "history_binding": "I, O and Sref namespaces, initialization and updates are defined in normalized_specification.observation, history_bindings and reference_state_initial. Candidate output never drives Sref.",
     "evaluation_scope": "Versioned executable scan predicate plus LTL over interpreted predicates. No native checker encoding or completed formal proof is claimed.",
     "review_source": "docs/规约逐题审查_20261106/SELF004.md",
@@ -1216,10 +1220,10 @@
         "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
         "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
         "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-        "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
+        "normalized_spec.py": "3c13590145597ad26cf537ff76c44e22f06abf7720e04d2ea262ac347be9d9cd"
       },
       "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-      "frozen_sources": "dataset/specifications/normalized_transition_v2"
+      "frozen_sources": "dataset/specifications/normalized_transition"
     },
     "constrained_observed_fields": [
       "Belt",

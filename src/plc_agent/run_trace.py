@@ -87,15 +87,15 @@ def resolve_safe_run_dir(root: Path, run_rel: str) -> tuple[Path | None, int, st
 
 def _detect_framework_kind(ws: Path, result: dict | None, runtime_cfg: dict | None) -> str:
     fw = ((result or {}).get("framework") or (runtime_cfg or {}).get("framework") or "").lower()
-    if fw in ("star_v2", "self_harness"):
-        return "star_v2"
+    if fw in ("star", "star_v2", "self_harness"):
+        return "star"
     if fw in ("custom_tool_loop", "claude_code", "codex_cli", "baseline"):
         return "baseline"
     if any((ws / p).exists() for p in ("plan.json", "dialect_cards.json", "llm_planner", "llm_code_00", "selftest.json")):
-        return "star_v2"
+        return "star"
     if any((ws / p).exists() for p in ("turn_00", "trusted", "agent")):
         return "baseline"
-    return "star_v2"
+    return "star"
 
 
 def _infer_task_id(ws: Path, result: dict | None) -> str:
@@ -332,8 +332,8 @@ def _build_star_stages(
     plan = _read_json_safe(ws / "plan.json")
     dialect = _read_json_safe(ws / "dialect_cards.json")
     selftest = _read_json_safe(ws / "selftest.json")
-    compile_attempts = _compile_attempts_from_ws(ws, result, "star_v2")
-    sim_attempts = _sim_attempts_from_ws(ws, "star_v2")
+    compile_attempts = _compile_attempts_from_ws(ws, result, "star")
+    sim_attempts = _sim_attempts_from_ws(ws, "star")
     rejected = (result or {}).get("selftest_rejected") or []
     rollback_count = sum(1 for v in versions if v.get("rolled_back"))
 
@@ -692,7 +692,7 @@ def _summarize_run(ws: Path, root: Path, source: str) -> dict[str, Any]:
     versions = _extract_versions(ws, framework_kind, include_diffs=False)
     stages = (
         _build_star_stages(ws, result, runtime_cfg, model_calls, exec_events, versions)
-        if framework_kind == "star_v2"
+        if framework_kind == "star"
         else _build_baseline_stages(ws, result)
     )
 
@@ -782,7 +782,7 @@ def inspect_run_trace(
     versions = _extract_versions(ws, framework_kind, include_diffs=True)
     stages = (
         _build_star_stages(ws, result, runtime_cfg, model_calls, exec_events, versions)
-        if framework_kind == "star_v2"
+        if framework_kind == "star"
         else _build_baseline_stages(ws, result)
     )
     timeline = _build_timeline(ws, model_calls, exec_events)

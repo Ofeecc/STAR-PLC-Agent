@@ -8,7 +8,7 @@
 | :--- | :--- |
 | [windows_field_test_guide.md](windows_field_test_guide.md) | Windows + CODESYS 实机自检、参考 ST 验收与成对/全量实验操作指南（已合并 2026-11-13 交接预检流程） |
 | [experiment_protocol.md](experiment_protocol.md) | 实验条件定义、资源预算与评测指标协议（含 2026-11-14 对齐说明） |
-| [architecture.md](architecture.md) | STAR v2 工业 PLC 编程 Agent 核心架构设计文档 |
+| [architecture.md](architecture.md) | STAR 工业 PLC 编程 Agent 核心架构设计文档 |
 | [codesys_setup.md](codesys_setup.md) | Real CODESYS compiler setup on Windows |
 | [compiler_screenshot.md](compiler_screenshot.md) | Remaining real IDE screenshot & compiler preflight evidence note |
 | [automated_simulation.md](automated_simulation.md) | Automatic functional testing in CODESYS IDE simulation |

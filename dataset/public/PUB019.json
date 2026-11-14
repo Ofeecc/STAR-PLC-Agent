@@ -189,7 +189,7 @@
     "Continuous completion of left movement wraps to down in the same scan. Single-cycle completion returns to idle.",
     "At the start of a new automatic sequence (action 1, not every individual single step), UpLimitSwitch and LeftLimitSwitch must both be TRUE. Grip and release complete on the supplied feedback switches.",
     "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
-    "V2 mode-change priority: emergency stop first; then a change of mode after the first invocation clears sequence/latches and suppresses commands for that invocation; edge memories still update. The first invocation establishes the selected mode and executes normally. New commands are accepted on subsequent invocations subject to their edge rules.",
+    "Mode-change priority: emergency stop first; then a change of mode after the first invocation clears sequence/latches and suppresses commands for that invocation; edge memories still update. The first invocation establishes the selected mode and executes normally. New commands are accepted on subsequent invocations subject to their edge rules.",
     "The four mode inputs (ManualMode, SingleStepMode, SingleCycleMode, ContinuousMode) are mutually exclusive per scan (<=1 TRUE; >1 rejected with ValueError).",
     "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
   ],
@@ -222,7 +222,7 @@
     "start": "fresh Start edge in idle with top-left pose and selected automatic mode",
     "started": "post-phase DOWN, busy TRUE",
     "ordered": "the next accepted automatic phase follows DOWN, GRIP, UP1, RIGHT, DOWN2, RELEASE, UP2, LEFT",
-    "CompleteBehaviorV2": "令(Sref[k+1], E[k])=T_PUB019(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\n八动作顺序为下/夹/上/右/下/松/上/左。安全失去或无模式全关复位（急停期间仍记录当前非空模式选择），其次模式变化当拍全关复位；四模式选择互斥不可同拍并发。手动六命令分别=本按钮 & !反向按钮 & !本限位。单步完成时全关、保存下一步，新Start沿再启动；首步要求上左到位。单周期末回IDLE；连续末回第一步；自动只在本动作匹配限位时推进一阶，输出按转移后动作并由本限位门控。Start历史每拍更新。",
+    "CompleteBehavior": "令(Sref[k+1], E[k])=T_PUB019(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\n八动作顺序为下/夹/上/右/下/松/上/左。安全失去或无模式全关复位（急停期间仍记录当前非空模式选择），其次模式变化当拍全关复位；四模式选择互斥不可同拍并发。手动六命令分别=本按钮 & !反向按钮 & !本限位。单步完成时全关、保存下一步，新Start沿再启动；首步要求上左到位。单周期末回IDLE；连续末回第一步；自动只在本动作匹配限位时推进一阶，输出按转移后动作并由本限位门控。Start历史每拍更新。",
     "modeChanged": "Selected mode differs from previous invocation; FALSE for the first invocation.",
     "ManualMode": "I[k].ManualMode: sampled input (BOOL).",
     "SingleStepMode": "I[k].SingleStepMode: sampled input (BOOL).",
@@ -355,8 +355,8 @@
       "scope": "SCAN_SEQUENCE"
     },
     {
-      "id": "PUB019.V2.COMPLETE",
-      "formula": "G(CompleteBehaviorV2)",
+      "id": "PUB019.COMPLETE",
+      "formula": "G(CompleteBehavior)",
       "explanation": "Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.",
       "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
       "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
@@ -1751,6 +1751,7 @@
     },
     {
       "id": "PUB019.T6",
+      "purpose": "Cover manual Up/Left/Grip/Release controls, refusing start away from upper-left home, full 8-step SingleStep wrap, and mode-change off after E-stop (25 steps).",
       "description": "Mode switching off, manual Up/Left/Grip/Release + opposing interlock, non-top-left start rejection, full SingleStepMode 8-step cycle & wrap, and E-stop + mode change recovery.",
       "steps": [
         {
@@ -2506,9 +2507,9 @@
       ]
     },
     {
-      "id": "PUB019.R22.manual_up",
-      "name": "手动上行按钮在未到上限位时应输出上行",
-      "purpose": "手动上行按钮在未到上限位时应输出上行",
+      "id": "PUB019.T7",
+      "name": "manual_up",
+      "purpose": "Drive manual Up output whenever UpButton is pressed away from upper limit",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -2545,9 +2546,9 @@
       ]
     },
     {
-      "id": "PUB019.R22.grip_hold",
-      "name": "单周期夹紧尚未完成时，夹紧命令应持续",
-      "purpose": "单周期夹紧尚未完成时，夹紧命令应持续",
+      "id": "PUB019.T8",
+      "name": "grip_hold",
+      "purpose": "Retain clamp command throughout single-cycle wait until clamp completion limit",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -2677,9 +2678,9 @@
       ]
     },
     {
-      "id": "PUB019.R22.DownButton",
-      "name": "手动动作、保持、到限位停机：DownButton",
-      "purpose": "手动动作、保持、到限位停机：DownButton",
+      "id": "PUB019.T9",
+      "name": "DownButton",
+      "purpose": "Manual travel action, hold retention, and limit-switch stop: DownButton",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -2871,9 +2872,9 @@
       ]
     },
     {
-      "id": "PUB019.R22.UpButton",
-      "name": "手动动作、保持、到限位停机：UpButton",
-      "purpose": "手动动作、保持、到限位停机：UpButton",
+      "id": "PUB019.T10",
+      "name": "UpButton",
+      "purpose": "Manual travel action, hold retention, and limit-switch stop: UpButton",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -3065,9 +3066,9 @@
       ]
     },
     {
-      "id": "PUB019.R22.LeftButton",
-      "name": "手动动作、保持、到限位停机：LeftButton",
-      "purpose": "手动动作、保持、到限位停机：LeftButton",
+      "id": "PUB019.T11",
+      "name": "LeftButton",
+      "purpose": "Manual travel action, hold retention, and limit-switch stop: LeftButton",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -3259,9 +3260,9 @@
       ]
     },
     {
-      "id": "PUB019.R22.RightButton",
-      "name": "手动动作、保持、到限位停机：RightButton",
-      "purpose": "手动动作、保持、到限位停机：RightButton",
+      "id": "PUB019.T12",
+      "name": "RightButton",
+      "purpose": "Manual travel action, hold retention, and limit-switch stop: RightButton",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -3453,9 +3454,9 @@
       ]
     },
     {
-      "id": "PUB019.R22.GripButton",
-      "name": "手动动作、保持、到限位停机：GripButton",
-      "purpose": "手动动作、保持、到限位停机：GripButton",
+      "id": "PUB019.T13",
+      "name": "GripButton",
+      "purpose": "Manual travel action, hold retention, and limit-switch stop: GripButton",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -3647,9 +3648,9 @@
       ]
     },
     {
-      "id": "PUB019.R22.ReleaseButton",
-      "name": "手动动作、保持、到限位停机：ReleaseButton",
-      "purpose": "手动动作、保持、到限位停机：ReleaseButton",
+      "id": "PUB019.T14",
+      "name": "ReleaseButton",
+      "purpose": "Manual travel action, hold retention, and limit-switch stop: ReleaseButton",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -3841,9 +3842,9 @@
       ]
     },
     {
-      "id": "PUB019.R22.SingleStepMode",
-      "name": "完整八动作、各步等待与第二轮：SingleStepMode",
-      "purpose": "完整八动作、各步等待与第二轮：SingleStepMode",
+      "id": "PUB019.T15",
+      "name": "SingleStepMode",
+      "purpose": "Full 8-action sequence, per-step waits, and second cycle: SingleStepMode",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -5864,9 +5865,9 @@
       ]
     },
     {
-      "id": "PUB019.R22.SingleCycleMode",
-      "name": "完整八动作、各步等待与第二轮：SingleCycleMode",
-      "purpose": "完整八动作、各步等待与第二轮：SingleCycleMode",
+      "id": "PUB019.T16",
+      "name": "SingleCycleMode",
+      "purpose": "Full 8-action sequence, per-step waits, and second cycle: SingleCycleMode",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -7887,9 +7888,9 @@
       ]
     },
     {
-      "id": "PUB019.R22.ContinuousMode",
-      "name": "完整八动作、各步等待与第二轮：ContinuousMode",
-      "purpose": "完整八动作、各步等待与第二轮：ContinuousMode",
+      "id": "PUB019.T17",
+      "name": "ContinuousMode",
+      "purpose": "Full 8-action sequence, per-step waits, and second cycle: ContinuousMode",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -9910,10 +9911,10 @@
       ]
     }
   ],
-  "specification_version": "2.2-normalized-20261112",
+  "specification_version": "normalized-20261114",
   "specification_contract": {
     "observation": "I[k] is sampled before execution; O[k] is observed after execution. Initial conditions apply before invocation zero.",
-    "normative_completion": "令(Sref[k+1], E[k])=T_PUB019(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\n八动作顺序为下/夹/上/右/下/松/上/左。安全失去或无模式全关复位（急停期间仍记录当前非空模式选择），其次模式变化当拍全关复位；四模式选择互斥不可同拍并发。手动六命令分别=本按钮 & !反向按钮 & !本限位。单步完成时全关、保存下一步，新Start沿再启动；首步要求上左到位。单周期末回IDLE；连续末回第一步；自动只在本动作匹配限位时推进一阶，输出按转移后动作并由本限位门控。Start历史每拍更新。",
+    "normative_completion": "令(Sref[k+1], E[k])=T_PUB019(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\n八动作顺序为下/夹/上/右/下/松/上/左。安全失去或无模式全关复位（急停期间仍记录当前非空模式选择），其次模式变化当拍全关复位；四模式选择互斥不可同拍并发。手动六命令分别=本按钮 & !反向按钮 & !本限位。单步完成时全关、保存下一步，新Start沿再启动；首步要求上左到位。单周期末回IDLE；连续末回第一步；自动只在本动作匹配限位时推进一阶，输出按转移后动作并由本限位门控。Start历史每拍更新。",
     "history_binding": "I, O and Sref namespaces, initialization and updates are defined in normalized_specification.observation, history_bindings and reference_state_initial. Candidate output never drives Sref.",
     "evaluation_scope": "Versioned executable scan predicate plus LTL over interpreted predicates. No native checker encoding or completed formal proof is claimed.",
     "review_source": "docs/规约逐题审查_20261106/PUB019.md",
@@ -9987,10 +9988,10 @@
         "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
         "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
         "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-        "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
+        "normalized_spec.py": "3c13590145597ad26cf537ff76c44e22f06abf7720e04d2ea262ac347be9d9cd"
       },
       "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-      "frozen_sources": "dataset/specifications/normalized_transition_v2"
+      "frozen_sources": "dataset/specifications/normalized_transition"
     },
     "constrained_observed_fields": [
       "ActivateGrip",
@@ -10076,7 +10077,7 @@
       "Continuous completion of left movement wraps to down in the same scan. Single-cycle completion returns to idle.",
       "At the start of a new automatic sequence (action 1, not every individual single step), UpLimitSwitch and LeftLimitSwitch must both be TRUE. Grip and release complete on the supplied feedback switches.",
       "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
-      "V2 mode-change priority: emergency stop first; then a change of mode after the first invocation clears sequence/latches and suppresses commands for that invocation; edge memories still update. The first invocation establishes the selected mode and executes normally. New commands are accepted on subsequent invocations subject to their edge rules.",
+      "Mode-change priority: emergency stop first; then a change of mode after the first invocation clears sequence/latches and suppresses commands for that invocation; edge memories still update. The first invocation establishes the selected mode and executes normally. New commands are accepted on subsequent invocations subject to their edge rules.",
       "The four mode inputs (ManualMode, SingleStepMode, SingleCycleMode, ContinuousMode) are mutually exclusive per scan (<=1 TRUE; >1 rejected with ValueError).",
       "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
     ],

@@ -1,6 +1,6 @@
-# PLC Structured Text Coding Agent (STAR v2)
+# PLC Structured Text Coding Agent (STAR)
 
-This project implements **STAR v2** (Specification-Targeted Agentic Refinement) and an auditable baseline harness for generating, compiling, repairing, and preparing formal-verification materials for IEC 61131-3 Structured Text (ST) in industrial PLC environments (CODESYS). The frozen dataset contains all 20 instructor-supplied public tasks and 12 independently constructed self-built tasks (**32 tasks**, **294 LTL properties**, **276 fixed test cases**, **2,994 scan steps**; `dataset_sha256: b4b9ff871b09d72f0eadb9ea798e181a515a9d23de710877408cda5760aada98`). Every task includes normative specification contracts, discrete scan semantics, formal LTL temporal properties, and fixed expected functional traces.
+This project implements **STAR** (Specification-Targeted Agentic Refinement) and an auditable baseline harness for generating, compiling, repairing, and preparing formal-verification materials for IEC 61131-3 Structured Text (ST) in industrial PLC environments (CODESYS). The frozen dataset contains all 20 instructor-supplied public tasks and 12 independently constructed self-built tasks (**32 tasks**, **294 LTL properties**, **276 fixed test cases**, **2,994 scan steps**; `dataset_sha256: d305f96c2faaa87f60a24be90c00ad0b32153492e741b87547d132c591e0e9ee`). Every task includes normative specification contracts, discrete scan semantics, formal LTL temporal properties (`PUBxxx.P*` / `SELFxxx.P*`), and fixed expected functional traces (`PUBxxx.T*` / `SELFxxx.T*`).
 
 The implementation strictly separates generated-code compilation, compiler infrastructure failures, and functional/formal verification. Compilation success is accepted only from matching CODESYS rebuild evidence, never a process exit code alone. Independent Python scan contracts (`ScanContract`) validate expected sequences across all 32 tasks; they are distinct from real PLC execution.
 
@@ -8,9 +8,9 @@ The local review and trace WebUI covers all 32 human-reviewed tasks with three f
 
 All 32 composite scan predicates use normalized executable transition definitions, segregated input/observed/reference namespaces, explicit comparison policies, and explicit non-Zeno timing premises (`results/summary/specification_normalization_20261112.json`). Human review of all 32 normalized specifications and bilingual review notes is complete (`NORMALIZED_HUMAN_REVIEWED` / `HUMAN_REVIEWED`). The 294 LTL properties and `models/*.smv` reference models (`configs/smv_verification_status.json`) validate reference abstractions — **candidate ST-to-SMV formal verification remains `UNVERIFIED`**, and historical pilot runs retain their original task hashes.
 
-## STAR v2 Architecture
+## STAR Architecture
 
-STAR v2 organizes the synthesis and repair loop into five decoupled, auditable phases:
+STAR organizes the synthesis and repair loop into five decoupled, auditable phases:
 
 $$\text{Planner} \longrightarrow \text{Dialect} \longrightarrow \text{Coder} \longrightarrow \text{Tester} \longrightarrow \text{Ratchet}$$
 
@@ -66,7 +66,7 @@ All operational tasks are unified under the `plc-agent` CLI:
   ```bash
   uv run plc-agent web
   ```
-  Launches the minimalist English-default (EN/ZH toggle) WebUI at `http://127.0.0.1:8765`, combining bilingual task & LTL spec exploration, live/replayed 5-stage STAR v2 & baseline workflow telemetry with version diffs, benchmark matrix views, and a same-screen ST compiler/simulation & step-by-step waveform comparator.
+  Launches the minimalist English-default (EN/ZH toggle) WebUI at `http://127.0.0.1:8765`, combining bilingual task & LTL spec exploration, live/replayed 5-stage STAR & baseline workflow telemetry with version diffs, benchmark matrix views, and a same-screen ST compiler/simulation & step-by-step waveform comparator.
 
 - **Seed-Deterministic Differential Random Testing**:
   ```bash
@@ -74,11 +74,11 @@ All operational tasks are unified under the `plc-agent` CLI:
   ```
   Generates seed-deterministic randomized scan sequences across boundary conditions and validates against `ScanContract`.
 
-- **Run STAR v2 Agent**:
+- **Run STAR Agent**:
   ```bash
   uv run plc-agent --allow-model-api run --condition E3 --task-id SELF001
   ```
-  Executes the STAR v2 agent on the specified task under experimental condition E3.
+  Executes the STAR agent on the specified task under experimental condition E3.
 
 - **Run Baseline Agent**:
   ```bash
@@ -157,7 +157,7 @@ See [docs/README.md](docs/README.md) for the complete documentation index, [docs
 
 | Directory | Content |
 | --- | --- |
-| `src/plc_agent/` | STAR v2 core: Planner, Dialect, Coder, Tester, Ratchet, WebUI, CLI, and verification |
+| `src/plc_agent/` | STAR core: Planner, Dialect, Coder, Tester, Ratchet, WebUI, CLI, and verification |
 | `dataset/public/`, `dataset/self_built/` | 32 frozen structured task definitions (20 public + 12 self-built) with normative contracts |
 | `dataset/specifications/catalog.md` | Complete task specifications, interfaces, provenance, and LTL properties |
 | `codesys/scripts/`, `codesys/templates/` | CODESYS automation scripting and immutable template project |

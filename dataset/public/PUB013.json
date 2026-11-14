@@ -80,7 +80,7 @@
     "comfort": "mode=1 AND NOT occupancy",
     "one": "adjust=1",
     "economy": "mode=2 AND NOT occupancy",
-    "CompleteBehaviorV2": "令(Sref[k+1], E[k])=T_PUB013(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\nmode域0..3；permit=occupied & mode!=3，首次许可年龄0、失去立即清计时；fan=permit且年龄>=30s。adjust=mode3则4，否则有人则0，否则mode0取节能3/普通2、mode1取1、mode2取4。初始化adjust=0与首次调用计算分开。",
+    "CompleteBehavior": "令(Sref[k+1], E[k])=T_PUB013(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\nmode域0..3；permit=occupied & mode!=3，首次许可年龄0、失去立即清计时；fan=permit且年龄>=30s。adjust=mode3则4，否则有人则0，否则mode0取节能3/普通2、mode1取1、mode2取4。初始化adjust=0与首次调用计算分开。",
     "TimeTick": "Boolean: floor(t[k]/1ms)>floor(t[k-1]/1ms), with t[0]=0, TimeTick[0]=FALSE, t[k]=sum(dt_ms[1..k]). G(F(TimeTick)) states unbounded physical time progress; merely positive dt is insufficient.",
     "OCCUPANCY_DETECTED": "I[k].OCCUPANCY_DETECTED: sampled input (BOOL).",
     "ENERGY_SAVING_MODE": "I[k].ENERGY_SAVING_MODE: sampled input (BOOL).",
@@ -158,8 +158,8 @@
       "scope": "SCAN_SEQUENCE"
     },
     {
-      "id": "PUB013.V2.COMPLETE",
-      "formula": "G(CompleteBehaviorV2)",
+      "id": "PUB013.COMPLETE",
+      "formula": "G(CompleteBehavior)",
       "explanation": "Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.",
       "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
       "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
@@ -362,7 +362,8 @@
       ]
     },
     {
-      "id": "V2_permit_loss_at_deadline",
+      "id": "PUB013.T3",
+      "name": "permit_loss_at_deadline",
       "purpose": "Permission loss at the exact deadline wins; recovery starts a fresh full interval, even after a long gap.",
       "steps": [
         {
@@ -433,7 +434,8 @@
       ]
     },
     {
-      "id": "PUB013.T3",
+      "id": "PUB013.T4",
+      "purpose": "Exhaustively verify all 4x2x2=16 static mode/occupancy/economy combinations, mode 0/1/2 switching preserving 30s occupancy hold, and 29999/30000ms edges (24 steps).",
       "description": "All 16 mode/occupancy/energy combinations, continuous 30s timing across modes 0/1/2, and exact 29999/30000 ms boundary.",
       "steps": [
         {
@@ -751,9 +753,9 @@
       ]
     },
     {
-      "id": "PUB013.R22.hvac_mode_reset",
-      "name": "当前参考要求非夜间模式切换不重置持续有人计时；需人审其来源",
-      "purpose": "当前参考要求非夜间模式切换不重置持续有人计时；需人审其来源",
+      "id": "PUB013.T5",
+      "name": "hvac_mode_reset",
+      "purpose": "Preserve active 30s occupancy timer across non-night HVAC mode changes per reviewed spec",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -785,9 +787,9 @@
       ]
     },
     {
-      "id": "PUB013.R22.matrix_0",
-      "name": "模式0的占用与节能四组合",
-      "purpose": "模式0的占用与节能四组合",
+      "id": "PUB013.T6",
+      "name": "matrix_0",
+      "purpose": "Mode 0 2x2 matrix of occupancy and energy-saving combinations",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -845,9 +847,9 @@
       ]
     },
     {
-      "id": "PUB013.R22.matrix_1",
-      "name": "模式1的占用与节能四组合",
-      "purpose": "模式1的占用与节能四组合",
+      "id": "PUB013.T7",
+      "name": "matrix_1",
+      "purpose": "Mode 1 2x2 matrix of occupancy and energy-saving combinations",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -905,9 +907,9 @@
       ]
     },
     {
-      "id": "PUB013.R22.matrix_2",
-      "name": "模式2的占用与节能四组合",
-      "purpose": "模式2的占用与节能四组合",
+      "id": "PUB013.T8",
+      "name": "matrix_2",
+      "purpose": "Mode 2 2x2 matrix of occupancy and energy-saving combinations",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -965,9 +967,9 @@
       ]
     },
     {
-      "id": "PUB013.R22.matrix_3",
-      "name": "模式3的占用与节能四组合",
-      "purpose": "模式3的占用与节能四组合",
+      "id": "PUB013.T9",
+      "name": "matrix_3",
+      "purpose": "Mode 3 2x2 matrix of occupancy and energy-saving combinations",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -1025,9 +1027,9 @@
       ]
     },
     {
-      "id": "PUB013.R22.timer_0",
-      "name": "模式0持续有人、失去占用及重新计时",
-      "purpose": "模式0持续有人、失去占用及重新计时",
+      "id": "PUB013.T10",
+      "name": "timer_0",
+      "purpose": "Mode 0 sustained occupancy timer, vacancy transition, and timer restart",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -1111,9 +1113,9 @@
       ]
     },
     {
-      "id": "PUB013.R22.timer_1",
-      "name": "模式1持续有人、失去占用及重新计时",
-      "purpose": "模式1持续有人、失去占用及重新计时",
+      "id": "PUB013.T11",
+      "name": "timer_1",
+      "purpose": "Mode 1 sustained occupancy timer, vacancy transition, and timer restart",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -1197,9 +1199,9 @@
       ]
     },
     {
-      "id": "PUB013.R22.timer_2",
-      "name": "模式2持续有人、失去占用及重新计时",
-      "purpose": "模式2持续有人、失去占用及重新计时",
+      "id": "PUB013.T12",
+      "name": "timer_2",
+      "purpose": "Mode 2 sustained occupancy timer, vacancy transition, and timer restart",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -1283,10 +1285,10 @@
       ]
     }
   ],
-  "specification_version": "2.2-normalized-20261112",
+  "specification_version": "normalized-20261114",
   "specification_contract": {
     "observation": "I[k] is sampled before execution; O[k] is observed after execution. Initial conditions apply before invocation zero.",
-    "normative_completion": "令(Sref[k+1], E[k])=T_PUB013(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\nmode域0..3；permit=occupied & mode!=3，首次许可年龄0、失去立即清计时；fan=permit且年龄>=30s。adjust=mode3则4，否则有人则0，否则mode0取节能3/普通2、mode1取1、mode2取4。初始化adjust=0与首次调用计算分开。",
+    "normative_completion": "令(Sref[k+1], E[k])=T_PUB013(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\nmode域0..3；permit=occupied & mode!=3，首次许可年龄0、失去立即清计时；fan=permit且年龄>=30s。adjust=mode3则4，否则有人则0，否则mode0取节能3/普通2、mode1取1、mode2取4。初始化adjust=0与首次调用计算分开。",
     "history_binding": "I, O and Sref namespaces, initialization and updates are defined in normalized_specification.observation, history_bindings and reference_state_initial. Candidate output never drives Sref.",
     "evaluation_scope": "Versioned executable scan predicate plus LTL over interpreted predicates. No native checker encoding or completed formal proof is claimed.",
     "review_source": "docs/规约逐题审查_20261106/PUB013.md",
@@ -1354,10 +1356,10 @@
         "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
         "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
         "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-        "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
+        "normalized_spec.py": "3c13590145597ad26cf537ff76c44e22f06abf7720e04d2ea262ac347be9d9cd"
       },
       "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-      "frozen_sources": "dataset/specifications/normalized_transition_v2"
+      "frozen_sources": "dataset/specifications/normalized_transition"
     },
     "constrained_observed_fields": [
       "SUPPLY_FAN_RUN",

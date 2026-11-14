@@ -1,4 +1,4 @@
-"""Tests for the stateless STAR v2 PLC Agent harness."""
+"""Tests for the stateless STAR PLC Agent harness."""
 from __future__ import annotations
 
 import copy

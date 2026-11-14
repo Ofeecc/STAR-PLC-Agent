@@ -20,7 +20,7 @@ Initial state:
 }
 ```
 
-### T1
+### PUB001.T1
 
 Full bottle cycle and stable completion
 
@@ -245,7 +245,7 @@ Full bottle cycle and stable completion
 ```
 
 
-### T2
+### PUB001.T2
 
 Out-of-order confirmations cannot skip phases
 
@@ -384,7 +384,7 @@ Out-of-order confirmations cannot skip phases
 
 ### PUB001.T3
 
-
+Cover intermediate hold scans across filling, capping, and packing, long-held confirmation edges on one scan, and a full second bottle cycle (16 steps).
 
 description: Multi-scan hold across Filling/Capping/Packing, held level buttons, and second complete bottle cycle.
 
@@ -741,9 +741,9 @@ description: Multi-scan hold across Filling/Capping/Packing, held level buttons,
 ```
 
 
-### PUB001.R22.filling_hold 灌装阶段无完成确认时仍应保持阀门开启
+### PUB001.T4 filling_hold
 
-灌装阶段无完成确认时仍应保持阀门开启
+Hold Filling_Valve active when entering or remaining in filling without fillingConfirmButton
 
 review_origin: 2026-11-12 cross-task review
 
@@ -863,9 +863,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB001.R22.dwell_0 原流程各稳定状态连续保持：T1
+### PUB001.T5 dwell_0
 
-原流程各稳定状态连续保持：T1
+Continuous multi-scan dwell across all stable states of PUB001.T1
 
 review_origin: 2026-11-12 cross-task review
 
@@ -1560,9 +1560,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB001.R22.dwell_1 原流程各稳定状态连续保持：T2
+### PUB001.T6 dwell_1
 
-原流程各稳定状态连续保持：T2
+Continuous multi-scan dwell across all stable states of PUB001.T2
 
 review_origin: 2026-11-12 cross-task review
 
@@ -1889,7 +1889,7 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB001.T4
+### PUB001.T7
 
 Two-cycle restart isolation: finishedButton resets to idle even while bottleSensor is held high, then next idle scan restarts Cycle 2.
 
@@ -2133,7 +2133,7 @@ Initial state:
 }
 ```
 
-### T1
+### PUB002.T1
 
 No change, mixed edges, full width and bit 31
 
@@ -2328,7 +2328,7 @@ No change, mixed edges, full width and bit 31
 ```
 
 
-### T2
+### PUB002.T2
 
 First nonzero invocation is compared with initialized zero
 
@@ -2371,7 +2371,7 @@ First nonzero invocation is compared with initialized zero
 ```
 
 
-### V2_data_contract_boundaries
+### PUB002.T3 data_contract_boundaries
 
 Independently calculated edge/history/parser boundary regression
 
@@ -2414,9 +2414,9 @@ Independently calculated edge/history/parser boundary regression
 ```
 
 
-### PUB002.T3
+### PUB002.T4
 
-
+Verify mixed rising/falling edges followed by unchanged scans for input-history updates, all-ones saturation, and interleaved high/low bit flips (6 steps).
 
 description: Mixed multi-bit rising/falling edges followed by unchanged scan verifying memory update, then interleaved reversal.
 
@@ -2535,9 +2535,9 @@ description: Mixed multi-bit rising/falling edges followed by unchanged scan ver
 ```
 
 
-### PUB002.R22.isolated_bits 第2位与第4位独立变化、混合沿后保持
+### PUB002.T5 isolated_bits
 
-第2位与第4位独立变化、混合沿后保持
+Independent bit 2 and bit 4 transitions with unchanged hold after mixed edges
 
 review_origin: 2026-11-12 cross-task review
 
@@ -2702,7 +2702,7 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB002.T4
+### PUB002.T6
 
 16-bit half-word swaps and full 32-bit complementary bit flips with consecutive zero-edge hold.
 
@@ -2821,7 +2821,7 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB002.T5
+### PUB002.T7
 
 All-ones saturation followed by checkerboard parity inversions (0xAAAAAAAA <-> 0x55555555) and clear.
 
@@ -2936,7 +2936,7 @@ Initial state:
 }
 ```
 
-### T1
+### PUB003.T1
 
 Strict high and low hysteresis boundaries
 
@@ -3112,7 +3112,7 @@ Strict high and low hysteresis boundaries
 ```
 
 
-### T2
+### PUB003.T2
 
 Configuration priority, output retention and recovery
 
@@ -3193,7 +3193,7 @@ Configuration priority, output retention and recovery
 ```
 
 
-### V2_data_contract_boundaries
+### PUB003.T3 data_contract_boundaries
 
 Independently calculated edge/history/parser boundary regression
 
@@ -3312,9 +3312,9 @@ Independently calculated edge/history/parser boundary regression
 ```
 
 
-### PUB003.T3
+### PUB003.T4
 
-
+Check loAlarm retention when errors 8001/8002 occur while latched, strict inequality at hystWindow=0, and binary32 fractional thresholds (7 steps).
 
 description: Config errors (loLevel>hiLevel and width>=hi-lo while loAlarm=TRUE), zero hysteresis window, and non-integer real32 thresholds.
 
@@ -3452,9 +3452,9 @@ description: Config errors (loLevel>hiLevel and width>=hi-lo while loAlarm=TRUE)
 ```
 
 
-### PUB003.R22.invalid_low 低报警已置位后进入非法配置，应保留低报警
+### PUB003.T5 invalid_low
 
-低报警已置位后进入非法配置，应保留低报警
+Retain active loAlarm when configuration later triggers 8001/8002 error
 
 review_origin: 2026-11-12 cross-task review
 
@@ -3499,9 +3499,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB003.R22.real_boundaries REAL迟滞阈值相等保持及两侧变化
+### PUB003.T6 real_boundaries
 
-REAL迟滞阈值相等保持及两侧变化
+REAL hysteresis boundary hold on equality and transitions strictly outside band
 
 review_origin: 2026-11-12 cross-task review
 
@@ -3666,7 +3666,7 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB003.T4
+### PUB003.T7
 
 Negative engineering thresholds with hysteresis retention boundaries and direct hi-to-lo jump.
 
@@ -3823,7 +3823,7 @@ Negative engineering thresholds with hysteresis retention boundaries and direct 
 ```
 
 
-### PUB003.T5
+### PUB003.T8
 
 Error priority transition (16#8002 -> 16#8001), hysteresis alarm retention through config errors, and valid release.
 
@@ -3938,7 +3938,7 @@ Initial state:
 }
 ```
 
-### T1
+### PUB004.T1
 
 Qualification boundary, accumulation, stop retention and restart
 
@@ -4114,7 +4114,7 @@ Qualification boundary, accumulation, stop retention and restart
 ```
 
 
-### T2
+### PUB004.T2
 
 E-stop clears incomplete debounce and completed permission
 
@@ -4252,7 +4252,7 @@ E-stop clears incomplete debounce and completed permission
 ```
 
 
-### T3
+### PUB004.T3
 
 Long-duration maintenance arithmetic boundary
 
@@ -4335,7 +4335,7 @@ notes: This expected trace contains a genuine 500-hour elapsed interval matching
 ```
 
 
-### V2_permit_loss_at_deadline
+### PUB004.T4 permit_loss_at_deadline
 
 Permission loss at the exact deadline wins; recovery starts a fresh full interval, even after a long gap.
 
@@ -4442,7 +4442,7 @@ Permission loss at the exact deadline wins; recovery starts a fresh full interva
 
 ### PUB004.T5
 
-
+Verify 500h-1ms through exact 500h crossing the 32-bit ms range (2^31-1 ms), E-stop debounce reset, and re-enabling after maintenance due (8 steps).
 
 description: Exact 500h (1800000000 ms) maintenance boundary beyond signed 32-bit TIME, plus post-E-stop re-debounce and restart.
 
@@ -4607,9 +4607,9 @@ description: Exact 500h (1800000000 ms) maintenance boundary beyond signed 32-bi
 ```
 
 
-### PUB004.R22.interrupted_delay 启动延时中断后重新计时、运行后急停恢复
+### PUB004.T6 interrupted_delay
 
-启动延时中断后重新计时、运行后急停恢复
+Reset start debounce when permit drops mid-delay and recover after mid-run E-stop
 
 review_origin: 2026-11-12 cross-task review
 
@@ -4794,9 +4794,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB004.R22.maintenance_edge 累计500小时前1ms、恰好到期及维护提示后重启
+### PUB004.T7 maintenance_edge
 
-累计500小时前1ms、恰好到期及维护提示后重启
+Runtime accumulator 1ms before 500h, exact 500h due trigger, and restart after maintenance
 
 review_origin: 2026-11-12 cross-task review
 
@@ -4921,7 +4921,7 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB004.T6
+### PUB004.T8
 
 Multi-CycleTime runtime accumulation after debounce, permit loss retention, and fresh requalification.
 
@@ -5081,7 +5081,7 @@ Initial state:
 }
 ```
 
-### T1
+### PUB005.T1
 
 Initialization excludes gap timing and debounce starts at 5s
 
@@ -5194,7 +5194,7 @@ Initialization excludes gap timing and debounce starts at 5s
 ```
 
 
-### T2
+### PUB005.T2
 
 E-stop suppresses startup and normal alerts without restarting inhibition
 
@@ -5345,7 +5345,7 @@ E-stop suppresses startup and normal alerts without restarting inhibition
 
 ### PUB005.T3
 
-
+Verify 4999/5000ms startup exit, timer reset on sub-2s gap loss and re-accumulation, and permit loss at exact deadline (10 steps).
 
 description: 4999/5000 ms startup boundary, 1999/2000 ms debounce boundary, interrupted <2s debounce reset, and permit loss at deadline.
 
@@ -5530,9 +5530,9 @@ description: 4999/5000 ms startup boundary, 1999/2000 ms debounce boundary, inte
 ```
 
 
-### PUB005.R22.gap_reset 去抖未完成时信号中断，恢复后必须重新计时
+### PUB005.T4 gap_reset
 
-去抖未完成时信号中断，恢复后必须重新计时
+Reset gap debounce timer when permit drops mid-window and re-accumulate on recovery
 
 review_origin: 2026-11-12 cross-task review
 
@@ -5645,7 +5645,7 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB005.T4
+### PUB005.T5
 
 Exact 5000ms startup exit does not count pre-exit gap duration; full DebounceTime starts at exit scan.
 
@@ -5740,7 +5740,7 @@ Exact 5000ms startup exit does not count pre-exit gap duration; full DebounceTim
 ```
 
 
-### PUB005.T5
+### PUB005.T6
 
 Minimum positive 1ms debounce after 5s startup and immediate E-stop alert clearing with fresh requalification.
 
@@ -5853,7 +5853,7 @@ Minimum positive 1ms debounce after 5s startup and immediate E-stop alert cleari
 ```
 
 
-### PUB005.T6
+### PUB005.T7
 
 Normal gap flicker clearing at 5000ms+ resets debounce while never retriggering Weld_Soft_Start_Active.
 
@@ -5998,7 +5998,7 @@ Initial state:
 }
 ```
 
-### T1
+### PUB006.T1
 
 Exact delay threshold, sustained operation and second counted start
 
@@ -6139,7 +6139,7 @@ Exact delay threshold, sustained operation and second counted start
 ```
 
 
-### T2
+### PUB006.T2
 
 Emergency stop discards partial and completed delay
 
@@ -6263,7 +6263,7 @@ Emergency stop discards partial and completed delay
 ```
 
 
-### V2_permit_loss_at_deadline
+### PUB006.T3 permit_loss_at_deadline
 
 Permission loss at the exact deadline wins; recovery starts a fresh full interval, even after a long gap.
 
@@ -6353,9 +6353,9 @@ Permission loss at the exact deadline wins; recovery starts a fresh full interva
 ```
 
 
-### PUB006.T3
+### PUB006.T4
 
-
+Cover DO_LOW clearance before 5s, E-stop during active run without losing accumulated cycles, and multi-episode count increments (12 steps).
 
 description: Aborted <5s demand re-arming, E-stop interrupt during run, and multi-cycle counter increment.
 
@@ -6564,9 +6564,9 @@ description: Aborted <5s demand re-arming, E-stop interrupt during run, and mult
 ```
 
 
-### PUB006.R22.interrupted_delay 启动延时中断后重新计时、运行后急停恢复
+### PUB006.T5 interrupted_delay
 
-启动延时中断后重新计时、运行后急停恢复
+Reset start debounce when permit drops mid-delay and recover after mid-run E-stop
 
 review_origin: 2026-11-12 cross-task review
 
@@ -6724,7 +6724,7 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB006.T4
+### PUB006.T6
 
 Exact 4999ms hold without start followed by DO_LOW drop resets 5s delay; E-stop drop keeps count unchanged.
 
@@ -6848,7 +6848,7 @@ Exact 4999ms hold without start followed by DO_LOW drop resets 5s delay; E-stop 
 ```
 
 
-### PUB006.T5
+### PUB006.T7
 
 Three consecutive start-run-stop cycles increment cycle count cleanly without recounting during sustained run.
 
@@ -7035,7 +7035,7 @@ Initial state:
 }
 ```
 
-### T1
+### PUB007.T1
 
 Manual latching, read-only fields and simultaneous stop/start
 
@@ -7244,7 +7244,7 @@ Manual latching, read-only fields and simultaneous stop/start
 ```
 
 
-### T2
+### PUB007.T2
 
 Automatic top-three selection and deterministic ties
 
@@ -7453,7 +7453,7 @@ Automatic top-three selection and deterministic ties
 ```
 
 
-### V2_pump_reselection_history
+### PUB007.T3 pump_reselection_history
 
 Ties, changed priorities without start, reselection and simultaneous stop/start.
 
@@ -7730,9 +7730,9 @@ Ties, changed priorities without start, reselection and simultaneous stop/start.
 ```
 
 
-### PUB007.T3
+### PUB007.T4
 
-
+Verify command retention when changing config with start=FALSE, lowest-index tie-breaking on [100,100,5,5,5], stop+start priority, and INT extremes (5 steps).
 
 description: No-start mode/selection changes preserve commands, tie breaking [100,100,5,5,5], stop&start clear, and INT priority extremes.
 
@@ -8077,9 +8077,9 @@ description: No-start mode/selection changes preserve commands, tie breaking [10
 ```
 
 
-### PUB007.R22.selection 手动选择变化、保持与模式切换
+### PUB007.T5 selection
 
-手动选择变化、保持与模式切换
+Manual pump selection updates, steady retention without start, and mode switch
 
 review_origin: 2026-11-12 cross-task review
 
@@ -8567,7 +8567,7 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB007.T4
+### PUB007.T6
 
 Negative/tied priorities with lower-index tie-break in auto mode (ignoring selection), plus zero/subset manual selections.
 
@@ -8844,7 +8844,7 @@ Negative/tied priorities with lower-index tie-break in auto mode (ignoring selec
 ```
 
 
-### PUB007.T5
+### PUB007.T7
 
 Changing priorities, selections, and mode while !stop & !start holds existing runs until next start pulse.
 
@@ -9133,7 +9133,7 @@ Initial state:
 }
 ```
 
-### T1
+### PUB008.T1
 
 Unipolar and bipolar endpoints, midpoint and temperature modes
 
@@ -9308,7 +9308,7 @@ tolerance: {
 ```
 
 
-### T2
+### PUB008.T2
 
 Disabled channel, invalid mode priority, invalid limits and count truncation
 
@@ -9433,7 +9433,7 @@ Disabled channel, invalid mode priority, invalid limits and count truncation
 ```
 
 
-### T3
+### PUB008.T3
 
 count zero preserves every value and negative raw extrapolates
 
@@ -9518,7 +9518,7 @@ count zero preserves every value and negative raw extrapolates
 ```
 
 
-### V2_unequal_arrays_wide_arithmetic
+### PUB008.T4 unequal_arrays_wide_arithmetic
 
 Unequal lengths and distinct lower bounds; preserve skipped channel; avoid INT intermediate overflow.
 
@@ -9586,9 +9586,9 @@ array_lower_bounds: {
 ```
 
 
-### PUB008.T4
+### PUB008.T5
 
-
+Cover ignoring invalid config while disabled, mode 1/2 limit errors, unequal non-1 lower bounds [-3 / 7], and out-of-range unipolar extrapolation (2 steps).
 
 description: Mode 1/2 16#8002 error priority, disabled channel ignoring invalid config, unequal arrays with lower bounds, and unipolar overrange extrapolation.
 
@@ -9765,9 +9765,9 @@ array_lower_bounds: {
 ```
 
 
-### PUB008.R22.length_4_2 独立下界、不同长度与未处理字段保持
+### PUB008.T6 length_4_2
 
-独立下界、不同长度与未处理字段保持
+Distinct array lower bounds, unequal array lengths, and preservation of disabled fields
 
 review_origin: 2026-11-12 cross-task review
 
@@ -9842,9 +9842,9 @@ array_lower_bounds: {
 ```
 
 
-### PUB008.R22.length_2_4 独立下界、不同长度与未处理字段保持
+### PUB008.T7 length_2_4
 
-独立下界、不同长度与未处理字段保持
+Distinct array lower bounds, unequal array lengths, and preservation of disabled fields
 
 review_origin: 2026-11-12 cross-task review
 
@@ -9951,7 +9951,7 @@ array_lower_bounds: {
 ```
 
 
-### PUB008.T5
+### PUB008.T8
 
 Multi-step error-priority retention: disabled, out-of-count, invalid mode over invalid limits, and zero-span.
 
@@ -10196,7 +10196,7 @@ Multi-step error-priority retention: disabled, out-of-count, invalid mode over i
 ```
 
 
-### PUB008.T6
+### PUB008.T9
 
 Negative engineering ranges, bipolar saturation extrapolation below -27648, and temperature modes 1/2.
 
@@ -10356,7 +10356,7 @@ Initial state:
 }
 ```
 
-### T1
+### PUB009.T1
 
 Cyclic warm-up, sliding replacement and reset priority
 
@@ -10481,7 +10481,7 @@ Cyclic warm-up, sliding replacement and reset priority
 ```
 
 
-### T2
+### PUB009.T2
 
 Rising edge only, held trigger, window change and invalid bounds
 
@@ -10671,7 +10671,7 @@ tolerance: {
 ```
 
 
-### V2_data_contract_boundaries
+### PUB009.T3 data_contract_boundaries
 
 Independently calculated edge/history/parser boundary regression
 
@@ -10816,9 +10816,9 @@ Independently calculated edge/history/parser boundary regression
 ```
 
 
-### PUB009.T3
+### PUB009.T4
 
-
+Verify reset + windowSize=0 priority as invalid window, negative window lengths, 2->0->3 transitions, and 101-scan full 100-window sliding (109 steps).
 
 description: Concurrent reset+invalid windowSize=0, negative windowSize=-3, shrinking/growing windows (2->0->3->100), and full 100-sample slide.
 
@@ -13008,9 +13008,9 @@ tolerance: {
 ```
 
 
-### PUB009.R22.window_100 合法最大窗口100必须被接受
+### PUB009.T5 window_100
 
-合法最大窗口100必须被接受
+Accept valid maximum averaging window length 100
 
 review_origin: 2026-11-12 cross-task review
 
@@ -13036,9 +13036,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB009.R22.window100_True 最大窗口填满、替换与双向变窗
+### PUB009.T6 window100_True
 
-最大窗口填满、替换与双向变窗
+Fill 100-slot sliding window, roll values, and shrink/expand window length
 
 review_origin: 2026-11-12 cross-task review
 
@@ -15332,9 +15332,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB009.R22.window100_False 最大窗口填满、替换与双向变窗
+### PUB009.T7 window100_False
 
-最大窗口填满、替换与双向变窗
+Fill 100-slot sliding window, roll values, and shrink/expand window length
 
 review_origin: 2026-11-12 cross-task review
 
@@ -19852,7 +19852,7 @@ Initial state:
 }
 ```
 
-### T1
+### PUB010.T1
 
 Heating threshold, cooldown boundary and safe restart
 
@@ -19977,7 +19977,7 @@ Heating threshold, cooldown boundary and safe restart
 ```
 
 
-### T2
+### PUB010.T2
 
 Sensor faults, valid endpoint values and equality retention
 
@@ -20115,7 +20115,7 @@ Sensor faults, valid endpoint values and equality retention
 ```
 
 
-### T3
+### PUB010.T3
 
 Fault during protection cannot clear the cooldown
 
@@ -20215,7 +20215,7 @@ Fault during protection cannot clear the cooldown
 ```
 
 
-### V2_omission_regression
+### PUB010.T4 omission_regression
 
 Reject the concrete wrong behavior documented in the 2026-11-06 specification review.
 
@@ -20277,9 +20277,9 @@ Reject the concrete wrong behavior documented in the 2026-11-06 specification re
 ```
 
 
-### PUB010.T4
+### PUB010.T5
 
-
+Test 5s timer reset upon reaching setpoint or fault interruption, cooldown expiry coinciding with fault recovery, and 100.0 vs 100.1 sensor bounds (11 steps).
 
 description: Interrupted <5s heat timer (fault and setpoint met), 3s release with fault or !demand, and 100.0 vs 100.1 fault boundary.
 
@@ -20504,9 +20504,9 @@ description: Interrupted <5s heat timer (fault and setpoint met), 3s release wit
 ```
 
 
-### PUB010.R22.sensor_boundary 100有效而100.1故障、冷却与重新需求
+### PUB010.T6 sensor_boundary
 
-100有效而100.1故障、冷却与重新需求
+Validate 100.0 vs 100.1 temperature fault edge, cooldown hold, and renewed heating demand
 
 review_origin: 2026-11-12 cross-task review
 
@@ -20671,7 +20671,7 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB010.T5
+### PUB010.T7
 
 Interrupted heating resets 5000ms limit; full 5000ms after reset triggers OverheatProtection and 3000ms cooldown.
 
@@ -20836,7 +20836,7 @@ Interrupted heating resets 5000ms limit; full 5000ms after reset triggers Overhe
 ```
 
 
-### PUB010.T6
+### PUB010.T8
 
 Equality retains demand across sensorFault interruption while cooldown still elapses on physical clock.
 
@@ -21339,9 +21339,9 @@ Out-of-order confirmations cannot start the route.
 ```
 
 
-### PUB011.R22.bc_hold B到C运输未到站的中间拍，电机应持续运行
+### PUB011.T4 bc_hold
 
-B到C运输未到站的中间拍，电机应持续运行
+Keep forward conveyor drive energized during intermediate scans moving from B to C
 
 review_origin: 2026-11-12 cross-task review
 
@@ -21514,9 +21514,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB011.T4
+### PUB011.T5
 
-
+Verify Auto->Manual->Auto return to WAIT_A, per-station waits, simultaneous SensorB & ButtonB advancing only to WAIT_B, and a second part cycle (12 steps).
 
 description: Auto->Manual->Auto phase reset, station waiting holds, same-scan arrival with ButtonB held (single transition/scan), and 2nd cycle.
 
@@ -21797,9 +21797,9 @@ description: Auto->Manual->Auto phase reset, station waiting holds, same-scan ar
 ```
 
 
-### PUB011.R22.dwell_0 原流程各稳定状态连续保持：manual
+### PUB011.T6 dwell_0
 
-原流程各稳定状态连续保持：manual
+Continuous multi-scan dwell across all stable states of manual
 
 review_origin: 2026-11-12 cross-task review
 
@@ -22092,9 +22092,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB011.R22.dwell_1 原流程各稳定状态连续保持：cycle
+### PUB011.T7 dwell_1
 
-原流程各稳定状态连续保持：cycle
+Continuous multi-scan dwell across all stable states of cycle
 
 review_origin: 2026-11-12 cross-task review
 
@@ -22819,9 +22819,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB011.R22.dwell_2 原流程各稳定状态连续保持：wrong_button
+### PUB011.T8 dwell_2
 
-原流程各稳定状态连续保持：wrong_button
+Continuous multi-scan dwell across all stable states of wrong_button
 
 review_origin: 2026-11-12 cross-task review
 
@@ -23708,7 +23708,7 @@ Only valid fault-free running accumulates.
 
 ### PUB012.T4
 
-
+Distinguish non-retriggerable TP vs TOF off-delay faults cleanly and verify zero false counts when invalid input clears and recovers (11 steps).
 
 description: Retriggered 500ms hold (distinguishes TP), >500ms sustained fault clear (distinguishes TOF), signal loss clearing hold, and 499/500 ms boundary.
 
@@ -24021,9 +24021,9 @@ description: Retriggered 500ms hold (distinguishes TP), >500ms sustained fault c
 ```
 
 
-### PUB012.R22.retrigger 持续故障仅计一次、保持内重触发、信号恢复仍故障
+### PUB012.T5 retrigger
 
-持续故障仅计一次、保持内重触发、信号恢复仍故障
+Count sustained fault once per episode, retrigger within hold, and stay faulted until clear
 
 review_origin: 2026-11-12 cross-task review
 
@@ -24336,7 +24336,7 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB012.T5
+### PUB012.T6
 
 Seven valid rising fault edges push oldest timestamps out of the 5-entry Slab_Fault_History shift window.
 
@@ -24733,7 +24733,7 @@ Seven valid rising fault edges push oldest timestamps out of the 5-entry Slab_Fa
 ```
 
 
-### PUB012.T6
+### PUB012.T7
 
 Invalid signal suppresses alarm, count, timestamp and runtime accumulation; normal running cut accumulates time.
 
@@ -24878,7 +24878,7 @@ Invalid signal suppresses alarm, count, timestamp and runtime accumulation; norm
 ```
 
 
-### PUB012.T7
+### PUB012.T8
 
 Sustained high fault counts only once; 499ms/500ms hold window boundary releases alarm cleanly.
 
@@ -25273,7 +25273,7 @@ Check delay boundary, loss, full restart, Night override.
 ```
 
 
-### V2_permit_loss_at_deadline
+### PUB013.T3 permit_loss_at_deadline
 
 Permission loss at the exact deadline wins; recovery starts a fresh full interval, even after a long gap.
 
@@ -25368,9 +25368,9 @@ Permission loss at the exact deadline wins; recovery starts a fresh full interva
 ```
 
 
-### PUB013.T3
+### PUB013.T4
 
-
+Exhaustively verify all 4x2x2=16 static mode/occupancy/economy combinations, mode 0/1/2 switching preserving 30s occupancy hold, and 29999/30000ms edges (24 steps).
 
 description: All 16 mode/occupancy/energy combinations, continuous 30s timing across modes 0/1/2, and exact 29999/30000 ms boundary.
 
@@ -25807,9 +25807,9 @@ description: All 16 mode/occupancy/energy combinations, continuous 30s timing ac
 ```
 
 
-### PUB013.R22.hvac_mode_reset 当前参考要求非夜间模式切换不重置持续有人计时；需人审其来源
+### PUB013.T5 hvac_mode_reset
 
-当前参考要求非夜间模式切换不重置持续有人计时；需人审其来源
+Preserve active 30s occupancy timer across non-night HVAC mode changes per reviewed spec
 
 review_origin: 2026-11-12 cross-task review
 
@@ -25850,9 +25850,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB013.R22.matrix_0 模式0的占用与节能四组合
+### PUB013.T6 matrix_0
 
-模式0的占用与节能四组合
+Mode 0 2x2 matrix of occupancy and energy-saving combinations
 
 review_origin: 2026-11-12 cross-task review
 
@@ -25929,9 +25929,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB013.R22.matrix_1 模式1的占用与节能四组合
+### PUB013.T7 matrix_1
 
-模式1的占用与节能四组合
+Mode 1 2x2 matrix of occupancy and energy-saving combinations
 
 review_origin: 2026-11-12 cross-task review
 
@@ -26008,9 +26008,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB013.R22.matrix_2 模式2的占用与节能四组合
+### PUB013.T8 matrix_2
 
-模式2的占用与节能四组合
+Mode 2 2x2 matrix of occupancy and energy-saving combinations
 
 review_origin: 2026-11-12 cross-task review
 
@@ -26087,9 +26087,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB013.R22.matrix_3 模式3的占用与节能四组合
+### PUB013.T9 matrix_3
 
-模式3的占用与节能四组合
+Mode 3 2x2 matrix of occupancy and energy-saving combinations
 
 review_origin: 2026-11-12 cross-task review
 
@@ -26166,9 +26166,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB013.R22.timer_0 模式0持续有人、失去占用及重新计时
+### PUB013.T10 timer_0
 
-模式0持续有人、失去占用及重新计时
+Mode 0 sustained occupancy timer, vacancy transition, and timer restart
 
 review_origin: 2026-11-12 cross-task review
 
@@ -26281,9 +26281,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB013.R22.timer_1 模式1持续有人、失去占用及重新计时
+### PUB013.T11 timer_1
 
-模式1持续有人、失去占用及重新计时
+Mode 1 sustained occupancy timer, vacancy transition, and timer restart
 
 review_origin: 2026-11-12 cross-task review
 
@@ -26396,9 +26396,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB013.R22.timer_2 模式2持续有人、失去占用及重新计时
+### PUB013.T12 timer_2
 
-模式2持续有人、失去占用及重新计时
+Mode 2 sustained occupancy timer, vacancy transition, and timer restart
 
 review_origin: 2026-11-12 cross-task review
 
@@ -26780,7 +26780,7 @@ Malformed and overflowing segments clear a previous valid result.
 ```
 
 
-### V2_data_contract_boundaries
+### PUB014.T3 data_contract_boundaries
 
 Independently calculated edge/history/parser boundary regression
 
@@ -26837,9 +26837,9 @@ Independently calculated edge/history/parser boundary regression
 ```
 
 
-### PUB014.T3
+### PUB014.T4
 
-
+Verify embedded NUL termination, 254-char leading-zero valid extremes, fullwidth digits/space rejection, and immediate valid recovery (9 steps).
 
 description: Embedded NUL truncation, 254-byte capacity boundary, non-ASCII/whitespace rejection, repeat valid input, and bad-then-good recovery.
 
@@ -26961,9 +26961,9 @@ description: Embedded NUL truncation, 254-byte capacity boundary, non-ASCII/whit
 ```
 
 
-### PUB014.R22.clear_invalid 合法重复调用及各类非法输入当拍清零
+### PUB014.T5 clear_invalid
 
-合法重复调用及各类非法输入当拍清零
+Accept valid repeated octets and immediately zero output on invalid octet strings
 
 review_origin: 2026-11-12 cross-task review
 
@@ -27122,7 +27122,7 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB014.T4
+### PUB014.T6
 
 First-NUL truncation and ultra-long (>15 char) leading-zero valid IPv4 octets within 254-byte limit.
 
@@ -27179,7 +27179,7 @@ First-NUL truncation and ultra-long (>15 char) leading-zero valid IPv4 octets wi
 ```
 
 
-### PUB014.T5
+### PUB014.T7
 
 Comprehensive syntactic rejections (whitespace, +/- sign, empty octet, 3/5 parts, 256 overflow) interleaved with valid parses.
 
@@ -27314,7 +27314,7 @@ Comprehensive syntactic rejections (whitespace, +/- sign, empty octet, 3/5 parts
 ```
 
 
-### PUB014.T6
+### PUB014.T8
 
 Loopback, classful masks, and high-bit (>= 2^31) unsigned 32-bit big-endian packing check.
 
@@ -27997,7 +27997,7 @@ Skipped thresholds advance and emergency cancels the active cycle.
 ```
 
 
-### V2_process_history_regression
+### PUB015.T4 process_history_regression
 
 Mode/edge reset, repeated station or prior-batch retained setpoint regression.
 
@@ -28274,7 +28274,7 @@ Mode/edge reset, repeated station or prior-batch retained setpoint regression.
 
 ### PUB015.T5
 
-
+Verify all 5 manual button toggles, Mode 2 branching, FILL_A level=120 advancing only one phase per scan, new batch after DRAIN, and E-stop recovery (14 steps).
 
 description: Manual B/C/D/Mix toggles and hold, level jumping to >=100 in FILL_A (single transition), Mode 2 full batch, DRAIN restart via autoStart, and E-stop recovery.
 
@@ -28657,9 +28657,9 @@ description: Manual B/C/D/Mix toggles and hold, level jumping to >=100 in FILL_A
 ```
 
 
-### PUB015.R22.manual_mix_hold 手动搅拌按钮持续按住，不能每拍翻转
+### PUB015.T6 manual_mix_hold
 
-手动搅拌按钮持续按住，不能每拍翻转
+Hold manual mixMotorStart button steady without toggling every scan
 
 review_origin: 2026-11-12 cross-task review
 
@@ -28860,9 +28860,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB015.R22.valveAStart 手动独立翻转、长按与再次关闭：valveAStart
+### PUB015.T7 valveAStart
 
-手动独立翻转、长按与再次关闭：valveAStart
+Manual independent toggle, hold suppression, and second-press off: valveAStart
 
 review_origin: 2026-11-12 cross-task review
 
@@ -29091,9 +29091,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB015.R22.valveBStart 手动独立翻转、长按与再次关闭：valveBStart
+### PUB015.T8 valveBStart
 
-手动独立翻转、长按与再次关闭：valveBStart
+Manual independent toggle, hold suppression, and second-press off: valveBStart
 
 review_origin: 2026-11-12 cross-task review
 
@@ -29322,9 +29322,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB015.R22.valveCStart 手动独立翻转、长按与再次关闭：valveCStart
+### PUB015.T9 valveCStart
 
-手动独立翻转、长按与再次关闭：valveCStart
+Manual independent toggle, hold suppression, and second-press off: valveCStart
 
 review_origin: 2026-11-12 cross-task review
 
@@ -29553,9 +29553,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB015.R22.valveDStart 手动独立翻转、长按与再次关闭：valveDStart
+### PUB015.T10 valveDStart
 
-手动独立翻转、长按与再次关闭：valveDStart
+Manual independent toggle, hold suppression, and second-press off: valveDStart
 
 review_origin: 2026-11-12 cross-task review
 
@@ -29784,9 +29784,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB015.R22.mixMotorStart 手动独立翻转、长按与再次关闭：mixMotorStart
+### PUB015.T11 mixMotorStart
 
-手动独立翻转、长按与再次关闭：mixMotorStart
+Manual independent toggle, hold suppression, and second-press off: mixMotorStart
 
 review_origin: 2026-11-12 cross-task review
 
@@ -30015,9 +30015,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB015.R22.auto_wait_False 配料完整路线、各阶段等待及切换模式后新批次
+### PUB015.T12 auto_wait_False
 
-配料完整路线、各阶段等待及切换模式后新批次
+Full batching route, per-stage waits, and new batch after mode switch
 
 review_origin: 2026-11-12 cross-task review
 
@@ -30470,9 +30470,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB015.R22.auto_wait_True 配料完整路线、各阶段等待及切换模式后新批次
+### PUB015.T13 auto_wait_True
 
-配料完整路线、各阶段等待及切换模式后新批次
+Full batching route, per-stage waits, and new batch after mode switch
 
 review_origin: 2026-11-12 cross-task review
 
@@ -31607,7 +31607,7 @@ A held completion cannot skip a repeated processing operation.
 ```
 
 
-### V2_process_history_regression
+### PUB016.T4 process_history_regression
 
 Mode/edge reset, repeated station or prior-batch retained setpoint regression.
 
@@ -31909,9 +31909,9 @@ Mode/edge reset, repeated station or prior-batch retained setpoint regression.
 ```
 
 
-### PUB016.T4
+### PUB016.T5
 
-
+Verify continuous forward drive between sensors, an 8-step route including reverse transport, and rejecting start when sensor1 is FALSE (20 steps).
 
 description: Multi-scan conveyor transit with intermediate sensor-off scans, length-8 sequence including station 3 & reverse moves, and start without sensor1.
 
@@ -32576,9 +32576,9 @@ description: Multi-scan conveyor transit with intermediate sensor-off scans, len
 ```
 
 
-### PUB016.R22.route8 八站路线、双向运输保持、工位等待与第二批次
+### PUB016.T6 route8
 
-八站路线、双向运输保持、工位等待与第二批次
+Full 8-station route with forward/reverse drive hold, station waits, and second batch
 
 review_origin: 2026-11-12 cross-task review
 
@@ -35711,7 +35711,7 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB016.T5
+### PUB016.T7
 
 station1Start rejected without sensor1 and mid-cycle re-triggers ignored before clean next-batch start.
 
@@ -36013,7 +36013,7 @@ station1Start rejected without sensor1 and mid-cycle re-triggers ignored before 
 ```
 
 
-### PUB016.T6
+### PUB016.T8
 
 Multiple consecutive repeated stations [2, 2, 3, 3, 5] hold stopped until distinct fresh completion rising edges.
 
@@ -38366,7 +38366,7 @@ Fill ten slots; duplicate error has priority over full error.
 
 ### PUB017.T4
 
-
+Verify storing valid nonzero negative INT (-5), lowest-free-slot 0 reuse after delete, retained query output on unrelated writes, and explicit recipe table checks (9 steps).
 
 description: Negative nonzero INT recipeID (-5), held level add ignored, middle empty slot reuse, back-to-back modify/query, and explicit recipe IN_OUT verification.
 
@@ -39262,9 +39262,9 @@ description: Negative nonzero INT recipeID (-5), held level add ignored, middle 
 ```
 
 
-### PUB017.R22.storage_operations 满库末槽读回、最小空槽复用、修改其他槽保持与请求长按
+### PUB017.T5 storage_operations
 
-满库末槽读回、最小空槽复用、修改其他槽保持与请求长按
+Full-DB tail read, lowest free slot reuse on add, unrelated entry retention, and held command
 
 review_origin: 2026-11-12 cross-task review
 
@@ -44669,7 +44669,7 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB017.T5
+### PUB017.T6
 
 Negative nonzero recipeID lifecycle (add/query/modify/delete) and failed query retention of previous recipeQueryResult.
 
@@ -45466,7 +45466,7 @@ Negative nonzero recipeID lifecycle (add/query/modify/delete) and failed query r
 ```
 
 
-### PUB017.T6
+### PUB017.T7
 
 Mid-table and high-slot (slots 8-10) deletion, adjacent slot preservation, and lowest free-slot insertion.
 
@@ -48342,7 +48342,7 @@ Mid-table and high-slot (slots 8-10) deletion, adjacent slot preservation, and l
 ```
 
 
-### PUB017.T7
+### PUB017.T8
 
 Level-held requests after rising edges stay idle (no duplicate error, missing error, or repeat pulse).
 
@@ -50061,7 +50061,7 @@ binding_id: B
 
 ### PUB018.T4
 
-
+Cover full BOOL FIFO saturation, 8002 full error, sequential FIFO drain, ring wrap-around, 8001 empty error, and reset clearing priority (18 steps).
 
 description: Binding B (BOOL, ARRAY[1..3] OF BOOL, capacity 3): fill 3 items, full 8002, FIFO dequeue of 3 items, empty 8001, wrap-around, and reset.
 
@@ -50462,9 +50462,9 @@ description: Binding B (BOOL, ARRAY[1..3] OF BOOL, capacity 3): fill 3 items, fu
 ```
 
 
-### PUB018.R22.capacity1 容量1入队、满、出队、回绕及复位后重用
+### PUB018.T5 capacity1
 
-容量1入队、满、出队、回绕及复位后重用
+Capacity-1 queue enqueue, full saturation, dequeue, wrap-around, and post-reset reuse
 
 review_origin: 2026-11-12 cross-task review
 
@@ -50744,9 +50744,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB018.R22.drain_T1 逐项排空并检查末元素：PUB018.T1
+### PUB018.T6 drain_T1
 
-逐项排空并检查末元素：PUB018.T1
+Drain FIFO item by item and verify tail element: PUB018.T1
 
 review_origin: 2026-11-12 cross-task review
 
@@ -51351,9 +51351,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB018.R22.drain_T2 逐项排空并检查末元素：PUB018.T2
+### PUB018.T7 drain_T2
 
-逐项排空并检查末元素：PUB018.T2
+Drain FIFO item by item and verify tail element: PUB018.T2
 
 review_origin: 2026-11-12 cross-task review
 
@@ -51742,9 +51742,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB018.R22.drain_T3 逐项排空并检查末元素：PUB018.T3
+### PUB018.T8 drain_T3
 
-逐项排空并检查末元素：PUB018.T3
+Drain FIFO item by item and verify tail element: PUB018.T3
 
 review_origin: 2026-11-12 cross-task review
 
@@ -52157,9 +52157,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB018.R22.drain_capacity1 逐项排空并检查末元素：PUB018.R22.capacity1
+### PUB018.T9 drain_capacity1
 
-逐项排空并检查末元素：PUB018.R22.capacity1
+Drain FIFO item by item and verify tail element: PUB018.T5
 
 review_origin: 2026-11-12 cross-task review
 
@@ -54261,7 +54261,7 @@ Emergency cancels an action; releasing emergency does not auto-restart.
 
 ### PUB019.T6
 
-
+Cover manual Up/Left/Grip/Release controls, refusing start away from upper-left home, full 8-step SingleStep wrap, and mode-change off after E-stop (25 steps).
 
 description: Mode switching off, manual Up/Left/Grip/Release + opposing interlock, non-top-left start rejection, full SingleStepMode 8-step cycle & wrap, and E-stop + mode change recovery.
 
@@ -55141,9 +55141,9 @@ description: Mode switching off, manual Up/Left/Grip/Release + opposing interloc
 ```
 
 
-### PUB019.R22.manual_up 手动上行按钮在未到上限位时应输出上行
+### PUB019.T7 manual_up
 
-手动上行按钮在未到上限位时应输出上行
+Drive manual Up output whenever UpButton is pressed away from upper limit
 
 review_origin: 2026-11-12 cross-task review
 
@@ -55184,9 +55184,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB019.R22.grip_hold 单周期夹紧尚未完成时，夹紧命令应持续
+### PUB019.T8 grip_hold
 
-单周期夹紧尚未完成时，夹紧命令应持续
+Retain clamp command throughout single-cycle wait until clamp completion limit
 
 review_origin: 2026-11-12 cross-task review
 
@@ -55335,9 +55335,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB019.R22.DownButton 手动动作、保持、到限位停机：DownButton
+### PUB019.T9 DownButton
 
-手动动作、保持、到限位停机：DownButton
+Manual travel action, hold retention, and limit-switch stop: DownButton
 
 review_origin: 2026-11-12 cross-task review
 
@@ -55558,9 +55558,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB019.R22.UpButton 手动动作、保持、到限位停机：UpButton
+### PUB019.T10 UpButton
 
-手动动作、保持、到限位停机：UpButton
+Manual travel action, hold retention, and limit-switch stop: UpButton
 
 review_origin: 2026-11-12 cross-task review
 
@@ -55781,9 +55781,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB019.R22.LeftButton 手动动作、保持、到限位停机：LeftButton
+### PUB019.T11 LeftButton
 
-手动动作、保持、到限位停机：LeftButton
+Manual travel action, hold retention, and limit-switch stop: LeftButton
 
 review_origin: 2026-11-12 cross-task review
 
@@ -56004,9 +56004,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB019.R22.RightButton 手动动作、保持、到限位停机：RightButton
+### PUB019.T12 RightButton
 
-手动动作、保持、到限位停机：RightButton
+Manual travel action, hold retention, and limit-switch stop: RightButton
 
 review_origin: 2026-11-12 cross-task review
 
@@ -56227,9 +56227,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB019.R22.GripButton 手动动作、保持、到限位停机：GripButton
+### PUB019.T13 GripButton
 
-手动动作、保持、到限位停机：GripButton
+Manual travel action, hold retention, and limit-switch stop: GripButton
 
 review_origin: 2026-11-12 cross-task review
 
@@ -56450,9 +56450,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB019.R22.ReleaseButton 手动动作、保持、到限位停机：ReleaseButton
+### PUB019.T14 ReleaseButton
 
-手动动作、保持、到限位停机：ReleaseButton
+Manual travel action, hold retention, and limit-switch stop: ReleaseButton
 
 review_origin: 2026-11-12 cross-task review
 
@@ -56673,9 +56673,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB019.R22.SingleStepMode 完整八动作、各步等待与第二轮：SingleStepMode
+### PUB019.T15 SingleStepMode
 
-完整八动作、各步等待与第二轮：SingleStepMode
+Full 8-action sequence, per-step waits, and second cycle: SingleStepMode
 
 review_origin: 2026-11-12 cross-task review
 
@@ -59020,9 +59020,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB019.R22.SingleCycleMode 完整八动作、各步等待与第二轮：SingleCycleMode
+### PUB019.T16 SingleCycleMode
 
-完整八动作、各步等待与第二轮：SingleCycleMode
+Full 8-action sequence, per-step waits, and second cycle: SingleCycleMode
 
 review_origin: 2026-11-12 cross-task review
 
@@ -61367,9 +61367,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB019.R22.ContinuousMode 完整八动作、各步等待与第二轮：ContinuousMode
+### PUB019.T17 ContinuousMode
 
-完整八动作、各步等待与第二轮：ContinuousMode
+Full 8-action sequence, per-step waits, and second cycle: ContinuousMode
 
 review_origin: 2026-11-12 cross-task review
 
@@ -65418,7 +65418,7 @@ Out-of-order completions do not move an idle product.
 ```
 
 
-### V2_process_history_regression
+### PUB020.T8 process_history_regression
 
 Mode/edge reset, repeated station or prior-batch retained setpoint regression.
 
@@ -65871,9 +65871,9 @@ Mode/edge reset, repeated station or prior-batch retained setpoint regression.
 ```
 
 
-### PUB020.T8
+### PUB020.T9
 
-
+Verify continuous forward transport across sensor gaps, delayed completion handshake, 99.9999/100.0001/200.0001 weight edges, and manual/auto temp retention (14 steps).
 
 description: Multi-scan transit with empty intermediate scans, simultaneous arrival+completion hold, boundary weights 99.9999/100.0001/200.0001, and Auto->Manual->Auto firingTemp retention.
 
@@ -66270,9 +66270,9 @@ description: Multi-scan transit with empty intermediate scans, simultaneous arri
 ```
 
 
-### PUB020.R22.all_transport 四段持续运输、加工等待与完整第二批次
+### PUB020.T10 all_transport
 
-四段持续运输、加工等待与完整第二批次
+Continuous 4-stage transport holds, station waits, and full second batch cycle
 
 review_origin: 2026-11-12 cross-task review
 
@@ -67959,9 +67959,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### PUB020.R22.mode_reset 运输中切手动再切自动、路线复位且温度保持
+### PUB020.T11 mode_reset
 
-运输中切手动再切自动、路线复位且温度保持
+Switch Auto->Manual->Auto mid-transport resets sequence while preserving firingTemp
 
 review_origin: 2026-11-12 cross-task review
 
@@ -68239,7 +68239,7 @@ Initial state:
 }
 ```
 
-### latch
+### SELF001.T1 latch
 
 Initialize, start, hold and stop
 
@@ -68319,7 +68319,7 @@ Initialize, start, hold and stop
 ```
 
 
-### priority
+### SELF001.T2 priority
 
 Simultaneous requests and guard recovery
 
@@ -68399,9 +68399,9 @@ Simultaneous requests and guard recovery
 ```
 
 
-### SELF001.boundary_start_hold
+### SELF001.T3 boundary_start_hold
 
-
+Cover start-on-scan-0, immediate activation when guard closes while Start is held, and Stop overriding Start (5 steps).
 
 description: Scan-0 immediate start, guard closure while Start held, and Stop overriding Start.
 
@@ -68481,9 +68481,9 @@ description: Scan-0 immediate start, guard closure while Start held, and Stop ov
 ```
 
 
-### SELF001.R22.normal_changes 持续启动时停止解除
+### SELF001.T4 normal_changes
 
-持续启动时停止解除
+Resume or stay stopped cleanly when Stop clears while Start remains held
 
 review_origin: 2026-11-12 cross-task review
 
@@ -68536,9 +68536,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### SELF001.R22.tail_Start 完成主流程后改变并保持 Start
+### SELF001.T5 tail_Start
 
-完成主流程后改变并保持 Start
+After completing main sequence, toggle and hold Start
 
 review_origin: 2026-11-12 cross-task review
 
@@ -68655,9 +68655,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### SELF001.R22.tail_Stop 完成主流程后改变并保持 Stop
+### SELF001.T6 tail_Stop
 
-完成主流程后改变并保持 Stop
+After completing main sequence, toggle and hold Stop
 
 review_origin: 2026-11-12 cross-task review
 
@@ -68774,9 +68774,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### SELF001.R22.tail_GuardClosed 完成主流程后改变并保持 GuardClosed
+### SELF001.T7 tail_GuardClosed
 
-完成主流程后改变并保持 GuardClosed
+After completing main sequence, toggle and hold GuardClosed
 
 review_origin: 2026-11-12 cross-task review
 
@@ -68907,7 +68907,7 @@ Initial state:
 }
 ```
 
-### reverse
+### SELF002.T1 reverse
 
 Direct reversal and held reverse request
 
@@ -69008,7 +69008,7 @@ Direct reversal and held reverse request
 ```
 
 
-### ambiguous
+### SELF002.T2 ambiguous
 
 Both buttons and Stop override direction
 
@@ -69077,9 +69077,9 @@ Both buttons and Stop override direction
 ```
 
 
-### SELF002.boundary_reverse_memory
+### SELF002.T3 boundary_reverse_memory
 
-
+Verify immediate reverse from idle on scan 0, Stop clearing direction memory for instant reversal on next scan, and simultaneous stop (5 steps).
 
 description: First-scan Reverse, Stop clears memory for immediate opposite dir, and opposing buttons.
 
@@ -69164,9 +69164,9 @@ description: First-scan Reverse, Stop clears memory for immediate opposite dir, 
 ```
 
 
-### SELF002.R22.normal_changes 倒转停止及方向记忆清除
+### SELF002.T4 normal_changes
 
-倒转停止及方向记忆清除
+Reverse, Stop, and clear stored direction memory on halt
 
 review_origin: 2026-11-12 cross-task review
 
@@ -69256,9 +69256,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### SELF002.R22.tail_ForwardButton 完成主流程后改变并保持 ForwardButton
+### SELF002.T5 tail_ForwardButton
 
-完成主流程后改变并保持 ForwardButton
+After completing main sequence, toggle and hold ForwardButton
 
 review_origin: 2026-11-12 cross-task review
 
@@ -69399,9 +69399,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### SELF002.R22.tail_ReverseButton 完成主流程后改变并保持 ReverseButton
+### SELF002.T6 tail_ReverseButton
 
-完成主流程后改变并保持 ReverseButton
+After completing main sequence, toggle and hold ReverseButton
 
 review_origin: 2026-11-12 cross-task review
 
@@ -69542,9 +69542,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### SELF002.R22.tail_Stop 完成主流程后改变并保持 Stop
+### SELF002.T7 tail_Stop
 
-完成主流程后改变并保持 Stop
+After completing main sequence, toggle and hold Stop
 
 review_origin: 2026-11-12 cross-task review
 
@@ -69698,7 +69698,7 @@ Initial state:
 }
 ```
 
-### reset_restart
+### SELF003.T1 reset_restart
 
 Power-up inhibition, reset, run and emergency stop
 
@@ -69805,7 +69805,7 @@ Power-up inhibition, reset, run and emergency stop
 ```
 
 
-### invalid_reset
+### SELF003.T2 invalid_reset
 
 Held Start and Stop block reset
 
@@ -69878,7 +69878,7 @@ Held Start and Stop block reset
 ```
 
 
-### V2_omission_regression
+### SELF003.T3 omission_regression
 
 Reject the concrete wrong behavior documented in the 2026-11-06 specification review.
 
@@ -69951,9 +69951,9 @@ Reject the concrete wrong behavior documented in the 2026-11-06 specification re
 ```
 
 
-### SELF003.boundary_reset_isolation
+### SELF003.T4 boundary_reset_isolation
 
-
+Verify Reset is rejected while Start or Stop is active, normal Stop restarts without Reset, and strict E-stop unlock sequence (7 steps).
 
 description: Reset ignored when Start or Stop held, EStop overrides Run, normal Stop->Start without Reset.
 
@@ -70077,9 +70077,9 @@ description: Reset ignored when Start or Stop held, EStop overrides Run, normal 
 ```
 
 
-### SELF003.R22.reset_stops_run 按当前参考，已解除复位要求后单独Reset不停止运行
+### SELF003.T5 reset_stops_run
 
-按当前参考，已解除复位要求后单独Reset不停止运行
+Confirm Reset pressed alone after unlock does not halt active Run
 
 review_origin: 2026-11-12 cross-task review
 
@@ -70156,9 +70156,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### SELF003.R22.normal_changes 运行中Reset保持、停止后重启
+### SELF003.T6 normal_changes
 
-运行中Reset保持、停止后重启
+Hold Reset while running and restart cleanly after Stop
 
 review_origin: 2026-11-12 cross-task review
 
@@ -70253,9 +70253,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### SELF003.R22.tail_Start 完成主流程后改变并保持 Start
+### SELF003.T7 tail_Start
 
-完成主流程后改变并保持 Start
+After completing main sequence, toggle and hold Start
 
 review_origin: 2026-11-12 cross-task review
 
@@ -70404,9 +70404,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### SELF003.R22.tail_Stop 完成主流程后改变并保持 Stop
+### SELF003.T8 tail_Stop
 
-完成主流程后改变并保持 Stop
+After completing main sequence, toggle and hold Stop
 
 review_origin: 2026-11-12 cross-task review
 
@@ -70555,9 +70555,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### SELF003.R22.tail_EStopNC 完成主流程后改变并保持 EStopNC
+### SELF003.T9 tail_EStopNC
 
-完成主流程后改变并保持 EStopNC
+After completing main sequence, toggle and hold EStopNC
 
 review_origin: 2026-11-12 cross-task review
 
@@ -70706,9 +70706,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### SELF003.R22.tail_Reset 完成主流程后改变并保持 Reset
+### SELF003.T10 tail_Reset
 
-完成主流程后改变并保持 Reset
+After completing main sequence, toggle and hold Reset
 
 review_origin: 2026-11-12 cross-task review
 
@@ -70872,7 +70872,7 @@ Initial state:
 }
 ```
 
-### index
+### SELF004.T1 index
 
 One pallet and retained completion
 
@@ -70972,7 +70972,7 @@ One pallet and retained completion
 ```
 
 
-### jam
+### SELF004.T2 jam
 
 Jam priority, retained fault and safe reset
 
@@ -71091,9 +71091,9 @@ Jam priority, retained fault and safe reset
 ```
 
 
-### SELF004.boundary_stop_and_fault
+### SELF004.T3 boundary_stop_and_fault
 
-
+Verify Stop overrides AtExit during MOVING, clean stop at COMPLETE, and Stop held in FAULT preserves alarm until Reset (10 steps).
 
 description: MOVING Stop, Stop+AtExit priority, COMPLETE Stop, FAULT ignoring Stop until Reset, and MOVING Reset.
 
@@ -71288,9 +71288,9 @@ description: MOVING Stop, Stop+AtExit priority, COMPLETE Stop, FAULT ignoring St
 ```
 
 
-### SELF004.R22.tail_Start 完成主流程后改变并保持 Start
+### SELF004.T4 tail_Start
 
-完成主流程后改变并保持 Start
+After completing main sequence, toggle and hold Start
 
 review_origin: 2026-11-12 cross-task review
 
@@ -71435,9 +71435,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### SELF004.R22.tail_Stop 完成主流程后改变并保持 Stop
+### SELF004.T5 tail_Stop
 
-完成主流程后改变并保持 Stop
+After completing main sequence, toggle and hold Stop
 
 review_origin: 2026-11-12 cross-task review
 
@@ -71582,9 +71582,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### SELF004.R22.tail_AtExit 完成主流程后改变并保持 AtExit
+### SELF004.T6 tail_AtExit
 
-完成主流程后改变并保持 AtExit
+After completing main sequence, toggle and hold AtExit
 
 review_origin: 2026-11-12 cross-task review
 
@@ -71729,9 +71729,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### SELF004.R22.tail_Jam 完成主流程后改变并保持 Jam
+### SELF004.T7 tail_Jam
 
-完成主流程后改变并保持 Jam
+After completing main sequence, toggle and hold Jam
 
 review_origin: 2026-11-12 cross-task review
 
@@ -71876,9 +71876,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### SELF004.R22.tail_Reset 完成主流程后改变并保持 Reset
+### SELF004.T8 tail_Reset
 
-完成主流程后改变并保持 Reset
+After completing main sequence, toggle and hold Reset
 
 review_origin: 2026-11-12 cross-task review
 
@@ -72023,9 +72023,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### SELF004.R22.priority_recovery 动作中停止／矛盾信号与恢复
+### SELF004.T9 priority_recovery
 
-动作中停止／矛盾信号与恢复
+Mid-action Stop or conflicting safety signals followed by clean recovery
 
 review_origin: 2026-11-12 cross-task review
 
@@ -72147,7 +72147,7 @@ Initial state:
 }
 ```
 
-### cycle
+### SELF005.T1 cycle
 
 Full phase duration boundaries and pause
 
@@ -72271,7 +72271,7 @@ Full phase duration boundaries and pause
 ```
 
 
-### disable
+### SELF005.T2 disable
 
 Disable clears elapsed tick progress
 
@@ -72361,9 +72361,9 @@ Disable clears elapsed tick progress
 ```
 
 
-### SELF005.boundary_pause_resume
+### SELF005.T3 boundary_pause_resume
 
-
+Test disable reset on RED step 1 followed by resume, double Tick and pause progression into AMBER, and entering a second cycle (10 steps).
 
 description: Disable mid-RED scan 1, resume preserving GREEN/AMBER dwell across non-Tick pauses, and 2nd cycle.
 
@@ -72538,9 +72538,9 @@ description: Disable mid-RED scan 1, resume preserving GREEN/AMBER dwell across 
 ```
 
 
-### SELF005.R22.green_pause 绿灯阶段暂停Tick应保持颜色
+### SELF005.T4 green_pause
 
-绿灯阶段暂停Tick应保持颜色
+Pause Tick pulses during GREEN phase preserves active Green lamp output
 
 review_origin: 2026-11-12 cross-task review
 
@@ -72617,9 +72617,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### SELF005.R22.normal_changes 完整两轮各相位暂停并保留计龄
+### SELF005.T5 normal_changes
 
-完整两轮各相位暂停并保留计龄
+Pause Tick across every phase in two full traffic-light cycles while retaining phase age
 
 review_origin: 2026-11-12 cross-task review
 
@@ -73020,9 +73020,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### SELF005.R22.tail_Enable 完成主流程后改变并保持 Enable
+### SELF005.T6 tail_Enable
 
-完成主流程后改变并保持 Enable
+After completing main sequence, toggle and hold Enable
 
 review_origin: 2026-11-12 cross-task review
 
@@ -73189,9 +73189,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### SELF005.R22.tail_Tick 完成主流程后改变并保持 Tick
+### SELF005.T7 tail_Tick
 
-完成主流程后改变并保持 Tick
+After completing main sequence, toggle and hold Tick
 
 review_origin: 2026-11-12 cross-task review
 
@@ -73371,7 +73371,7 @@ Initial state:
 }
 ```
 
-### hysteresis
+### SELF006.T1 hysteresis
 
 Fill cycle across both switching thresholds
 
@@ -73456,7 +73456,7 @@ Fill cycle across both switching thresholds
 ```
 
 
-### fault_inhibit
+### SELF006.T2 fault_inhibit
 
 Invalid switch pair and inhibit recovery
 
@@ -73541,9 +73541,9 @@ Invalid switch pair and inhibit recovery
 ```
 
 
-### SELF006.boundary_fault_recovery
+### SELF006.T3 boundary_fault_recovery
 
-
+Verify returning from simultaneous conflicting float-switch Fault + Inhibit to mid-band keeps Fill=FALSE without spurious pump activation (5 steps).
 
 description: SensorFault+Inhibit combined then recovery to mid-level retaining Fill=FALSE.
 
@@ -73628,9 +73628,9 @@ description: SensorFault+Inhibit combined then recovery to mid-level retaining F
 ```
 
 
-### SELF006.R22.tail_LowWet 完成主流程后改变并保持 LowWet
+### SELF006.T4 tail_LowWet
 
-完成主流程后改变并保持 LowWet
+After completing main sequence, toggle and hold LowWet
 
 review_origin: 2026-11-12 cross-task review
 
@@ -73754,9 +73754,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### SELF006.R22.tail_HighWet 完成主流程后改变并保持 HighWet
+### SELF006.T5 tail_HighWet
 
-完成主流程后改变并保持 HighWet
+After completing main sequence, toggle and hold HighWet
 
 review_origin: 2026-11-12 cross-task review
 
@@ -73880,9 +73880,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### SELF006.R22.tail_Inhibit 完成主流程后改变并保持 Inhibit
+### SELF006.T6 tail_Inhibit
 
-完成主流程后改变并保持 Inhibit
+After completing main sequence, toggle and hold Inhibit
 
 review_origin: 2026-11-12 cross-task review
 
@@ -74006,9 +74006,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### SELF006.R22.priority_recovery 动作中停止／矛盾信号与恢复
+### SELF006.T7 priority_recovery
 
-动作中停止／矛盾信号与恢复
+Mid-action Stop or conflicting safety signals followed by clean recovery
 
 review_origin: 2026-11-12 cross-task review
 
@@ -74080,7 +74080,7 @@ Initial state:
 }
 ```
 
-### alternate
+### SELF007.T1 alternate
 
 Served episodes alternate preference
 
@@ -74204,7 +74204,7 @@ Served episodes alternate preference
 ```
 
 
-### fallback
+### SELF007.T2 fallback
 
 Fault fallback, unserved episode and recovery
 
@@ -74294,7 +74294,7 @@ Fault fallback, unserved episode and recovery
 ```
 
 
-### V2_omission_regression
+### SELF007.T3 omission_regression
 
 Reject the concrete wrong behavior documented in the 2026-11-06 specification review.
 
@@ -74350,9 +74350,9 @@ Reject the concrete wrong behavior documented in the 2026-11-06 specification re
 ```
 
 
-### SELF007.boundary_alternation_edges
+### SELF007.T4 boundary_alternation_edges
 
-
+Verify that when LeadA=FALSE and Pump B faults causing Pump A fallback, subsequent dual fault then Demand drop still alternates LeadA cleanly (6 steps).
 
 description: LeadA=F with FaultB fallback to PumpA, served->both fault->demand drop still alternates, and 1-scan gap.
 
@@ -74459,9 +74459,9 @@ description: LeadA=F with FaultB fallback to PumpA, served->both fault->demand d
 ```
 
 
-### SELF007.R22.served_loss 本轮曾经服务，随后双故障，需求结束仍应轮换主泵
+### SELF007.T5 served_loss
 
-本轮曾经服务，随后双故障，需求结束仍应轮换主泵
+Alternate lead pump at end of demand even after fallback service ended in dual fault
 
 review_origin: 2026-11-12 cross-task review
 
@@ -74520,9 +74520,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### SELF007.R22.normal_changes A/B双向回退、曾服务后双故障仍轮换
+### SELF007.T6 normal_changes
 
-A/B双向回退、曾服务后双故障仍轮换
+Bidirectional A/B fault fallback and lead pump alternation after served episode
 
 review_origin: 2026-11-12 cross-task review
 
@@ -74689,9 +74689,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### SELF007.R22.tail_Demand 完成主流程后改变并保持 Demand
+### SELF007.T7 tail_Demand
 
-完成主流程后改变并保持 Demand
+After completing main sequence, toggle and hold Demand
 
 review_origin: 2026-11-12 cross-task review
 
@@ -74858,9 +74858,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### SELF007.R22.tail_FaultA 完成主流程后改变并保持 FaultA
+### SELF007.T8 tail_FaultA
 
-完成主流程后改变并保持 FaultA
+After completing main sequence, toggle and hold FaultA
 
 review_origin: 2026-11-12 cross-task review
 
@@ -75027,9 +75027,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### SELF007.R22.tail_FaultB 完成主流程后改变并保持 FaultB
+### SELF007.T9 tail_FaultB
 
-完成主流程后改变并保持 FaultB
+After completing main sequence, toggle and hold FaultB
 
 review_origin: 2026-11-12 cross-task review
 
@@ -75209,7 +75209,7 @@ Initial state:
 }
 ```
 
-### delay
+### SELF008.T1 delay
 
 Three scans qualify, hold saturates, trip clears
 
@@ -75310,7 +75310,7 @@ Three scans qualify, hold saturates, trip clears
 ```
 
 
-### bounds
+### SELF008.T2 bounds
 
 Invalid presets and immediate reduced threshold
 
@@ -75395,9 +75395,9 @@ Invalid presets and immediate reduced threshold
 ```
 
 
-### SELF008.boundary_preset_resize
+### SELF008.T3 boundary_preset_resize
 
-
+Verify raising Preset while Ready revokes Ready and keeps count, lowering Preset clamps count cleanly, and invalid Preset=255 resets and recovers (7 steps).
 
 description: Preset growth Ready=T->F retaining Count, shrinking clamping Count, Preset=255 invalid then recovery.
 
@@ -75514,9 +75514,9 @@ description: Preset growth Ready=T->F retaining Count, shrinking clamping Count,
 ```
 
 
-### SELF008.R22.normal_changes Ready后提高阈值、降低阈值与非法清零
+### SELF008.T4 normal_changes
 
-Ready后提高阈值、降低阈值与非法清零
+Raise/lower Preset around Ready and zero count on invalid Preset input
 
 review_origin: 2026-11-12 cross-task review
 
@@ -75606,9 +75606,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### SELF008.R22.tail_Request 完成主流程后改变并保持 Request
+### SELF008.T5 tail_Request
 
-完成主流程后改变并保持 Request
+After completing main sequence, toggle and hold Request
 
 review_origin: 2026-11-12 cross-task review
 
@@ -75749,9 +75749,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### SELF008.R22.tail_Trip 完成主流程后改变并保持 Trip
+### SELF008.T6 tail_Trip
 
-完成主流程后改变并保持 Trip
+After completing main sequence, toggle and hold Trip
 
 review_origin: 2026-11-12 cross-task review
 
@@ -75892,7 +75892,7 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### SELF008.boundary_preset_hold_and_zero
+### SELF008.T7 boundary_preset_hold_and_zero
 
 Invalid presets (0 and 6) force zero clear, valid recovery counts to Preset=2, and live Preset reduction saturates Count while staying Ready.
 
@@ -76008,7 +76008,7 @@ Initial state:
 }
 ```
 
-### edges
+### SELF009.T1 edges
 
 Held pulses count once and target saturates
 
@@ -76132,7 +76132,7 @@ Held pulses count once and target saturates
 ```
 
 
-### reset_edge
+### SELF009.T2 reset_edge
 
 Reset while pulse is high suppresses phantom count
 
@@ -76239,9 +76239,9 @@ Reset while pulse is high suppresses phantom count
 ```
 
 
-### SELF009.boundary_target_and_error
+### SELF009.T3 boundary_target_and_error
 
-
+Verify holding PartPulse=TRUE during invalid Target=255 still latches pulse memory so recovery while held avoids a phantom count (9 steps).
 
 description: Target=20 upper limit, Target=255 invalid recovery (pulse edge memory still updates), shrinking clamp, and 2nd batch.
 
@@ -76399,9 +76399,9 @@ description: Target=20 upper limit, Target=255 invalid recovery (pulse edge memo
 ```
 
 
-### SELF009.R22.target_latch 计数完成后提高Target，Complete应重新变假
+### SELF009.T4 target_latch
 
-计数完成后提高Target，Complete应重新变假
+Drop Complete output back to FALSE when Target is raised past current count
 
 review_origin: 2026-11-12 cross-task review
 
@@ -76514,9 +76514,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### SELF009.R22.normal_changes 动态目标、上限20及非法后高脉冲恢复
+### SELF009.T5 normal_changes
 
-动态目标、上限20及非法后高脉冲恢复
+Dynamic Target changes, count ceiling 20, and held-pulse recovery after invalid Target
 
 review_origin: 2026-11-12 cross-task review
 
@@ -76701,9 +76701,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### SELF009.R22.tail_PartPulse 完成主流程后改变并保持 PartPulse
+### SELF009.T6 tail_PartPulse
 
-完成主流程后改变并保持 PartPulse
+After completing main sequence, toggle and hold PartPulse
 
 review_origin: 2026-11-12 cross-task review
 
@@ -76870,9 +76870,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### SELF009.R22.tail_Reset 完成主流程后改变并保持 Reset
+### SELF009.T7 tail_Reset
 
-完成主流程后改变并保持 Reset
+After completing main sequence, toggle and hold Reset
 
 review_origin: 2026-11-12 cross-task review
 
@@ -77054,7 +77054,7 @@ Initial state:
 }
 ```
 
-### annunciate
+### SELF010.T1 annunciate
 
 Acknowledge, fault clear and new event
 
@@ -77161,7 +77161,7 @@ Acknowledge, fault clear and new event
 ```
 
 
-### reset_priority
+### SELF010.T2 reset_priority
 
 Present fault blocks reset; removed fault reset wins
 
@@ -77217,7 +77217,7 @@ Present fault blocks reset; removed fault reset wins
 ```
 
 
-### V2_omission_regression
+### SELF010.T3 omission_regression
 
 Reject the concrete wrong behavior documented in the 2026-11-06 specification review.
 
@@ -77273,9 +77273,9 @@ Reject the concrete wrong behavior documented in the 2026-11-06 specification re
 ```
 
 
-### SELF010.boundary_ack_and_horn
+### SELF010.T4 boundary_ack_and_horn
 
-
+Verify Ack silences horn even after fault clears, a new Fault rising edge overrides held Ack to re-sound horn, and idle Ack is ignored (7 steps).
 
 description: Latched-no-fault Ack silence, new Fault rising edge while Ack=T clears Acknowledged, idle Ack ignored, and Fault&Reset ignored.
 
@@ -77399,9 +77399,9 @@ description: Latched-no-fault Ack silence, new Fault rising edge while Ack=T cle
 ```
 
 
-### SELF010.R22.normal_changes 故障消失后首次确认、复位与空闲保持
+### SELF010.T5 normal_changes
 
-故障消失后首次确认、复位与空闲保持
+Acknowledge after fault clears, reset alarm latch, and preserve idle silence
 
 review_origin: 2026-11-12 cross-task review
 
@@ -77532,9 +77532,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### SELF010.R22.tail_Fault 完成主流程后改变并保持 Fault
+### SELF010.T6 tail_Fault
 
-完成主流程后改变并保持 Fault
+After completing main sequence, toggle and hold Fault
 
 review_origin: 2026-11-12 cross-task review
 
@@ -77683,9 +77683,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### SELF010.R22.tail_Ack 完成主流程后改变并保持 Ack
+### SELF010.T7 tail_Ack
 
-完成主流程后改变并保持 Ack
+After completing main sequence, toggle and hold Ack
 
 review_origin: 2026-11-12 cross-task review
 
@@ -77834,9 +77834,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### SELF010.R22.tail_Reset 完成主流程后改变并保持 Reset
+### SELF010.T8 tail_Reset
 
-完成主流程后改变并保持 Reset
+After completing main sequence, toggle and hold Reset
 
 review_origin: 2026-11-12 cross-task review
 
@@ -78004,7 +78004,7 @@ Initial state:
 }
 ```
 
-### handshake
+### SELF011.T1 handshake
 
 Normal cycle and completion retention
 
@@ -78225,7 +78225,7 @@ Normal cycle and completion retention
 ```
 
 
-### single_transition
+### SELF011.T2 single_transition
 
 All handshakes cannot skip states; Stop aborts
 
@@ -78350,9 +78350,9 @@ All handshakes cannot skip states; Stop aborts
 ```
 
 
-### SELF011.boundary_all_waits_and_recycle
+### SELF011.T3 boundary_all_waits_and_recycle
 
-
+Cover wait-state holds in CLAMP/RELEASE/RETRACT, ignoring Start while busy, Stop from DONE, and starting a second cycle cleanly (10 steps).
 
 description: Multi-scan waiting at CLAMP/RELEASE/RETRACT, ignored Start while Busy, and DONE Stop -> 2nd round.
 
@@ -78597,9 +78597,9 @@ description: Multi-scan waiting at CLAMP/RELEASE/RETRACT, ignored Start while Bu
 ```
 
 
-### SELF011.R22.clamp_hold 夹紧阶段没有完成反馈时应保持动作
+### SELF011.T4 clamp_hold
 
-夹紧阶段没有完成反馈时应保持动作
+Maintain active Clamp output throughout wait until ClampDone handshake arrives
 
 review_origin: 2026-11-12 cross-task review
 
@@ -78729,9 +78729,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### SELF011.R22.all_waits 四动作逐阶段等待、完成保持与复位后第二轮
+### SELF011.T5 all_waits
 
-四动作逐阶段等待、完成保持与复位后第二轮
+Wait across all four actuator stages, hold DONE, and execute second cycle after Reset
 
 review_origin: 2026-11-12 cross-task review
 
@@ -79786,9 +79786,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### SELF011.R22.tail_Start 完成主流程后改变并保持 Start
+### SELF011.T6 tail_Start
 
-完成主流程后改变并保持 Start
+After completing main sequence, toggle and hold Start
 
 review_origin: 2026-11-12 cross-task review
 
@@ -80068,9 +80068,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### SELF011.R22.tail_Stop 完成主流程后改变并保持 Stop
+### SELF011.T7 tail_Stop
 
-完成主流程后改变并保持 Stop
+After completing main sequence, toggle and hold Stop
 
 review_origin: 2026-11-12 cross-task review
 
@@ -80350,9 +80350,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### SELF011.R22.tail_Reset 完成主流程后改变并保持 Reset
+### SELF011.T8 tail_Reset
 
-完成主流程后改变并保持 Reset
+After completing main sequence, toggle and hold Reset
 
 review_origin: 2026-11-12 cross-task review
 
@@ -80632,9 +80632,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### SELF011.R22.tail_ExtendDone 完成主流程后改变并保持 ExtendDone
+### SELF011.T9 tail_ExtendDone
 
-完成主流程后改变并保持 ExtendDone
+After completing main sequence, toggle and hold ExtendDone
 
 review_origin: 2026-11-12 cross-task review
 
@@ -80914,9 +80914,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### SELF011.R22.tail_ClampDone 完成主流程后改变并保持 ClampDone
+### SELF011.T10 tail_ClampDone
 
-完成主流程后改变并保持 ClampDone
+After completing main sequence, toggle and hold ClampDone
 
 review_origin: 2026-11-12 cross-task review
 
@@ -81196,9 +81196,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### SELF011.R22.tail_ReleaseDone 完成主流程后改变并保持 ReleaseDone
+### SELF011.T11 tail_ReleaseDone
 
-完成主流程后改变并保持 ReleaseDone
+After completing main sequence, toggle and hold ReleaseDone
 
 review_origin: 2026-11-12 cross-task review
 
@@ -81478,9 +81478,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### SELF011.R22.tail_RetractDone 完成主流程后改变并保持 RetractDone
+### SELF011.T12 tail_RetractDone
 
-完成主流程后改变并保持 RetractDone
+After completing main sequence, toggle and hold RetractDone
 
 review_origin: 2026-11-12 cross-task review
 
@@ -81776,7 +81776,7 @@ Initial state:
 }
 ```
 
-### exhaustion
+### SELF012.T1 exhaustion
 
 Two automatic retries then third fault locks
 
@@ -81979,7 +81979,7 @@ Two automatic retries then third fault locks
 ```
 
 
-### dwell_interrupt
+### SELF012.T2 dwell_interrupt
 
 Fault interrupts healthy dwell; Stop aborts wait
 
@@ -82146,7 +82146,7 @@ Fault interrupts healthy dwell; Stop aborts wait
 ```
 
 
-### V2_omission_regression
+### SELF012.T3 omission_regression
 
 Reject the concrete wrong behavior documented in the 2026-11-06 specification review.
 
@@ -82205,9 +82205,9 @@ Reject the concrete wrong behavior documented in the 2026-11-06 specification re
 ```
 
 
-### SELF012.boundary_stop_preserve_and_reset
+### SELF012.T4 boundary_stop_preserve_and_reset
 
-
+Test manual Stop during WAIT retry then Start preserves Attempts=1, invalid Reset while Fault stays active, and valid Reset in Lock overrides Stop (12 steps).
 
 description: Stop after 1 retry preserves Attempts=1 across restart, Fault&Reset invalid, Reset invalid in Fault, and validReset beats Stop.
 
@@ -82428,9 +82428,9 @@ description: Stop after 1 retry preserves Attempts=1 across restart, Fault&Reset
 ```
 
 
-### SELF012.R22.normal_changes 自动重试后Stop再Start保留次数、有效复位优先
+### SELF012.T5 normal_changes
 
-自动重试后Stop再Start保留次数、有效复位优先
+Preserve retry Attempts across manual Stop/Start and prioritize valid Reset in Lock
 
 review_origin: 2026-11-12 cross-task review
 
@@ -82568,9 +82568,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### SELF012.R22.tail_Start 完成主流程后改变并保持 Start
+### SELF012.T6 tail_Start
 
-完成主流程后改变并保持 Start
+After completing main sequence, toggle and hold Start
 
 review_origin: 2026-11-12 cross-task review
 
@@ -82822,9 +82822,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### SELF012.R22.tail_Stop 完成主流程后改变并保持 Stop
+### SELF012.T7 tail_Stop
 
-完成主流程后改变并保持 Stop
+After completing main sequence, toggle and hold Stop
 
 review_origin: 2026-11-12 cross-task review
 
@@ -83076,9 +83076,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### SELF012.R22.tail_Fault 完成主流程后改变并保持 Fault
+### SELF012.T8 tail_Fault
 
-完成主流程后改变并保持 Fault
+After completing main sequence, toggle and hold Fault
 
 review_origin: 2026-11-12 cross-task review
 
@@ -83330,9 +83330,9 @@ review_origin: 2026-11-12 cross-task review
 ```
 
 
-### SELF012.R22.tail_Reset 完成主流程后改变并保持 Reset
+### SELF012.T9 tail_Reset
 
-完成主流程后改变并保持 Reset
+After completing main sequence, toggle and hold Reset
 
 review_origin: 2026-11-12 cross-task review
 

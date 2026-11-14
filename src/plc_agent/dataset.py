@@ -22,7 +22,7 @@ def validate(tasks):
         errors.extend(f"{tid}: missing {k}" for k in required - task.keys())
         if not task.get("ltl") or not task.get("tests"):
             errors.append(f"{tid}: needs LTL and functional tests")
-        if task.get('specification_version','').startswith(('2.1-normalized', '2.2-normalized')):
+        if task.get('specification_version','').startswith(('normalized', '2.1-normalized', '2.2-normalized')):
             from .normalized_spec import check_definition_binding
             normalized=task.get('normalized_specification',{})
             if normalized.get('status')!='NORMALIZED_HUMAN_REVIEWED':

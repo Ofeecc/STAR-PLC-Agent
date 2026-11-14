@@ -278,7 +278,7 @@ def run_harness(
         "task_id": task["id"],
         "task_sha256": digest(task),
         "condition": condition,
-        "framework": "star_v2",
+        "framework": "star",
         "model": model,
         "status": "NOT_RUN",
         "reason": None,

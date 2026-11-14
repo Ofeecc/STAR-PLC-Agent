@@ -64,7 +64,7 @@ class CliAndConfigTests(unittest.TestCase):
 
             for later_status in ("COMPILE_FAIL", "PASS"):
                 with self.subTest(later_status=later_status):
-                    row = empty_result(task, "E3", "unit", "star_v2")
+                    row = empty_result(task, "E3", "unit", "star")
                     row.update(final_compiled=True, final_candidate=selected)
                     row["compilation_attempts"] = [
                         {"status": "PASS", "success": True, "source_sha256": selected_hash},
@@ -85,7 +85,7 @@ class CliAndConfigTests(unittest.TestCase):
         task = {"id": "UNIT", "tests": []}
         candidate = {"declaration": "FUNCTION_BLOCK FB_Task", "implementation": "", "supporting_objects": []}
         source_hash = digest(candidate)
-        row = empty_result(task, "E3", "unit", "star_v2")
+        row = empty_result(task, "E3", "unit", "star")
         row.update(final_compiled=True, final_candidate=candidate)
         row["compilation_attempts"] = [
             {"status": "PASS", "success": True, "source_sha256": source_hash},

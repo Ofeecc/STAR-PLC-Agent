@@ -26,7 +26,7 @@ class NormalizedSpecTests(unittest.TestCase):
     def test_all_32_preserve_source_tests_and_initial_conditions(self):
         for tid,t in self.tasks.items():
             before=read_json(ROOT/'dataset_versions/before_normalization_20261111'/(tid+'.json'))
-            self.assertEqual(t['specification_version'],'2.2-normalized-20261112',tid)
+            self.assertEqual(t['specification_version'],'normalized-20261114',tid)
             self.assertEqual(t['interface'],before['interface'],(tid,'interface'))
             if t['kind']=='public':
                 self.assertEqual(t['requirements'],before['requirements'],(tid,'requirements'))
@@ -45,7 +45,7 @@ class NormalizedSpecTests(unittest.TestCase):
 
     def test_complete_predicates_are_pinned_and_not_future_work_instructions(self):
         for tid,t in self.tasks.items():
-            definition=t['atomic_propositions']['CompleteBehaviorV2']
+            definition=t['atomic_propositions']['CompleteBehavior']
             self.assertNotRegex(definition,r'明确|给出|补G|须声明|需另外|或给出')
             self.assertIn('Sref[k+1]',definition)
             self.assertIn('实际O[k]',definition)
@@ -63,7 +63,7 @@ class NormalizedSpecTests(unittest.TestCase):
                 self.assertNotRegex(p['formula'],r'X\([^()]*\)\s*(?:=|<(?!->)|>|\+)')
                 self.assertNotIn('forall',p['formula'])
                 self.assertEqual(p['encoding_status'],'NOT_LOWERED_TO_MODEL_CHECKER')
-        f=next(p['formula'] for p in self.tasks['PUB002']['ltl'] if p['id']=='P6')
+        f=next(p['formula'] for p in self.tasks['PUB002']['ltl'] if p['id']=='PUB002.P6')
         self.assertEqual(len(re.findall(r'X\(PrevBit\d+\)',f)),32)
 
     def test_array_quantifiers_have_binding_domain_and_correct_empty_identity(self):
@@ -83,7 +83,7 @@ class NormalizedSpecTests(unittest.TestCase):
         with self.assertRaises(ValueError):instantiate_finite_conjunction(t,'AllChannels_P2',True)
 
     def test_timed_liveness_requires_divergent_physical_time(self):
-        for tid,pid in [('PUB004','P7'),('PUB005','P5'),('PUB006','P5'),('PUB010','P8'),('PUB013','PUB013.P6')]:
+        for tid,pid in [('PUB004','PUB004.P7'),('PUB005','PUB005.P5'),('PUB006','PUB006.P5'),('PUB010','PUB010.P8'),('PUB013','PUB013.P6')]:
             t=self.tasks[tid]
             p=next(p for p in t['ltl'] if p['id']==pid)
             self.assertIn('G(F(TimeTick))',p['formula'])

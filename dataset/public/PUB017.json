@@ -203,7 +203,7 @@
     "idle": "no rising request",
     "clear": "NOT error AND status=0 AND NOT recipeAdded AND NOT recipeDeleted AND NOT recipeModified",
     "unique": "all nonzero IDs are pairwise distinct",
-    "CompleteBehaviorV2": "令(Sref[k+1], E[k])=T_PUB017(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\n数据库首拍由调用前recipe初始化，之后为跨拍保留存储；非零ID唯一（允许正/负整数recipeID!=0，新增时严禁recipeID=0且每拍至多一个请求上升沿）。四请求历史初值FALSE、每拍更新。查询缺失8001；新增重复8002优先于满库8003，否则最低空位整体写入；删除缺失8004否则只清ID；修改缺失8005否则整体替换。失败/空闲库保持。三个成功输出是单拍脉冲，成功/空闲error=FALSE/status=0；查询结果仅成功查询时更新，初值零记录。成功删除槽的非ID字段当拍不受约束但须满足ST_Recipe类型与范围，此后无覆盖操作时与采样实际值比较保持；不把这些物理表示字段写回参考数据库。",
+    "CompleteBehavior": "令(Sref[k+1], E[k])=T_PUB017(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\n数据库首拍由调用前recipe初始化，之后为跨拍保留存储；非零ID唯一（允许正/负整数recipeID!=0，新增时严禁recipeID=0且每拍至多一个请求上升沿）。四请求历史初值FALSE、每拍更新。查询缺失8001；新增重复8002优先于满库8003，否则最低空位整体写入；删除缺失8004否则只清ID；修改缺失8005否则整体替换。失败/空闲库保持。三个成功输出是单拍脉冲，成功/空闲error=FALSE/status=0；查询结果仅成功查询时更新，初值零记录。成功删除槽的非ID字段当拍不受约束但须满足ST_Recipe类型与范围，此后无覆盖操作时与采样实际值比较保持；不把这些物理表示字段写回参考数据库。",
     "addRecipe": "I[k].addRecipe: sampled input (BOOL).",
     "deleteRecipe": "I[k].deleteRecipe: sampled input (BOOL).",
     "modifyRecipe": "I[k].modifyRecipe: sampled input (BOOL).",
@@ -297,8 +297,8 @@
       "scope": "SCAN_SEQUENCE"
     },
     {
-      "id": "PUB017.V2.COMPLETE",
-      "formula": "G(CompleteBehaviorV2)",
+      "id": "PUB017.COMPLETE",
+      "formula": "G(CompleteBehavior)",
       "explanation": "Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.",
       "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
       "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
@@ -310,6 +310,7 @@
       "id": "PUB017.T1",
       "name": "CRUD",
       "purpose": "Add, query, modify, delete and reuse the first empty slot.",
+      "notes": "Bind persistent recipe storage once. Inspect recipe[1].recipeID=2 after reuse; deleted non-ID fields are unconstrained.",
       "steps": [
         {
           "inputs": {
@@ -759,8 +760,7 @@
             "status": 0
           }
         }
-      ],
-      "notes": "Bind persistent recipe storage once. Inspect recipe[1].recipeID=2 after reuse; deleted non-ID fields are unconstrained."
+      ]
     },
     {
       "id": "PUB017.T2",
@@ -1866,6 +1866,7 @@
     },
     {
       "id": "PUB017.T4",
+      "purpose": "Verify storing valid nonzero negative INT (-5), lowest-free-slot 0 reuse after delete, retained query output on unrelated writes, and explicit recipe table checks (9 steps).",
       "description": "Negative nonzero INT recipeID (-5), held level add ignored, middle empty slot reuse, back-to-back modify/query, and explicit recipe IN_OUT verification.",
       "steps": [
         {
@@ -2717,9 +2718,9 @@
       ]
     },
     {
-      "id": "PUB017.R22.storage_operations",
-      "name": "满库末槽读回、最小空槽复用、修改其他槽保持与请求长按",
-      "purpose": "满库末槽读回、最小空槽复用、修改其他槽保持与请求长按",
+      "id": "PUB017.T5",
+      "name": "storage_operations",
+      "purpose": "Full-DB tail read, lowest free slot reuse on add, unrelated entry retention, and held command",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -7855,7 +7856,7 @@
       ]
     },
     {
-      "id": "PUB017.T5",
+      "id": "PUB017.T6",
       "purpose": "Negative nonzero recipeID lifecycle (add/query/modify/delete) and failed query retention of previous recipeQueryResult.",
       "steps": [
         {
@@ -8613,7 +8614,7 @@
       ]
     },
     {
-      "id": "PUB017.T6",
+      "id": "PUB017.T7",
       "purpose": "Mid-table and high-slot (slots 8-10) deletion, adjacent slot preservation, and lowest free-slot insertion.",
       "steps": [
         {
@@ -11345,7 +11346,7 @@
       ]
     },
     {
-      "id": "PUB017.T7",
+      "id": "PUB017.T8",
       "purpose": "Level-held requests after rising edges stay idle (no duplicate error, missing error, or repeat pulse).",
       "steps": [
         {
@@ -12273,10 +12274,10 @@
       "persistence": "VAR_IN_OUT caller storage retained across all steps."
     }
   },
-  "specification_version": "2.2-normalized-20261112",
+  "specification_version": "normalized-20261114",
   "specification_contract": {
     "observation": "I[k] is sampled before execution; O[k] is observed after execution. Initial conditions apply before invocation zero.",
-    "normative_completion": "令(Sref[k+1], E[k])=T_PUB017(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\n数据库首拍由调用前recipe初始化，之后为跨拍保留存储；非零ID唯一（允许正/负整数recipeID!=0，新增时严禁recipeID=0且每拍至多一个请求上升沿）。四请求历史初值FALSE、每拍更新。查询缺失8001；新增重复8002优先于满库8003，否则最低空位整体写入；删除缺失8004否则只清ID；修改缺失8005否则整体替换。失败/空闲库保持。三个成功输出是单拍脉冲，成功/空闲error=FALSE/status=0；查询结果仅成功查询时更新，初值零记录。成功删除槽的非ID字段当拍不受约束但须满足ST_Recipe类型与范围，此后无覆盖操作时与采样实际值比较保持；不把这些物理表示字段写回参考数据库。",
+    "normative_completion": "令(Sref[k+1], E[k])=T_PUB017(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\n数据库首拍由调用前recipe初始化，之后为跨拍保留存储；非零ID唯一（允许正/负整数recipeID!=0，新增时严禁recipeID=0且每拍至多一个请求上升沿）。四请求历史初值FALSE、每拍更新。查询缺失8001；新增重复8002优先于满库8003，否则最低空位整体写入；删除缺失8004否则只清ID；修改缺失8005否则整体替换。失败/空闲库保持。三个成功输出是单拍脉冲，成功/空闲error=FALSE/status=0；查询结果仅成功查询时更新，初值零记录。成功删除槽的非ID字段当拍不受约束但须满足ST_Recipe类型与范围，此后无覆盖操作时与采样实际值比较保持；不把这些物理表示字段写回参考数据库。",
     "history_binding": "I, O and Sref namespaces, initialization and updates are defined in normalized_specification.observation, history_bindings and reference_state_initial. Candidate output never drives Sref.",
     "evaluation_scope": "Versioned executable scan predicate plus LTL over interpreted predicates. No native checker encoding or completed formal proof is claimed.",
     "review_source": "docs/规约逐题审查_20261106/PUB017.md",
@@ -12418,10 +12419,10 @@
         "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
         "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
         "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-        "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
+        "normalized_spec.py": "3c13590145597ad26cf537ff76c44e22f06abf7720e04d2ea262ac347be9d9cd"
       },
       "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-      "frozen_sources": "dataset/specifications/normalized_transition_v2"
+      "frozen_sources": "dataset/specifications/normalized_transition"
     },
     "constrained_observed_fields": [
       "error",

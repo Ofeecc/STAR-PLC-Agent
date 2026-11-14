@@ -71,7 +71,7 @@ def find_first_mismatch(
         if name not in actual:
             return (name, exp_val, None)
         act_val = actual[name]
-        if task.get("id") == "PUB008" and task.get("specification_version", "").startswith("2.") and inputs is not None:
+        if task.get("id") == "PUB008" and task.get("specification_version", "").startswith(("normalized", "2.")) and inputs is not None:
             from .array_contracts import analog_field_matches
             if not analog_field_matches(name, act_val, exp_val, inputs):
                 return (name, exp_val, act_val)

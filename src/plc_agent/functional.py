@@ -28,7 +28,7 @@ def outputs_equal(task, actual, expected, inputs=None):
     times = {f['name'] for f in task.get('interface', []) if f['direction'] in ('OUTPUT','IN_OUT') and f['type'].upper() in ('TIME','LTIME')}
     for name, value in expected.items():
         if name not in actual:return False
-        if task.get('id')=='PUB008' and task.get('specification_version','').startswith('2.') and inputs is not None:
+        if task.get('id')=='PUB008' and task.get('specification_version','').startswith(('normalized', '2.')) and inputs is not None:
             from .array_contracts import analog_field_matches
             if not analog_field_matches(name,actual[name],value,inputs):return False
         elif name in times:
@@ -125,7 +125,7 @@ def evaluate_trace(task, source_hash, trace, evidence_root=ROOT):
                         step_ok = False
             good.append(step_ok)
         # Historical datasets keep their original evaluation semantics.
-        contract = check_contract_trace(task['id'], rows) if task.get('specification_version', '').startswith('2.') else {'status': 'NOT_APPLIED_TO_LEGACY_DATASET', 'violations': []}
+        contract = check_contract_trace(task['id'], rows) if task.get('specification_version', '').startswith(('normalized', '2.')) else {'status': 'NOT_APPLIED_TO_LEGACY_DATASET', 'violations': []}
         for violation in contract['violations']:
             good[violation['scan']] = False
         evaluated += 1; steps_count += len(good); passed_steps += sum(good)

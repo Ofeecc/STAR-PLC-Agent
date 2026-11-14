@@ -83,12 +83,12 @@
     "qAmber": "Spre.reference.state.phase=2",
     "qPhase": "Spre.reference.state.phase",
     "oneColor": "int(O[k].Red)+int(O[k].Green)+int(O[k].Amber)=1",
-    "CompleteBehaviorV2": "令(Sref[k+1], E[k])=T_SELF005(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\nphase=0/age=0初值。!Enable时重置0/0；否则Tick时age加1，到当前phase的阈值(2,3,1)则phase=(phase+1)%3且age=0；其他保持。Red/Green/Amber分别等价于新phase=0/1/2，Phase等于新phase。Tick是逻辑调用计数，不是物理时间。",
+    "CompleteBehavior": "令(Sref[k+1], E[k])=T_SELF005(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\nphase=0/age=0初值。!Enable时重置0/0；否则Tick时age加1，到当前phase的阈值(2,3,1)则phase=(phase+1)%3且age=0；其他保持。Red/Green/Amber分别等价于新phase=0/1/2，Phase等于新phase。Tick是逻辑调用计数，不是物理时间。",
     "init": "At the separate pre-invocation initial observation before scan k=0: Spre.phase=0, O_init.Red=true, O_init.Green=false, O_init.Amber=false, O_init.Phase=0."
   },
   "ltl": [
     {
-      "id": "P_init",
+      "id": "SELF005.P_init",
       "kind": "safety",
       "formula": "init",
       "description": "Before the first scan invocation, all declared OUTPUT variables and initial instance state hold their declared initial values.",
@@ -98,7 +98,7 @@
       "scope": "INITIAL_INSTANCE"
     },
     {
-      "id": "P1",
+      "id": "SELF005.P1",
       "formula": "G(oneColor)",
       "explanation": "The lamp encoding is one-hot.",
       "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
@@ -106,7 +106,7 @@
       "scope": "SCAN_SEQUENCE"
     },
     {
-      "id": "P2",
+      "id": "SELF005.P2",
       "formula": "G(!Enable -> (Red & !Green & !Amber & Phase=0))",
       "explanation": "When Enable is FALSE, immediately force Red (Phase=0) with age reset to 0.",
       "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
@@ -114,7 +114,7 @@
       "scope": "SCAN_SEQUENCE"
     },
     {
-      "id": "P3",
+      "id": "SELF005.P3",
       "formula": "G((Enable & !Tick) -> (Phase = qPhase))",
       "explanation": "No tick preserves phase.",
       "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
@@ -122,7 +122,7 @@
       "scope": "SCAN_SEQUENCE"
     },
     {
-      "id": "P4",
+      "id": "SELF005.P4",
       "formula": "G((Enable & Tick & qRedLast) -> Green)",
       "explanation": "The second red tick enters green.",
       "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
@@ -130,7 +130,7 @@
       "scope": "SCAN_SEQUENCE"
     },
     {
-      "id": "P5",
+      "id": "SELF005.P5",
       "formula": "G((Enable & Tick & qGreenLast) -> Amber)",
       "explanation": "The third green tick enters amber.",
       "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
@@ -138,7 +138,7 @@
       "scope": "SCAN_SEQUENCE"
     },
     {
-      "id": "P6",
+      "id": "SELF005.P6",
       "formula": "G((Enable & Tick & qAmber) -> Red)",
       "explanation": "One amber tick returns red.",
       "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
@@ -146,7 +146,7 @@
       "scope": "SCAN_SEQUENCE"
     },
     {
-      "id": "P7",
+      "id": "SELF005.P7",
       "formula": "(G Enable & G(F Tick)) -> (G(F Red) & G(F Green) & G(F Amber))",
       "explanation": "Persistent enable plus infinitely many ticks makes every phase recur; finite traces cannot prove this liveness property.",
       "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
@@ -154,7 +154,7 @@
       "scope": "SCAN_SEQUENCE"
     },
     {
-      "id": "P8",
+      "id": "SELF005.P8",
       "kind": "safety",
       "formula": "G((Red <-> Phase=0) & (Green <-> Phase=1) & (Amber <-> Phase=2) & (Phase>=0 & Phase<=2))",
       "description": "Phase integer output (0..2) always matches the corresponding Red/Green/Amber light output.",
@@ -164,7 +164,7 @@
       "scope": "SCAN_SEQUENCE"
     },
     {
-      "id": "P9",
+      "id": "SELF005.P9",
       "kind": "safety",
       "formula": "G((Enable & Tick & !qRedLast & !qGreenLast & !qAmber) -> (Phase = qPhase))",
       "description": "A Tick prior to completing the 2-tick Red or 3-tick Green dwell must remain in the current phase.",
@@ -174,8 +174,8 @@
       "scope": "SCAN_SEQUENCE"
     },
     {
-      "id": "SELF005.V2.COMPLETE",
-      "formula": "G(CompleteBehaviorV2)",
+      "id": "SELF005.COMPLETE",
+      "formula": "G(CompleteBehavior)",
       "explanation": "Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.",
       "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
       "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
@@ -184,7 +184,8 @@
   ],
   "tests": [
     {
-      "id": "cycle",
+      "id": "SELF005.T1",
+      "name": "cycle",
       "purpose": "Full phase duration boundaries and pause",
       "steps": [
         {
@@ -274,7 +275,8 @@
       ]
     },
     {
-      "id": "disable",
+      "id": "SELF005.T2",
+      "name": "disable",
       "purpose": "Disable clears elapsed tick progress",
       "steps": [
         {
@@ -340,7 +342,9 @@
       ]
     },
     {
-      "id": "SELF005.boundary_pause_resume",
+      "id": "SELF005.T3",
+      "name": "boundary_pause_resume",
+      "purpose": "Test disable reset on RED step 1 followed by resume, double Tick and pause progression into AMBER, and entering a second cycle (10 steps).",
       "description": "Disable mid-RED scan 1, resume preserving GREEN/AMBER dwell across non-Tick pauses, and 2nd cycle.",
       "steps": [
         {
@@ -466,9 +470,9 @@
       ]
     },
     {
-      "id": "SELF005.R22.green_pause",
-      "name": "绿灯阶段暂停Tick应保持颜色",
-      "purpose": "绿灯阶段暂停Tick应保持颜色",
+      "id": "SELF005.T4",
+      "name": "green_pause",
+      "purpose": "Pause Tick pulses during GREEN phase preserves active Green lamp output",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -526,9 +530,9 @@
       ]
     },
     {
-      "id": "SELF005.R22.normal_changes",
-      "name": "完整两轮各相位暂停并保留计龄",
-      "purpose": "完整两轮各相位暂停并保留计龄",
+      "id": "SELF005.T5",
+      "name": "normal_changes",
+      "purpose": "Pause Tick across every phase in two full traffic-light cycles while retaining phase age",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -820,9 +824,9 @@
       ]
     },
     {
-      "id": "SELF005.R22.tail_Enable",
-      "name": "完成主流程后改变并保持 Enable",
-      "purpose": "完成主流程后改变并保持 Enable",
+      "id": "SELF005.T6",
+      "name": "tail_Enable",
+      "purpose": "After completing main sequence, toggle and hold Enable",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -945,9 +949,9 @@
       ]
     },
     {
-      "id": "SELF005.R22.tail_Tick",
-      "name": "完成主流程后改变并保持 Tick",
-      "purpose": "完成主流程后改变并保持 Tick",
+      "id": "SELF005.T7",
+      "name": "tail_Tick",
+      "purpose": "After completing main sequence, toggle and hold Tick",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -1070,10 +1074,10 @@
       ]
     }
   ],
-  "specification_version": "2.2-normalized-20261112",
+  "specification_version": "normalized-20261114",
   "specification_contract": {
     "observation": "I[k] is sampled before execution; O[k] is observed after execution. Initial conditions apply before invocation zero.",
-    "normative_completion": "令(Sref[k+1], E[k])=T_SELF005(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\nphase=0/age=0初值。!Enable时重置0/0；否则Tick时age加1，到当前phase的阈值(2,3,1)则phase=(phase+1)%3且age=0；其他保持。Red/Green/Amber分别等价于新phase=0/1/2，Phase等于新phase。Tick是逻辑调用计数，不是物理时间。",
+    "normative_completion": "令(Sref[k+1], E[k])=T_SELF005(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\nphase=0/age=0初值。!Enable时重置0/0；否则Tick时age加1，到当前phase的阈值(2,3,1)则phase=(phase+1)%3且age=0；其他保持。Red/Green/Amber分别等价于新phase=0/1/2，Phase等于新phase。Tick是逻辑调用计数，不是物理时间。",
     "history_binding": "I, O and Sref namespaces, initialization and updates are defined in normalized_specification.observation, history_bindings and reference_state_initial. Candidate output never drives Sref.",
     "evaluation_scope": "Versioned executable scan predicate plus LTL over interpreted predicates. No native checker encoding or completed formal proof is claimed.",
     "review_source": "docs/规约逐题审查_20261106/SELF005.md",
@@ -1132,10 +1136,10 @@
         "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
         "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
         "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-        "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
+        "normalized_spec.py": "3c13590145597ad26cf537ff76c44e22f06abf7720e04d2ea262ac347be9d9cd"
       },
       "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-      "frozen_sources": "dataset/specifications/normalized_transition_v2"
+      "frozen_sources": "dataset/specifications/normalized_transition"
     },
     "constrained_observed_fields": [
       "Amber",

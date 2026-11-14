@@ -96,14 +96,14 @@
     "validReset": "Reset & !Fault & !Start.",
     "retryDue": "Spre.reference.state.mode=2 AND NOT I[k].Fault AND Spre.reference.state.free>=1",
     "normal": "!validReset & !Stop.",
-    "CompleteBehaviorV2": "令(Sref[k+1], E[k])=T_SELF012(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\nmode=IDLE/attempts=0/free=0初值。优先Reset & !Fault & !Start清全部；其次LOCKED保持；其次Stop回IDLE并清free但保留attempts；RUNNING且Fault转WAIT或已重试2次转LOCKED；WAIT中Fault清free否则加1，free>=2时attempts加1并回RUNNING、free=0；IDLE且Start & !Fault进RUNNING。输出Run/Locked取新mode，Attempts取新attempts。",
+    "CompleteBehavior": "令(Sref[k+1], E[k])=T_SELF012(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\nmode=IDLE/attempts=0/free=0初值。优先Reset & !Fault & !Start清全部；其次LOCKED保持；其次Stop回IDLE并清free但保留attempts；RUNNING且Fault转WAIT或已重试2次转LOCKED；WAIT中Fault清free否则加1，free>=2时attempts加1并回RUNNING、free=0；IDLE且Start & !Fault进RUNNING。输出Run/Locked取新mode，Attempts取新attempts。",
     "init": "At the separate pre-invocation initial observation before scan k=0: Spre.mode=IDLE, O_init.Run=false, O_init.Locked=false, O_init.Attempts=0.",
     "qIdle": "Spre.reference.state.mode=0",
     "refAttempts": "Spre.reference.state.attempts"
   },
   "ltl": [
     {
-      "id": "P_init",
+      "id": "SELF012.P_init",
       "kind": "safety",
       "formula": "init",
       "description": "Before the first scan invocation, all declared OUTPUT variables and initial instance state hold their declared initial values.",
@@ -113,7 +113,7 @@
       "scope": "INITIAL_INSTANCE"
     },
     {
-      "id": "P1",
+      "id": "SELF012.P1",
       "formula": "G(Fault -> !Run)",
       "explanation": "A present fault cannot command the feeder.",
       "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
@@ -121,7 +121,7 @@
       "scope": "SCAN_SEQUENCE"
     },
     {
-      "id": "P2",
+      "id": "SELF012.P2",
       "formula": "G((Attempts >= 0) & (Attempts <= 2))",
       "explanation": "Automatic restart count stays within the budget.",
       "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
@@ -129,7 +129,7 @@
       "scope": "SCAN_SEQUENCE"
     },
     {
-      "id": "P3",
+      "id": "SELF012.P3",
       "formula": "G(validReset -> (!Run & !Locked & (Attempts = 0)))",
       "explanation": "Accepted reset clears history and leaves the feeder stopped.",
       "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
@@ -137,7 +137,7 @@
       "scope": "SCAN_SEQUENCE"
     },
     {
-      "id": "P4",
+      "id": "SELF012.P4",
       "formula": "G((qLocked & !validReset) -> (Locked & !Run))",
       "explanation": "Lockout requires a safe explicit reset.",
       "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
@@ -145,7 +145,7 @@
       "scope": "SCAN_SEQUENCE"
     },
     {
-      "id": "P5",
+      "id": "SELF012.P5",
       "formula": "G((qRunning & Fault & normal & (refAttempts = 2)) -> Locked)",
       "explanation": "Lock out on Fault from RUNNING once reference attempts already reached 2 (uses Spre.attempts to stay immune to candidate undercounting).",
       "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
@@ -153,7 +153,7 @@
       "scope": "SCAN_SEQUENCE"
     },
     {
-      "id": "P6",
+      "id": "SELF012.P6",
       "formula": "G((retryDue & normal) -> (Run & (Attempts = refAttempts + 1)))",
       "explanation": "On fault-free retry dwell completion, restart Run and output Attempts = Spre.attempts + 1.",
       "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
@@ -161,7 +161,7 @@
       "scope": "SCAN_SEQUENCE"
     },
     {
-      "id": "P7",
+      "id": "SELF012.P7",
       "formula": "G((qWait & Fault & normal) -> !Run)",
       "explanation": "A fault during recovery clears progress and prevents restart.",
       "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
@@ -169,7 +169,7 @@
       "scope": "SCAN_SEQUENCE"
     },
     {
-      "id": "P8",
+      "id": "SELF012.P8",
       "kind": "safety",
       "formula": "G(((qIdle & normal & !(Start & !Fault)) -> (!Run & !Locked & Attempts=refAttempts)) & ((qIdle & normal & Start & !Fault) -> (Run & !Locked & Attempts=refAttempts)) & ((qRunning & !Fault & normal) -> (Run & !Locked & Attempts=refAttempts)))",
       "description": "Covers IDLE hold, IDLE->RUNNING start, RUNNING normal continuation, and Attempts preservation across Start/Stop.",
@@ -179,7 +179,7 @@
       "scope": "SCAN_SEQUENCE"
     },
     {
-      "id": "P9",
+      "id": "SELF012.P9",
       "kind": "safety",
       "formula": "G(((normal & qWait & !retryDue) -> (!Run & !Locked & Attempts=refAttempts)) & ((!qLocked & !(qRunning & Fault & normal & refAttempts=2)) -> !Locked) & (!(Run & Locked)))",
       "description": "Covers WAIT dwell holding, forbids premature Locked before exhausting 2 retries, and enforces Run/Locked exclusion.",
@@ -189,8 +189,8 @@
       "scope": "SCAN_SEQUENCE"
     },
     {
-      "id": "SELF012.V2.COMPLETE",
-      "formula": "G(CompleteBehaviorV2)",
+      "id": "SELF012.COMPLETE",
+      "formula": "G(CompleteBehavior)",
       "explanation": "Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.",
       "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
       "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
@@ -199,7 +199,8 @@
   ],
   "tests": [
     {
-      "id": "exhaustion",
+      "id": "SELF012.T1",
+      "name": "exhaustion",
       "purpose": "Two automatic retries then third fault locks",
       "steps": [
         {
@@ -348,7 +349,8 @@
       ]
     },
     {
-      "id": "dwell_interrupt",
+      "id": "SELF012.T2",
+      "name": "dwell_interrupt",
       "purpose": "Fault interrupts healthy dwell; Stop aborts wait",
       "steps": [
         {
@@ -471,7 +473,8 @@
       ]
     },
     {
-      "id": "V2_omission_regression",
+      "id": "SELF012.T3",
+      "name": "omission_regression",
       "purpose": "Reject the concrete wrong behavior documented in the 2026-11-06 specification review.",
       "steps": [
         {
@@ -516,7 +519,9 @@
       ]
     },
     {
-      "id": "SELF012.boundary_stop_preserve_and_reset",
+      "id": "SELF012.T4",
+      "name": "boundary_stop_preserve_and_reset",
+      "purpose": "Test manual Stop during WAIT retry then Start preserves Attempts=1, invalid Reset while Fault stays active, and valid Reset in Lock overrides Stop (12 steps).",
       "description": "Stop after 1 retry preserves Attempts=1 across restart, Fault&Reset invalid, Reset invalid in Fault, and validReset beats Stop.",
       "steps": [
         {
@@ -678,9 +683,9 @@
       ]
     },
     {
-      "id": "SELF012.R22.normal_changes",
-      "name": "自动重试后Stop再Start保留次数、有效复位优先",
-      "purpose": "自动重试后Stop再Start保留次数、有效复位优先",
+      "id": "SELF012.T5",
+      "name": "normal_changes",
+      "purpose": "Preserve retry Attempts across manual Stop/Start and prioritize valid Reset in Lock",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -784,9 +789,9 @@
       ]
     },
     {
-      "id": "SELF012.R22.tail_Start",
-      "name": "完成主流程后改变并保持 Start",
-      "purpose": "完成主流程后改变并保持 Start",
+      "id": "SELF012.T6",
+      "name": "tail_Start",
+      "purpose": "After completing main sequence, toggle and hold Start",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -974,9 +979,9 @@
       ]
     },
     {
-      "id": "SELF012.R22.tail_Stop",
-      "name": "完成主流程后改变并保持 Stop",
-      "purpose": "完成主流程后改变并保持 Stop",
+      "id": "SELF012.T7",
+      "name": "tail_Stop",
+      "purpose": "After completing main sequence, toggle and hold Stop",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -1164,9 +1169,9 @@
       ]
     },
     {
-      "id": "SELF012.R22.tail_Fault",
-      "name": "完成主流程后改变并保持 Fault",
-      "purpose": "完成主流程后改变并保持 Fault",
+      "id": "SELF012.T8",
+      "name": "tail_Fault",
+      "purpose": "After completing main sequence, toggle and hold Fault",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -1354,9 +1359,9 @@
       ]
     },
     {
-      "id": "SELF012.R22.tail_Reset",
-      "name": "完成主流程后改变并保持 Reset",
-      "purpose": "完成主流程后改变并保持 Reset",
+      "id": "SELF012.T9",
+      "name": "tail_Reset",
+      "purpose": "After completing main sequence, toggle and hold Reset",
       "review_origin": "2026-11-12 cross-task review",
       "steps": [
         {
@@ -1544,10 +1549,10 @@
       ]
     }
   ],
-  "specification_version": "2.2-normalized-20261112",
+  "specification_version": "normalized-20261114",
   "specification_contract": {
     "observation": "I[k] is sampled before execution; O[k] is observed after execution. Initial conditions apply before invocation zero.",
-    "normative_completion": "令(Sref[k+1], E[k])=T_SELF012(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\nmode=IDLE/attempts=0/free=0初值。优先Reset & !Fault & !Start清全部；其次LOCKED保持；其次Stop回IDLE并清free但保留attempts；RUNNING且Fault转WAIT或已重试2次转LOCKED；WAIT中Fault清free否则加1，free>=2时attempts加1并回RUNNING、free=0；IDLE且Start & !Fault进RUNNING。输出Run/Locked取新mode，Attempts取新attempts。",
+    "normative_completion": "令(Sref[k+1], E[k])=T_SELF012(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\nmode=IDLE/attempts=0/free=0初值。优先Reset & !Fault & !Start清全部；其次LOCKED保持；其次Stop回IDLE并清free但保留attempts；RUNNING且Fault转WAIT或已重试2次转LOCKED；WAIT中Fault清free否则加1，free>=2时attempts加1并回RUNNING、free=0；IDLE且Start & !Fault进RUNNING。输出Run/Locked取新mode，Attempts取新attempts。",
     "history_binding": "I, O and Sref namespaces, initialization and updates are defined in normalized_specification.observation, history_bindings and reference_state_initial. Candidate output never drives Sref.",
     "evaluation_scope": "Versioned executable scan predicate plus LTL over interpreted predicates. No native checker encoding or completed formal proof is claimed.",
     "review_source": "docs/规约逐题审查_20261106/SELF012.md",
@@ -1607,10 +1612,10 @@
         "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
         "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
         "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-        "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
+        "normalized_spec.py": "3c13590145597ad26cf537ff76c44e22f06abf7720e04d2ea262ac347be9d9cd"
       },
       "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-      "frozen_sources": "dataset/specifications/normalized_transition_v2"
+      "frozen_sources": "dataset/specifications/normalized_transition"
     },
     "constrained_observed_fields": [
       "Attempts",

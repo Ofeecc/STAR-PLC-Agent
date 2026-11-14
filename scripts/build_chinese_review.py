@@ -220,24 +220,24 @@ def main():
             row=deepcopy(pilot[tid])
         else:
             title,translation,assumptions,notes,descriptions=CONTENT[tid]
-            properties=[p for p in task['ltl'] if p['formula']!='G(CompleteBehaviorV2)']
+            properties=[p for p in task['ltl'] if p['formula'] not in ('G(CompleteBehavior)', 'G(CompleteBehaviorV2)')]
             assert len(properties)==len(descriptions), (tid,len(properties),len(descriptions))
             props={p['id']:{'formula':p['formula'],'description':d,'review':notes} for p,d in zip(properties,descriptions)}
             for p in task['ltl']:
-                if p['formula']=='G(CompleteBehaviorV2)':
-                    props[p['id']]={'formula':p['formula'],'description':'每次调用的全部输出与保留历史必须满足完整行为关系；具体转移规则见上方完整规约。','review':'CompleteBehaviorV2是解释性复合谓词；必须显式展开并绑定实际候选输出后才能模型检查，不能把名称当成已完成证明。'}
+                if p['formula'] in ('G(CompleteBehavior)', 'G(CompleteBehaviorV2)'):
+                    props[p['id']]={'formula':p['formula'],'description':'每次调用的全部输出与保留历史必须满足完整行为关系；具体转移规则见上方完整规约。','review':'CompleteBehavior是解释性复合谓词；必须显式展开并绑定实际候选输出后才能模型检查，不能把名称当成已完成证明。'}
             row={'id':tid,'title_zh':title,'translation_zh':translation,'assumptions_zh':assumptions,'review_points_zh':notes,'properties_zh':props}
         # Rebind editorial translations to the versioned normalized definitions.
         for prop in task['ltl']:
             item=row['properties_zh'][prop['id']]
             changed=item['formula']!=prop['formula']
             item['formula']=prop['formula']
-            if prop['formula']=='G(CompleteBehaviorV2)':
+            if prop['formula'] in ('G(CompleteBehavior)', 'G(CompleteBehaviorV2)'):
                 item['description']='每拍将独立参考转移的期望结果与候选实际输出逐项比较；转移、初值、数值比较和不约束字段均有固定定义。'
                 item['review']='这是已定义并完成人工审阅的扫描谓词；不代表已完成 ST 模型转换或无限时序证明。'
-            elif tid=='PUB002' and prop['id']=='P6':
+            elif tid=='PUB002' and prop['id'] in ('P6', 'PUB002.P6'):
                 item['description']='对DWORD的0～31位逐位比较：本拍输入位等价于下一拍输入历史位。X只作用于布尔位命题，前值初始全0。'
-            elif tid=='PUB009' and prop['id']=='P6':
+            elif tid=='PUB009' and prop['id'] in ('P6', 'PUB009.P6'):
                 item['description']='本拍布尔trigger等价于下一拍布尔previousTrigger；非法窗、复位等分支也必须更新输入历史。'
             if changed:
                 item['review']+=' 本轮公式已规范化，请重新核对含义；量化按绑定长度有限展开。'

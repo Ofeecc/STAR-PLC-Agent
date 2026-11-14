@@ -1,6 +1,6 @@
-# STAR v2 工业 PLC 编程 Agent 核心架构设计文档
+# STAR 工业 PLC 编程 Agent 核心架构设计文档
 
-**文档版本:** v2.0  
+**文档版本:** 2026-11  
 **适用范围:** CODESYS V3.5 结构化文本 (IEC 61131-3 Structured Text) 自动化生成、仿真评估与形式化验证  
 **运行环境:** 跨平台无偏见环境（Linux / Windows / macOS，支持 Python 3.11+ / uv）  
 
@@ -8,7 +8,7 @@
 
 ## 一、 系统架构总览
 
-STAR v2（Stateful-to-Stateless Artifact-Centric Architecture for Industrial PLC Programming）是专为工业自动化 PLC（以 CODESYS 为典型代表）代码生成设计的双工验证型 Agent 评测与生成框架。
+STAR（Stateful-to-Stateless Artifact-Centric Architecture for Industrial PLC Programming）是专为工业自动化 PLC（以 CODESYS 为典型代表）代码生成设计的双工验证型 Agent 评测与生成框架。
 
 系统采用**工件中心（Artifact-Centric）的无状态流水线**设计，摒弃脆弱的通用 ReAct 长上下文黑盒循环，通过状态图规约推演、方言规则注入、编译诊断语义压缩、独立自测用例生成与单向字典序棘轮控制器，实现工业高可靠性代码合成。
 
@@ -20,7 +20,7 @@ flowchart TD
         TaskRaw -->|"过滤 hidden tests & spec"| AgentView
     end
 
-    subgraph STAR ["STAR v2 核心生成状态机 (Pure Python)"]
+    subgraph STAR ["STAR 核心生成状态机 (Pure Python)"]
         Planner["1. Architecture Planner<br/>状态机与转移契约推演 (contract.json)"]
         Dialect["2. Dialect Selector<br/>CODESYS 方言卡片匹配 (dialect_cards.json)"]
         Coder["3. Coder & Compile-Repair<br/>代码合成与 Hash 防停滞修复 (version_XX.json)"]
@@ -74,7 +74,7 @@ flowchart TD
   - 严格物理删除字段：`tests`（评测集）、`test_bindings`、`specification_contract`（参考实现合约）、`provenance`（出题来源）。
   - 深拷贝不可变性：通过 `copy.deepcopy` 输出，确保下游任何修改不影响评测母本。
 
-### 2. STAR v2 五阶段工业级状态机 (`harness.py`)
+### 2. STAR 五阶段工业级状态机 (`harness.py`)
 1. **Architecture Planner**: 提取变量生命周期、互斥动作对、中间状态枚举与定时器触发条件，产出确定性 `plan.json`。
 2. **Deterministic Dialect Cards (`dialect_cards.py`)**: 维护 8 张高频 CODESYS 专有方言卡片（`variant_ref`, `var_length_array`, `ltime_ops`, `ton_timer`, `edge_detection`, `inout_struct_array`, `string_parsing`, `case_state_machine`）。每张卡片严格控制在 15 行以内，单题按接口与需求关键词最多匹配 4 张，避免上下文臃肿。
 3. **Coder 与代码 Hash 防停滞检测**: 结合任务、架构规划与方言卡片生成初始 IEC 61131-3 代码。在编译修复循环中，计算候选代码 SHA-256，若出现重复代码停滞，自动注入显式破局告警。
@@ -121,11 +121,11 @@ flowchart TD
 
 ## 三、 代码资产继承与重构边界说明
 
-| 模块类别 | 组员原项目快照情况 | STAR v2 当前重构与实现状态 | 继承比例 |
+| 模块类别 | 组员原项目快照情况 | STAR 当前重构与实现状态 | 继承比例 |
 |---|---|---|---|
 | **任务数据集 (`dataset/`)** | 包含 20 道公开题与 12 道自建题的草稿与测试用例。时序语义存在拍内与跨拍矛盾。 | **完全吸收并标准化时序语义**（统一为 post-scan 观测规范），修正全部矛盾，作为核心评测基准。 | 100% 继承并语义标准化 |
 | **底层 CODESYS 驱动 (`codesys/`)** | 包含 IronPython 2.7 的 `build.py` 与 `run_tests.py` 原型脚本，仅支持简单标量。 | **深度重构**：保留 ScriptEngine API 核心调用骨架；新增 `TIME()` 门控时钟测量、`IN_OUT` 复合结构首步持久化（`retain_storage`）、扁平化监控变量还原。 | 约 30% 继承，70% 重构拓展 |
-| **Agent 状态机 (`harness.py`)** | 原组员尝试使用第三方 `smolagents`，代码无法运行且无法精细控制单步状态机（存在报错已废弃）。 | **100% 全新自研**：删除 `smolagents`，实现纯 Python 无状态 STAR v2（Planner $\to$ Dialect $\to$ Coder $\to$ Tester $\to$ Ratchet）。 | 0% 继承，100% 全新研发 |
+| **Agent 状态机 (`harness.py`)** | 原组员尝试使用第三方 `smolagents`，代码无法运行且无法精细控制单步状态机（存在报错已废弃）。 | **100% 全新自研**：删除 `smolagents`，实现纯 Python 无状态 STAR（Planner $\to$ Dialect $\to$ Coder $\to$ Tester $\to$ Ratchet）。 | 0% 继承，100% 全新研发 |
 | **预言机与测试 (`scan_contract.py`, `random_testing.py`)** | 原有代码覆盖了 29 道题目，缺少最复杂 3 题；无随机测试。 | **补齐全量 32/32 题契约**（攻克 `PUB017`、`PUB018`、`PUB019`）；**全新研发种子确定性差分测试生成器**。 | 约 60% 继承，40% 新增研发 |
 | **MCP 服务与基线对齐 (`mcp_server.py`, `baseline.py`)** | 原有仅一个简单的编译 tool 原型，调用外部 codex-cli 会被权限策略拦截。 | **100% 全新研发**：构建双工具（编译+仿真）服务端硬预算管控 MCP，构建支持 `deepseek_harness`、`codex`、`claude` 的公平基线对比套件。 | 约 10% 继承，90% 全新研发 |
 | **WebUI 平台 (`webui.py`)** | 无。原项目仅有命令行和日志文件。 | **100% 全新自研**：纯标准库零依赖实现现代工业风单页交互工作台。 | 0% 继承，100% 全新研发 |
@@ -139,25 +139,25 @@ flowchart TD
 
 ### 1. 进程调用绝不经过 PowerShell / CMD 解释器
 - **痛点**: PowerShell 遇到带空格路径、引号嵌套参数时，参数解析规则极为脆弱，且容易触发未签名脚本的 `ExecutionPolicy` 拦截。
-- **STAR v2 防御**: Python 底层统一使用 `subprocess.Popen([exe, arg1, arg2], ...)` 参数列表形式直接调用 Windows Win32 API（`CreateProcessW`），设置 `creationflags=subprocess.CREATE_NO_WINDOW`。**完全绕开 PowerShell 和 CMD**，彻底消除脚本权限策略和字符串转义风险。
+- **STAR 防御**: Python 底层统一使用 `subprocess.Popen([exe, arg1, arg2], ...)` 参数列表形式直接调用 Windows Win32 API（`CreateProcessW`），设置 `creationflags=subprocess.CREATE_NO_WINDOW`。**完全绕开 PowerShell 和 CMD**，彻底消除脚本权限策略和字符串转义风险。
 
 ### 2. 强制 UTF-8 编码流水线
 - **痛点**: Windows PowerShell / CMD 默认编码通常为 CP936 (GBK)，在处理 JSON-RPC stdio 通信时若输出非 ASCII 字符将导致 JSON 解析报 `UnicodeDecodeError`。
-- **STAR v2 防御**: 在子进程环境与 Python 运行时中强制注入 `-X utf8` 与 `PYTHONIOENCODING=utf-8`。MCP Server 的 stdio 交互全部基于显式 UTF-8 编解码，彻底杜绝乱码闪退。
+- **STAR 防御**: 在子进程环境与 Python 运行时中强制注入 `-X utf8` 与 `PYTHONIOENCODING=utf-8`。MCP Server 的 stdio 交互全部基于显式 UTF-8 编解码，彻底杜绝乱码闪退。
 
 ### 3. 自动 ASCII 路径暂存 (`stage_ascii_workspace`)
 - **痛点**: CODESYS 内部的 IronPython 2.7 底层遇到中文路径或特殊字符会直接闪退或抛出 `FileNotFoundException`。
-- **STAR v2 防御**: 无论队友将项目克隆到哪个路径（包括中文用户名目录、OneDrive、带有空格的长路径），执行引擎在调用 CODESYS 之前，全自动将脚本和工程复制到纯 ASCII 临时目录执行，执行完成后自动收集并同步证据。队友完全无需手动重命名目录。
+- **STAR 防御**: 无论队友将项目克隆到哪个路径（包括中文用户名目录、OneDrive、带有空格的长路径），执行引擎在调用 CODESYS 之前，全自动将脚本和工程复制到纯 ASCII 临时目录执行，执行完成后自动收集并同步证据。队友完全无需手动重命名目录。
 
 ### 4. 平台级文件锁与防僵尸进程硬超时
 - **痛点**: Windows 下 CODESYS 进程若遭遇仿真死循环或窗口挂起，可能锁死工程文件，导致后续评测全部级联堵塞。
-- **STAR v2 防御**: 
+- **STAR 防御**: 
   - 针对 Windows 实现基于 `msvcrt.locking` 的非阻塞文件锁，自动排队并设置 900s 绝对安全超时。
   - 针对子进程超时，实现基于 Windows 原生 `taskkill /F /T /PID` 的整棵进程树强制清理（`_kill_tree`），确保任何异常进程均能在指定超时后被强制释放。
 
 ### 5. `deepseek_harness` 免 CLI 策略阻断
 - **痛点**: Windows 上运行 `codex-cli` 或 `claude-code` 时，Agent 常因尝试执行本地 Shell 命令被 Windows 安全策略拦截。
-- **STAR v2 防御**: Task 7 研发了纯 Python 原生实现的 `deepseek_harness`，直接在内存中通过标准 JSON-RPC 对接 MCP 工具，无需在操作系统中创建任何 Shell 命令行会话，跨平台稳定性达 100%。
+- **STAR 防御**: Task 7 研发了纯 Python 原生实现的 `deepseek_harness`，直接在内存中通过标准 JSON-RPC 对接 MCP 工具，无需在操作系统中创建任何 Shell 命令行会话，跨平台稳定性达 100%。
 
 ### 6. 基于 `uv` 的单命令统一入口
 - 队友只需在 Windows 终端中运行：

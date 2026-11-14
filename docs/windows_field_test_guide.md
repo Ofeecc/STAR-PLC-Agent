@@ -109,7 +109,7 @@ uv run plc-agent test-reference --task-id PUB017 --backend codesys --out-dir "$r
 
 ### 1. 运行前预检与预算对齐
 1. **核对 `campaign.json` 与 `model_capabilities.json`**：
-   - 当前冻结题库哈希为 `b4b9ff871b09d72f0eadb9ea798e181a515a9d23de710877408cda5760aada98`（已完成全部 32 题人工审阅）。若本机 `results/summary/campaign.json` 为旧题库残留，先归档旧批次再执行 `uv run plc-agent prepare`。
+   - 当前冻结题库哈希为 `d305f96c2faaa87f60a24be90c00ad0b32153492e741b87547d132c591e0e9ee`（已完成全部 32 题人工审阅）。若本机 `results/summary/campaign.json` 为旧题库残留，先归档旧批次再执行 `uv run plc-agent prepare`。
    - `plc-agent run` 会读取本地 `results/summary/model_capabilities.json`（未随主线提交）。若缺失且本机无已有记录，在获 API 授权后先执行探针（将对已配置模型发起工具冒烟请求）：
      ```powershell
      uv run plc-agent --allow-model-api probe-models --tool-smoke
@@ -120,7 +120,7 @@ uv run plc-agent test-reference --task-id PUB017 --backend codesys --out-dir "$r
    - 成对运行前请确认并在实验记录中注明实际生效上限；若使用外部 CLI（如 `codex_cli`、`claude_code`），需额外说明其无法统一强制相同的单响应 token 上限。
 
 ### 2. 先做两题同模型成对预检（推荐全量前执行）
-推荐优先选用 **`SELF001`**（基本联锁，先校准编译器与采样后端）和 **`PUB002`**（32 位输入历史/最高位/掩码，7 组 39 拍，无物理计时抖动依赖）。先运行内部同模型对照（STAR v2 `E3` vs `E1/deepseek_harness`），验证生成、编译、`test` 固定用例评测与 token 审计全链路：
+推荐优先选用 **`SELF001`**（基本联锁，先校准编译器与采样后端）和 **`PUB002`**（32 位输入历史/最高位/掩码，7 组 39 拍，无物理计时抖动依赖）。先运行内部同模型对照（STAR `E3` vs `E1/deepseek_harness`），验证生成、编译、`test` 固定用例评测与 token 审计全链路：
 
 ```powershell
 uv run plc-agent prepare
@@ -144,12 +144,12 @@ uv run plc-agent test --condition E1 --task-id SELF001
 | :--- | :--- | :--- | :--- |
 | `E1` | `custom_tool_loop` (`deepseek_harness`) | `deepseek-v4.1-flash-1017` | DeepSeek 路由对照组（可加 `--driver codex_cli`/`claude_code` 接外部基线） |
 | `E2` | `custom_tool_loop` (`deepseek_harness`) | `kimi-k3.1-pro` | Kimi 路由对照组（`spec_visible: true`） |
-| **`E3`** | **`self_harness` (STAR v2 完整方案)** | **`deepseek-v4.1-flash-1017`** | **Planner + CODESYS 方言 + 自测反馈单调棘轮（主力实验）** |
-| **`E4`** | **`self_harness` (STAR v2 完整方案)** | **`kimi-k3.1-pro`** | **STAR v2 跨模型验证组（Kimi 路由）** |
+| **`E3`** | **`self_harness` (STAR 完整方案)** | **`deepseek-v4.1-flash-1017`** | **Planner + CODESYS 方言 + 自测反馈单调棘轮（主力实验）** |
+| **`E4`** | **`self_harness` (STAR 完整方案)** | **`kimi-k3.1-pro`** | **STAR 跨模型验证组（Kimi 路由）** |
 | `A1` | `self_harness` (`ablation: no_planner`) | `deepseek-v4.1-flash-1017` | 消融实验：关闭 Planner 结构化规范阶段 |
 | `A2` | `self_harness` (`ablation: no_dialect`) | `deepseek-v4.1-flash-1017` | 消融实验：关闭 CODESYS 方言适配器提示 |
 | `A3` | `self_harness` (`ablation: no_selftest`) | `deepseek-v4.1-flash-1017` | 消融实验：关闭 ScanContract 微分自测反馈 |
-| `S1` | `self_harness` (`spec_visible: false`) | `deepseek-v4.1-flash-1017` | 规约可见性对照：隐藏规范化规约（STAR v2） |
+| `S1` | `self_harness` (`spec_visible: false`) | `deepseek-v4.1-flash-1017` | 规约可见性对照：隐藏规范化规约（STAR） |
 | `S2` | `custom_tool_loop` (`deepseek_harness`, `spec_visible: false`) | `deepseek-v4.1-flash-1017` | 规约可见性对照：隐藏规范化规约（对照组） |
 
 ### 4. 批量运行、断点续跑与评测结算
@@ -182,7 +182,7 @@ uv run plc-agent web --port 8765
 
 ### 核心功能区（极简白底黑字视图，默认英文并支持右上角实时切换中文）：
 1. **数据集与规约 (`Dataset & Specs`)**：浏览已完成人工审阅的 32 题接口契约、双语符号词表、高亮 LTL 公式浮窗与固定/随机扫描测试。
-2. **动态工作流与评测看板 (`Workflow & Benchmark`)**：支持对 `experiments/` 实时运行记录 2 秒自动轮询跟踪及历史试跑回放（STAR v2 五阶段与基线工具循环），查看阶段细节、候选源码行级 Diff、调用时间线、落盘真实仿真波形及实验条件矩阵。
+2. **动态工作流与评测看板 (`Workflow & Benchmark`)**：支持对 `experiments/` 实时运行记录 2 秒自动轮询跟踪及历史试跑回放（STAR 五阶段与基线工具循环），查看阶段细节、候选源码行级 Diff、调用时间线、落盘真实仿真波形及实验条件矩阵。
 3. **编译仿真与波形实验台 (`Sandbox & Waveform Lab`)**：同屏集成 ST 源码编辑（一键载入骨架、人工参考 ST 或轨迹候选）、CODESYS 编译诊断、NuSMV 包导出与逐周期输入/预期/实测信号偏差波形对比。
 
 ---

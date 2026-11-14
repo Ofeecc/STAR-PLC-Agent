@@ -1,4 +1,4 @@
-"""CODESYS STAR v2 Auto-Testing & Waveform Agent Trace Inspector Web Platform.
+"""CODESYS STAR Auto-Testing & Waveform Agent Trace Inspector Web Platform.
 
 Provides a standalone zero-dependency HTTP server with a rich single-page application
 for exploring tasks, visualizing logic waveforms, inspecting agent traces,
@@ -504,7 +504,7 @@ def serve_webui(
             server.handle_request()
         server.server_close()
     else:
-        print(f"🚀 CODESYS STAR v2 WebUI running at http://{host}:{actual_port}/")
+        print(f"🚀 CODESYS STAR WebUI running at http://{host}:{actual_port}/")
         try:
             server.serve_forever()
         except KeyboardInterrupt:

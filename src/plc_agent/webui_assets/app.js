@@ -1,4 +1,4 @@
-/* STAR-PLC v2 WebUI Controller */
+/* STAR-PLC WebUI Controller */
 'use strict';
 
 let gTasks = [];
@@ -18,6 +18,8 @@ let gTraceWaveforms = [];
 let gLivePollTimer = null;
 let gCurrentTab = 'explorer';
 let gBootstrapped = false;
+let gSmvBusy = null;
+let gSmvLastFeedback = {};
 
 const PILOT_IDS = new Set(['PUB001', 'PUB003', 'PUB009', 'PUB010', 'PUB015', 'PUB016']);
 const BRACKET_COLORS = ['#09090b', '#047857', '#b45309', '#991b1b', '#52525b'];
@@ -108,8 +110,8 @@ const ST_TYPE_KW = new Set([
 
 const I18N = {
   en: {
-    'doc.title': 'STAR-PLC v2 | Agent Workflow, Benchmark & Waveform Inspector',
-    'app.brandTitle': 'CODESYS STAR v2',
+    'doc.title': 'STAR-PLC | Agent Workflow, Benchmark & Waveform Inspector',
+    'app.brandTitle': 'CODESYS STAR',
     'nav.explorer': 'Dataset & Specs',
     'nav.trace': 'Workflow & Benchmark',
     'nav.sandbox': 'Sandbox & Waveform Lab',
@@ -152,8 +154,8 @@ const I18N = {
     'wave.caseSelect': 'Test Case',
   },
   zh: {
-    'doc.title': 'STAR-PLC v2 | Agent 动态工作流、评测与波形平台',
-    'app.brandTitle': 'CODESYS STAR v2',
+    'doc.title': 'STAR-PLC | Agent 动态工作流、评测与波形平台',
+    'app.brandTitle': 'CODESYS STAR',
     'nav.explorer': '数据集与规约',
     'nav.trace': '工作流与基准评测',
     'nav.sandbox': '仿真与波形实验台',
@@ -388,16 +390,33 @@ function renderSystemStatus() {
 }
 
 function smvSummaryBadge(smvStatus) {
-  if (!smvStatus) return `<span class="pill">UNVERIFIED</span>`;
+  if (!smvStatus) return `<span class="pill">${escapeHtml(t('UNVERIFIED', '待验证'))}</span>`;
   const st = smvStatus.verification_status || 'UNVERIFIED';
-  if (st === 'VERIFIED_BOTH' || st === 'VERIFIED_REFERENCE') {
-    return `<span class="pill pill--pass">${escapeHtml(t('SMV Ready', 'SMV 就绪'))}</span>`;
+  const tone = smvStatus.badge_tone || '';
+  const localizedText = gLang === 'zh' ? smvStatus.badge_text_zh : smvStatus.badge_text_en;
+  if (tone) {
+    const cls =
+      tone === 'green' || tone === 'cyan'
+        ? 'pill--pass'
+        : tone === 'amber'
+          ? 'pill--warn'
+          : tone === 'red'
+            ? 'pill--fail'
+            : '';
+    if (localizedText) {
+      return `<span class="pill ${cls}">${escapeHtml(localizedText)}</span>`;
+    }
   }
-  if (st === 'STALE')
-    return `<span class="pill pill--warn">${escapeHtml(t('SMV Stale', 'SMV 过期'))}</span>`;
+  if (st === 'VERIFIED_BOTH' || st === 'VERIFIED_REF_ONLY' || st === 'VERIFIED_REFERENCE') {
+    return `<span class="pill pill--pass">${escapeHtml(localizedText || t('SMV Ready', 'SMV 就绪'))}</span>`;
+  }
+  if (st === 'STALE' || st === 'CHECKER_MISSING')
+    return `<span class="pill pill--warn">${escapeHtml(localizedText || t('SMV Stale', 'SMV 待核验'))}</span>`;
   if (st === 'FAILED')
-    return `<span class="pill pill--fail">${escapeHtml(t('SMV Failed', 'SMV 失败'))}</span>`;
-  return `<span class="pill">${escapeHtml(st)}</span>`;
+    return `<span class="pill pill--fail">${escapeHtml(localizedText || t('SMV Failed', 'SMV 失败'))}</span>`;
+  if (st === 'NOT_AUTHORED')
+    return `<span class="pill">${escapeHtml(localizedText || t('Not authored', '未编写 SMV'))}</span>`;
+  return `<span class="pill">${escapeHtml(localizedText || st)}</span>`;
 }
 
 /* ================= Tab 1: Dataset & Specs ================= */
@@ -502,18 +521,79 @@ async function selectTask(taskId) {
   }
 }
 
-function renderSmvModelRow(label, modelInfo, variant) {
+function renderSmvModelRow(label, modelInfo, variant, taskId) {
   const info = modelInfo || {};
-  const st = info.status || 'UNVERIFIED';
-  const staleNote = info.stale ? ` (${t('stale', '过期')})` : '';
-  const cls = st === 'PASS' ? 'pill--pass' : st === 'FAIL' ? 'pill--fail' : 'pill--warn';
+  const eff = info.effective_status || info.status || info.persisted_status || 'UNVERIFIED';
+  const staleNote = info.stale ? ` (${t('Stale', '过期')})` : '';
+  const counts =
+    info.checked_properties != null ? ` (${info.passed_count ?? 0}/${info.checked_properties})` : '';
+  let cls = 'pill--warn';
+  let labelText = `${eff}${staleNote}`;
+
+  if (eff === 'PASS' || (eff === 'MODEL_PROPERTIES_TRUE' && info.expected_pass !== false)) {
+    cls = 'pill--pass';
+    labelText = `PASS${counts}`;
+  } else if (eff === 'COUNTEREXAMPLE' && (info.expected_pass === true || variant === 'mutant')) {
+    cls = 'pill--pass';
+    labelText = `${t('MUTANT KILLED', '变异体已捕获')}${counts}`;
+  } else if (
+    eff === 'FAIL' ||
+    eff === 'COUNTEREXAMPLE' ||
+    eff === 'TOOL_ERROR' ||
+    eff === 'TIMEOUT'
+  ) {
+    cls = 'pill--fail';
+    labelText = `${eff}${counts}`;
+  } else if (eff === 'CHECKER_MISSING') {
+    labelText = t(`Missing ${info.required_tool || 'Checker'}`, `缺少 ${info.required_tool || '检查器'}`);
+  }
+
+  const toolStr = info.tool || info.required_tool || '';
+  const isBusyThis =
+    gSmvBusy && gSmvBusy.taskId === taskId && (gSmvBusy.variant === variant || gSmvBusy.variant === 'all');
+  const isBusyAny = !!(gSmvBusy && gSmvBusy.taskId === taskId);
+  const btnText = isBusyThis ? t('Running...', '验证中...') : t('Verify', '重验');
+
   return (
     `<tr>` +
     `<td class="mono">${escapeHtml(label)}</td>` +
-    `<td><span class="pill ${cls}">${escapeHtml(st + staleNote)}</span></td>` +
+    `<td><span class="pill ${cls}">${escapeHtml(labelText)}</span>${toolStr ? ` <span class="muted" style="font-size:11px;">${escapeHtml(toolStr)}</span>` : ''}</td>` +
     `<td class="mono" style="font-size:11px;color:var(--text-secondary);">${escapeHtml((info.model_sha256 || '—').slice(0, 12))}</td>` +
-    `<td><button class="btn btn-sm" type="button" onclick="runSmvCheck('${escapeHtml(variant)}')">${escapeHtml(t('Verify', '重验'))}</button></td>` +
+    `<td><button class="btn btn-sm" type="button" ${isBusyAny ? 'disabled' : ''} onclick="runSmvCheck('${escapeHtml(variant)}')">${escapeHtml(btnText)}</button></td>` +
     `</tr>`
+  );
+}
+
+function renderSmvBoxInner(taskId, smv) {
+  const models = (smv && smv.models) || {};
+  const variants = ['reference', 'complete', 'mutant'].filter(v => !!models[v]);
+  const isBusyAll = !!(gSmvBusy && gSmvBusy.taskId === taskId && gSmvBusy.variant === 'all');
+  const isBusyAny = !!(gSmvBusy && gSmvBusy.taskId === taskId);
+  const verifyAllBtn = variants.length
+    ? `<button class="btn btn-sm" type="button" ${isBusyAny ? 'disabled' : ''} onclick="runSmvCheckAll()">${escapeHtml(isBusyAll ? t('Verifying...', '批量验证中...') : t('Verify All', '全部重验'))}</button>`
+    : '';
+  const bodyHtml = variants.length
+    ? `<table class="clean-table"><thead><tr><th>${escapeHtml(t('Model', '模型'))}</th><th>${escapeHtml(t('Status', '状态'))}</th><th>SHA256</th><th>${escapeHtml(t('Action', '操作'))}</th></tr></thead><tbody>` +
+      variants.map(v => renderSmvModelRow(`${v}.smv`, models[v], v, taskId)).join('') +
+      `</tbody></table>`
+    : `<div class="muted" style="font-size:12px;margin-top:6px;">${escapeHtml(t('No SMV models authored for this task.', '该任务未编写 SMV 模型。'))}</div>`;
+
+  const fb = gSmvLastFeedback[taskId];
+  const fbCls = fb && fb.tone === 'pass' ? 'pill--pass' : fb && fb.tone === 'fail' ? 'pill--fail' : 'pill--warn';
+  const fbHtml = fb
+    ? `<div id="smv-action-feedback" style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;"><span class="pill ${fbCls}">${escapeHtml(fb.badge || t('SMV', 'SMV'))}</span><span>${escapeHtml(fb.text || '')}</span></div>`
+    : `<div id="smv-action-feedback"></div>`;
+
+  return (
+    `<div class="card-head" style="margin-bottom:6px;">` +
+    `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">` +
+    `<strong>${escapeHtml(t('Reference SMV Check', '参考模型 SMV 核验'))}</strong>` +
+    `${smvSummaryBadge(smv)}` +
+    `</div>` +
+    `${verifyAllBtn}` +
+    `</div>` +
+    bodyHtml +
+    fbHtml
   );
 }
 
@@ -529,7 +609,6 @@ function renderTaskDetails(detail) {
 
   const overview = document.getElementById('task-overview');
   if (overview) {
-    const models = smv.models || {};
     const stepTotal = (task.tests || []).reduce((a, c) => a + (c.steps || []).length, 0);
     overview.innerHTML =
       `<div class="card-head">` +
@@ -548,15 +627,7 @@ function renderTaskDetails(detail) {
       `</div>` +
       `<div class="prompt-box">${escapeHtml(promptText)}</div>` +
       `<div id="overview-smv-box" class="card-subtle" style="margin-top:12px;">` +
-      `<div class="card-head" style="margin-bottom:6px;">` +
-      `<strong>${escapeHtml(t('Reference SMV Check', '参考模型 SMV 核验'))}</strong>` +
-      `${smvSummaryBadge(smv)}` +
-      `</div>` +
-      `<table class="clean-table"><thead><tr><th>${escapeHtml(t('Model', '模型'))}</th><th>${escapeHtml(t('Status', '状态'))}</th><th>SHA256</th><th>${escapeHtml(t('Action', '操作'))}</th></tr></thead><tbody>` +
-      renderSmvModelRow('reference.smv', models.reference, 'reference') +
-      renderSmvModelRow('complete.smv', models.complete, 'complete') +
-      renderSmvModelRow('mutant.smv', models.mutant, 'mutant') +
-      `</tbody></table>` +
+      renderSmvBoxInner(task.id, smv) +
       `</div>`;
   }
 
@@ -869,21 +940,137 @@ function hideSpecPopover(force) {
   }
 }
 
+function syncTaskSmvStatus(taskId, smvStatus) {
+  if (!smvStatus) return;
+  if (gCurrentTask && gCurrentTask.task && gCurrentTask.task.id === taskId) {
+    gCurrentTask.smv_status = smvStatus;
+  }
+  for (let i = 0; i < (gTasks || []).length; i += 1) {
+    if (gTasks[i].id === taskId) {
+      gTasks[i].smv_status = smvStatus;
+      break;
+    }
+  }
+  renderTaskList(false);
+}
+
+function updateSmvBoxDom(taskId) {
+  const box = document.getElementById('overview-smv-box');
+  if (!box || !gCurrentTask || !gCurrentTask.task || gCurrentTask.task.id !== taskId) return;
+  box.innerHTML = renderSmvBoxInner(taskId, gCurrentTask.smv_status || {});
+}
+
+async function postSmvCheck(taskId, variant) {
+  const resp = await fetch('/api/check-reference-model', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ task_id: taskId, variant }),
+  });
+  const data = await resp.json();
+  if (data && data.smv_status) {
+    syncTaskSmvStatus(taskId, data.smv_status);
+  }
+  return { resp, data };
+}
+
 async function runSmvCheck(variant) {
   if (!gCurrentTask || !gCurrentTask.task) return;
+  const taskId = gCurrentTask.task.id;
+  const targetVar = variant || 'reference';
+  gSmvBusy = { taskId, variant: targetVar };
+  gSmvLastFeedback[taskId] = {
+    tone: 'warn',
+    badge: t('Running', '运行中'),
+    text: t(`Running ${targetVar}.smv verification...`, `正在对 ${targetVar}.smv 执行模型检查...`),
+  };
+  updateSmvBoxDom(taskId);
+
   try {
-    const resp = await fetch('/api/check-reference-model', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ task_id: gCurrentTask.task.id, variant: variant || null }),
-    });
-    const data = await resp.json();
-    if (data && data.smv_status) {
-      gCurrentTask.smv_status = data.smv_status;
-      renderTaskDetails(gCurrentTask);
+    const { resp, data } = await postSmvCheck(taskId, targetVar);
+    const vInfo =
+      data && data.smv_status && data.smv_status.models ? data.smv_status.models[targetVar] : null;
+    if (resp.ok && data) {
+      const okExpect = vInfo ? vInfo.expected_pass !== false : data.status === 'MODEL_PROPERTIES_TRUE';
+      const cntStr =
+        vInfo && vInfo.checked_properties != null
+          ? ` (${vInfo.passed_count ?? 0}/${vInfo.checked_properties})`
+          : '';
+      gSmvLastFeedback[taskId] = {
+        tone: okExpect ? 'pass' : 'fail',
+        badge: data.status || (okExpect ? 'OK' : 'FAIL'),
+        text: t(
+          `${targetVar}.smv checked with ${data.tool || 'model checker'}: ${data.status}${cntStr}`,
+          `${targetVar}.smv 已完成核验（${data.tool || 'model checker'}）：${data.status}${cntStr}`
+        ),
+      };
+    } else {
+      gSmvLastFeedback[taskId] = {
+        tone: 'fail',
+        badge: (data && (data.verification_status || data.status)) || `HTTP ${resp.status}`,
+        text:
+          (data && data.error) ||
+          t(`SMV check failed (HTTP ${resp.status}).`, `SMV 核验失败 (HTTP ${resp.status})。`),
+      };
     }
   } catch (e) {
-    console.error('SMV check failed:', e);
+    gSmvLastFeedback[taskId] = {
+      tone: 'fail',
+      badge: 'ERROR',
+      text: String(e && e.message ? e.message : e),
+    };
+  } finally {
+    gSmvBusy = null;
+    updateSmvBoxDom(taskId);
+  }
+}
+
+async function runSmvCheckAll() {
+  if (!gCurrentTask || !gCurrentTask.task) return;
+  const taskId = gCurrentTask.task.id;
+  const models = (gCurrentTask.smv_status && gCurrentTask.smv_status.models) || {};
+  const variants = ['reference', 'complete', 'mutant'].filter(v => !!models[v]);
+  if (!variants.length) return;
+
+  gSmvBusy = { taskId, variant: 'all' };
+  const results = [];
+  let hadError = false;
+  try {
+    for (let i = 0; i < variants.length; i += 1) {
+      const v = variants[i];
+      gSmvLastFeedback[taskId] = {
+        tone: 'warn',
+        badge: t('Running', '运行中'),
+        text: t(
+          `Verifying ${v}.smv (${i + 1}/${variants.length})...`,
+          `正在验证 ${v}.smv（${i + 1}/${variants.length}）...`
+        ),
+      };
+      updateSmvBoxDom(taskId);
+      const { resp, data } = await postSmvCheck(taskId, v);
+      if (resp.ok && data) {
+        results.push(`${v}: ${data.status}`);
+      } else {
+        hadError = true;
+        results.push(`${v}: ${(data && data.error) || 'HTTP ' + resp.status}`);
+      }
+    }
+    const summaryStatus =
+      (gCurrentTask.smv_status && gCurrentTask.smv_status.verification_status) ||
+      (hadError ? 'FAILED' : 'OK');
+    gSmvLastFeedback[taskId] = {
+      tone: hadError || summaryStatus === 'FAILED' ? 'fail' : 'pass',
+      badge: summaryStatus,
+      text: results.join(' · '),
+    };
+  } catch (e) {
+    gSmvLastFeedback[taskId] = {
+      tone: 'fail',
+      badge: 'ERROR',
+      text: String(e && e.message ? e.message : e),
+    };
+  } finally {
+    gSmvBusy = null;
+    updateSmvBoxDom(taskId);
   }
 }
 
@@ -1153,7 +1340,9 @@ function renderRunTrace(trace) {
   const tok = trace.token_summary || {};
   if (sumEl) {
     const fwLabel =
-      trace.framework_kind === 'star_v2' ? 'STAR v2 (5-Stage)' : `Baseline (${trace.framework})`;
+      trace.framework_kind === 'star' || trace.framework_kind === 'star_v2'
+        ? 'STAR (5-Stage)'
+        : `Baseline (${trace.framework})`;
     const tokStr =
       tok.usage_available && tok.total_tokens != null
         ? `${tok.total_tokens} (in:${tok.input_tokens ?? '—'} out:${tok.output_tokens ?? '—'})`

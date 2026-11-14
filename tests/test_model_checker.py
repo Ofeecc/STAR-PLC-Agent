@@ -88,7 +88,7 @@ class ModelCheckerTests(unittest.TestCase):
         model = (ROOT / 'models/PUB001_reference.smv').read_text()
         task = json.loads((ROOT / 'dataset/public/PUB001.json').read_text(encoding='utf-8'))
         for prop in task['ltl']:
-            if prop['id'] in {'P3','P4','P5','P6','P7','P8','P9','P10'}:
+            if prop['id'] in {f'PUB001.P{i}' for i in range(2, 10)}:
                 self.assertIn(prop['formula'], model)
 
 

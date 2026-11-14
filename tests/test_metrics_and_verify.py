@@ -191,7 +191,7 @@ class MetricsAndVerificationTests(unittest.TestCase):
         self.assertFalse(res_json["verified"])
 
     def test_aggregate_with_statistical_metrics(self):
-        # Build mock records for E1 (baseline) and E3 (STAR v2)
+        # Build mock records for E1 (baseline) and E3 (STAR)
         tasks = load_tasks()
         planned_tasks = len(tasks)
 

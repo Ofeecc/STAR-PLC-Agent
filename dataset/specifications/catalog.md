@@ -147,7 +147,7 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 - `oneHotOutputs`: sum(int(O[k][n]) for n in [Pump_Motor,Filling_Valve,Capping_Machine,Packing_Machine,Completion_Light]) <= 1
 - `init`: At the separate pre-invocation initial observation: Spre.phase=0 AND each actual listed initial output is FALSE
 - `all variable names`: The identically named sampled input or end-of-scan output in interface.
-- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_PUB001(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+- `CompleteBehavior`: 令(Sref[k+1], E[k])=T_PUB001(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
 参考阶段q初值0。事件按q选bottleSensor、cleaningConfirmButton、fillingConfirmButton、cappingConfirmButton、packingConfirmButton、finishedButton；选中事件真则qAfter=(q+1)%6，否则qAfter=q。五个期望输出依次为qAfter=1、2、3、4、5，每拍只选择旧q的一个分支。
 - `bottleSensor`: I[k].bottleSensor: sampled input (BOOL).
 - `cleaningConfirmButton`: I[k].cleaningConfirmButton: sampled input (BOOL).
@@ -210,10 +210,10 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
       "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
       "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
+      "normalized_spec.py": "3c13590145597ad26cf537ff76c44e22f06abf7720e04d2ea262ac347be9d9cd"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v2"
+    "frozen_sources": "dataset/specifications/normalized_transition"
   },
   "constrained_observed_fields": [
     "Capping_Machine",
@@ -289,7 +289,7 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 }
 ```
 
-**P1**
+**PUB001.P_init**
 
 ```text
 init
@@ -297,7 +297,7 @@ init
 
 A fresh instance is idle with outputs off before first execution.
 
-**P2**
+**PUB001.P1**
 
 ```text
 G(oneHotOutputs)
@@ -305,7 +305,7 @@ G(oneHotOutputs)
 
 No two processing stages are energized together.
 
-**P3**
+**PUB001.P2**
 
 ```text
 G((phase=0 & bottleSensor) -> (Pump_Motor & X(phase=1)))
@@ -313,7 +313,7 @@ G((phase=0 & bottleSensor) -> (Pump_Motor & X(phase=1)))
 
 Bottle detection starts cleaning in the same scan.
 
-**P4**
+**PUB001.P3**
 
 ```text
 G((phase=1 & cleaningConfirmButton) -> (Filling_Valve & X(phase=2)))
@@ -321,7 +321,7 @@ G((phase=1 & cleaningConfirmButton) -> (Filling_Valve & X(phase=2)))
 
 A phase-specific confirmation advances exactly one stage.
 
-**P5**
+**PUB001.P4**
 
 ```text
 G((phase=2 & fillingConfirmButton) -> (Capping_Machine & X(phase=3)))
@@ -329,7 +329,7 @@ G((phase=2 & fillingConfirmButton) -> (Capping_Machine & X(phase=3)))
 
 A phase-specific confirmation advances exactly one stage.
 
-**P6**
+**PUB001.P5**
 
 ```text
 G((phase=3 & cappingConfirmButton) -> (Packing_Machine & X(phase=4)))
@@ -337,7 +337,7 @@ G((phase=3 & cappingConfirmButton) -> (Packing_Machine & X(phase=4)))
 
 A phase-specific confirmation advances exactly one stage.
 
-**P7**
+**PUB001.P6**
 
 ```text
 G((phase=4 & packingConfirmButton) -> (Completion_Light & X(phase=5)))
@@ -345,7 +345,7 @@ G((phase=4 & packingConfirmButton) -> (Completion_Light & X(phase=5)))
 
 A phase-specific confirmation advances exactly one stage.
 
-**P8**
+**PUB001.P7**
 
 ```text
 G((phase=5 & !finishedButton) -> (Completion_Light & X(phase=5)))
@@ -353,7 +353,7 @@ G((phase=5 & !finishedButton) -> (Completion_Light & X(phase=5)))
 
 Completion persists until pickup is confirmed.
 
-**P9**
+**PUB001.P8**
 
 ```text
 G((phase=5 & finishedButton) -> (!Completion_Light & X(phase=0)))
@@ -361,7 +361,7 @@ G((phase=5 & finishedButton) -> (!Completion_Light & X(phase=0)))
 
 On finishedButton during completion, clear Completion_Light and return to IDLE.
 
-**P10**
+**PUB001.P9**
 
 ```text
 G((phase=1 & G((phase=1) -> F(cleaningConfirmButton)) & G((phase=2) -> F(fillingConfirmButton)) & G((phase=3) -> F(cappingConfirmButton)) & G((phase=4) -> F(packingConfirmButton))) -> F(Completion_Light))
@@ -369,7 +369,7 @@ G((phase=1 & G((phase=1) -> F(cleaningConfirmButton)) & G((phase=2) -> F(filling
 
 Conditional progress: from cleaning, if every active phase eventually receives its matching confirmation, completion eventually occurs.
 
-**P11**
+**PUB001.P10**
 
 ```text
 G(((phase=0 & !bottleSensor) -> (!Pump_Motor & !Filling_Valve & !Capping_Machine & !Packing_Machine & !Completion_Light & X(phase=0))) & ((phase=1 & !cleaningConfirmButton) -> (Pump_Motor & !Filling_Valve & !Capping_Machine & !Packing_Machine & !Completion_Light & X(phase=1))) & ((phase=2 & !fillingConfirmButton) -> (!Pump_Motor & Filling_Valve & !Capping_Machine & !Packing_Machine & !Completion_Light & X(phase=2))) & ((phase=3 & !cappingConfirmButton) -> (!Pump_Motor & !Filling_Valve & Capping_Machine & !Packing_Machine & !Completion_Light & X(phase=3))) & ((phase=4 & !packingConfirmButton) -> (!Pump_Motor & !Filling_Valve & !Capping_Machine & Packing_Machine & !Completion_Light & X(phase=4))) & ((phase=5 & finishedButton) -> (!Pump_Motor & !Filling_Valve & !Capping_Machine & !Packing_Machine & !Completion_Light & X(phase=0))))
@@ -377,10 +377,10 @@ G(((phase=0 & !bottleSensor) -> (!Pump_Motor & !Filling_Valve & !Capping_Machine
 
 Closes the unconfirmed phase-hold and finish-clearing obligations left implicit by P3..P9.
 
-**PUB001.V2.COMPLETE**
+**PUB001.COMPLETE**
 
 ```text
-G(CompleteBehaviorV2)
+G(CompleteBehavior)
 ```
 
 Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
@@ -389,13 +389,13 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 
 | Case | Purpose | Steps |
 | --- | --- | ---: |
-| T1 | Full bottle cycle and stable completion | 10 |
-| T2 | Out-of-order confirmations cannot skip phases | 6 |
-| PUB001.T3 | PUB001.T3 | 16 |
-| PUB001.R22.filling_hold | 灌装阶段无完成确认时仍应保持阀门开启 | 5 |
-| PUB001.R22.dwell_0 | 原流程各稳定状态连续保持：T1 | 30 |
-| PUB001.R22.dwell_1 | 原流程各稳定状态连续保持：T2 | 14 |
-| PUB001.T4 | Two-cycle restart isolation: finishedButton resets to idle even while bottleSensor is held high, then next idle scan restarts Cycle 2. | 10 |
+| PUB001.T1 | Full bottle cycle and stable completion | 10 |
+| PUB001.T2 | Out-of-order confirmations cannot skip phases | 6 |
+| PUB001.T3 | Cover intermediate hold scans across filling, capping, and packing, long-held confirmation edges on one scan, and a full second bottle cycle (16 steps). | 16 |
+| PUB001.T4 | Hold Filling_Valve active when entering or remaining in filling without fillingConfirmButton | 5 |
+| PUB001.T5 | Continuous multi-scan dwell across all stable states of PUB001.T1 | 30 |
+| PUB001.T6 | Continuous multi-scan dwell across all stable states of PUB001.T2 | 14 |
+| PUB001.T7 | Two-cycle restart isolation: finishedButton resets to idle even while bottleSensor is held high, then next idle scan restarts Cycle 2. | 10 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -496,7 +496,7 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 - `fallingBits`: O[k].fallingBits: independently observed post-scan candidate value (DWORD); never defined as expected output.
 - `popcount`: Number of set bits in the unsigned 32-bit argument.
 - `other interface names`: Identically named sampled inputs or observed outputs.
-- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_PUB002(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+- `CompleteBehavior`: 令(Sref[k+1], E[k])=T_PUB002(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
 prev初值DWORD#0。rise=value & (~prev & 0xFFFFFFFF)，fall=prev & (~value & 0xFFFFFFFF)。两个掩码、popcount、掩码非零标志和value!=prev标志分别与实际七个输出比较；prevAfter=value，每次调用更新一次。
 - `ValueBit0`: Boolean ((I[k].value >> 0) & 1) = 1, unsigned DWORD width 32.
 - `PrevBit0`: Boolean ((inputMemory.prev[k] >> 0) & 1) = 1; prev[0]=0; prev[k+1]=I[k].value.
@@ -709,10 +709,10 @@ prev初值DWORD#0。rise=value & (~prev & 0xFFFFFFFF)，fall=prev & (~value & 0x
       "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
       "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
+      "normalized_spec.py": "3c13590145597ad26cf537ff76c44e22f06abf7720e04d2ea262ac347be9d9cd"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v2"
+    "frozen_sources": "dataset/specifications/normalized_transition"
   },
   "constrained_observed_fields": [
     "fallingBits",
@@ -781,7 +781,7 @@ prev初值DWORD#0。rise=value & (~prev & 0xFFFFFFFF)，fall=prev & (~value & 0x
 }
 ```
 
-**P_init**
+**PUB002.P_init**
 
 ```text
 init
@@ -789,7 +789,7 @@ init
 
 Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
 
-**P1**
+**PUB002.P1**
 
 ```text
 G(risingBits = (value AND NOT prev))
@@ -797,7 +797,7 @@ G(risingBits = (value AND NOT prev))
 
 The rising mask identifies only 0-to-1 bits.
 
-**P2**
+**PUB002.P2**
 
 ```text
 G(fallingBits = (prev AND NOT value))
@@ -805,7 +805,7 @@ G(fallingBits = (prev AND NOT value))
 
 The falling mask identifies only 1-to-0 bits.
 
-**P3**
+**PUB002.P3**
 
 ```text
 G((risingBits AND fallingBits)=0)
@@ -813,7 +813,7 @@ G((risingBits AND fallingBits)=0)
 
 A bit cannot rise and fall in one scan.
 
-**P4**
+**PUB002.P4**
 
 ```text
 G((noOfRisingBits=popcount(risingBits)) & (noOfFallingBits=popcount(fallingBits)))
@@ -821,7 +821,7 @@ G((noOfRisingBits=popcount(risingBits)) & (noOfFallingBits=popcount(fallingBits)
 
 Both counts equal their mask population.
 
-**P5**
+**PUB002.P5**
 
 ```text
 G((hasRisingEdges <-> risingBits<>0) & (hasFallingEdges <-> fallingBits<>0) & (hasChanged <-> value<>prev))
@@ -829,7 +829,7 @@ G((hasRisingEdges <-> risingBits<>0) & (hasFallingEdges <-> fallingBits<>0) & (h
 
 Flags match masks and value changes.
 
-**P6**
+**PUB002.P6**
 
 ```text
 G((ValueBit0 <-> X(PrevBit0)) & (ValueBit1 <-> X(PrevBit1)) & (ValueBit2 <-> X(PrevBit2)) & (ValueBit3 <-> X(PrevBit3)) & (ValueBit4 <-> X(PrevBit4)) & (ValueBit5 <-> X(PrevBit5)) & (ValueBit6 <-> X(PrevBit6)) & (ValueBit7 <-> X(PrevBit7)) & (ValueBit8 <-> X(PrevBit8)) & (ValueBit9 <-> X(PrevBit9)) & (ValueBit10 <-> X(PrevBit10)) & (ValueBit11 <-> X(PrevBit11)) & (ValueBit12 <-> X(PrevBit12)) & (ValueBit13 <-> X(PrevBit13)) & (ValueBit14 <-> X(PrevBit14)) & (ValueBit15 <-> X(PrevBit15)) & (ValueBit16 <-> X(PrevBit16)) & (ValueBit17 <-> X(PrevBit17)) & (ValueBit18 <-> X(PrevBit18)) & (ValueBit19 <-> X(PrevBit19)) & (ValueBit20 <-> X(PrevBit20)) & (ValueBit21 <-> X(PrevBit21)) & (ValueBit22 <-> X(PrevBit22)) & (ValueBit23 <-> X(PrevBit23)) & (ValueBit24 <-> X(PrevBit24)) & (ValueBit25 <-> X(PrevBit25)) & (ValueBit26 <-> X(PrevBit26)) & (ValueBit27 <-> X(PrevBit27)) & (ValueBit28 <-> X(PrevBit28)) & (ValueBit29 <-> X(PrevBit29)) & (ValueBit30 <-> X(PrevBit30)) & (ValueBit31 <-> X(PrevBit31)))
@@ -837,10 +837,10 @@ G((ValueBit0 <-> X(PrevBit0)) & (ValueBit1 <-> X(PrevBit1)) & (ValueBit2 <-> X(P
 
 For every bit b=0..31, the next sampled-input memory bit equals the current value bit. X applies only to a Boolean proposition; memory is initialized to DWORD#0.
 
-**PUB002.V2.COMPLETE**
+**PUB002.COMPLETE**
 
 ```text
-G(CompleteBehaviorV2)
+G(CompleteBehavior)
 ```
 
 Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
@@ -849,13 +849,13 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 
 | Case | Purpose | Steps |
 | --- | --- | ---: |
-| T1 | No change, mixed edges, full width and bit 31 | 10 |
-| T2 | First nonzero invocation is compared with initialized zero | 2 |
-| V2_data_contract_boundaries | Independently calculated edge/history/parser boundary regression | 2 |
-| PUB002.T3 | PUB002.T3 | 6 |
-| PUB002.R22.isolated_bits | 第2位与第4位独立变化、混合沿后保持 | 8 |
-| PUB002.T4 | 16-bit half-word swaps and full 32-bit complementary bit flips with consecutive zero-edge hold. | 6 |
-| PUB002.T5 | All-ones saturation followed by checkerboard parity inversions (0xAAAAAAAA <-> 0x55555555) and clear. | 5 |
+| PUB002.T1 | No change, mixed edges, full width and bit 31 | 10 |
+| PUB002.T2 | First nonzero invocation is compared with initialized zero | 2 |
+| PUB002.T3 | Independently calculated edge/history/parser boundary regression | 2 |
+| PUB002.T4 | Verify mixed rising/falling edges followed by unchanged scans for input-history updates, all-ones saturation, and interleaved high/low bit flips (6 steps). | 6 |
+| PUB002.T5 | Independent bit 2 and bit 4 transitions with unchanged hold after mixed edges | 8 |
+| PUB002.T6 | 16-bit half-word swaps and full 32-bit complementary bit flips with consecutive zero-edge hold. | 6 |
+| PUB002.T7 | All-ones saturation followed by checkerboard parity inversions (0xAAAAAAAA <-> 0x55555555) and clear. | 5 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -964,7 +964,7 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 - `loPrev`: {"kind": "previous_observed_output", "source": "O[k-1].loAlarm", "initial": false, "update": "After comparing scan k, store ACTUAL O[k].loAlarm; never write into reference state."}
 - `sameAlarms`: hiAlarm=hiPrev & loAlarm=loPrev
 - `interface names`: Identically named sampled input or observed output.
-- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_PUB003(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+- `CompleteBehavior`: 令(Sref[k+1], E[k])=T_PUB003(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
 四个REAL参数先按IEEE binary32舍入且有限，hystWindow>=0。lo>=hi时报8001，否则width>=real32(hi-lo)时报8002；错误时参考高低报警保持。有效时高报警由value>hi置真、value<real32(hi-width)置假、其余保持；低报警由value<lo置真、value>real32(lo+width)置假、其余保持。初值均FALSE。
 - `Value`: I[k].Value: sampled input (REAL).
 - `hiLevel`: I[k].hiLevel: sampled input (REAL).
@@ -1116,10 +1116,10 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
       "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
       "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
+      "normalized_spec.py": "3c13590145597ad26cf537ff76c44e22f06abf7720e04d2ea262ac347be9d9cd"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v2"
+    "frozen_sources": "dataset/specifications/normalized_transition"
   },
   "constrained_observed_fields": [
     "error",
@@ -1194,7 +1194,7 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 }
 ```
 
-**P_init**
+**PUB003.P_init**
 
 ```text
 init
@@ -1202,7 +1202,7 @@ init
 
 Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
 
-**P1**
+**PUB003.P1**
 
 ```text
 G(badRange -> (error & status=16#8001 & sameAlarms))
@@ -1210,7 +1210,7 @@ G(badRange -> (error & status=16#8001 & sameAlarms))
 
 Invalid limits take priority and leave alarms unchanged.
 
-**P2**
+**PUB003.P2**
 
 ```text
 G((!badRange & badWindow) -> (error & status=16#8002 & sameAlarms))
@@ -1218,7 +1218,7 @@ G((!badRange & badWindow) -> (error & status=16#8002 & sameAlarms))
 
 The hysteresis range must be smaller than the limit separation.
 
-**P3**
+**PUB003.P3**
 
 ```text
 G(valid -> (!error & status=0))
@@ -1226,7 +1226,7 @@ G(valid -> (!error & status=0))
 
 Valid input clears transient configuration errors.
 
-**P4**
+**PUB003.P4**
 
 ```text
 G((valid & Value>hiLevel) -> hiAlarm)
@@ -1234,7 +1234,7 @@ G((valid & Value>hiLevel) -> hiAlarm)
 
 A high excursion activates the high alarm.
 
-**P5**
+**PUB003.P5**
 
 ```text
 G((valid & Value<HighRelease) -> !hiAlarm)
@@ -1242,7 +1242,7 @@ G((valid & Value<HighRelease) -> !hiAlarm)
 
 Below the strict release boundary, high alarm clears.
 
-**P6**
+**PUB003.P6**
 
 ```text
 G((valid & HighRelease<=Value & Value<=hiLevel) -> (hiAlarm=hiPrev))
@@ -1250,7 +1250,7 @@ G((valid & HighRelease<=Value & Value<=hiLevel) -> (hiAlarm=hiPrev))
 
 The high hysteresis band retains history.
 
-**P7**
+**PUB003.P7**
 
 ```text
 G((valid & Value<loLevel) -> loAlarm)
@@ -1258,7 +1258,7 @@ G((valid & Value<loLevel) -> loAlarm)
 
 A low excursion activates the low alarm.
 
-**P8**
+**PUB003.P8**
 
 ```text
 G((valid & Value>LowRelease) -> !loAlarm)
@@ -1266,7 +1266,7 @@ G((valid & Value>LowRelease) -> !loAlarm)
 
 Above the strict low release boundary, low alarm clears.
 
-**P9**
+**PUB003.P9**
 
 ```text
 G((valid & loLevel<=Value & Value<=LowRelease) -> (loAlarm=loPrev))
@@ -1274,10 +1274,10 @@ G((valid & loLevel<=Value & Value<=LowRelease) -> (loAlarm=loPrev))
 
 The low hysteresis band retains history.
 
-**PUB003.V2.COMPLETE**
+**PUB003.COMPLETE**
 
 ```text
-G(CompleteBehaviorV2)
+G(CompleteBehavior)
 ```
 
 Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
@@ -1286,14 +1286,14 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 
 | Case | Purpose | Steps |
 | --- | --- | ---: |
-| T1 | Strict high and low hysteresis boundaries | 9 |
-| T2 | Configuration priority, output retention and recovery | 4 |
-| V2_data_contract_boundaries | Independently calculated edge/history/parser boundary regression | 6 |
-| PUB003.T3 | PUB003.T3 | 7 |
-| PUB003.R22.invalid_low | 低报警已置位后进入非法配置，应保留低报警 | 2 |
-| PUB003.R22.real_boundaries | REAL迟滞阈值相等保持及两侧变化 | 8 |
-| PUB003.T4 | Negative engineering thresholds with hysteresis retention boundaries and direct hi-to-lo jump. | 8 |
-| PUB003.T5 | Error priority transition (16#8002 -> 16#8001), hysteresis alarm retention through config errors, and valid release. | 5 |
+| PUB003.T1 | Strict high and low hysteresis boundaries | 9 |
+| PUB003.T2 | Configuration priority, output retention and recovery | 4 |
+| PUB003.T3 | Independently calculated edge/history/parser boundary regression | 6 |
+| PUB003.T4 | Check loAlarm retention when errors 8001/8002 occur while latched, strict inequality at hystWindow=0, and binary32 fractional thresholds (7 steps). | 7 |
+| PUB003.T5 | Retain active loAlarm when configuration later triggers 8001/8002 error | 2 |
+| PUB003.T6 | REAL hysteresis boundary hold on equality and transitions strictly outside band | 8 |
+| PUB003.T7 | Negative engineering thresholds with hysteresis retention boundaries and direct hi-to-lo jump. | 8 |
+| PUB003.T8 | Error priority transition (16#8002 -> 16#8001), hysteresis alarm retention through config errors, and valid release. | 5 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -1400,7 +1400,7 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 - `accPrev`: {"kind": "previous_observed_output", "source": "O[k-1].PUMP_RUNTIME_ACC", "initial": "LTIME#0ns", "update": "After comparing scan k, store ACTUAL O[k].PUMP_RUNTIME_ACC; never write into reference state."}
 - `accNext`: O[k].PUMP_RUNTIME_ACC, actual post-scan LTIME; never reference accumulator.
 - `interface names`: Identically named sampled input or end-of-scan output.
-- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_PUB004(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+- `CompleteBehavior`: 令(Sref[k+1], E[k])=T_PUB004(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
 物理采样时钟首拍0、以后累加dt_ms；CycleTime与采样周期dt_ms一致，首拍运行工时按CycleTime语义计入。permit=VISCOSITY_OK & PASTE_E_STOP_NC；首次permit真时记录起点，假时清起点，run=permit且年龄>=固定正DebounceTime。acc初值0；accAfter=accBefore+(run?CycleTime:0)，CycleTime先解释为纳秒；maint=accAfter>=500h。累计域0..2^63-1纳秒。
 - `TimeTick`: Boolean: floor(t[k]/1ms)>floor(t[k-1]/1ms), with t[0]=0, TimeTick[0]=FALSE, t[k]=sum(dt_ms[1..k]). G(F(TimeTick)) states unbounded physical time progress; merely positive dt is insufficient.
 - `VISCOSITY_OK`: I[k].VISCOSITY_OK: sampled input (BOOL).
@@ -1480,10 +1480,10 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
       "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
       "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
+      "normalized_spec.py": "3c13590145597ad26cf537ff76c44e22f06abf7720e04d2ea262ac347be9d9cd"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v2"
+    "frozen_sources": "dataset/specifications/normalized_transition"
   },
   "constrained_observed_fields": [
     "PUMP_MAINT_DUE",
@@ -1566,7 +1566,7 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 }
 ```
 
-**P_init**
+**PUB004.P_init**
 
 ```text
 init
@@ -1574,7 +1574,7 @@ init
 
 Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
 
-**P1**
+**PUB004.P1**
 
 ```text
 G(VFD_RUN <-> (permit & qualified))
@@ -1582,7 +1582,7 @@ G(VFD_RUN <-> (permit & qualified))
 
 The run output follows the qualified permissive.
 
-**P2**
+**PUB004.P2**
 
 ```text
 G(!permit -> !VFD_RUN)
@@ -1590,7 +1590,7 @@ G(!permit -> !VFD_RUN)
 
 Raw loss or E-stop stops immediately.
 
-**P3**
+**PUB004.P3**
 
 ```text
 G((!permit) -> X(!qualified))
@@ -1598,7 +1598,7 @@ G((!permit) -> X(!qualified))
 
 A lost permissive clears qualification history; future qualification must be rebuilt.
 
-**P4**
+**PUB004.P4**
 
 ```text
 G(VFD_RUN -> accNext=accPrev+TIME_TO_LTIME(CycleTime))
@@ -1606,7 +1606,7 @@ G(VFD_RUN -> accNext=accPrev+TIME_TO_LTIME(CycleTime))
 
 Only enabled intervals are accumulated in a long time type.
 
-**P5**
+**PUB004.P5**
 
 ```text
 G(!VFD_RUN -> accNext=accPrev)
@@ -1614,7 +1614,7 @@ G(!VFD_RUN -> accNext=accPrev)
 
 Stopping retains accumulated service time.
 
-**P6**
+**PUB004.P6**
 
 ```text
 G(PUMP_MAINT_DUE <-> accNext>=LTIME#500h)
@@ -1622,7 +1622,7 @@ G(PUMP_MAINT_DUE <-> accNext>=LTIME#500h)
 
 Maintenance threshold is 500 hours.
 
-**P7**
+**PUB004.P7**
 
 ```text
 (G(F(TimeTick))) -> (G((G(permit) & DebounceTime>TIME#0ms) -> F(VFD_RUN)))
@@ -1630,10 +1630,10 @@ Maintenance threshold is 500 hours.
 
 A continuously permitted demand eventually starts under advancing time. Explicit non-Zeno environment premise: physical elapsed time crosses infinitely many 1ms boundaries.
 
-**PUB004.V2.COMPLETE**
+**PUB004.COMPLETE**
 
 ```text
-G(CompleteBehaviorV2)
+G(CompleteBehavior)
 ```
 
 Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
@@ -1642,14 +1642,14 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 
 | Case | Purpose | Steps |
 | --- | --- | ---: |
-| T1 | Qualification boundary, accumulation, stop retention and restart | 9 |
-| T2 | E-stop clears incomplete debounce and completed permission | 7 |
-| T3 | Long-duration maintenance arithmetic boundary | 4 |
-| V2_permit_loss_at_deadline | Permission loss at the exact deadline wins; recovery starts a fresh full interval, even after a long gap. | 5 |
-| PUB004.T5 | PUB004.T5 | 8 |
-| PUB004.R22.interrupted_delay | 启动延时中断后重新计时、运行后急停恢复 | 9 |
-| PUB004.R22.maintenance_edge | 累计500小时前1ms、恰好到期及维护提示后重启 | 6 |
-| PUB004.T6 | Multi-CycleTime runtime accumulation after debounce, permit loss retention, and fresh requalification. | 7 |
+| PUB004.T1 | Qualification boundary, accumulation, stop retention and restart | 9 |
+| PUB004.T2 | E-stop clears incomplete debounce and completed permission | 7 |
+| PUB004.T3 | Long-duration maintenance arithmetic boundary | 4 |
+| PUB004.T4 | Permission loss at the exact deadline wins; recovery starts a fresh full interval, even after a long gap. | 5 |
+| PUB004.T5 | Verify 500h-1ms through exact 500h crossing the 32-bit ms range (2^31-1 ms), E-stop debounce reset, and re-enabling after maintenance due (8 steps). | 8 |
+| PUB004.T6 | Reset start debounce when permit drops mid-delay and recover after mid-run E-stop | 9 |
+| PUB004.T7 | Runtime accumulator 1ms before 500h, exact 500h due trigger, and restart after maintenance | 6 |
+| PUB004.T8 | Multi-CycleTime runtime accumulation after debounce, permit loss retention, and fresh requalification. | 7 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -1748,7 +1748,7 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 - `startup`: Elapsed time since the first invocation is less than 5 seconds.
 - `gapQualified`: Gap_Exceeded has remained TRUE with Weld_E_Stop_NC TRUE and !startup for at least DebounceTime, measured from first eligible invocation.
 - `interface names`: Identically named sampled input or observed output.
-- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_PUB005(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+- `CompleteBehavior`: 令(Sref[k+1], E[k])=T_PUB005(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
 首拍时钟0；startup=clock<5s，急停不重启此时钟。gapPermit=!startup & Gap_Exceeded & Weld_E_Stop_NC；首次gapPermit真年龄0，假清起点；alarm=gapPermit且年龄>=固定正DebounceTime。两个期望输出为alarm、startup。
 - `TimeTick`: Boolean: floor(t[k]/1ms)>floor(t[k-1]/1ms), with t[0]=0, TimeTick[0]=FALSE, t[k]=sum(dt_ms[1..k]). G(F(TimeTick)) states unbounded physical time progress; merely positive dt is insufficient.
 - `Gap_Exceeded`: I[k].Gap_Exceeded: sampled input (BOOL).
@@ -1825,10 +1825,10 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
       "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
       "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
+      "normalized_spec.py": "3c13590145597ad26cf537ff76c44e22f06abf7720e04d2ea262ac347be9d9cd"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v2"
+    "frozen_sources": "dataset/specifications/normalized_transition"
   },
   "constrained_observed_fields": [
     "Operator_Alert",
@@ -1901,7 +1901,7 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 }
 ```
 
-**P_init**
+**PUB005.P_init**
 
 ```text
 init
@@ -1909,7 +1909,7 @@ init
 
 Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
 
-**P1**
+**PUB005.P1**
 
 ```text
 G(Weld_Soft_Start_Active <-> startup)
@@ -1917,7 +1917,7 @@ G(Weld_Soft_Start_Active <-> startup)
 
 Soft-start output means only the startup monitoring inhibition interval.
 
-**P2**
+**PUB005.P2**
 
 ```text
 G((startup | !Weld_E_Stop_NC | !Gap_Exceeded) -> !Operator_Alert)
@@ -1925,7 +1925,7 @@ G((startup | !Weld_E_Stop_NC | !Gap_Exceeded) -> !Operator_Alert)
 
 Startup, E-stop or no gap forces the alarm off.
 
-**P3**
+**PUB005.P3**
 
 ```text
 G(Operator_Alert <-> (!startup & Weld_E_Stop_NC & Gap_Exceeded & gapQualified))
@@ -1933,7 +1933,7 @@ G(Operator_Alert <-> (!startup & Weld_E_Stop_NC & Gap_Exceeded & gapQualified))
 
 Alarm requires post-startup continuous qualified gap.
 
-**P4**
+**PUB005.P4**
 
 ```text
 G((startup | !Weld_E_Stop_NC | !Gap_Exceeded) -> X(!gapQualified))
@@ -1941,7 +1941,7 @@ G((startup | !Weld_E_Stop_NC | !Gap_Exceeded) -> X(!gapQualified))
 
 Each suppressing condition clears or blocks gap qualification.
 
-**P5**
+**PUB005.P5**
 
 ```text
 (G(F(TimeTick))) -> (G((G(Weld_E_Stop_NC & Gap_Exceeded)) -> F(Operator_Alert)))
@@ -1949,10 +1949,10 @@ Each suppressing condition clears or blocks gap qualification.
 
 Persistent gap eventually alarms after startup and debounce, assuming advancing time. Explicit non-Zeno environment premise: physical elapsed time crosses infinitely many 1ms boundaries.
 
-**PUB005.V2.COMPLETE**
+**PUB005.COMPLETE**
 
 ```text
-G(CompleteBehaviorV2)
+G(CompleteBehavior)
 ```
 
 Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
@@ -1961,13 +1961,13 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 
 | Case | Purpose | Steps |
 | --- | --- | ---: |
-| T1 | Initialization excludes gap timing and debounce starts at 5s | 6 |
-| T2 | E-stop suppresses startup and normal alerts without restarting inhibition | 8 |
-| PUB005.T3 | PUB005.T3 | 10 |
-| PUB005.R22.gap_reset | 去抖未完成时信号中断，恢复后必须重新计时 | 6 |
-| PUB005.T4 | Exact 5000ms startup exit does not count pre-exit gap duration; full DebounceTime starts at exit scan. | 5 |
-| PUB005.T5 | Minimum positive 1ms debounce after 5s startup and immediate E-stop alert clearing with fresh requalification. | 6 |
-| PUB005.T6 | Normal gap flicker clearing at 5000ms+ resets debounce while never retriggering Weld_Soft_Start_Active. | 7 |
+| PUB005.T1 | Initialization excludes gap timing and debounce starts at 5s | 6 |
+| PUB005.T2 | E-stop suppresses startup and normal alerts without restarting inhibition | 8 |
+| PUB005.T3 | Verify 4999/5000ms startup exit, timer reset on sub-2s gap loss and re-accumulation, and permit loss at exact deadline (10 steps). | 10 |
+| PUB005.T4 | Reset gap debounce timer when permit drops mid-window and re-accumulate on recovery | 6 |
+| PUB005.T5 | Exact 5000ms startup exit does not count pre-exit gap duration; full DebounceTime starts at exit scan. | 5 |
+| PUB005.T6 | Minimum positive 1ms debounce after 5s startup and immediate E-stop alert clearing with fresh requalification. | 6 |
+| PUB005.T7 | Normal gap flicker clearing at 5000ms+ resets debounce while never retriggering Weld_Soft_Start_Active. | 7 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -2061,7 +2061,7 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 - `runPrev`: {"kind": "previous_observed_output", "source": "O[k-1].BLOWER_RUN", "initial": false, "update": "After comparing scan k, store ACTUAL O[k].BLOWER_RUN; never write into reference state."}
 - `countPrev`: {"kind": "previous_observed_output", "source": "O[k-1].AERATION_BLOWER_CYCLE_COUNT", "initial": 0, "update": "After comparing scan k, store ACTUAL O[k].AERATION_BLOWER_CYCLE_COUNT; never write into reference state."}
 - `interface names`: Identically named sampled input or observed output.
-- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_PUB006(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+- `CompleteBehavior`: 令(Sref[k+1], E[k])=T_PUB006(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
 permit=DO_LOW & AERATION_E_STOP_NC；首次真年龄0，假清计时；run=permit且年龄>=5s。countAfter=countBefore+int(run & !refRunBefore)，初始count=0/refRun=FALSE；每拍更新refRun。计数域0..65535，越界输入历史不在评测域。
 - `TimeTick`: Boolean: floor(t[k]/1ms)>floor(t[k-1]/1ms), with t[0]=0, TimeTick[0]=FALSE, t[k]=sum(dt_ms[1..k]). G(F(TimeTick)) states unbounded physical time progress; merely positive dt is insufficient.
 - `DO_LOW`: I[k].DO_LOW: sampled input (BOOL).
@@ -2137,10 +2137,10 @@ permit=DO_LOW & AERATION_E_STOP_NC；首次真年龄0，假清计时；run=permi
       "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
       "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
+      "normalized_spec.py": "3c13590145597ad26cf537ff76c44e22f06abf7720e04d2ea262ac347be9d9cd"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v2"
+    "frozen_sources": "dataset/specifications/normalized_transition"
   },
   "constrained_observed_fields": [
     "AERATION_BLOWER_CYCLE_COUNT",
@@ -2224,7 +2224,7 @@ permit=DO_LOW & AERATION_E_STOP_NC；首次真年龄0，假清计时；run=permi
 }
 ```
 
-**P_init**
+**PUB006.P_init**
 
 ```text
 init
@@ -2232,7 +2232,7 @@ init
 
 Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
 
-**P1**
+**PUB006.P1**
 
 ```text
 G(BLOWER_RUN <-> (permit & delayDone))
@@ -2240,7 +2240,7 @@ G(BLOWER_RUN <-> (permit & delayDone))
 
 Run is enabled only after the full delay.
 
-**P2**
+**PUB006.P2**
 
 ```text
 G(!permit -> (!BLOWER_RUN & X(!delayDone)))
@@ -2248,7 +2248,7 @@ G(!permit -> (!BLOWER_RUN & X(!delayDone)))
 
 Loss of demand or safety permissive clears run and its timer.
 
-**P3**
+**PUB006.P3**
 
 ```text
 G((!runPrev & BLOWER_RUN) -> AERATION_BLOWER_CYCLE_COUNT=countPrev+1)
@@ -2256,7 +2256,7 @@ G((!runPrev & BLOWER_RUN) -> AERATION_BLOWER_CYCLE_COUNT=countPrev+1)
 
 One count per genuine start.
 
-**P4**
+**PUB006.P4**
 
 ```text
 G((runPrev | !BLOWER_RUN) -> AERATION_BLOWER_CYCLE_COUNT=countPrev)
@@ -2264,7 +2264,7 @@ G((runPrev | !BLOWER_RUN) -> AERATION_BLOWER_CYCLE_COUNT=countPrev)
 
 No repeated count during continuous operation or stop.
 
-**P5**
+**PUB006.P5**
 
 ```text
 (G(F(TimeTick))) -> (G((G(permit)) -> F(BLOWER_RUN)))
@@ -2272,10 +2272,10 @@ No repeated count during continuous operation or stop.
 
 A sustained permitted demand eventually starts under advancing time. Explicit non-Zeno environment premise: physical elapsed time crosses infinitely many 1ms boundaries.
 
-**PUB006.V2.COMPLETE**
+**PUB006.COMPLETE**
 
 ```text
-G(CompleteBehaviorV2)
+G(CompleteBehavior)
 ```
 
 Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
@@ -2284,13 +2284,13 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 
 | Case | Purpose | Steps |
 | --- | --- | ---: |
-| T1 | Exact delay threshold, sustained operation and second counted start | 8 |
-| T2 | Emergency stop discards partial and completed delay | 7 |
-| V2_permit_loss_at_deadline | Permission loss at the exact deadline wins; recovery starts a fresh full interval, even after a long gap. | 5 |
-| PUB006.T3 | PUB006.T3 | 12 |
-| PUB006.R22.interrupted_delay | 启动延时中断后重新计时、运行后急停恢复 | 9 |
-| PUB006.T4 | Exact 4999ms hold without start followed by DO_LOW drop resets 5s delay; E-stop drop keeps count unchanged. | 7 |
-| PUB006.T5 | Three consecutive start-run-stop cycles increment cycle count cleanly without recounting during sustained run. | 10 |
+| PUB006.T1 | Exact delay threshold, sustained operation and second counted start | 8 |
+| PUB006.T2 | Emergency stop discards partial and completed delay | 7 |
+| PUB006.T3 | Permission loss at the exact deadline wins; recovery starts a fresh full interval, even after a long gap. | 5 |
+| PUB006.T4 | Cover DO_LOW clearance before 5s, E-stop during active run without losing accumulated cycles, and multi-episode count increments (12 steps). | 12 |
+| PUB006.T5 | Reset start debounce when permit drops mid-delay and recover after mid-run E-stop | 9 |
+| PUB006.T6 | Exact 4999ms hold without start followed by DO_LOW drop resets 5s delay; E-stop drop keeps count unchanged. | 7 |
+| PUB006.T7 | Three consecutive start-run-stop cycles increment cycle count cleanly without recounting during sustained run. | 10 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -2381,7 +2381,7 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 - Equal priorities are resolved by lower array index first. Selection is ignored in automatic mode.
 - The caller initializes every RunComd FALSE before creating the first operational scan. Only RunComd may be written.
 - The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
-- V2 confirms the existing evaluation policy: start is level-sensitive and reselects each TRUE invocation; without start, mode/selection/priority changes do not reselect. Automatic top-three applies to selection events, not unconditionally to every automatic invocation.
+- Evaluation policy confirmation: start is level-sensitive and reselects each TRUE invocation; without start, mode/selection/priority changes do not reselect. Automatic top-three applies to selection events, not unconditionally to every automatic invocation.
 - The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Data types
@@ -2419,7 +2419,7 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 - `runs[i]`: Post-scan pumpGroup[i].RunComd, for i=1..5.
 - `select[i]`: Sampled pumpGroup[i].selection.
 - `interface names`: Identically named sampled input or output.
-- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_PUB007(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+- `CompleteBehavior`: 令(Sref[k+1], E[k])=T_PUB007(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
 数组序号j=0..4，对应PLC下标j+1。stop时全部RunComd=FALSE；否则start时手动取selection，自动取按(-priority,j)升序排列的前三项；无start保持采样RunComd。priority和selection实际扫描后必须精确等于采样值。
 - `TopThree1`: (1-1) is in first three ordinal indices of sorted(range(5), key=lambda j: (-I[k].pumpGroup[j].priority,j)).
 - `TopThree2`: (2-1) is in first three ordinal indices of sorted(range(5), key=lambda j: (-I[k].pumpGroup[j].priority,j)).
@@ -2478,10 +2478,10 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
       "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
       "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
+      "normalized_spec.py": "3c13590145597ad26cf537ff76c44e22f06abf7720e04d2ea262ac347be9d9cd"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v2"
+    "frozen_sources": "dataset/specifications/normalized_transition"
   },
   "constrained_observed_fields": [
     "pumpGroup"
@@ -2527,7 +2527,7 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
     "Equal priorities are resolved by lower array index first. Selection is ignored in automatic mode.",
     "The caller initializes every RunComd FALSE before creating the first operational scan. Only RunComd may be written.",
     "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
-    "V2 confirms the existing evaluation policy: start is level-sensitive and reselects each TRUE invocation; without start, mode/selection/priority changes do not reselect. Automatic top-three applies to selection events, not unconditionally to every automatic invocation.",
+    "Evaluation policy confirmation: start is level-sensitive and reselects each TRUE invocation; without start, mode/selection/priority changes do not reselect. Automatic top-three applies to selection events, not unconditionally to every automatic invocation.",
     "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
   ],
   "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
@@ -2540,7 +2540,7 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 }
 ```
 
-**P1**
+**PUB007.P1**
 
 ```text
 G((stop) -> ((!runs[1]) & (!runs[2]) & (!runs[3]) & (!runs[4]) & (!runs[5])))
@@ -2548,7 +2548,7 @@ G((stop) -> ((!runs[1]) & (!runs[2]) & (!runs[3]) & (!runs[4]) & (!runs[5])))
 
 Stop de-energizes all pumps.
 
-**P2**
+**PUB007.P2**
 
 ```text
 G((!stop & start & !mode) -> ((runs[1]=select[1]) & (runs[2]=select[2]) & (runs[3]=select[3]) & (runs[4]=select[4]) & (runs[5]=select[5])))
@@ -2556,7 +2556,7 @@ G((!stop & start & !mode) -> ((runs[1]=select[1]) & (runs[2]=select[2]) & (runs[
 
 Manual start uses exactly the selected pumps.
 
-**P3**
+**PUB007.P3**
 
 ```text
 G((!stop & start & mode) -> (((runs[1] <-> TopThree1)) & ((runs[2] <-> TopThree2)) & ((runs[3] <-> TopThree3)) & ((runs[4] <-> TopThree4)) & ((runs[5] <-> TopThree5))))
@@ -2564,7 +2564,7 @@ G((!stop & start & mode) -> (((runs[1] <-> TopThree1)) & ((runs[2] <-> TopThree2
 
 Automatic start runs exactly the highest-priority three.
 
-**P4**
+**PUB007.P4**
 
 ```text
 G((!stop & !start) -> ((runs[1]=runPrev[1]) & (runs[2]=runPrev[2]) & (runs[3]=runPrev[3]) & (runs[4]=runPrev[4]) & (runs[5]=runPrev[5])))
@@ -2572,7 +2572,7 @@ G((!stop & !start) -> ((runs[1]=runPrev[1]) & (runs[2]=runPrev[2]) & (runs[3]=ru
 
 Start/stop operation latches commands.
 
-**P5**
+**PUB007.P5**
 
 ```text
 G(readOnlyPreserved)
@@ -2580,10 +2580,10 @@ G(readOnlyPreserved)
 
 The FB may not modify priorities or selections.
 
-**PUB007.V2.COMPLETE**
+**PUB007.COMPLETE**
 
 ```text
-G(CompleteBehaviorV2)
+G(CompleteBehavior)
 ```
 
 Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
@@ -2592,13 +2592,13 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 
 | Case | Purpose | Steps |
 | --- | --- | ---: |
-| T1 | Manual latching, read-only fields and simultaneous stop/start | 3 |
-| T2 | Automatic top-three selection and deterministic ties | 3 |
-| V2_pump_reselection_history | Ties, changed priorities without start, reselection and simultaneous stop/start. | 4 |
-| PUB007.T3 | PUB007.T3 | 5 |
-| PUB007.R22.selection | 手动选择变化、保持与模式切换 | 7 |
-| PUB007.T4 | Negative/tied priorities with lower-index tie-break in auto mode (ignoring selection), plus zero/subset manual selections. | 4 |
-| PUB007.T5 | Changing priorities, selections, and mode while !stop & !start holds existing runs until next start pulse. | 4 |
+| PUB007.T1 | Manual latching, read-only fields and simultaneous stop/start | 3 |
+| PUB007.T2 | Automatic top-three selection and deterministic ties | 3 |
+| PUB007.T3 | Ties, changed priorities without start, reselection and simultaneous stop/start. | 4 |
+| PUB007.T4 | Verify command retention when changing config with start=FALSE, lowest-index tie-breaking on [100,100,5,5,5], stop+start priority, and INT extremes (5 steps). | 5 |
+| PUB007.T5 | Manual pump selection updates, steady retention without start, and mode switch | 7 |
+| PUB007.T6 | Negative/tied priorities with lower-index tie-break in auto mode (ignoring selection), plus zero/subset manual selections. | 4 |
+| PUB007.T7 | Changing priorities, selections, and mode while !stop & !start holds existing runs until next start pulse. | 4 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -2695,7 +2695,7 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 - Test metadata array_lower_bounds defines the physical array indices used by the caller. JSON arrays are ordered storage values, not IEC index literals. The caller satisfies count bounds.
 - The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 - Floating-point inputs and intermediate reference arithmetic are finite. Existing fixed traces retain their declared absolute tolerance; claims do not extend to arbitrary magnitudes without a separately specified numeric error policy.
-- V2 array extension: successful channel outputValue is compared with abs_tol=1e-5 and rel_tol=2e-6. Read-only and skipped/error-preserved fields are exact. This explicitly supersedes uniform absolute tolerance for this task only; both agents receive this policy.
+- Array comparison policy: successful channel outputValue is compared with abs_tol=1e-5 and rel_tol=2e-6. Read-only and skipped/error-preserved fields are exact. This explicitly supersedes uniform absolute tolerance for this task only; both agents receive this policy.
 - Read-only channel fields (enable, hiLIM, loLIM, bipolar, measuringMode) and skipped/disabled/error channel outputValue retain exact caller-sampled binary values; numeric tolerance (abs<=1e-5 or rel<=2e-6) applies only to successfully converted outputValue.
 - The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
@@ -2759,7 +2759,7 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 - `channel output names`: Post-scan fields of the channel at the indicated ordinal position.
 - `sampledOutputValue(j)`: The caller-provided outputValue before this scan.
 - `measuringMode(j)`: The sampled measuringMode configuration for ordinal j.
-- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_PUB008(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+- `CompleteBehavior`: 令(Sref[k+1], E[k])=T_PUB008(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
 序号j=0..len(channels)-1；仅j<count且enable处理，0<=count<=min两数组长度。非法mode优先报8001，否则hi<=lo报8002，均保留采样outputValue；成功清码，mode0按单极raw/27648或双极(raw+27648)/55296线性映射，mode1/2分别raw/10、raw/100。其他项及配置精确保留，仅成功outputValue使用abs=1e-5、rel=2e-6。
 - `AllChannels_P2`: {"operator": "finite_conjunction", "variable": "j", "lower_inclusive": 0, "upper_exclusive": "len(I[k].channels)", "empty_value": true, "body": "!enabled(j) -> preserved(j)", "instantiation": "For concrete caller binding N, substitute j=0,...,N-1 and join the Boolean bodies with &. N is binding length, never count.", "index_mapping": "j is zero-based ordinal; PLC index is each array own lower bound + j.", "guard": "enabled(j) := j<I[k].count AND I[k].channels[j].enable; short-circuit before raw(j) access.", "numeric_comparison": "Converted outputValue uses the comparison policy; status/config/preserved fields are exact."}
 - `AllChannels_P3`: {"operator": "finite_conjunction", "variable": "j", "lower_inclusive": 0, "upper_exclusive": "len(I[k].channels)", "empty_value": true, "body": "(enabled(j) & !modeOK(j)) -> (retVal(j)=16#8001 & outputValue(j)=sampledOutputValue(j))", "instantiation": "For concrete caller binding N, substitute j=0,...,N-1 and join the Boolean bodies with &. N is binding length, never count.", "index_mapping": "j is zero-based ordinal; PLC index is each array own lower bound + j.", "guard": "enabled(j) := j<I[k].count AND I[k].channels[j].enable; short-circuit before raw(j) access.", "numeric_comparison": "Converted outputValue uses the comparison policy; status/config/preserved fields are exact."}
@@ -2819,10 +2819,10 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
       "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
       "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
+      "normalized_spec.py": "3c13590145597ad26cf537ff76c44e22f06abf7720e04d2ea262ac347be9d9cd"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v2"
+    "frozen_sources": "dataset/specifications/normalized_transition"
   },
   "constrained_observed_fields": [
     "analogValues",
@@ -2956,7 +2956,7 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
     "Test metadata array_lower_bounds defines the physical array indices used by the caller. JSON arrays are ordered storage values, not IEC index literals. The caller satisfies count bounds.",
     "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
     "Floating-point inputs and intermediate reference arithmetic are finite. Existing fixed traces retain their declared absolute tolerance; claims do not extend to arbitrary magnitudes without a separately specified numeric error policy.",
-    "V2 array extension: successful channel outputValue is compared with abs_tol=1e-5 and rel_tol=2e-6. Read-only and skipped/error-preserved fields are exact. This explicitly supersedes uniform absolute tolerance for this task only; both agents receive this policy.",
+    "Array comparison policy: successful channel outputValue is compared with abs_tol=1e-5 and rel_tol=2e-6. Read-only and skipped/error-preserved fields are exact. This explicitly supersedes uniform absolute tolerance for this task only; both agents receive this policy.",
     "Read-only channel fields (enable, hiLIM, loLIM, bipolar, measuringMode) and skipped/disabled/error channel outputValue retain exact caller-sampled binary values; numeric tolerance (abs<=1e-5 or rel<=2e-6) applies only to successfully converted outputValue.",
     "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
   ],
@@ -2970,7 +2970,7 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 }
 ```
 
-**P1**
+**PUB008.P1**
 
 ```text
 G(readonlyPreserved)
@@ -2978,7 +2978,7 @@ G(readonlyPreserved)
 
 Input arrays and configuration are never modified.
 
-**P2**
+**PUB008.P2**
 
 ```text
 G(AllChannels_P2)
@@ -2986,7 +2986,7 @@ G(AllChannels_P2)
 
 Disabled and unprocessed channels are unchanged.
 
-**P3**
+**PUB008.P3**
 
 ```text
 G(AllChannels_P3)
@@ -2994,7 +2994,7 @@ G(AllChannels_P3)
 
 Unsupported modes return the defined status without conversion.
 
-**P4**
+**PUB008.P4**
 
 ```text
 G(AllChannels_P4)
@@ -3002,7 +3002,7 @@ G(AllChannels_P4)
 
 Invalid limits return their status without conversion.
 
-**P5**
+**PUB008.P5**
 
 ```text
 G(AllChannels_P5)
@@ -3010,7 +3010,7 @@ G(AllChannels_P5)
 
 Successful enabled channels clear their status.
 
-**P6**
+**PUB008.P6**
 
 ```text
 G(AllChannels_P6)
@@ -3018,7 +3018,7 @@ G(AllChannels_P6)
 
 Linear scale uses the correct unipolar or bipolar range.
 
-**P7**
+**PUB008.P7**
 
 ```text
 G(AllChannels_P7)
@@ -3026,7 +3026,7 @@ G(AllChannels_P7)
 
 Standard-temperature resolution is one tenth.
 
-**P8**
+**PUB008.P8**
 
 ```text
 G(AllChannels_P8)
@@ -3034,10 +3034,10 @@ G(AllChannels_P8)
 
 Climatic-temperature resolution is one hundredth.
 
-**PUB008.V2.COMPLETE**
+**PUB008.COMPLETE**
 
 ```text
-G(CompleteBehaviorV2)
+G(CompleteBehavior)
 ```
 
 Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
@@ -3046,15 +3046,15 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 
 | Case | Purpose | Steps |
 | --- | --- | ---: |
-| T1 | Unipolar and bipolar endpoints, midpoint and temperature modes | 1 |
-| T2 | Disabled channel, invalid mode priority, invalid limits and count truncation | 1 |
-| T3 | count zero preserves every value and negative raw extrapolates | 2 |
-| V2_unequal_arrays_wide_arithmetic | Unequal lengths and distinct lower bounds; preserve skipped channel; avoid INT intermediate overflow. | 1 |
-| PUB008.T4 | PUB008.T4 | 2 |
-| PUB008.R22.length_4_2 | 独立下界、不同长度与未处理字段保持 | 1 |
-| PUB008.R22.length_2_4 | 独立下界、不同长度与未处理字段保持 | 1 |
-| PUB008.T5 | Multi-step error-priority retention: disabled, out-of-count, invalid mode over invalid limits, and zero-span. | 2 |
-| PUB008.T6 | Negative engineering ranges, bipolar saturation extrapolation below -27648, and temperature modes 1/2. | 1 |
+| PUB008.T1 | Unipolar and bipolar endpoints, midpoint and temperature modes | 1 |
+| PUB008.T2 | Disabled channel, invalid mode priority, invalid limits and count truncation | 1 |
+| PUB008.T3 | count zero preserves every value and negative raw extrapolates | 2 |
+| PUB008.T4 | Unequal lengths and distinct lower bounds; preserve skipped channel; avoid INT intermediate overflow. | 1 |
+| PUB008.T5 | Cover ignoring invalid config while disabled, mode 1/2 limit errors, unequal non-1 lower bounds [-3 / 7], and out-of-range unipolar extrapolation (2 steps). | 2 |
+| PUB008.T6 | Distinct array lower bounds, unequal array lengths, and preservation of disabled fields | 1 |
+| PUB008.T7 | Distinct array lower bounds, unequal array lengths, and preservation of disabled fields | 1 |
+| PUB008.T8 | Multi-step error-priority retention: disabled, out-of-count, invalid mode over invalid limits, and zero-span. | 2 |
+| PUB008.T9 | Negative engineering ranges, bipolar saturation extrapolation below -27648, and temperature modes 1/2. | 1 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -3176,7 +3176,7 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 - `length`: Number of samples in the history list.
 - `windowChanged`: Current valid windowSize differs from the last valid configured size.
 - `previousTrigger`: {"kind": "previous_sampled_input", "source": "I[k-1].trigger", "initial": false, "update": "After EVERY scan k, including invalid/reset/stop, store I[k].trigger"}
-- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_PUB009(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+- `CompleteBehavior`: 令(Sref[k+1], E[k])=T_PUB009(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
 previousTrigger初值FALSE且每次调用后=本拍trigger。valid=1<=windowSize<=100；非法时average/reached保持并报8200。有效窗口首次建立或改变、或reset时清空历史；非reset且cyclicExecution或trigger上升沿时追加value并保留最后windowSize项。average=空则0否则sum/n，reached=(n=windowSize)。初始历史空、average=0、reached=FALSE。
 - `cyclicExecution`: I[k].cyclicExecution: sampled input (BOOL).
 - `trigger`: I[k].trigger: sampled input (BOOL).
@@ -3325,10 +3325,10 @@ previousTrigger初值FALSE且每次调用后=本拍trigger。valid=1<=windowSize
       "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
       "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
+      "normalized_spec.py": "3c13590145597ad26cf537ff76c44e22f06abf7720e04d2ea262ac347be9d9cd"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v2"
+    "frozen_sources": "dataset/specifications/normalized_transition"
   },
   "constrained_observed_fields": [
     "average",
@@ -3399,7 +3399,7 @@ previousTrigger初值FALSE且每次调用后=本拍trigger。valid=1<=windowSize
 }
 ```
 
-**P_init**
+**PUB009.P_init**
 
 ```text
 init
@@ -3407,7 +3407,7 @@ init
 
 Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
 
-**P1**
+**PUB009.P1**
 
 ```text
 G(!valid -> (error & status=16#8200 & unchangedMean))
@@ -3415,7 +3415,7 @@ G(!valid -> (error & status=16#8200 & unchangedMean))
 
 Window bounds are checked without silently accepting data.
 
-**P2**
+**PUB009.P2**
 
 ```text
 G(valid -> (!error & status=0))
@@ -3423,7 +3423,7 @@ G(valid -> (!error & status=0))
 
 A valid window clears configuration error.
 
-**P3**
+**PUB009.P3**
 
 ```text
 G((valid & reset) -> (average=0 & !windowSizeReached))
@@ -3431,7 +3431,7 @@ G((valid & reset) -> (average=0 & !windowSizeReached))
 
 Reset produces an empty history.
 
-**P4**
+**PUB009.P4**
 
 ```text
 G((valid & !reset) -> average=meanOrZero(historyAfter))
@@ -3439,7 +3439,7 @@ G((valid & !reset) -> average=meanOrZero(historyAfter))
 
 The result is the arithmetic mean of the active window or zero when empty.
 
-**P5**
+**PUB009.P5**
 
 ```text
 G(valid -> (windowSizeReached <-> length(historyAfter)=windowSize))
@@ -3447,7 +3447,7 @@ G(valid -> (windowSizeReached <-> length(historyAfter)=windowSize))
 
 Full-window indication follows history population.
 
-**P6**
+**PUB009.P6**
 
 ```text
 G(trigger <-> X(previousTrigger))
@@ -3455,7 +3455,7 @@ G(trigger <-> X(previousTrigger))
 
 Both operands are Boolean propositions. previousTrigger[0]=FALSE; previousTrigger[k+1]=I[k].trigger on every invocation, including invalid/reset.
 
-**P7**
+**PUB009.P7**
 
 ```text
 G((valid & !reset & !cyclicExecution & !triggerRise & !windowChanged) -> unchangedMean)
@@ -3463,10 +3463,10 @@ G((valid & !reset & !cyclicExecution & !triggerRise & !windowChanged) -> unchang
 
 No event means no sample update.
 
-**PUB009.V2.COMPLETE**
+**PUB009.COMPLETE**
 
 ```text
-G(CompleteBehaviorV2)
+G(CompleteBehavior)
 ```
 
 Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
@@ -3475,13 +3475,13 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 
 | Case | Purpose | Steps |
 | --- | --- | ---: |
-| T1 | Cyclic warm-up, sliding replacement and reset priority | 6 |
-| T2 | Rising edge only, held trigger, window change and invalid bounds | 9 |
-| V2_data_contract_boundaries | Independently calculated edge/history/parser boundary regression | 7 |
-| PUB009.T3 | PUB009.T3 | 109 |
-| PUB009.R22.window_100 | 合法最大窗口100必须被接受 | 1 |
-| PUB009.R22.window100_True | 最大窗口填满、替换与双向变窗 | 109 |
-| PUB009.R22.window100_False | 最大窗口填满、替换与双向变窗 | 214 |
+| PUB009.T1 | Cyclic warm-up, sliding replacement and reset priority | 6 |
+| PUB009.T2 | Rising edge only, held trigger, window change and invalid bounds | 9 |
+| PUB009.T3 | Independently calculated edge/history/parser boundary regression | 7 |
+| PUB009.T4 | Verify reset + windowSize=0 priority as invalid window, negative window lengths, 2->0->3 transitions, and 101-scan full 100-window sliding (109 steps). | 109 |
+| PUB009.T5 | Accept valid maximum averaging window length 100 | 1 |
+| PUB009.T6 | Fill 100-slot sliding window, roll values, and shrink/expand window length | 109 |
+| PUB009.T7 | Fill 100-slot sliding window, roll values, and shrink/expand window length | 214 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -3582,7 +3582,7 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 - A sensor fault immediately turns heat off and resets continuous-heating time. It does not clear or restart an already active cooldown.
 - The display outputs mirror their corresponding sampled temperature and setpoint even during a fault. HeaterStatus equals HeaterOutput. Inputs are held stable between timed samples.
 - The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
-- V2 evaluation decision: retain the existing >=5s trip threshold as an explicit benchmark interpretation of the source more-than wording; cooldown MUST clear at the first observed elapsed>=3s, though a sensor fault or absent demand still prevents heating. No spontaneous protection is allowed. This benchmark interpretation is not claimed to be instructor clarification.
+- Evaluation decision: retain the existing >=5s trip threshold as an explicit benchmark interpretation of the source more-than wording; cooldown MUST clear at the first observed elapsed>=3s, though a sensor fault or absent demand still prevents heating. No spontaneous protection is allowed. This benchmark interpretation is not claimed to be instructor clarification.
 - Floating-point inputs and intermediate reference arithmetic are finite. Existing fixed traces retain their declared absolute tolerance; claims do not extend to arbitrary magnitudes without a separately specified numeric error policy.
 - Scan k=0 initializes the internal elapsed-time clock at 0 ms (ignoring dt_ms[0]); subsequent scans advance by dt_ms[k]. During sensorFault (TemperatureSensorInput < 0 or > 100), the internal retained heat demand freezes at its prior state.
 - The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
@@ -3595,7 +3595,7 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 - `cooldownDone`: When OverheatProtection was previously active, at least 3s has elapsed since its trip timestamp at the current scan clock (clock - protection_start >= 3s).
 - `protectPrev`: {"kind": "previous_observed_output", "source": "O[k-1].OverheatProtection", "initial": false, "update": "After comparing scan k, store ACTUAL O[k].OverheatProtection; never write into reference state."}
 - `interface names`: Identically named sampled input or observed output.
-- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_PUB010(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+- `CompleteBehavior`: 令(Sref[k+1], E[k])=T_PUB010(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
 首拍时钟0、后续按观察dt_ms累加。正常温度0..100下demand低于设定置真、高于置假、相等保持；传感器故障期间冻结demand不变，初值FALSE。先释放年龄>=3s的旧保护；无旧保护且旧连续加热年龄>=5s则本拍触发保护。heat=传感器0..100有效 & demandAfter & 无保护；首次heat真记录当前时刻，heat假清热起点。显示值取输入；保护输出取保护状态。5.0s及以上起保护与既有评测口径一致。
 - `TimeTick`: Boolean: floor(t[k]/1ms)>floor(t[k-1]/1ms), with t[0]=0, TimeTick[0]=FALSE, t[k]=sum(dt_ms[1..k]). G(F(TimeTick)) states unbounded physical time progress; merely positive dt is insufficient.
 - `TemperatureSensorInput`: I[k].TemperatureSensorInput: sampled input (REAL).
@@ -3655,10 +3655,10 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
       "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
       "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
+      "normalized_spec.py": "3c13590145597ad26cf537ff76c44e22f06abf7720e04d2ea262ac347be9d9cd"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v2"
+    "frozen_sources": "dataset/specifications/normalized_transition"
   },
   "constrained_observed_fields": [
     "CurrentTemperature",
@@ -3716,7 +3716,7 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
     "A sensor fault immediately turns heat off and resets continuous-heating time. It does not clear or restart an already active cooldown.",
     "The display outputs mirror their corresponding sampled temperature and setpoint even during a fault. HeaterStatus equals HeaterOutput. Inputs are held stable between timed samples.",
     "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
-    "V2 evaluation decision: retain the existing >=5s trip threshold as an explicit benchmark interpretation of the source more-than wording; cooldown MUST clear at the first observed elapsed>=3s, though a sensor fault or absent demand still prevents heating. No spontaneous protection is allowed. This benchmark interpretation is not claimed to be instructor clarification.",
+    "Evaluation decision: retain the existing >=5s trip threshold as an explicit benchmark interpretation of the source more-than wording; cooldown MUST clear at the first observed elapsed>=3s, though a sensor fault or absent demand still prevents heating. No spontaneous protection is allowed. This benchmark interpretation is not claimed to be instructor clarification.",
     "Floating-point inputs and intermediate reference arithmetic are finite. Existing fixed traces retain their declared absolute tolerance; claims do not extend to arbitrary magnitudes without a separately specified numeric error policy.",
     "Scan k=0 initializes the internal elapsed-time clock at 0 ms (ignoring dt_ms[0]); subsequent scans advance by dt_ms[k]. During sensorFault (TemperatureSensorInput < 0 or > 100), the internal retained heat demand freezes at its prior state.",
     "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
@@ -3731,7 +3731,7 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 }
 ```
 
-**P_init**
+**PUB010.P_init**
 
 ```text
 init
@@ -3739,7 +3739,7 @@ init
 
 Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
 
-**P1**
+**PUB010.P1**
 
 ```text
 G(sensorFault -> !HeaterOutput)
@@ -3747,7 +3747,7 @@ G(sensorFault -> !HeaterOutput)
 
 Invalid sensor data must never energize the heater.
 
-**P2**
+**PUB010.P2**
 
 ```text
 G(OverheatProtection -> !HeaterOutput)
@@ -3755,7 +3755,7 @@ G(OverheatProtection -> !HeaterOutput)
 
 The heater remains off during cooldown.
 
-**P3**
+**PUB010.P3**
 
 ```text
 G(HeaterStatus=HeaterOutput)
@@ -3763,7 +3763,7 @@ G(HeaterStatus=HeaterOutput)
 
 The status output reports actual commanded heat.
 
-**P4**
+**PUB010.P4**
 
 ```text
 G((CurrentTemperature=TemperatureSensorInput) & (SetTempDisplay=SetTemperature))
@@ -3771,7 +3771,7 @@ G((CurrentTemperature=TemperatureSensorInput) & (SetTempDisplay=SetTemperature))
 
 The displays mirror sampled values.
 
-**P5**
+**PUB010.P5**
 
 ```text
 G((!sensorFault & !OverheatProtection & demand & !heatLimitReached) -> HeaterOutput)
@@ -3779,7 +3779,7 @@ G((!sensorFault & !OverheatProtection & demand & !heatLimitReached) -> HeaterOut
 
 A permitted heat demand energizes the heater.
 
-**P6**
+**PUB010.P6**
 
 ```text
 G(heatLimitReached -> (OverheatProtection & !HeaterOutput))
@@ -3787,7 +3787,7 @@ G(heatLimitReached -> (OverheatProtection & !HeaterOutput))
 
 The continuous-heating threshold trips protection in the same scan.
 
-**P7**
+**PUB010.P7**
 
 ```text
 G((protectPrev & !cooldownDone) -> OverheatProtection)
@@ -3795,7 +3795,7 @@ G((protectPrev & !cooldownDone) -> OverheatProtection)
 
 Protection cannot clear before its cooldown expires.
 
-**P8**
+**PUB010.P8**
 
 ```text
 (G(F(TimeTick))) -> (G((OverheatProtection & G(!sensorFault & demand)) -> F(HeaterOutput)))
@@ -3803,7 +3803,7 @@ Protection cannot clear before its cooldown expires.
 
 With advancing time and persistent valid demand, heating resumes after finite cooldown. Explicit non-Zeno environment premise: physical elapsed time crosses infinitely many 1ms boundaries.
 
-**P9**
+**PUB010.P9**
 
 ```text
 G(!sensorFault & !OverheatProtection & !demand -> !HeaterOutput)
@@ -3811,7 +3811,7 @@ G(!sensorFault & !OverheatProtection & !demand -> !HeaterOutput)
 
 Prevents constant-ON or false heating when temperature is at or above setpoint.
 
-**P10**
+**PUB010.P10**
 
 ```text
 G(protectPrev & cooldownDone -> !OverheatProtection)
@@ -3819,15 +3819,7 @@ G(protectPrev & cooldownDone -> !OverheatProtection)
 
 Prevents permanent latch-up beyond 3s cooldown.
 
-**PUB010.V2.COMPLETE**
-
-```text
-G(CompleteBehaviorV2)
-```
-
-Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
-
-**PUB010.V2.1**
+**PUB010.P11**
 
 ```text
 G((TemperatureSensorInput>SetTemperature) -> !HeaterOutput)
@@ -3835,18 +3827,26 @@ G((TemperatureSensorInput>SetTemperature) -> !HeaterOutput)
 
 Explicit correction of a demonstrated omission.
 
+**PUB010.COMPLETE**
+
+```text
+G(CompleteBehavior)
+```
+
+Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
+
 ### Fixed test index
 
 | Case | Purpose | Steps |
 | --- | --- | ---: |
-| T1 | Heating threshold, cooldown boundary and safe restart | 6 |
-| T2 | Sensor faults, valid endpoint values and equality retention | 7 |
-| T3 | Fault during protection cannot clear the cooldown | 5 |
-| V2_omission_regression | Reject the concrete wrong behavior documented in the 2026-11-06 specification review. | 3 |
-| PUB010.T4 | PUB010.T4 | 11 |
-| PUB010.R22.sensor_boundary | 100有效而100.1故障、冷却与重新需求 | 8 |
-| PUB010.T5 | Interrupted heating resets 5000ms limit; full 5000ms after reset triggers OverheatProtection and 3000ms cooldown. | 8 |
-| PUB010.T6 | Equality retains demand across sensorFault interruption while cooldown still elapses on physical clock. | 6 |
+| PUB010.T1 | Heating threshold, cooldown boundary and safe restart | 6 |
+| PUB010.T2 | Sensor faults, valid endpoint values and equality retention | 7 |
+| PUB010.T3 | Fault during protection cannot clear the cooldown | 5 |
+| PUB010.T4 | Reject the concrete wrong behavior documented in the 2026-11-06 specification review. | 3 |
+| PUB010.T5 | Test 5s timer reset upon reaching setpoint or fault interruption, cooldown expiry coinciding with fault recovery, and 100.0 vs 100.1 sensor bounds (11 steps). | 11 |
+| PUB010.T6 | Validate 100.0 vs 100.1 temperature fault edge, cooldown hold, and renewed heating demand | 8 |
+| PUB010.T7 | Interrupted heating resets 5000ms limit; full 5000ms after reset triggers OverheatProtection and 3000ms cooldown. | 8 |
+| PUB010.T8 | Equality retains demand across sensorFault interruption while cooldown still elapses on physical clock. | 6 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -3963,7 +3963,7 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - `finish`: pre-phase WAIT_C AND SensorC AND ButtonC
 - `light`: CompletionLight
 - `removed`: NOT SensorC
-- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_PUB011(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+- `CompleteBehavior`: 令(Sref[k+1], E[k])=T_PUB011(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
 参考阶段WAIT_A/MOVE_AB/WAIT_B/MOVE_BC/WAIT_C/DONE初始WAIT_A；按SensorA&ButtonA、SensorB、SensorB&ButtonB、SensorC、SensorC&ButtonC、!SensorC分别推进一阶。手动清参考阶段，正反转分别为ForwardButton&!ReverseButton及反向对称式，灯灭；自动仅移动阶段正转、不反转，DONE且SensorC时灯亮。
 - `Mode`: I[k].Mode: sampled input (BOOL).
 - `ForwardButton`: I[k].ForwardButton: sampled input (BOOL).
@@ -4030,10 +4030,10 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
       "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
       "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
+      "normalized_spec.py": "3c13590145597ad26cf537ff76c44e22f06abf7720e04d2ea262ac347be9d9cd"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v2"
+    "frozen_sources": "dataset/specifications/normalized_transition"
   },
   "constrained_observed_fields": [
     "CompletionLight",
@@ -4170,10 +4170,10 @@ G(auto -> ((move_phase -> (fwd & !rev & !light)) & (wait_phase -> (!fwd & !rev &
 
 Prevents degenerate implementations that leave MotorForward FALSE in MOVE_* or mirror SensorC in DONE.
 
-**PUB011.V2.COMPLETE**
+**PUB011.COMPLETE**
 
 ```text
-G(CompleteBehaviorV2)
+G(CompleteBehavior)
 ```
 
 Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
@@ -4185,11 +4185,11 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 | PUB011.T1 | Neutral, forward, reverse, conflicting commands. | 3 |
 | PUB011.T2 | Station waits, retained movement, completion and removal. | 10 |
 | PUB011.T3 | Out-of-order confirmations cannot start the route. | 2 |
-| PUB011.R22.bc_hold | B到C运输未到站的中间拍，电机应持续运行 | 7 |
-| PUB011.T4 | PUB011.T4 | 12 |
-| PUB011.R22.dwell_0 | 原流程各稳定状态连续保持：manual | 12 |
-| PUB011.R22.dwell_1 | 原流程各稳定状态连续保持：cycle | 30 |
-| PUB011.R22.dwell_2 | 原流程各稳定状态连续保持：wrong_button | 6 |
+| PUB011.T4 | Keep forward conveyor drive energized during intermediate scans moving from B to C | 7 |
+| PUB011.T5 | Verify Auto->Manual->Auto return to WAIT_A, per-station waits, simultaneous SensorB & ButtonB advancing only to WAIT_B, and a second part cycle (12 steps). | 12 |
+| PUB011.T6 | Continuous multi-scan dwell across all stable states of manual | 12 |
+| PUB011.T7 | Continuous multi-scan dwell across all stable states of cycle | 30 |
+| PUB011.T8 | Continuous multi-scan dwell across all stable states of wrong_button | 6 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -4309,7 +4309,7 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - `normal`: valid AND NOT fault AND CUTTING_RUN
 - `add`: runtime=pre-runtime+CycleTime
 - `same_time`: runtime=pre-runtime
-- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_PUB012(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+- `CompleteBehavior`: 令(Sref[k+1], E[k])=T_PUB012(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
 validFault=VALID & FAULT，其新上升沿count加1，历史=[FaultTimestamp]+旧历史前4项，并记录hold起点。无效清hold；alarm=valid & (fault或hold年龄<500ms)。valid & !fault & CUTTING_RUN时runtime加CycleTime（约定与dt_ms一致），否则保持。初始count/runtime=0、历史五个0、previousValidFault=FALSE。计数/累计不得溢出，FaultTimestamp为DINT。
 - `THICKNESS_FAULT`: I[k].THICKNESS_FAULT: sampled input (BOOL).
 - `THICKNESS_SIGNAL_VALID`: I[k].THICKNESS_SIGNAL_VALID: sampled input (BOOL).
@@ -4401,10 +4401,10 @@ validFault=VALID & FAULT，其新上升沿count加1，历史=[FaultTimestamp]+�
       "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
       "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
+      "normalized_spec.py": "3c13590145597ad26cf537ff76c44e22f06abf7720e04d2ea262ac347be9d9cd"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v2"
+    "frozen_sources": "dataset/specifications/normalized_transition"
   },
   "constrained_observed_fields": [
     "Slab_Fault_Counter",
@@ -4536,10 +4536,10 @@ G(valid & !fault & !hold -> !alarm)
 
 Alarm releases when neither fault nor hold remains.
 
-**PUB012.V2.COMPLETE**
+**PUB012.COMPLETE**
 
 ```text
-G(CompleteBehaviorV2)
+G(CompleteBehavior)
 ```
 
 Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
@@ -4551,11 +4551,11 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 | PUB012.T1 | Check 500ms release and immediate signal-loss override. | 7 |
 | PUB012.T2 | Six faults retain the five newest timestamps. | 13 |
 | PUB012.T3 | Only valid fault-free running accumulates. | 5 |
-| PUB012.T4 | PUB012.T4 | 11 |
-| PUB012.R22.retrigger | 持续故障仅计一次、保持内重触发、信号恢复仍故障 | 11 |
-| PUB012.T5 | Seven valid rising fault edges push oldest timestamps out of the 5-entry Slab_Fault_History shift window. | 14 |
-| PUB012.T6 | Invalid signal suppresses alarm, count, timestamp and runtime accumulation; normal running cut accumulates time. | 5 |
-| PUB012.T7 | Sustained high fault counts only once; 499ms/500ms hold window boundary releases alarm cleanly. | 4 |
+| PUB012.T4 | Distinguish non-retriggerable TP vs TOF off-delay faults cleanly and verify zero false counts when invalid input clears and recovers (11 steps). | 11 |
+| PUB012.T5 | Count sustained fault once per episode, retrigger within hold, and stay faulted until clear | 11 |
+| PUB012.T6 | Seven valid rising fault edges push oldest timestamps out of the 5-entry Slab_Fault_History shift window. | 14 |
+| PUB012.T7 | Invalid signal suppresses alarm, count, timestamp and runtime accumulation; normal running cut accumulates time. | 5 |
+| PUB012.T8 | Sustained high fault counts only once; 499ms/500ms hold window boundary releases alarm cleanly. | 4 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -4663,7 +4663,7 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - `comfort`: mode=1 AND NOT occupancy
 - `one`: adjust=1
 - `economy`: mode=2 AND NOT occupancy
-- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_PUB013(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+- `CompleteBehavior`: 令(Sref[k+1], E[k])=T_PUB013(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
 mode域0..3；permit=occupied & mode!=3，首次许可年龄0、失去立即清计时；fan=permit且年龄>=30s。adjust=mode3则4，否则有人则0，否则mode0取节能3/普通2、mode1取1、mode2取4。初始化adjust=0与首次调用计算分开。
 - `TimeTick`: Boolean: floor(t[k]/1ms)>floor(t[k-1]/1ms), with t[0]=0, TimeTick[0]=FALSE, t[k]=sum(dt_ms[1..k]). G(F(TimeTick)) states unbounded physical time progress; merely positive dt is insufficient.
 - `OCCUPANCY_DETECTED`: I[k].OCCUPANCY_DETECTED: sampled input (BOOL).
@@ -4743,10 +4743,10 @@ mode域0..3；permit=occupied & mode!=3，首次许可年龄0、失去立即清�
       "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
       "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
+      "normalized_spec.py": "3c13590145597ad26cf537ff76c44e22f06abf7720e04d2ea262ac347be9d9cd"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v2"
+    "frozen_sources": "dataset/specifications/normalized_transition"
   },
   "constrained_observed_fields": [
     "SUPPLY_FAN_RUN",
@@ -4874,10 +4874,10 @@ Comfort and Economy ignore energy saving.
 
 If permit stays TRUE from any scan onward, the fan eventually runs, assuming continued calls and diverging physical time. Explicit non-Zeno environment premise: physical elapsed time crosses infinitely many 1ms boundaries.
 
-**PUB013.V2.COMPLETE**
+**PUB013.COMPLETE**
 
 ```text
-G(CompleteBehaviorV2)
+G(CompleteBehavior)
 ```
 
 Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
@@ -4888,16 +4888,16 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 | --- | --- | ---: |
 | PUB013.T1 | Exercise all setback modes and energy saving scope. | 7 |
 | PUB013.T2 | Check delay boundary, loss, full restart, Night override. | 8 |
-| V2_permit_loss_at_deadline | Permission loss at the exact deadline wins; recovery starts a fresh full interval, even after a long gap. | 5 |
-| PUB013.T3 | PUB013.T3 | 24 |
-| PUB013.R22.hvac_mode_reset | 当前参考要求非夜间模式切换不重置持续有人计时；需人审其来源 | 2 |
-| PUB013.R22.matrix_0 | 模式0的占用与节能四组合 | 4 |
-| PUB013.R22.matrix_1 | 模式1的占用与节能四组合 | 4 |
-| PUB013.R22.matrix_2 | 模式2的占用与节能四组合 | 4 |
-| PUB013.R22.matrix_3 | 模式3的占用与节能四组合 | 4 |
-| PUB013.R22.timer_0 | 模式0持续有人、失去占用及重新计时 | 6 |
-| PUB013.R22.timer_1 | 模式1持续有人、失去占用及重新计时 | 6 |
-| PUB013.R22.timer_2 | 模式2持续有人、失去占用及重新计时 | 6 |
+| PUB013.T3 | Permission loss at the exact deadline wins; recovery starts a fresh full interval, even after a long gap. | 5 |
+| PUB013.T4 | Exhaustively verify all 4x2x2=16 static mode/occupancy/economy combinations, mode 0/1/2 switching preserving 30s occupancy hold, and 29999/30000ms edges (24 steps). | 24 |
+| PUB013.T5 | Preserve active 30s occupancy timer across non-night HVAC mode changes per reviewed spec | 2 |
+| PUB013.T6 | Mode 0 2x2 matrix of occupancy and energy-saving combinations | 4 |
+| PUB013.T7 | Mode 1 2x2 matrix of occupancy and energy-saving combinations | 4 |
+| PUB013.T8 | Mode 2 2x2 matrix of occupancy and energy-saving combinations | 4 |
+| PUB013.T9 | Mode 3 2x2 matrix of occupancy and energy-saving combinations | 4 |
+| PUB013.T10 | Mode 0 sustained occupancy timer, vacancy transition, and timer restart | 6 |
+| PUB013.T11 | Mode 1 sustained occupancy timer, vacancy transition, and timer restart | 6 |
+| PUB013.T12 | Mode 2 sustained occupancy timer, vacancy transition, and timer restart | 6 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -4982,7 +4982,7 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - `zero`: ipValue=0
 - `same_input`: k>=1 AND I[k].ipText=I[k-1].ipText
 - `same_output`: k>=1 AND O[k].ipValue=O[k-1].ipValue
-- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_PUB014(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+- `CompleteBehavior`: 令(Sref[k+1], E[k])=T_PUB014(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
 文本总长<=254字节（先检查容量上限，再按首个NUL截断，支持超过15字符的前导零）。恰四个非空ASCII('0'..'9')数字段，每段按a=10*a+digit递推，任何段>255或非数字即非法。合法期望ipValue=((a*256+b)*256+c)*256+d，否则0；无跨拍状态。
 - `ipText`: I[k].ipText: sampled input (STRING(254)).
 - `ipValue`: O[k].ipValue: independently observed post-scan candidate value (UDINT); never defined as expected output.
@@ -5121,10 +5121,10 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
       "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
       "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
+      "normalized_spec.py": "3c13590145597ad26cf537ff76c44e22f06abf7720e04d2ea262ac347be9d9cd"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v2"
+    "frozen_sources": "dataset/specifications/normalized_transition"
   },
   "constrained_observed_fields": [
     "ipValue"
@@ -5213,10 +5213,10 @@ G(same_input -> same_output)
 
 Repeated strings produce repeated results.
 
-**PUB014.V2.COMPLETE**
+**PUB014.COMPLETE**
 
 ```text
-G(CompleteBehaviorV2)
+G(CompleteBehavior)
 ```
 
 Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
@@ -5227,12 +5227,12 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 | --- | --- | ---: |
 | PUB014.T1 | Zero, maximum, byte order and decimal leading zeros. | 5 |
 | PUB014.T2 | Malformed and overflowing segments clear a previous valid result. | 14 |
-| V2_data_contract_boundaries | Independently calculated edge/history/parser boundary regression | 4 |
-| PUB014.T3 | PUB014.T3 | 9 |
-| PUB014.R22.clear_invalid | 合法重复调用及各类非法输入当拍清零 | 11 |
-| PUB014.T4 | First-NUL truncation and ultra-long (>15 char) leading-zero valid IPv4 octets within 254-byte limit. | 4 |
-| PUB014.T5 | Comprehensive syntactic rejections (whitespace, +/- sign, empty octet, 3/5 parts, 256 overflow) interleaved with valid parses. | 10 |
-| PUB014.T6 | Loopback, classful masks, and high-bit (>= 2^31) unsigned 32-bit big-endian packing check. | 4 |
+| PUB014.T3 | Independently calculated edge/history/parser boundary regression | 4 |
+| PUB014.T4 | Verify embedded NUL termination, 254-char leading-zero valid extremes, fullwidth digits/space rejection, and immediate valid recovery (9 steps). | 9 |
+| PUB014.T5 | Accept valid repeated octets and immediately zero output on invalid octet strings | 11 |
+| PUB014.T6 | First-NUL truncation and ultra-long (>15 char) leading-zero valid IPv4 octets within 254-byte limit. | 4 |
+| PUB014.T7 | Comprehensive syntactic rejections (whitespace, +/- sign, empty octet, 3/5 parts, 256 overflow) interleaved with valid parses. | 10 |
+| PUB014.T8 | Loopback, classful masks, and high-bit (>= 2^31) unsigned 32-bit big-endian packing check. | 4 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -5355,7 +5355,7 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - Thresholds are >=50, >=80 and >=100 cm. One logical phase transition occurs per invocation.
 - In DRAIN, valveDRun remains TRUE until emergency stop (estop=FALSE), mode switch to manual (opeMode=FALSE), or a fresh autoStart rising edge starting a new batch.
 - The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
-- V2 mode-change priority: emergency stop first; then a change of mode after the first invocation clears sequence/latches and suppresses commands for that invocation; edge memories still update. The first invocation establishes the selected mode and executes normally. New commands are accepted on subsequent invocations subject to their edge rules.
+- Mode-change priority: emergency stop first; then a change of mode after the first invocation clears sequence/latches and suppresses commands for that invocation; edge memories still update. The first invocation establishes the selected mode and executes normally. New commands are accepted on subsequent invocations subject to their edge rules.
 - The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
@@ -5375,7 +5375,7 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - `fromC`: No mode change this invocation AND (safe AND opeMode AND pre-phase FILL_C AND levelSensor>=100)
 - `mixed`: No mode change this invocation AND (safe AND opeMode AND pre-phase MIX AND mixMotorComplete)
 - `Drain`: valveDRun only
-- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_PUB015(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+- `CompleteBehavior`: 令(Sref[k+1], E[k])=T_PUB015(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
 五按钮及autoStart历史初值FALSE、每拍更新。急停优先，其次已建立模式的变化；二者清阶段/五锁存且当拍全关。手动逐项latchAfter=latchBefore XOR buttonRise。自动IDLE或DRAIN遇autoStartRise进A（新批次），A液位>=50进B，B>=80按批次processMode进C或MIX，C>=100进MIX，MIX完成进DRAIN；每拍一阶，DRAIN保持valveDRun=TRUE至切换手动、急停或autoStart上升沿重起。五输出对应转移后A/B/C/DRAIN/MIX。批次模式在活动批次(1..4)内固定。
 - `estop`: I[k].estop: sampled input (BOOL).
 - `opeMode`: I[k].opeMode: sampled input (BOOL).
@@ -5471,10 +5471,10 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
       "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
       "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
+      "normalized_spec.py": "3c13590145597ad26cf537ff76c44e22f06abf7720e04d2ea262ac347be9d9cd"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v2"
+    "frozen_sources": "dataset/specifications/normalized_transition"
   },
   "constrained_observed_fields": [
     "mixMotorRun",
@@ -5540,7 +5540,7 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
     "Thresholds are >=50, >=80 and >=100 cm. One logical phase transition occurs per invocation.",
     "In DRAIN, valveDRun remains TRUE until emergency stop (estop=FALSE), mode switch to manual (opeMode=FALSE), or a fresh autoStart rising edge starting a new batch.",
     "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
-    "V2 mode-change priority: emergency stop first; then a change of mode after the first invocation clears sequence/latches and suppresses commands for that invocation; edge memories still update. The first invocation establishes the selected mode and executes normally. New commands are accepted on subsequent invocations subject to their edge rules.",
+    "Mode-change priority: emergency stop first; then a change of mode after the first invocation clears sequence/latches and suppresses commands for that invocation; edge memories still update. The first invocation establishes the selected mode and executes normally. New commands are accepted on subsequent invocations subject to their edge rules.",
     "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
   ],
   "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
@@ -5625,10 +5625,10 @@ G((safe & opeMode -> oneActuator) & (modeChanged -> off))
 
 Guarantees single-actuator automatic progression and mode-change isolation.
 
-**PUB015.V2.COMPLETE**
+**PUB015.COMPLETE**
 
 ```text
-G(CompleteBehaviorV2)
+G(CompleteBehavior)
 ```
 
 Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
@@ -5640,16 +5640,16 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 | PUB015.T1 | Held signal, second edge, all actuator requests and emergency. | 7 |
 | PUB015.T2 | Equality thresholds and mixing completion. | 7 |
 | PUB015.T3 | Skipped thresholds advance and emergency cancels the active cycle. | 8 |
-| V2_process_history_regression | Mode/edge reset, repeated station or prior-batch retained setpoint regression. | 10 |
-| PUB015.T5 | PUB015.T5 | 14 |
-| PUB015.R22.manual_mix_hold | 手动搅拌按钮持续按住，不能每拍翻转 | 7 |
-| PUB015.R22.valveAStart | 手动独立翻转、长按与再次关闭：valveAStart | 8 |
-| PUB015.R22.valveBStart | 手动独立翻转、长按与再次关闭：valveBStart | 8 |
-| PUB015.R22.valveCStart | 手动独立翻转、长按与再次关闭：valveCStart | 8 |
-| PUB015.R22.valveDStart | 手动独立翻转、长按与再次关闭：valveDStart | 8 |
-| PUB015.R22.mixMotorStart | 手动独立翻转、长按与再次关闭：mixMotorStart | 8 |
-| PUB015.R22.auto_wait_False | 配料完整路线、各阶段等待及切换模式后新批次 | 16 |
-| PUB015.R22.auto_wait_True | 配料完整路线、各阶段等待及切换模式后新批次 | 18 |
+| PUB015.T4 | Mode/edge reset, repeated station or prior-batch retained setpoint regression. | 10 |
+| PUB015.T5 | Verify all 5 manual button toggles, Mode 2 branching, FILL_A level=120 advancing only one phase per scan, new batch after DRAIN, and E-stop recovery (14 steps). | 14 |
+| PUB015.T6 | Hold manual mixMotorStart button steady without toggling every scan | 7 |
+| PUB015.T7 | Manual independent toggle, hold suppression, and second-press off: valveAStart | 8 |
+| PUB015.T8 | Manual independent toggle, hold suppression, and second-press off: valveBStart | 8 |
+| PUB015.T9 | Manual independent toggle, hold suppression, and second-press off: valveCStart | 8 |
+| PUB015.T10 | Manual independent toggle, hold suppression, and second-press off: valveDStart | 8 |
+| PUB015.T11 | Manual independent toggle, hold suppression, and second-press off: mixMotorStart | 8 |
+| PUB015.T12 | Full batching route, per-stage waits, and new batch after mode switch | 16 |
+| PUB015.T13 | Full batching route, per-stage waits, and new batch after mode switch | 18 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -5775,7 +5775,7 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - `processing`: pre-phase WAIT_PROCESS
 - `completion`: fresh matching processing-complete edge in the current wait
 - `started`: station1Start rising edge accepted with sensor1 in idle
-- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_PUB016(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+- `CompleteBehavior`: 令(Sref[k+1], E[k])=T_PUB016(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
 活动路线长度1..8，前项为2/3/4且末项5，活动周期内固定。初始IDLE、station=1、index=0。IDLE在station1Start上升沿且sensor1时选择首目标；MOVING到目标后进入WAIT_PROCESS或目标5回IDLE；WAIT_PROCESS仅对应完成新边沿推进index，同站继续等待。输出仅转移后MOVING且未到目标时按target与station方向开启；所有边沿历史逐拍更新。
 - `processLength`: I[k].processLength: sampled input (USINT).
 - `sensor1`: I[k].sensor1: sampled input (BOOL).
@@ -5864,10 +5864,10 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
       "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
       "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
+      "normalized_spec.py": "3c13590145597ad26cf537ff76c44e22f06abf7720e04d2ea262ac347be9d9cd"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v2"
+    "frozen_sources": "dataset/specifications/normalized_transition"
   },
   "constrained_observed_fields": [
     "conveyorLeft",
@@ -6006,10 +6006,10 @@ G(station1Start_rejected -> stop)
 
 Forbids starting automatic transport without a detected product at station 1.
 
-**PUB016.V2.COMPLETE**
+**PUB016.COMPLETE**
 
 ```text
-G(CompleteBehaviorV2)
+G(CompleteBehavior)
 ```
 
 Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
@@ -6021,11 +6021,11 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 | PUB016.T1 | Follow [4,2,5] and ignore a wrong completion input. | 8 |
 | PUB016.T2 | A one-entry sequence goes directly to output. | 3 |
 | PUB016.T3 | A held completion cannot skip a repeated processing operation. | 7 |
-| V2_process_history_regression | Mode/edge reset, repeated station or prior-batch retained setpoint regression. | 9 |
-| PUB016.T4 | PUB016.T4 | 20 |
-| PUB016.R22.route8 | 八站路线、双向运输保持、工位等待与第二批次 | 92 |
-| PUB016.T5 | station1Start rejected without sensor1 and mid-cycle re-triggers ignored before clean next-batch start. | 9 |
-| PUB016.T6 | Multiple consecutive repeated stations [2, 2, 3, 3, 5] hold stopped until distinct fresh completion rising edges. | 12 |
+| PUB016.T4 | Mode/edge reset, repeated station or prior-batch retained setpoint regression. | 9 |
+| PUB016.T5 | Verify continuous forward drive between sensors, an 8-step route including reverse transport, and rejecting start when sensor1 is FALSE (20 steps). | 20 |
+| PUB016.T6 | Full 8-station route with forward/reverse drive hold, station waits, and second batch | 92 |
+| PUB016.T7 | station1Start rejected without sensor1 and mid-cycle re-triggers ignored before clean next-batch start. | 9 |
+| PUB016.T8 | Multiple consecutive repeated stations [2, 2, 3, 3, 5] hold stopped until distinct fresh completion rising edges. | 12 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -6326,7 +6326,7 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - `idle`: no rising request
 - `clear`: NOT error AND status=0 AND NOT recipeAdded AND NOT recipeDeleted AND NOT recipeModified
 - `unique`: all nonzero IDs are pairwise distinct
-- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_PUB017(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+- `CompleteBehavior`: 令(Sref[k+1], E[k])=T_PUB017(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
 数据库首拍由调用前recipe初始化，之后为跨拍保留存储；非零ID唯一（允许正/负整数recipeID!=0，新增时严禁recipeID=0且每拍至多一个请求上升沿）。四请求历史初值FALSE、每拍更新。查询缺失8001；新增重复8002优先于满库8003，否则最低空位整体写入；删除缺失8004否则只清ID；修改缺失8005否则整体替换。失败/空闲库保持。三个成功输出是单拍脉冲，成功/空闲error=FALSE/status=0；查询结果仅成功查询时更新，初值零记录。成功删除槽的非ID字段当拍不受约束但须满足ST_Recipe类型与范围，此后无覆盖操作时与采样实际值比较保持；不把这些物理表示字段写回参考数据库。
 - `addRecipe`: I[k].addRecipe: sampled input (BOOL).
 - `deleteRecipe`: I[k].deleteRecipe: sampled input (BOOL).
@@ -6488,10 +6488,10 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
       "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
       "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
+      "normalized_spec.py": "3c13590145597ad26cf537ff76c44e22f06abf7720e04d2ea262ac347be9d9cd"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v2"
+    "frozen_sources": "dataset/specifications/normalized_transition"
   },
   "constrained_observed_fields": [
     "error",
@@ -6634,10 +6634,10 @@ G((delete_ok -> deleted) & (modify_ok -> modified) & (idle -> same))
 
 Closes independent LTL coverage of delete, modify, and idle preservation missing in P1..P6.
 
-**PUB017.V2.COMPLETE**
+**PUB017.COMPLETE**
 
 ```text
-G(CompleteBehaviorV2)
+G(CompleteBehavior)
 ```
 
 Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
@@ -6649,11 +6649,11 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 | PUB017.T1 | Add, query, modify, delete and reuse the first empty slot. | 14 |
 | PUB017.T2 | All missing-record errors and duplicate rejection preserve existing record. | 11 |
 | PUB017.T3 | Fill ten slots; duplicate error has priority over full error. | 23 |
-| PUB017.T4 | PUB017.T4 | 9 |
-| PUB017.R22.storage_operations | 满库末槽读回、最小空槽复用、修改其他槽保持与请求长按 | 54 |
-| PUB017.T5 | Negative nonzero recipeID lifecycle (add/query/modify/delete) and failed query retention of previous recipeQueryResult. | 8 |
-| PUB017.T6 | Mid-table and high-slot (slots 8-10) deletion, adjacent slot preservation, and lowest free-slot insertion. | 29 |
-| PUB017.T7 | Level-held requests after rising edges stay idle (no duplicate error, missing error, or repeat pulse). | 9 |
+| PUB017.T4 | Verify storing valid nonzero negative INT (-5), lowest-free-slot 0 reuse after delete, retained query output on unrelated writes, and explicit recipe table checks (9 steps). | 9 |
+| PUB017.T5 | Full-DB tail read, lowest free slot reuse on add, unrelated entry retention, and held command | 54 |
+| PUB017.T6 | Negative nonzero recipeID lifecycle (add/query/modify/delete) and failed query retention of previous recipeQueryResult. | 8 |
+| PUB017.T7 | Mid-table and high-slot (slots 8-10) deletion, adjacent slot preservation, and lowest free-slot insertion. | 29 |
+| PUB017.T8 | Level-held requests after rising edges stay idle (no duplicate error, missing error, or repeat pulse). | 9 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -6814,7 +6814,7 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - `popped`: item=pre-front AND post-queue=pre-queue without front AND count=pre-count-1 AND status=0
 - `bounded`: 0<=elementCount<=actual buffer length
 - `idle`: NOT reset AND no request rising edge
-- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_PUB018(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+- `CompleteBehavior`: 令(Sref[k+1], E[k])=T_PUB018(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
 独立逻辑队列Q初始空、enqPrev/deqPrev=FALSE。非reset下严禁同拍enqueue/dequeue同时上升沿。reset优先QAfter=[]；否则单个enqueue新沿且未满时追加采样item，满报8002；dequeue新沿且非空时返回旧队首并去首，空报8001；其余状态0。elementCount=|QAfter|；仅成功pop改变实际item，其余等于采样item。buffer物理布局不受约束，其正确性由完整可观察出队行为约束。绑定A容量2(DINT)、B容量3(BOOL)，其余正整数容量由实际buffer元数据固定。
 - `enqueue`: I[k].enqueue: sampled input (BOOL).
 - `dequeue`: I[k].dequeue: sampled input (BOOL).
@@ -6959,10 +6959,10 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
       "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
       "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
+      "normalized_spec.py": "3c13590145597ad26cf537ff76c44e22f06abf7720e04d2ea262ac347be9d9cd"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v2"
+    "frozen_sources": "dataset/specifications/normalized_transition"
   },
   "constrained_observed_fields": [
     "elementCount",
@@ -7093,10 +7093,10 @@ G((!pop) -> non_pop_item_preserved)
 
 Prevents spurious overwriting of caller item when not popping.
 
-**PUB018.V2.COMPLETE**
+**PUB018.COMPLETE**
 
 ```text
-G(CompleteBehaviorV2)
+G(CompleteBehavior)
 ```
 
 Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
@@ -7108,12 +7108,12 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 | PUB018.T1 | Capacity-two FIFO preserves order through wrap, full and empty rejection. | 17 |
 | PUB018.T2 | Reset coincides with request; held request after reset does not execute. | 8 |
 | PUB018.T3 | Second element type and lower-bound-one buffer. | 9 |
-| PUB018.T4 | PUB018.T4 | 18 |
-| PUB018.R22.capacity1 | 容量1入队、满、出队、回绕及复位后重用 | 11 |
-| PUB018.R22.drain_T1 | 逐项排空并检查末元素：PUB018.T1 | 25 |
-| PUB018.R22.drain_T2 | 逐项排空并检查末元素：PUB018.T2 | 16 |
-| PUB018.R22.drain_T3 | 逐项排空并检查末元素：PUB018.T3 | 17 |
-| PUB018.R22.drain_capacity1 | 逐项排空并检查末元素：PUB018.R22.capacity1 | 19 |
+| PUB018.T4 | Cover full BOOL FIFO saturation, 8002 full error, sequential FIFO drain, ring wrap-around, 8001 empty error, and reset clearing priority (18 steps). | 18 |
+| PUB018.T5 | Capacity-1 queue enqueue, full saturation, dequeue, wrap-around, and post-reset reuse | 11 |
+| PUB018.T6 | Drain FIFO item by item and verify tail element: PUB018.T1 | 25 |
+| PUB018.T7 | Drain FIFO item by item and verify tail element: PUB018.T2 | 16 |
+| PUB018.T8 | Drain FIFO item by item and verify tail element: PUB018.T3 | 17 |
+| PUB018.T9 | Drain FIFO item by item and verify tail element: PUB018.T5 | 19 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -7265,7 +7265,7 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - Continuous completion of left movement wraps to down in the same scan. Single-cycle completion returns to idle.
 - At the start of a new automatic sequence (action 1, not every individual single step), UpLimitSwitch and LeftLimitSwitch must both be TRUE. Grip and release complete on the supplied feedback switches.
 - The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
-- V2 mode-change priority: emergency stop first; then a change of mode after the first invocation clears sequence/latches and suppresses commands for that invocation; edge memories still update. The first invocation establishes the selected mode and executes normally. New commands are accepted on subsequent invocations subject to their edge rules.
+- Mode-change priority: emergency stop first; then a change of mode after the first invocation clears sequence/latches and suppresses commands for that invocation; edge memories still update. The first invocation establishes the selected mode and executes normally. New commands are accepted on subsequent invocations subject to their edge rules.
 - The four mode inputs (ManualMode, SingleStepMode, SingleCycleMode, ContinuousMode) are mutually exclusive per scan (<=1 TRUE; >1 rejected with ValueError).
 - The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
@@ -7299,7 +7299,7 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - `start`: fresh Start edge in idle with top-left pose and selected automatic mode
 - `started`: post-phase DOWN, busy TRUE
 - `ordered`: the next accepted automatic phase follows DOWN, GRIP, UP1, RIGHT, DOWN2, RELEASE, UP2, LEFT
-- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_PUB019(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+- `CompleteBehavior`: 令(Sref[k+1], E[k])=T_PUB019(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
 八动作顺序为下/夹/上/右/下/松/上/左。安全失去或无模式全关复位（急停期间仍记录当前非空模式选择），其次模式变化当拍全关复位；四模式选择互斥不可同拍并发。手动六命令分别=本按钮 & !反向按钮 & !本限位。单步完成时全关、保存下一步，新Start沿再启动；首步要求上左到位。单周期末回IDLE；连续末回第一步；自动只在本动作匹配限位时推进一阶，输出按转移后动作并由本限位门控。Start历史每拍更新。
 - `modeChanged`: Selected mode differs from previous invocation; FALSE for the first invocation.
 - `ManualMode`: I[k].ManualMode: sampled input (BOOL).
@@ -7405,10 +7405,10 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
       "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
       "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
+      "normalized_spec.py": "3c13590145597ad26cf537ff76c44e22f06abf7720e04d2ea262ac347be9d9cd"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v2"
+    "frozen_sources": "dataset/specifications/normalized_transition"
   },
   "constrained_observed_fields": [
     "ActivateGrip",
@@ -7494,7 +7494,7 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
     "Continuous completion of left movement wraps to down in the same scan. Single-cycle completion returns to idle.",
     "At the start of a new automatic sequence (action 1, not every individual single step), UpLimitSwitch and LeftLimitSwitch must both be TRUE. Grip and release complete on the supplied feedback switches.",
     "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
-    "V2 mode-change priority: emergency stop first; then a change of mode after the first invocation clears sequence/latches and suppresses commands for that invocation; edge memories still update. The first invocation establishes the selected mode and executes normally. New commands are accepted on subsequent invocations subject to their edge rules.",
+    "Mode-change priority: emergency stop first; then a change of mode after the first invocation clears sequence/latches and suppresses commands for that invocation; edge memories still update. The first invocation establishes the selected mode and executes normally. New commands are accepted on subsequent invocations subject to their edge rules.",
     "The four mode inputs (ManualMode, SingleStepMode, SingleCycleMode, ContinuousMode) are mutually exclusive per scan (<=1 TRUE; >1 rejected with ValueError).",
     "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
   ],
@@ -7596,10 +7596,10 @@ G((safe & !modeChanged & ManualMode -> other_manual) & ((safe & modeChanged) -> 
 
 Completes manual-mode and mode-change output coverage beyond MoveDown.
 
-**PUB019.V2.COMPLETE**
+**PUB019.COMPLETE**
 
 ```text
-G(CompleteBehaviorV2)
+G(CompleteBehavior)
 ```
 
 Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
@@ -7613,18 +7613,18 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 | PUB019.T3 | All eight actions complete once and wait at top left. | 10 |
 | PUB019.T4 | The eighth completion wraps immediately to the first action. | 10 |
 | PUB019.T5 | Emergency cancels an action; releasing emergency does not auto-restart. | 6 |
-| PUB019.T6 | PUB019.T6 | 25 |
-| PUB019.R22.manual_up | 手动上行按钮在未到上限位时应输出上行 | 1 |
-| PUB019.R22.grip_hold | 单周期夹紧尚未完成时，夹紧命令应持续 | 4 |
-| PUB019.R22.DownButton | 手动动作、保持、到限位停机：DownButton | 6 |
-| PUB019.R22.UpButton | 手动动作、保持、到限位停机：UpButton | 6 |
-| PUB019.R22.LeftButton | 手动动作、保持、到限位停机：LeftButton | 6 |
-| PUB019.R22.RightButton | 手动动作、保持、到限位停机：RightButton | 6 |
-| PUB019.R22.GripButton | 手动动作、保持、到限位停机：GripButton | 6 |
-| PUB019.R22.ReleaseButton | 手动动作、保持、到限位停机：ReleaseButton | 6 |
-| PUB019.R22.SingleStepMode | 完整八动作、各步等待与第二轮：SingleStepMode | 65 |
-| PUB019.R22.SingleCycleMode | 完整八动作、各步等待与第二轮：SingleCycleMode | 65 |
-| PUB019.R22.ContinuousMode | 完整八动作、各步等待与第二轮：ContinuousMode | 65 |
+| PUB019.T6 | Cover manual Up/Left/Grip/Release controls, refusing start away from upper-left home, full 8-step SingleStep wrap, and mode-change off after E-stop (25 steps). | 25 |
+| PUB019.T7 | Drive manual Up output whenever UpButton is pressed away from upper limit | 1 |
+| PUB019.T8 | Retain clamp command throughout single-cycle wait until clamp completion limit | 4 |
+| PUB019.T9 | Manual travel action, hold retention, and limit-switch stop: DownButton | 6 |
+| PUB019.T10 | Manual travel action, hold retention, and limit-switch stop: UpButton | 6 |
+| PUB019.T11 | Manual travel action, hold retention, and limit-switch stop: LeftButton | 6 |
+| PUB019.T12 | Manual travel action, hold retention, and limit-switch stop: RightButton | 6 |
+| PUB019.T13 | Manual travel action, hold retention, and limit-switch stop: GripButton | 6 |
+| PUB019.T14 | Manual travel action, hold retention, and limit-switch stop: ReleaseButton | 6 |
+| PUB019.T15 | Full 8-action sequence, per-step waits, and second cycle: SingleStepMode | 65 |
+| PUB019.T16 | Full 8-action sequence, per-step waits, and second cycle: SingleCycleMode | 65 |
+| PUB019.T17 | Full 8-action sequence, per-step waits, and second cycle: ContinuousMode | 65 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -7777,7 +7777,7 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - `processing_wait`: pre-phase is WAIT_WASH, WAIT_WEIGHT or WAIT_FIRING
 - `matching_completion`: matching station sensor and processing completion are TRUE in the corresponding wait
 - `order`: automatic route is FEED, WASH, WEIGHT, FIRING, OUTPUT; rejected weights cannot enter FIRING
-- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_PUB020(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+- `CompleteBehavior`: 令(Sref[k+1], E[k])=T_PUB020(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
 参考阶段WAIT_FEED→MOVE_WASH→WAIT_WASH→MOVE_WEIGHT→WAIT_WEIGHT→REJECT或MOVE_FIRING→WAIT_FIRING→MOVE_OUTPUT→OUTPUT_DONE；每拍按旧阶段只推进一阶。重量100..200含边界合格，合格温度real32(500+real32(real32(weight-100)*0.5))；不合格保持温度并剔除至SensorWeight假。完成取走后回初始。手动清流程、方向按钮互锁、kick/灯关闭、温度保持。自动仅运输阶段正转、不反转；kick对应REJECT、灯对应OUTPUT_DONE。
 - `Mode`: I[k].Mode: sampled input (BOOL).
 - `ForwardButton`: I[k].ForwardButton: sampled input (BOOL).
@@ -7874,10 +7874,10 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
       "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
       "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
+      "normalized_spec.py": "3c13590145597ad26cf537ff76c44e22f06abf7720e04d2ea262ac347be9d9cd"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v2"
+    "frozen_sources": "dataset/specifications/normalized_transition"
   },
   "constrained_observed_fields": [
     "CompletionLight",
@@ -8048,10 +8048,10 @@ G((!auto -> (!kick & !CompletionLight)) & (auto & post_wait -> stopped) & (auto 
 
 Closes independent LTL coverage of manual/waiting/transport actuator behavior.
 
-**PUB020.V2.COMPLETE**
+**PUB020.COMPLETE**
 
 ```text
-G(CompleteBehaviorV2)
+G(CompleteBehavior)
 ```
 
 Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
@@ -8067,10 +8067,10 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 | PUB020.T5 | Reject just outside the inclusive limits, retain rejection until removal. | 9 |
 | PUB020.T6 | Reject just outside the inclusive limits, retain rejection until removal. | 9 |
 | PUB020.T7 | Out-of-order completions do not move an idle product. | 4 |
-| V2_process_history_regression | Mode/edge reset, repeated station or prior-batch retained setpoint regression. | 16 |
-| PUB020.T8 | PUB020.T8 | 14 |
-| PUB020.R22.all_transport | 四段持续运输、加工等待与完整第二批次 | 58 |
-| PUB020.R22.mode_reset | 运输中切手动再切自动、路线复位且温度保持 | 9 |
+| PUB020.T8 | Mode/edge reset, repeated station or prior-batch retained setpoint regression. | 16 |
+| PUB020.T9 | Verify continuous forward transport across sensor gaps, delayed completion handshake, 99.9999/100.0001/200.0001 weight edges, and manual/auto temp retention (14 steps). | 14 |
+| PUB020.T10 | Continuous 4-stage transport holds, station waits, and full second batch cycle | 58 |
+| PUB020.T11 | Switch Auto->Manual->Auto mid-transport resets sequence while preserving firingTemp | 9 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -8158,7 +8158,7 @@ At scan k, sample every input once, read retained pre-state q[k], execute one tr
 - `Run`: O[k].Run: independently observed post-scan candidate value (BOOL); never defined as expected output.
 - `first`: k=0; first invocation, not the pre-invocation observation
 - `qRun`: {"kind": "previous_observed_output", "source": "O[k-1].Run", "initial": false, "update": "After comparing scan k, store ACTUAL O[k].Run; never write into reference state."}
-- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_SELF001(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+- `CompleteBehavior`: 令(Sref[k+1], E[k])=T_SELF001(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
 r初值FALSE；rAfter=GuardClosed & !Stop & (Start | rBefore)；期望Run=rAfter。
 - `init`: At the separate pre-invocation initial observation before scan k=0: O_init.Run=false.
 
@@ -8214,10 +8214,10 @@ r初值FALSE；rAfter=GuardClosed & !Stop & (Start | rBefore)；期望Run=rAfter
       "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
       "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
+      "normalized_spec.py": "3c13590145597ad26cf537ff76c44e22f06abf7720e04d2ea262ac347be9d9cd"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v2"
+    "frozen_sources": "dataset/specifications/normalized_transition"
   },
   "constrained_observed_fields": [
     "Run"
@@ -8279,7 +8279,7 @@ r初值FALSE；rAfter=GuardClosed & !Stop & (Start | rBefore)；期望Run=rAfter
 }
 ```
 
-**P_init**
+**SELF001.P_init**
 
 ```text
 init
@@ -8287,7 +8287,7 @@ init
 
 Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
 
-**P1**
+**SELF001.P1**
 
 ```text
 G(first -> !qRun)
@@ -8295,7 +8295,7 @@ G(first -> !qRun)
 
 The instance starts with no retained run request.
 
-**P2**
+**SELF001.P2**
 
 ```text
 G((Stop | !GuardClosed) -> !Run)
@@ -8303,7 +8303,7 @@ G((Stop | !GuardClosed) -> !Run)
 
 Stop and guard override every startup request in the same scan.
 
-**P3**
+**SELF001.P3**
 
 ```text
 G((Start & !Stop & GuardClosed) -> Run)
@@ -8311,7 +8311,7 @@ G((Start & !Stop & GuardClosed) -> Run)
 
 A permitted start takes effect at end of the sampled scan.
 
-**P4**
+**SELF001.P4**
 
 ```text
 G((!Start & !Stop & GuardClosed) -> (Run <-> qRun))
@@ -8319,7 +8319,7 @@ G((!Start & !Stop & GuardClosed) -> (Run <-> qRun))
 
 Retain the preceding run value without a new command.
 
-**P5**
+**SELF001.P5**
 
 ```text
 G(Run -> X(Stop | !GuardClosed | Run))
@@ -8327,10 +8327,10 @@ G(Run -> X(Stop | !GuardClosed | Run))
 
 Across invocations, run persists unless a higher-priority input intervenes.
 
-**SELF001.V2.COMPLETE**
+**SELF001.COMPLETE**
 
 ```text
-G(CompleteBehaviorV2)
+G(CompleteBehavior)
 ```
 
 Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
@@ -8339,13 +8339,13 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 
 | Case | Purpose | Steps |
 | --- | --- | ---: |
-| latch | Initialize, start, hold and stop | 5 |
-| priority | Simultaneous requests and guard recovery | 5 |
-| SELF001.boundary_start_hold | SELF001.boundary_start_hold | 5 |
-| SELF001.R22.normal_changes | 持续启动时停止解除 | 3 |
-| SELF001.R22.tail_Start | 完成主流程后改变并保持 Start | 7 |
-| SELF001.R22.tail_Stop | 完成主流程后改变并保持 Stop | 7 |
-| SELF001.R22.tail_GuardClosed | 完成主流程后改变并保持 GuardClosed | 7 |
+| SELF001.T1 | Initialize, start, hold and stop | 5 |
+| SELF001.T2 | Simultaneous requests and guard recovery | 5 |
+| SELF001.T3 | Cover start-on-scan-0, immediate activation when guard closes while Start is held, and Stop overriding Start (5 steps). | 5 |
+| SELF001.T4 | Resume or stay stopped cleanly when Stop clears while Start remains held | 3 |
+| SELF001.T5 | After completing main sequence, toggle and hold Start | 7 |
+| SELF001.T6 | After completing main sequence, toggle and hold Stop | 7 |
+| SELF001.T7 | After completing main sequence, toggle and hold GuardClosed | 7 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -8439,7 +8439,7 @@ At scan k, sample every input once, read retained pre-state q[k], execute one tr
 - `qReverse`: {"kind": "previous_observed_output", "source": "O[k-1].Reverse", "initial": false, "update": "After comparing scan k, store ACTUAL O[k].Reverse; never write into reference state."}
 - `fwdOnly`: ForwardButton & !ReverseButton & !Stop.
 - `revOnly`: ReverseButton & !ForwardButton & !Stop.
-- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_SELF002(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+- `CompleteBehavior`: 令(Sref[k+1], E[k])=T_SELF002(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
 d初值0；desired在Stop或两方向按钮相等时为0，否则前进1/后退-1。dAfter在desired!=0且dBefore=-desired时为0，否则desired；Forward=(dAfter=1)，Reverse=(dAfter=-1)。
 - `init`: At the separate pre-invocation initial observation before scan k=0: O_init.Forward=false, O_init.Reverse=false.
 
@@ -8496,10 +8496,10 @@ d初值0；desired在Stop或两方向按钮相等时为0，否则前进1/后退-
       "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
       "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
+      "normalized_spec.py": "3c13590145597ad26cf537ff76c44e22f06abf7720e04d2ea262ac347be9d9cd"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v2"
+    "frozen_sources": "dataset/specifications/normalized_transition"
   },
   "constrained_observed_fields": [
     "Forward",
@@ -8567,7 +8567,7 @@ d初值0；desired在Stop或两方向按钮相等时为0，否则前进1/后退-
 }
 ```
 
-**P_init**
+**SELF002.P_init**
 
 ```text
 init
@@ -8575,7 +8575,7 @@ init
 
 Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
 
-**P1**
+**SELF002.P1**
 
 ```text
 G(!(Forward & Reverse))
@@ -8583,7 +8583,7 @@ G(!(Forward & Reverse))
 
 Direction outputs are mutually exclusive.
 
-**P2**
+**SELF002.P2**
 
 ```text
 G((Stop | (ForwardButton <-> ReverseButton)) -> (!Forward & !Reverse))
@@ -8591,7 +8591,7 @@ G((Stop | (ForwardButton <-> ReverseButton)) -> (!Forward & !Reverse))
 
 Invalid or stopped requests produce neutral.
 
-**P3**
+**SELF002.P3**
 
 ```text
 G((fwdOnly & qReverse) -> (!Forward & !Reverse))
@@ -8599,7 +8599,7 @@ G((fwdOnly & qReverse) -> (!Forward & !Reverse))
 
 Reversal from reverse has one neutral output scan.
 
-**P4**
+**SELF002.P4**
 
 ```text
 G((revOnly & qForward) -> (!Forward & !Reverse))
@@ -8607,7 +8607,7 @@ G((revOnly & qForward) -> (!Forward & !Reverse))
 
 Reversal from forward has one neutral output scan.
 
-**P5**
+**SELF002.P5**
 
 ```text
 G((fwdOnly & !qReverse) -> Forward)
@@ -8615,7 +8615,7 @@ G((fwdOnly & !qReverse) -> Forward)
 
 A permitted forward jog operates immediately.
 
-**P6**
+**SELF002.P6**
 
 ```text
 G((revOnly & !qForward) -> Reverse)
@@ -8623,10 +8623,10 @@ G((revOnly & !qForward) -> Reverse)
 
 A permitted reverse jog operates immediately.
 
-**SELF002.V2.COMPLETE**
+**SELF002.COMPLETE**
 
 ```text
-G(CompleteBehaviorV2)
+G(CompleteBehavior)
 ```
 
 Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
@@ -8635,13 +8635,13 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 
 | Case | Purpose | Steps |
 | --- | --- | ---: |
-| reverse | Direct reversal and held reverse request | 6 |
-| ambiguous | Both buttons and Stop override direction | 4 |
-| SELF002.boundary_reverse_memory | SELF002.boundary_reverse_memory | 5 |
-| SELF002.R22.normal_changes | 倒转停止及方向记忆清除 | 5 |
-| SELF002.R22.tail_ForwardButton | 完成主流程后改变并保持 ForwardButton | 8 |
-| SELF002.R22.tail_ReverseButton | 完成主流程后改变并保持 ReverseButton | 8 |
-| SELF002.R22.tail_Stop | 完成主流程后改变并保持 Stop | 8 |
+| SELF002.T1 | Direct reversal and held reverse request | 6 |
+| SELF002.T2 | Both buttons and Stop override direction | 4 |
+| SELF002.T3 | Verify immediate reverse from idle on scan 0, Stop clearing direction memory for instant reversal on next scan, and simultaneous stop (5 steps). | 5 |
+| SELF002.T4 | Reverse, Stop, and clear stored direction memory on halt | 5 |
+| SELF002.T5 | After completing main sequence, toggle and hold ForwardButton | 8 |
+| SELF002.T6 | After completing main sequence, toggle and hold ReverseButton | 8 |
+| SELF002.T7 | After completing main sequence, toggle and hold Stop | 8 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -8736,7 +8736,7 @@ At scan k, sample every input once, read retained pre-state q[k], execute one tr
 - `qRequired`: {"kind": "previous_observed_output", "source": "O[k-1].ResetRequired", "initial": true, "update": "After comparing scan k, store ACTUAL O[k].ResetRequired; never write into reference state."}
 - `qRun`: {"kind": "previous_observed_output", "source": "O[k-1].Run", "initial": false, "update": "After comparing scan k, store ACTUAL O[k].Run; never write into reference state."}
 - `validReset`: EStopNC & Reset & !Start & !Stop.
-- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_SELF003(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+- `CompleteBehavior`: 令(Sref[k+1], E[k])=T_SELF003(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
 required初值TRUE、run初值FALSE。按顺序选择首个分支：!EStopNC置required=TRUE/run=FALSE；旧required真时run=FALSE，仅Reset & !Start & !Stop清required；否则Stop清run、否则Start置run，其余保持。两个实际输出分别比较runAfter、requiredAfter。
 - `init`: At the separate pre-invocation initial observation before scan k=0: O_init.Run=false, O_init.ResetRequired=true.
 
@@ -8794,10 +8794,10 @@ required初值TRUE、run初值FALSE。按顺序选择首个分支：!EStopNC置r
       "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
       "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
+      "normalized_spec.py": "3c13590145597ad26cf537ff76c44e22f06abf7720e04d2ea262ac347be9d9cd"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v2"
+    "frozen_sources": "dataset/specifications/normalized_transition"
   },
   "constrained_observed_fields": [
     "ResetRequired",
@@ -8865,7 +8865,7 @@ required初值TRUE、run初值FALSE。按顺序选择首个分支：!EStopNC置r
 }
 ```
 
-**P_init**
+**SELF003.P_init**
 
 ```text
 init
@@ -8873,7 +8873,7 @@ init
 
 Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
 
-**P1**
+**SELF003.P1**
 
 ```text
 G(first -> (qRequired & !qRun))
@@ -8881,7 +8881,7 @@ G(first -> (qRequired & !qRun))
 
 A fresh instance requires reset.
 
-**P2**
+**SELF003.P2**
 
 ```text
 G(!EStopNC -> (!Run & ResetRequired))
@@ -8889,7 +8889,7 @@ G(!EStopNC -> (!Run & ResetRequired))
 
 Emergency stop forces safe outputs immediately.
 
-**P3**
+**SELF003.P3**
 
 ```text
 G(qRequired -> !Run)
@@ -8897,7 +8897,7 @@ G(qRequired -> !Run)
 
 Reset acceptance and motor start cannot share one scan.
 
-**P4**
+**SELF003.P4**
 
 ```text
 G((qRequired & EStopNC) -> (ResetRequired <-> !validReset))
@@ -8905,7 +8905,7 @@ G((qRequired & EStopNC) -> (ResetRequired <-> !validReset))
 
 Reset requires released Start and Stop.
 
-**P5**
+**SELF003.P5**
 
 ```text
 G((!qRequired & EStopNC & !Stop & Start) -> Run)
@@ -8913,7 +8913,7 @@ G((!qRequired & EStopNC & !Stop & Start) -> Run)
 
 A subsequent permitted start energizes the motor.
 
-**P6**
+**SELF003.P6**
 
 ```text
 G((!qRequired & EStopNC & Stop) -> !Run)
@@ -8921,15 +8921,7 @@ G((!qRequired & EStopNC & Stop) -> !Run)
 
 Stop has priority after reset.
 
-**SELF003.V2.COMPLETE**
-
-```text
-G(CompleteBehaviorV2)
-```
-
-Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
-
-**SELF003.V2.1**
+**SELF003.P7**
 
 ```text
 G((!qRequired & EStopNC) -> !ResetRequired)
@@ -8937,7 +8929,7 @@ G((!qRequired & EStopNC) -> !ResetRequired)
 
 Explicit correction of a demonstrated omission.
 
-**SELF003.V2.2**
+**SELF003.P8**
 
 ```text
 G((!qRequired & EStopNC & !Stop & !Start) -> (Run <-> qRun))
@@ -8945,20 +8937,28 @@ G((!qRequired & EStopNC & !Stop & !Start) -> (Run <-> qRun))
 
 Explicit correction of a demonstrated omission.
 
+**SELF003.COMPLETE**
+
+```text
+G(CompleteBehavior)
+```
+
+Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
+
 ### Fixed test index
 
 | Case | Purpose | Steps |
 | --- | --- | ---: |
-| reset_restart | Power-up inhibition, reset, run and emergency stop | 6 |
-| invalid_reset | Held Start and Stop block reset | 4 |
-| V2_omission_regression | Reject the concrete wrong behavior documented in the 2026-11-06 specification review. | 4 |
-| SELF003.boundary_reset_isolation | SELF003.boundary_reset_isolation | 7 |
-| SELF003.R22.reset_stops_run | 按当前参考，已解除复位要求后单独Reset不停止运行 | 4 |
-| SELF003.R22.normal_changes | 运行中Reset保持、停止后重启 | 5 |
-| SELF003.R22.tail_Start | 完成主流程后改变并保持 Start | 8 |
-| SELF003.R22.tail_Stop | 完成主流程后改变并保持 Stop | 8 |
-| SELF003.R22.tail_EStopNC | 完成主流程后改变并保持 EStopNC | 8 |
-| SELF003.R22.tail_Reset | 完成主流程后改变并保持 Reset | 8 |
+| SELF003.T1 | Power-up inhibition, reset, run and emergency stop | 6 |
+| SELF003.T2 | Held Start and Stop block reset | 4 |
+| SELF003.T3 | Reject the concrete wrong behavior documented in the 2026-11-06 specification review. | 4 |
+| SELF003.T4 | Verify Reset is rejected while Start or Stop is active, normal Stop restarts without Reset, and strict E-stop unlock sequence (7 steps). | 7 |
+| SELF003.T5 | Confirm Reset pressed alone after unlock does not halt active Run | 4 |
+| SELF003.T6 | Hold Reset while running and restart cleanly after Stop | 5 |
+| SELF003.T7 | After completing main sequence, toggle and hold Start | 8 |
+| SELF003.T8 | After completing main sequence, toggle and hold Stop | 8 |
+| SELF003.T9 | After completing main sequence, toggle and hold EStopNC | 8 |
+| SELF003.T10 | After completing main sequence, toggle and hold Reset | 8 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -9061,7 +9061,7 @@ At scan k, sample every input once, read retained pre-state q[k], execute one tr
 - `qMoving`: Spre.reference.state.mode=1
 - `qComplete`: Spre.reference.state.mode=2
 - `qFault`: Spre.reference.state.mode=3
-- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_SELF004(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+- `CompleteBehavior`: 令(Sref[k+1], E[k])=T_SELF004(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
 mode初值IDLE。优先Jam→FAULT，其次Reset→IDLE，其次旧FAULT保持，其次Stop→IDLE，其次旧MOVING且AtExit→COMPLETE，其次旧IDLE且Start且!AtExit→MOVING，其余保持。Belt/Complete/Fault分别等价于新mode为MOVING/COMPLETE/FAULT。
 - `init`: At the separate pre-invocation initial observation before scan k=0: Spre.mode=IDLE, O_init.Belt=false, O_init.Complete=false, O_init.Fault=false.
 
@@ -9119,10 +9119,10 @@ mode初值IDLE。优先Jam→FAULT，其次Reset→IDLE，其次旧FAULT保持�
       "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
       "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
+      "normalized_spec.py": "3c13590145597ad26cf537ff76c44e22f06abf7720e04d2ea262ac347be9d9cd"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v2"
+    "frozen_sources": "dataset/specifications/normalized_transition"
   },
   "constrained_observed_fields": [
     "Belt",
@@ -9189,7 +9189,7 @@ mode初值IDLE。优先Jam→FAULT，其次Reset→IDLE，其次旧FAULT保持�
 }
 ```
 
-**P_init**
+**SELF004.P_init**
 
 ```text
 init
@@ -9197,7 +9197,7 @@ init
 
 Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
 
-**P1**
+**SELF004.P1**
 
 ```text
 G(Jam -> (Fault & !Belt & !Complete))
@@ -9205,7 +9205,7 @@ G(Jam -> (Fault & !Belt & !Complete))
 
 Jam wins over Reset and Start.
 
-**P2**
+**SELF004.P2**
 
 ```text
 G((qFault & !Reset) -> Fault)
@@ -9213,7 +9213,7 @@ G((qFault & !Reset) -> Fault)
 
 Fault requires an explicit clear operation.
 
-**P3**
+**SELF004.P3**
 
 ```text
 G((!Jam & Reset) -> (!Belt & !Complete & !Fault))
@@ -9221,7 +9221,7 @@ G((!Jam & Reset) -> (!Belt & !Complete & !Fault))
 
 A cleared-jam reset returns IDLE.
 
-**P4**
+**SELF004.P4**
 
 ```text
 G((qIdle & !Jam & !Reset & !Stop & Start & !AtExit) -> Belt)
@@ -9229,7 +9229,7 @@ G((qIdle & !Jam & !Reset & !Stop & Start & !AtExit) -> Belt)
 
 A valid idle start moves the pallet.
 
-**P5**
+**SELF004.P5**
 
 ```text
 G((qMoving & AtExit & !Jam & !Reset & !Stop) -> (Complete & !Belt))
@@ -9237,7 +9237,7 @@ G((qMoving & AtExit & !Jam & !Reset & !Stop) -> (Complete & !Belt))
 
 Exit arrival stops indexing in the same scan.
 
-**P6**
+**SELF004.P6**
 
 ```text
 G(!(Belt & (Complete | Fault)))
@@ -9245,7 +9245,7 @@ G(!(Belt & (Complete | Fault)))
 
 Movement excludes completion and fault outputs.
 
-**P7**
+**SELF004.P7**
 
 ```text
 G(Fault -> (G Fault | (Fault U (!Jam & Reset))))
@@ -9253,7 +9253,7 @@ G(Fault -> (G Fault | (Fault U (!Jam & Reset))))
 
 A latched jam remains until a cleared-jam reset, or forever if no such reset occurs; this does not assume eventual reset.
 
-**P8**
+**SELF004.P8**
 
 ```text
 G((!Jam & !Reset & !qFault & Stop -> (!Belt & !Complete & !Fault)) & (qIdle & !Jam & !Reset & (!Start | AtExit) -> (!Belt & !Complete & !Fault)) & (qMoving & !Jam & !Reset & !Stop & !AtExit -> (Belt & !Complete & !Fault)) & (qComplete & !Jam & !Reset & !Stop -> (Complete & !Belt & !Fault)))
@@ -9261,7 +9261,7 @@ G((!Jam & !Reset & !qFault & Stop -> (!Belt & !Complete & !Fault)) & (qIdle & !J
 
 Prevents degenerate implementations that refuse to stop or drop MOVING/COMPLETE prematurely.
 
-**P9**
+**SELF004.P9**
 
 ```text
 G(!(Belt & Complete) & (!(Jam | qFault) -> !Fault) & ((qIdle | qFault | Stop | Reset) -> !Complete))
@@ -9269,10 +9269,10 @@ G(!(Belt & Complete) & (!(Jam | qFault) -> !Fault) & ((qIdle | qFault | Stop | R
 
 Eliminates remaining false-positive satisfaction paths on P1..P8.
 
-**SELF004.V2.COMPLETE**
+**SELF004.COMPLETE**
 
 ```text
-G(CompleteBehaviorV2)
+G(CompleteBehavior)
 ```
 
 Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
@@ -9281,15 +9281,15 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 
 | Case | Purpose | Steps |
 | --- | --- | ---: |
-| index | One pallet and retained completion | 5 |
-| jam | Jam priority, retained fault and safe reset | 6 |
-| SELF004.boundary_stop_and_fault | SELF004.boundary_stop_and_fault | 10 |
-| SELF004.R22.tail_Start | 完成主流程后改变并保持 Start | 7 |
-| SELF004.R22.tail_Stop | 完成主流程后改变并保持 Stop | 7 |
-| SELF004.R22.tail_AtExit | 完成主流程后改变并保持 AtExit | 7 |
-| SELF004.R22.tail_Jam | 完成主流程后改变并保持 Jam | 7 |
-| SELF004.R22.tail_Reset | 完成主流程后改变并保持 Reset | 7 |
-| SELF004.R22.priority_recovery | 动作中停止／矛盾信号与恢复 | 5 |
+| SELF004.T1 | One pallet and retained completion | 5 |
+| SELF004.T2 | Jam priority, retained fault and safe reset | 6 |
+| SELF004.T3 | Verify Stop overrides AtExit during MOVING, clean stop at COMPLETE, and Stop held in FAULT preserves alarm until Reset (10 steps). | 10 |
+| SELF004.T4 | After completing main sequence, toggle and hold Start | 7 |
+| SELF004.T5 | After completing main sequence, toggle and hold Stop | 7 |
+| SELF004.T6 | After completing main sequence, toggle and hold AtExit | 7 |
+| SELF004.T7 | After completing main sequence, toggle and hold Jam | 7 |
+| SELF004.T8 | After completing main sequence, toggle and hold Reset | 7 |
+| SELF004.T9 | Mid-action Stop or conflicting safety signals followed by clean recovery | 5 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -9391,7 +9391,7 @@ At scan k, sample every input once, read retained pre-state q[k], execute one tr
 - `qAmber`: Spre.reference.state.phase=2
 - `qPhase`: Spre.reference.state.phase
 - `oneColor`: int(O[k].Red)+int(O[k].Green)+int(O[k].Amber)=1
-- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_SELF005(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+- `CompleteBehavior`: 令(Sref[k+1], E[k])=T_SELF005(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
 phase=0/age=0初值。!Enable时重置0/0；否则Tick时age加1，到当前phase的阈值(2,3,1)则phase=(phase+1)%3且age=0；其他保持。Red/Green/Amber分别等价于新phase=0/1/2，Phase等于新phase。Tick是逻辑调用计数，不是物理时间。
 - `init`: At the separate pre-invocation initial observation before scan k=0: Spre.phase=0, O_init.Red=true, O_init.Green=false, O_init.Amber=false, O_init.Phase=0.
 
@@ -9451,10 +9451,10 @@ phase=0/age=0初值。!Enable时重置0/0；否则Tick时age加1，到当前phas
       "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
       "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
+      "normalized_spec.py": "3c13590145597ad26cf537ff76c44e22f06abf7720e04d2ea262ac347be9d9cd"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v2"
+    "frozen_sources": "dataset/specifications/normalized_transition"
   },
   "constrained_observed_fields": [
     "Amber",
@@ -9523,7 +9523,7 @@ phase=0/age=0初值。!Enable时重置0/0；否则Tick时age加1，到当前phas
 }
 ```
 
-**P_init**
+**SELF005.P_init**
 
 ```text
 init
@@ -9531,7 +9531,7 @@ init
 
 Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
 
-**P1**
+**SELF005.P1**
 
 ```text
 G(oneColor)
@@ -9539,7 +9539,7 @@ G(oneColor)
 
 The lamp encoding is one-hot.
 
-**P2**
+**SELF005.P2**
 
 ```text
 G(!Enable -> (Red & !Green & !Amber & Phase=0))
@@ -9547,7 +9547,7 @@ G(!Enable -> (Red & !Green & !Amber & Phase=0))
 
 When Enable is FALSE, immediately force Red (Phase=0) with age reset to 0.
 
-**P3**
+**SELF005.P3**
 
 ```text
 G((Enable & !Tick) -> (Phase = qPhase))
@@ -9555,7 +9555,7 @@ G((Enable & !Tick) -> (Phase = qPhase))
 
 No tick preserves phase.
 
-**P4**
+**SELF005.P4**
 
 ```text
 G((Enable & Tick & qRedLast) -> Green)
@@ -9563,7 +9563,7 @@ G((Enable & Tick & qRedLast) -> Green)
 
 The second red tick enters green.
 
-**P5**
+**SELF005.P5**
 
 ```text
 G((Enable & Tick & qGreenLast) -> Amber)
@@ -9571,7 +9571,7 @@ G((Enable & Tick & qGreenLast) -> Amber)
 
 The third green tick enters amber.
 
-**P6**
+**SELF005.P6**
 
 ```text
 G((Enable & Tick & qAmber) -> Red)
@@ -9579,7 +9579,7 @@ G((Enable & Tick & qAmber) -> Red)
 
 One amber tick returns red.
 
-**P7**
+**SELF005.P7**
 
 ```text
 (G Enable & G(F Tick)) -> (G(F Red) & G(F Green) & G(F Amber))
@@ -9587,7 +9587,7 @@ One amber tick returns red.
 
 Persistent enable plus infinitely many ticks makes every phase recur; finite traces cannot prove this liveness property.
 
-**P8**
+**SELF005.P8**
 
 ```text
 G((Red <-> Phase=0) & (Green <-> Phase=1) & (Amber <-> Phase=2) & (Phase>=0 & Phase<=2))
@@ -9595,7 +9595,7 @@ G((Red <-> Phase=0) & (Green <-> Phase=1) & (Amber <-> Phase=2) & (Phase>=0 & Ph
 
 Previously Phase was left unconstrained except for holding on !Tick.
 
-**P9**
+**SELF005.P9**
 
 ```text
 G((Enable & Tick & !qRedLast & !qGreenLast & !qAmber) -> (Phase = qPhase))
@@ -9603,10 +9603,10 @@ G((Enable & Tick & !qRedLast & !qGreenLast & !qAmber) -> (Phase = qPhase))
 
 Prevents single-tick skipping through Red (needs 2 ticks) or Green (needs 3 ticks).
 
-**SELF005.V2.COMPLETE**
+**SELF005.COMPLETE**
 
 ```text
-G(CompleteBehaviorV2)
+G(CompleteBehavior)
 ```
 
 Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
@@ -9615,13 +9615,13 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 
 | Case | Purpose | Steps |
 | --- | --- | ---: |
-| cycle | Full phase duration boundaries and pause | 7 |
-| disable | Disable clears elapsed tick progress | 5 |
-| SELF005.boundary_pause_resume | SELF005.boundary_pause_resume | 10 |
-| SELF005.R22.green_pause | 绿灯阶段暂停Tick应保持颜色 | 4 |
-| SELF005.R22.normal_changes | 完整两轮各相位暂停并保留计龄 | 22 |
-| SELF005.R22.tail_Enable | 完成主流程后改变并保持 Enable | 9 |
-| SELF005.R22.tail_Tick | 完成主流程后改变并保持 Tick | 9 |
+| SELF005.T1 | Full phase duration boundaries and pause | 7 |
+| SELF005.T2 | Disable clears elapsed tick progress | 5 |
+| SELF005.T3 | Test disable reset on RED step 1 followed by resume, double Tick and pause progression into AMBER, and entering a second cycle (10 steps). | 10 |
+| SELF005.T4 | Pause Tick pulses during GREEN phase preserves active Green lamp output | 4 |
+| SELF005.T5 | Pause Tick across every phase in two full traffic-light cycles while retaining phase age | 22 |
+| SELF005.T6 | After completing main sequence, toggle and hold Enable | 9 |
+| SELF005.T7 | After completing main sequence, toggle and hold Tick | 9 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -9714,7 +9714,7 @@ At scan k, sample every input once, read retained pre-state q[k], execute one tr
 - `first`: k=0; first invocation, not the pre-invocation observation
 - `qFill`: {"kind": "previous_observed_output", "source": "O[k-1].Fill", "initial": false, "update": "After comparing scan k, store ACTUAL O[k].Fill; never write into reference state."}
 - `middle`: LowWet & !HighWet.
-- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_SELF006(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+- `CompleteBehavior`: 令(Sref[k+1], E[k])=T_SELF006(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
 fill初值FALSE；sensorFault=HighWet & !LowWet。sensorFault或Inhibit或HighWet时fillAfter=FALSE，否则!LowWet时TRUE，其余保持；实际Fill/SensorFault分别比较这两个期望值。
 - `init`: At the separate pre-invocation initial observation before scan k=0: O_init.Fill=false, O_init.SensorFault=false.
 
@@ -9771,10 +9771,10 @@ fill初值FALSE；sensorFault=HighWet & !LowWet。sensorFault或Inhibit或HighWe
       "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
       "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
+      "normalized_spec.py": "3c13590145597ad26cf537ff76c44e22f06abf7720e04d2ea262ac347be9d9cd"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v2"
+    "frozen_sources": "dataset/specifications/normalized_transition"
   },
   "constrained_observed_fields": [
     "Fill",
@@ -9836,7 +9836,7 @@ fill初值FALSE；sensorFault=HighWet & !LowWet。sensorFault或Inhibit或HighWe
 }
 ```
 
-**P_init**
+**SELF006.P_init**
 
 ```text
 init
@@ -9844,7 +9844,7 @@ init
 
 Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
 
-**P1**
+**SELF006.P1**
 
 ```text
 G(SensorFault <-> (HighWet & !LowWet))
@@ -9852,7 +9852,7 @@ G(SensorFault <-> (HighWet & !LowWet))
 
 Fault exactly identifies inconsistent switches.
 
-**P2**
+**SELF006.P2**
 
 ```text
 G((SensorFault | Inhibit | HighWet) -> !Fill)
@@ -9860,7 +9860,7 @@ G((SensorFault | Inhibit | HighWet) -> !Fill)
 
 Inhibit, fault and full tank force shutoff.
 
-**P3**
+**SELF006.P3**
 
 ```text
 G((!LowWet & !HighWet & !Inhibit) -> Fill)
@@ -9868,7 +9868,7 @@ G((!LowWet & !HighWet & !Inhibit) -> Fill)
 
 A low tank starts filling.
 
-**P4**
+**SELF006.P4**
 
 ```text
 G((middle & !Inhibit) -> (Fill <-> qFill))
@@ -9876,7 +9876,7 @@ G((middle & !Inhibit) -> (Fill <-> qFill))
 
 The middle band retains the prior command.
 
-**P5**
+**SELF006.P5**
 
 ```text
 G(first -> !qFill)
@@ -9884,10 +9884,10 @@ G(first -> !qFill)
 
 No retained filling command exists on reset.
 
-**SELF006.V2.COMPLETE**
+**SELF006.COMPLETE**
 
 ```text
-G(CompleteBehaviorV2)
+G(CompleteBehavior)
 ```
 
 Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
@@ -9896,13 +9896,13 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 
 | Case | Purpose | Steps |
 | --- | --- | ---: |
-| hysteresis | Fill cycle across both switching thresholds | 5 |
-| fault_inhibit | Invalid switch pair and inhibit recovery | 5 |
-| SELF006.boundary_fault_recovery | SELF006.boundary_fault_recovery | 5 |
-| SELF006.R22.tail_LowWet | 完成主流程后改变并保持 LowWet | 7 |
-| SELF006.R22.tail_HighWet | 完成主流程后改变并保持 HighWet | 7 |
-| SELF006.R22.tail_Inhibit | 完成主流程后改变并保持 Inhibit | 7 |
-| SELF006.R22.priority_recovery | 动作中停止／矛盾信号与恢复 | 3 |
+| SELF006.T1 | Fill cycle across both switching thresholds | 5 |
+| SELF006.T2 | Invalid switch pair and inhibit recovery | 5 |
+| SELF006.T3 | Verify returning from simultaneous conflicting float-switch Fault + Inhibit to mid-band keeps Fill=FALSE without spurious pump activation (5 steps). | 5 |
+| SELF006.T4 | After completing main sequence, toggle and hold LowWet | 7 |
+| SELF006.T5 | After completing main sequence, toggle and hold HighWet | 7 |
+| SELF006.T6 | After completing main sequence, toggle and hold Inhibit | 7 |
+| SELF006.T7 | Mid-action Stop or conflicting safety signals followed by clean recovery | 3 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -9999,7 +9999,7 @@ At scan k, sample every input once, read retained pre-state q[k], execute one tr
 - `first`: k=0; first invocation, not the pre-invocation observation
 - `qLeadA`: {"kind": "previous_observed_output", "source": "O[k-1].LeadA", "initial": true, "update": "After comparing scan k, store ACTUAL O[k].LeadA; never write into reference state."}
 - `completedServed`: Spre.reference.state.demand AND NOT I[k].Demand AND Spre.reference.state.served
-- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_SELF007(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+- `CompleteBehavior`: 令(Sref[k+1], E[k])=T_SELF007(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
 leadA=TRUE/served=FALSE/previousDemand=FALSE初值。Demand假时双泵关，仅previousDemand & served时轮换leadA，然后清served；Demand真时由leadA选择无故障主泵，主故障则无故障备用，双故障均关；served累计本需求段任一泵运行。previousDemand每拍=Demand，LeadA比较转移后偏好。
 - `init`: At the separate pre-invocation initial observation before scan k=0: O_init.PumpA=false, O_init.PumpB=false, O_init.LeadA=true.
 
@@ -10059,10 +10059,10 @@ leadA=TRUE/served=FALSE/previousDemand=FALSE初值。Demand假时双泵关，仅
       "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
       "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
+      "normalized_spec.py": "3c13590145597ad26cf537ff76c44e22f06abf7720e04d2ea262ac347be9d9cd"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v2"
+    "frozen_sources": "dataset/specifications/normalized_transition"
   },
   "constrained_observed_fields": [
     "LeadA",
@@ -10125,7 +10125,7 @@ leadA=TRUE/served=FALSE/previousDemand=FALSE初值。Demand假时双泵关，仅
 }
 ```
 
-**P_init**
+**SELF007.P_init**
 
 ```text
 init
@@ -10133,7 +10133,7 @@ init
 
 Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
 
-**P1**
+**SELF007.P1**
 
 ```text
 G(!(PumpA & PumpB))
@@ -10141,7 +10141,7 @@ G(!(PumpA & PumpB))
 
 At most one pump runs.
 
-**P2**
+**SELF007.P2**
 
 ```text
 G((!Demand | FaultA) -> !PumpA)
@@ -10149,7 +10149,7 @@ G((!Demand | FaultA) -> !PumpA)
 
 A cannot run without demand or with its fault.
 
-**P3**
+**SELF007.P3**
 
 ```text
 G((!Demand | FaultB) -> !PumpB)
@@ -10157,7 +10157,7 @@ G((!Demand | FaultB) -> !PumpB)
 
 B cannot run without demand or with its fault.
 
-**P4**
+**SELF007.P4**
 
 ```text
 G((Demand & LeadA & !FaultA) -> PumpA)
@@ -10165,7 +10165,7 @@ G((Demand & LeadA & !FaultA) -> PumpA)
 
 A is selected when it is the healthy lead.
 
-**P5**
+**SELF007.P5**
 
 ```text
 G((Demand & !LeadA & !FaultB) -> PumpB)
@@ -10173,7 +10173,7 @@ G((Demand & !LeadA & !FaultB) -> PumpB)
 
 B is selected when it is the healthy lead.
 
-**P6**
+**SELF007.P6**
 
 ```text
 G(completedServed -> (LeadA <-> !qLeadA))
@@ -10181,7 +10181,7 @@ G(completedServed -> (LeadA <-> !qLeadA))
 
 Toggle once on a served demand's falling edge.
 
-**P7**
+**SELF007.P7**
 
 ```text
 G(!completedServed -> (LeadA <-> qLeadA))
@@ -10189,15 +10189,7 @@ G(!completedServed -> (LeadA <-> qLeadA))
 
 Unserved episodes and held demand preserve preference.
 
-**SELF007.V2.COMPLETE**
-
-```text
-G(CompleteBehaviorV2)
-```
-
-Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
-
-**SELF007.V2.1**
+**SELF007.P8**
 
 ```text
 G((Demand & FaultA & !FaultB) -> PumpB)
@@ -10205,7 +10197,7 @@ G((Demand & FaultA & !FaultB) -> PumpB)
 
 Explicit correction of a demonstrated omission.
 
-**SELF007.V2.2**
+**SELF007.P9**
 
 ```text
 G((Demand & FaultB & !FaultA) -> PumpA)
@@ -10213,19 +10205,27 @@ G((Demand & FaultB & !FaultA) -> PumpA)
 
 Explicit correction of a demonstrated omission.
 
+**SELF007.COMPLETE**
+
+```text
+G(CompleteBehavior)
+```
+
+Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
+
 ### Fixed test index
 
 | Case | Purpose | Steps |
 | --- | --- | ---: |
-| alternate | Served episodes alternate preference | 7 |
-| fallback | Fault fallback, unserved episode and recovery | 5 |
-| V2_omission_regression | Reject the concrete wrong behavior documented in the 2026-11-06 specification review. | 3 |
-| SELF007.boundary_alternation_edges | SELF007.boundary_alternation_edges | 6 |
-| SELF007.R22.served_loss | 本轮曾经服务，随后双故障，需求结束仍应轮换主泵 | 3 |
-| SELF007.R22.normal_changes | A/B双向回退、曾服务后双故障仍轮换 | 9 |
-| SELF007.R22.tail_Demand | 完成主流程后改变并保持 Demand | 9 |
-| SELF007.R22.tail_FaultA | 完成主流程后改变并保持 FaultA | 9 |
-| SELF007.R22.tail_FaultB | 完成主流程后改变并保持 FaultB | 9 |
+| SELF007.T1 | Served episodes alternate preference | 7 |
+| SELF007.T2 | Fault fallback, unserved episode and recovery | 5 |
+| SELF007.T3 | Reject the concrete wrong behavior documented in the 2026-11-06 specification review. | 3 |
+| SELF007.T4 | Verify that when LeadA=FALSE and Pump B faults causing Pump A fallback, subsequent dual fault then Demand drop still alternates LeadA cleanly (6 steps). | 6 |
+| SELF007.T5 | Alternate lead pump at end of demand even after fallback service ended in dual fault | 3 |
+| SELF007.T6 | Bidirectional A/B fault fallback and lead pump alternation after served episode | 9 |
+| SELF007.T7 | After completing main sequence, toggle and hold Demand | 9 |
+| SELF007.T8 | After completing main sequence, toggle and hold FaultA | 9 |
+| SELF007.T9 | After completing main sequence, toggle and hold FaultB | 9 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -10316,7 +10316,7 @@ At scan k, sample every input once, read retained pre-state q[k], execute one tr
 - `qualified`: Count >= Preset and Preset is valid.
 - `qCount`: {"kind": "previous_observed_output", "source": "O[k-1].Count", "initial": 0, "update": "After comparing scan k, store ACTUAL O[k].Count; never write into reference state."}
 - `nextCount`: min(qCount+1, Preset) as an integer expression.
-- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_SELF008(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+- `CompleteBehavior`: 令(Sref[k+1], E[k])=T_SELF008(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
 count初值0；Preset有效域1..5。!Request或Trip或非法Preset时countAfter=0，否则min(countBefore+1,Preset)；Count比较该值，Ready=有效且countAfter>=Preset。
 - `init`: At the separate pre-invocation initial observation before scan k=0: O_init.Ready=false, O_init.Count=0.
 
@@ -10373,10 +10373,10 @@ count初值0；Preset有效域1..5。!Request或Trip或非法Preset时countAfter
       "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
       "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
+      "normalized_spec.py": "3c13590145597ad26cf537ff76c44e22f06abf7720e04d2ea262ac347be9d9cd"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v2"
+    "frozen_sources": "dataset/specifications/normalized_transition"
   },
   "constrained_observed_fields": [
     "Count",
@@ -10438,7 +10438,7 @@ count初值0；Preset有效域1..5。!Request或Trip或非法Preset时countAfter
 }
 ```
 
-**P_init**
+**SELF008.P_init**
 
 ```text
 init
@@ -10446,7 +10446,7 @@ init
 
 Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
 
-**P1**
+**SELF008.P1**
 
 ```text
 G((Trip | !Request | invalid) -> (!Ready & (Count = 0)))
@@ -10454,7 +10454,7 @@ G((Trip | !Request | invalid) -> (!Ready & (Count = 0)))
 
 Every interruption clears qualification immediately.
 
-**P2**
+**SELF008.P2**
 
 ```text
 G((Request & !Trip & !invalid) -> (Count = nextCount))
@@ -10462,7 +10462,7 @@ G((Request & !Trip & !invalid) -> (Count = nextCount))
 
 Healthy scans increment and saturate precisely.
 
-**P3**
+**SELF008.P3**
 
 ```text
 G(Ready <-> qualified)
@@ -10470,7 +10470,7 @@ G(Ready <-> qualified)
 
 The indication agrees with the post-scan count.
 
-**P4**
+**SELF008.P4**
 
 ```text
 G(!invalid -> ((Count >= 0) & (Count <= Preset)))
@@ -10478,7 +10478,7 @@ G(!invalid -> ((Count >= 0) & (Count <= Preset)))
 
 The counter stays within bounds.
 
-**P5**
+**SELF008.P5**
 
 ```text
 (G(Request & !Trip & !invalid)) -> F Ready
@@ -10486,10 +10486,10 @@ The counter stays within bounds.
 
 A perpetually valid request qualifies within at most five scans, even if valid Preset varies.
 
-**SELF008.V2.COMPLETE**
+**SELF008.COMPLETE**
 
 ```text
-G(CompleteBehaviorV2)
+G(CompleteBehavior)
 ```
 
 Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
@@ -10498,13 +10498,13 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 
 | Case | Purpose | Steps |
 | --- | --- | ---: |
-| delay | Three scans qualify, hold saturates, trip clears | 6 |
-| bounds | Invalid presets and immediate reduced threshold | 5 |
-| SELF008.boundary_preset_resize | SELF008.boundary_preset_resize | 7 |
-| SELF008.R22.normal_changes | Ready后提高阈值、降低阈值与非法清零 | 5 |
-| SELF008.R22.tail_Request | 完成主流程后改变并保持 Request | 8 |
-| SELF008.R22.tail_Trip | 完成主流程后改变并保持 Trip | 8 |
-| SELF008.boundary_preset_hold_and_zero | Invalid presets (0 and 6) force zero clear, valid recovery counts to Preset=2, and live Preset reduction saturates Count while staying Ready. | 6 |
+| SELF008.T1 | Three scans qualify, hold saturates, trip clears | 6 |
+| SELF008.T2 | Invalid presets and immediate reduced threshold | 5 |
+| SELF008.T3 | Verify raising Preset while Ready revokes Ready and keeps count, lowering Preset clamps count cleanly, and invalid Preset=255 resets and recovers (7 steps). | 7 |
+| SELF008.T4 | Raise/lower Preset around Ready and zero count on invalid Preset input | 5 |
+| SELF008.T5 | After completing main sequence, toggle and hold Request | 8 |
+| SELF008.T6 | After completing main sequence, toggle and hold Trip | 8 |
+| SELF008.T7 | Invalid presets (0 and 6) force zero clear, valid recovery counts to Preset=2, and live Preset reduction saturates Count while staying Ready. | 6 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -10601,7 +10601,7 @@ At scan k, sample every input once, read retained pre-state q[k], execute one tr
 - `qPulse`: {"kind": "previous_sampled_input", "source": "I[k-1].PartPulse", "initial": false, "update": "After EVERY scan k, including invalid/reset/stop, store I[k].PartPulse"}
 - `qCount`: {"kind": "previous_observed_output", "source": "O[k-1].Count", "initial": 0, "update": "After comparing scan k, store ACTUAL O[k].Count; never write into reference state."}
 - `countAfterEdge`: min(qCount + (1 if rise else 0), Target).
-- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_SELF009(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+- `CompleteBehavior`: 令(Sref[k+1], E[k])=T_SELF009(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
 count=0/pulsePrev=FALSE初值。invalid=Target不在1..20；invalid或Reset时countAfter=0，否则min(countBefore+int(PartPulse & !pulsePrev),Target)。Complete=!invalid & !Reset & countAfter>=Target，Error=invalid；pulsePrev每拍更新为PartPulse。
 - `init`: At the separate pre-invocation initial observation before scan k=0: O_init.Count=0, O_init.Complete=false, O_init.Error=false.
 
@@ -10660,10 +10660,10 @@ count=0/pulsePrev=FALSE初值。invalid=Target不在1..20；invalid或Reset时co
       "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
       "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
+      "normalized_spec.py": "3c13590145597ad26cf537ff76c44e22f06abf7720e04d2ea262ac347be9d9cd"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v2"
+    "frozen_sources": "dataset/specifications/normalized_transition"
   },
   "constrained_observed_fields": [
     "Complete",
@@ -10732,7 +10732,7 @@ count=0/pulsePrev=FALSE初值。invalid=Target不在1..20；invalid或Reset时co
 }
 ```
 
-**P_init**
+**SELF009.P_init**
 
 ```text
 init
@@ -10740,7 +10740,7 @@ init
 
 Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
 
-**P1**
+**SELF009.P1**
 
 ```text
 G(Error <-> invalid)
@@ -10748,7 +10748,7 @@ G(Error <-> invalid)
 
 Target validation is exact.
 
-**P2**
+**SELF009.P2**
 
 ```text
 G((Reset | invalid) -> ((Count = 0) & !Complete))
@@ -10756,7 +10756,7 @@ G((Reset | invalid) -> ((Count = 0) & !Complete))
 
 Reset or invalid target clears the batch.
 
-**P3**
+**SELF009.P3**
 
 ```text
 G((!Reset & !invalid) -> (Count = countAfterEdge))
@@ -10764,7 +10764,7 @@ G((!Reset & !invalid) -> (Count = countAfterEdge))
 
 Only rising edges add an item, with saturation.
 
-**P4**
+**SELF009.P4**
 
 ```text
 G((!Reset & !invalid) -> (Complete <-> (Count >= Target)))
@@ -10772,7 +10772,7 @@ G((!Reset & !invalid) -> (Complete <-> (Count >= Target)))
 
 Complete reports the post-scan count.
 
-**P5**
+**SELF009.P5**
 
 ```text
 G(X(qPulse) <-> PartPulse)
@@ -10780,10 +10780,10 @@ G(X(qPulse) <-> PartPulse)
 
 Edge memory samples the pulse even during reset.
 
-**SELF009.V2.COMPLETE**
+**SELF009.COMPLETE**
 
 ```text
-G(CompleteBehaviorV2)
+G(CompleteBehavior)
 ```
 
 Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
@@ -10792,13 +10792,13 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 
 | Case | Purpose | Steps |
 | --- | --- | ---: |
-| edges | Held pulses count once and target saturates | 7 |
-| reset_edge | Reset while pulse is high suppresses phantom count | 6 |
-| SELF009.boundary_target_and_error | SELF009.boundary_target_and_error | 9 |
-| SELF009.R22.target_latch | 计数完成后提高Target，Complete应重新变假 | 6 |
-| SELF009.R22.normal_changes | 动态目标、上限20及非法后高脉冲恢复 | 10 |
-| SELF009.R22.tail_PartPulse | 完成主流程后改变并保持 PartPulse | 9 |
-| SELF009.R22.tail_Reset | 完成主流程后改变并保持 Reset | 9 |
+| SELF009.T1 | Held pulses count once and target saturates | 7 |
+| SELF009.T2 | Reset while pulse is high suppresses phantom count | 6 |
+| SELF009.T3 | Verify holding PartPulse=TRUE during invalid Target=255 still latches pulse memory so recovery while held avoids a phantom count (9 steps). | 9 |
+| SELF009.T4 | Drop Complete output back to FALSE when Target is raised past current count | 6 |
+| SELF009.T5 | Dynamic Target changes, count ceiling 20, and held-pulse recovery after invalid Target | 10 |
+| SELF009.T6 | After completing main sequence, toggle and hold PartPulse | 9 |
+| SELF009.T7 | After completing main sequence, toggle and hold Reset | 9 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -10897,7 +10897,7 @@ At scan k, sample every input once, read retained pre-state q[k], execute one tr
 - `qFault`: {"kind": "previous_sampled_input", "source": "I[k-1].Fault", "initial": false, "update": "After EVERY scan k, including invalid/reset/stop, store I[k].Fault"}
 - `qAlarm`: {"kind": "previous_observed_output", "source": "O[k-1].Alarm", "initial": false, "update": "After comparing scan k, store ACTUAL O[k].Alarm; never write into reference state."}
 - `qAck`: {"kind": "previous_observed_output", "source": "O[k-1].Acknowledged", "initial": false, "update": "After comparing scan k, store ACTUAL O[k].Acknowledged; never write into reference state."}
-- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_SELF010(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+- `CompleteBehavior`: 令(Sref[k+1], E[k])=T_SELF010(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
 latched/ack/previousFault初值FALSE。Reset & !Fault时清latched/ack；否则Fault时置latched，若Fault新沿清ack、否则Ack置ack；否则旧latched且Ack置ack，其余保持。Alarm=latchedAfter，Acknowledged=ackAfter，Horn=latchedAfter & !ackAfter。previousFault每拍=Fault。
 - `init`: At the separate pre-invocation initial observation before scan k=0: O_init.Alarm=false, O_init.Acknowledged=false, O_init.Horn=false.
 
@@ -10957,10 +10957,10 @@ latched/ack/previousFault初值FALSE。Reset & !Fault时清latched/ack；否则F
       "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
       "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
+      "normalized_spec.py": "3c13590145597ad26cf537ff76c44e22f06abf7720e04d2ea262ac347be9d9cd"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v2"
+    "frozen_sources": "dataset/specifications/normalized_transition"
   },
   "constrained_observed_fields": [
     "Acknowledged",
@@ -11035,7 +11035,7 @@ latched/ack/previousFault初值FALSE。Reset & !Fault时清latched/ack；否则F
 }
 ```
 
-**P_init**
+**SELF010.P_init**
 
 ```text
 init
@@ -11043,7 +11043,7 @@ init
 
 Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
 
-**P1**
+**SELF010.P1**
 
 ```text
 G(Horn <-> (Alarm & !Acknowledged))
@@ -11051,7 +11051,7 @@ G(Horn <-> (Alarm & !Acknowledged))
 
 Horn follows the latched acknowledgment state.
 
-**P2**
+**SELF010.P2**
 
 ```text
 G(Fault -> Alarm)
@@ -11059,7 +11059,7 @@ G(Fault -> Alarm)
 
 A present fault cannot be reset away.
 
-**P3**
+**SELF010.P3**
 
 ```text
 G(rise -> (Alarm & !Acknowledged & Horn))
@@ -11067,7 +11067,7 @@ G(rise -> (Alarm & !Acknowledged & Horn))
 
 Every new event annunciates despite simultaneous Ack.
 
-**P4**
+**SELF010.P4**
 
 ```text
 G((Reset & !Fault) -> (!Alarm & !Acknowledged & !Horn))
@@ -11075,7 +11075,7 @@ G((Reset & !Fault) -> (!Alarm & !Acknowledged & !Horn))
 
 Reset clears a removed fault.
 
-**P5**
+**SELF010.P5**
 
 ```text
 G((!Fault & !Reset & qAlarm) -> Alarm)
@@ -11083,7 +11083,7 @@ G((!Fault & !Reset & qAlarm) -> Alarm)
 
 Fault disappearance does not clear the visible alarm.
 
-**P6**
+**SELF010.P6**
 
 ```text
 G((!rise & !(Reset & !Fault) & Ack & qAlarm) -> Acknowledged)
@@ -11091,7 +11091,7 @@ G((!rise & !(Reset & !Fault) & Ack & qAlarm) -> Acknowledged)
 
 Acknowledgment silences a retained event.
 
-**P7**
+**SELF010.P7**
 
 ```text
 G(!Fault & !qAlarm -> (!Alarm & !Acknowledged & !Horn))
@@ -11099,18 +11099,18 @@ G(!Fault & !qAlarm -> (!Alarm & !Acknowledged & !Horn))
 
 Forbids spontaneous alarm or pre-acknowledgment on idle scans.
 
-**P8**
+**SELF010.P8**
 
 ```text
 G((qAlarm & !(Reset & !Fault) & !rise & !Ack) -> (Acknowledged <-> qAck))
 ```
 
-Preserves acknowledgment retention without requiring CompleteBehaviorV2.
+Preserves acknowledgment retention without requiring CompleteBehavior.
 
-**SELF010.V2.COMPLETE**
+**SELF010.COMPLETE**
 
 ```text
-G(CompleteBehaviorV2)
+G(CompleteBehavior)
 ```
 
 Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
@@ -11119,14 +11119,14 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 
 | Case | Purpose | Steps |
 | --- | --- | ---: |
-| annunciate | Acknowledge, fault clear and new event | 6 |
-| reset_priority | Present fault blocks reset; removed fault reset wins | 3 |
-| V2_omission_regression | Reject the concrete wrong behavior documented in the 2026-11-06 specification review. | 3 |
-| SELF010.boundary_ack_and_horn | SELF010.boundary_ack_and_horn | 7 |
-| SELF010.R22.normal_changes | 故障消失后首次确认、复位与空闲保持 | 7 |
-| SELF010.R22.tail_Fault | 完成主流程后改变并保持 Fault | 8 |
-| SELF010.R22.tail_Ack | 完成主流程后改变并保持 Ack | 8 |
-| SELF010.R22.tail_Reset | 完成主流程后改变并保持 Reset | 8 |
+| SELF010.T1 | Acknowledge, fault clear and new event | 6 |
+| SELF010.T2 | Present fault blocks reset; removed fault reset wins | 3 |
+| SELF010.T3 | Reject the concrete wrong behavior documented in the 2026-11-06 specification review. | 3 |
+| SELF010.T4 | Verify Ack silences horn even after fault clears, a new Fault rising edge overrides held Ack to re-sound horn, and idle Ack is ignored (7 steps). | 7 |
+| SELF010.T5 | Acknowledge after fault clears, reset alarm latch, and preserve idle silence | 7 |
+| SELF010.T6 | After completing main sequence, toggle and hold Fault | 8 |
+| SELF010.T7 | After completing main sequence, toggle and hold Ack | 8 |
+| SELF010.T8 | After completing main sequence, toggle and hold Reset | 8 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -11248,7 +11248,7 @@ At scan k, sample every input once, read retained pre-state q[k], execute one tr
 - `qDone`: Spre.reference.state.mode=5
 - `normal`: !Stop & !Reset.
 - `oneAction`: int(O[k].Extend)+int(O[k].Clamp)+int(O[k].Release)+int(O[k].Retract)<=1
-- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_SELF011(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+- `CompleteBehavior`: 令(Sref[k+1], E[k])=T_SELF011(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
 mode初值IDLE。Stop或Reset优先回IDLE；IDLE且Start & RetractDone进EXTEND；EXTEND/CLAMP/RELEASE/RETRACT仅各自匹配完成信号推进一阶；DONE保持。四动作输出分别等价于转移后对应阶段，Busy等价于阶段1..4，Done等价于阶段5。
 - `init`: At the separate pre-invocation initial observation before scan k=0: Spre.mode=IDLE, O_init.Extend=false, O_init.Clamp=false, O_init.Release=false, O_init.Retract=false, O_init.Busy=false, O_init.Done=false.
 
@@ -11309,10 +11309,10 @@ mode初值IDLE。Stop或Reset优先回IDLE；IDLE且Start & RetractDone进EXTEND
       "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
       "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
+      "normalized_spec.py": "3c13590145597ad26cf537ff76c44e22f06abf7720e04d2ea262ac347be9d9cd"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v2"
+    "frozen_sources": "dataset/specifications/normalized_transition"
   },
   "constrained_observed_fields": [
     "Busy",
@@ -11386,7 +11386,7 @@ mode初值IDLE。Stop或Reset优先回IDLE；IDLE且Start & RetractDone进EXTEND
 }
 ```
 
-**P_init**
+**SELF011.P_init**
 
 ```text
 init
@@ -11394,7 +11394,7 @@ init
 
 Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
 
-**P1**
+**SELF011.P1**
 
 ```text
 G(oneAction)
@@ -11402,7 +11402,7 @@ G(oneAction)
 
 Action commands never overlap.
 
-**P2**
+**SELF011.P2**
 
 ```text
 G((Stop | Reset) -> (!Busy & !Done & !Extend & !Clamp & !Release & !Retract))
@@ -11410,7 +11410,7 @@ G((Stop | Reset) -> (!Busy & !Done & !Extend & !Clamp & !Release & !Retract))
 
 Abort clears every command immediately.
 
-**P3**
+**SELF011.P3**
 
 ```text
 G((normal & qIdle & Start & RetractDone) -> Extend)
@@ -11418,7 +11418,7 @@ G((normal & qIdle & Start & RetractDone) -> Extend)
 
 Home-qualified Start enters only the first action.
 
-**P4**
+**SELF011.P4**
 
 ```text
 G((normal & qExtend & ExtendDone) -> Clamp)
@@ -11426,7 +11426,7 @@ G((normal & qExtend & ExtendDone) -> Clamp)
 
 Extension completion enters clamp.
 
-**P5**
+**SELF011.P5**
 
 ```text
 G((normal & qClamp & ClampDone) -> Release)
@@ -11434,7 +11434,7 @@ G((normal & qClamp & ClampDone) -> Release)
 
 Clamp completion enters release.
 
-**P6**
+**SELF011.P6**
 
 ```text
 G((normal & qRelease & ReleaseDone) -> Retract)
@@ -11442,7 +11442,7 @@ G((normal & qRelease & ReleaseDone) -> Retract)
 
 Release completion enters retract.
 
-**P7**
+**SELF011.P7**
 
 ```text
 G((normal & qRetract & RetractDone) -> Done)
@@ -11450,7 +11450,7 @@ G((normal & qRetract & RetractDone) -> Done)
 
 Home arrival completes the cycle.
 
-**P8**
+**SELF011.P8**
 
 ```text
 G((normal & qDone) -> Done)
@@ -11458,7 +11458,7 @@ G((normal & qDone) -> Done)
 
 A completed cycle cannot restart without an explicit clear.
 
-**P9**
+**SELF011.P9**
 
 ```text
 G((normal & qExtend & !ExtendDone) -> Extend)
@@ -11466,7 +11466,7 @@ G((normal & qExtend & !ExtendDone) -> Extend)
 
 The fixture waits for an extension handshake rather than assuming completion.
 
-**P10**
+**SELF011.P10**
 
 ```text
 G((Busy <-> (Extend | Clamp | Release | Retract)) & (!(Busy & Done)))
@@ -11474,7 +11474,7 @@ G((Busy <-> (Extend | Clamp | Release | Retract)) & (!(Busy & Done)))
 
 Previously Busy had no positive constraint during active stages.
 
-**P11**
+**SELF011.P11**
 
 ```text
 G(((normal & qIdle & !(Start & RetractDone)) -> (!Busy & !Done)) & ((normal & qClamp & !ClampDone) -> Clamp) & ((normal & qRelease & !ReleaseDone) -> Release) & ((normal & qRetract & !RetractDone) -> Retract))
@@ -11482,10 +11482,10 @@ G(((normal & qIdle & !(Start & RetractDone)) -> (!Busy & !Done)) & ((normal & qC
 
 Completes stage-hold symmetry alongside existing P9 (EXTEND hold).
 
-**SELF011.V2.COMPLETE**
+**SELF011.COMPLETE**
 
 ```text
-G(CompleteBehaviorV2)
+G(CompleteBehavior)
 ```
 
 Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
@@ -11494,18 +11494,18 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 
 | Case | Purpose | Steps |
 | --- | --- | ---: |
-| handshake | Normal cycle and completion retention | 9 |
-| single_transition | All handshakes cannot skip states; Stop aborts | 5 |
-| SELF011.boundary_all_waits_and_recycle | SELF011.boundary_all_waits_and_recycle | 10 |
-| SELF011.R22.clamp_hold | 夹紧阶段没有完成反馈时应保持动作 | 5 |
-| SELF011.R22.all_waits | 四动作逐阶段等待、完成保持与复位后第二轮 | 42 |
-| SELF011.R22.tail_Start | 完成主流程后改变并保持 Start | 11 |
-| SELF011.R22.tail_Stop | 完成主流程后改变并保持 Stop | 11 |
-| SELF011.R22.tail_Reset | 完成主流程后改变并保持 Reset | 11 |
-| SELF011.R22.tail_ExtendDone | 完成主流程后改变并保持 ExtendDone | 11 |
-| SELF011.R22.tail_ClampDone | 完成主流程后改变并保持 ClampDone | 11 |
-| SELF011.R22.tail_ReleaseDone | 完成主流程后改变并保持 ReleaseDone | 11 |
-| SELF011.R22.tail_RetractDone | 完成主流程后改变并保持 RetractDone | 11 |
+| SELF011.T1 | Normal cycle and completion retention | 9 |
+| SELF011.T2 | All handshakes cannot skip states; Stop aborts | 5 |
+| SELF011.T3 | Cover wait-state holds in CLAMP/RELEASE/RETRACT, ignoring Start while busy, Stop from DONE, and starting a second cycle cleanly (10 steps). | 10 |
+| SELF011.T4 | Maintain active Clamp output throughout wait until ClampDone handshake arrives | 5 |
+| SELF011.T5 | Wait across all four actuator stages, hold DONE, and execute second cycle after Reset | 42 |
+| SELF011.T6 | After completing main sequence, toggle and hold Start | 11 |
+| SELF011.T7 | After completing main sequence, toggle and hold Stop | 11 |
+| SELF011.T8 | After completing main sequence, toggle and hold Reset | 11 |
+| SELF011.T9 | After completing main sequence, toggle and hold ExtendDone | 11 |
+| SELF011.T10 | After completing main sequence, toggle and hold ClampDone | 11 |
+| SELF011.T11 | After completing main sequence, toggle and hold ReleaseDone | 11 |
+| SELF011.T12 | After completing main sequence, toggle and hold RetractDone | 11 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -11616,7 +11616,7 @@ At scan k, sample every input once, read retained pre-state q[k], execute one tr
 - `validReset`: Reset & !Fault & !Start.
 - `retryDue`: Spre.reference.state.mode=2 AND NOT I[k].Fault AND Spre.reference.state.free>=1
 - `normal`: !validReset & !Stop.
-- `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_SELF012(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
+- `CompleteBehavior`: 令(Sref[k+1], E[k])=T_SELF012(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
 mode=IDLE/attempts=0/free=0初值。优先Reset & !Fault & !Start清全部；其次LOCKED保持；其次Stop回IDLE并清free但保留attempts；RUNNING且Fault转WAIT或已重试2次转LOCKED；WAIT中Fault清free否则加1，free>=2时attempts加1并回RUNNING、free=0；IDLE且Start & !Fault进RUNNING。输出Run/Locked取新mode，Attempts取新attempts。
 - `init`: At the separate pre-invocation initial observation before scan k=0: Spre.mode=IDLE, O_init.Run=false, O_init.Locked=false, O_init.Attempts=0.
 - `qIdle`: Spre.reference.state.mode=0
@@ -11678,10 +11678,10 @@ mode=IDLE/attempts=0/free=0初值。优先Reset & !Fault & !Start清全部；其
       "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
       "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
+      "normalized_spec.py": "3c13590145597ad26cf537ff76c44e22f06abf7720e04d2ea262ac347be9d9cd"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v2"
+    "frozen_sources": "dataset/specifications/normalized_transition"
   },
   "constrained_observed_fields": [
     "Attempts",
@@ -11757,7 +11757,7 @@ mode=IDLE/attempts=0/free=0初值。优先Reset & !Fault & !Start清全部；其
 }
 ```
 
-**P_init**
+**SELF012.P_init**
 
 ```text
 init
@@ -11765,7 +11765,7 @@ init
 
 Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
 
-**P1**
+**SELF012.P1**
 
 ```text
 G(Fault -> !Run)
@@ -11773,7 +11773,7 @@ G(Fault -> !Run)
 
 A present fault cannot command the feeder.
 
-**P2**
+**SELF012.P2**
 
 ```text
 G((Attempts >= 0) & (Attempts <= 2))
@@ -11781,7 +11781,7 @@ G((Attempts >= 0) & (Attempts <= 2))
 
 Automatic restart count stays within the budget.
 
-**P3**
+**SELF012.P3**
 
 ```text
 G(validReset -> (!Run & !Locked & (Attempts = 0)))
@@ -11789,7 +11789,7 @@ G(validReset -> (!Run & !Locked & (Attempts = 0)))
 
 Accepted reset clears history and leaves the feeder stopped.
 
-**P4**
+**SELF012.P4**
 
 ```text
 G((qLocked & !validReset) -> (Locked & !Run))
@@ -11797,7 +11797,7 @@ G((qLocked & !validReset) -> (Locked & !Run))
 
 Lockout requires a safe explicit reset.
 
-**P5**
+**SELF012.P5**
 
 ```text
 G((qRunning & Fault & normal & (refAttempts = 2)) -> Locked)
@@ -11805,7 +11805,7 @@ G((qRunning & Fault & normal & (refAttempts = 2)) -> Locked)
 
 Lock out on Fault from RUNNING once reference attempts already reached 2 (uses Spre.attempts to stay immune to candidate undercounting).
 
-**P6**
+**SELF012.P6**
 
 ```text
 G((retryDue & normal) -> (Run & (Attempts = refAttempts + 1)))
@@ -11813,7 +11813,7 @@ G((retryDue & normal) -> (Run & (Attempts = refAttempts + 1)))
 
 On fault-free retry dwell completion, restart Run and output Attempts = Spre.attempts + 1.
 
-**P7**
+**SELF012.P7**
 
 ```text
 G((qWait & Fault & normal) -> !Run)
@@ -11821,7 +11821,7 @@ G((qWait & Fault & normal) -> !Run)
 
 A fault during recovery clears progress and prevents restart.
 
-**P8**
+**SELF012.P8**
 
 ```text
 G(((qIdle & normal & !(Start & !Fault)) -> (!Run & !Locked & Attempts=refAttempts)) & ((qIdle & normal & Start & !Fault) -> (Run & !Locked & Attempts=refAttempts)) & ((qRunning & !Fault & normal) -> (Run & !Locked & Attempts=refAttempts)))
@@ -11829,7 +11829,7 @@ G(((qIdle & normal & !(Start & !Fault)) -> (!Run & !Locked & Attempts=refAttempt
 
 Eliminates vacuous under-counting and missing IDLE/RUNNING forward constraints.
 
-**P9**
+**SELF012.P9**
 
 ```text
 G(((normal & qWait & !retryDue) -> (!Run & !Locked & Attempts=refAttempts)) & ((!qLocked & !(qRunning & Fault & normal & refAttempts=2)) -> !Locked) & (!(Run & Locked)))
@@ -11837,10 +11837,10 @@ G(((normal & qWait & !retryDue) -> (!Run & !Locked & Attempts=refAttempts)) & ((
 
 Completes SELF012 independent safety closure.
 
-**SELF012.V2.COMPLETE**
+**SELF012.COMPLETE**
 
 ```text
-G(CompleteBehaviorV2)
+G(CompleteBehavior)
 ```
 
 Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
@@ -11849,14 +11849,14 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 
 | Case | Purpose | Steps |
 | --- | --- | ---: |
-| exhaustion | Two automatic retries then third fault locks | 11 |
-| dwell_interrupt | Fault interrupts healthy dwell; Stop aborts wait | 9 |
-| V2_omission_regression | Reject the concrete wrong behavior documented in the 2026-11-06 specification review. | 3 |
-| SELF012.boundary_stop_preserve_and_reset | SELF012.boundary_stop_preserve_and_reset | 12 |
-| SELF012.R22.normal_changes | 自动重试后Stop再Start保留次数、有效复位优先 | 7 |
-| SELF012.R22.tail_Start | 完成主流程后改变并保持 Start | 13 |
-| SELF012.R22.tail_Stop | 完成主流程后改变并保持 Stop | 13 |
-| SELF012.R22.tail_Fault | 完成主流程后改变并保持 Fault | 13 |
-| SELF012.R22.tail_Reset | 完成主流程后改变并保持 Reset | 13 |
+| SELF012.T1 | Two automatic retries then third fault locks | 11 |
+| SELF012.T2 | Fault interrupts healthy dwell; Stop aborts wait | 9 |
+| SELF012.T3 | Reject the concrete wrong behavior documented in the 2026-11-06 specification review. | 3 |
+| SELF012.T4 | Test manual Stop during WAIT retry then Start preserves Attempts=1, invalid Reset while Fault stays active, and valid Reset in Lock overrides Stop (12 steps). | 12 |
+| SELF012.T5 | Preserve retry Attempts across manual Stop/Start and prioritize valid Reset in Lock | 7 |
+| SELF012.T6 | After completing main sequence, toggle and hold Start | 13 |
+| SELF012.T7 | After completing main sequence, toggle and hold Stop | 13 |
+| SELF012.T8 | After completing main sequence, toggle and hold Fault | 13 |
+| SELF012.T9 | After completing main sequence, toggle and hold Reset | 13 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
