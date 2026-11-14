@@ -1,0 +1,30 @@
+-- Formal verification specification for Task PUB006
+-- Generated: 2026-11-14T13:14:19.603059+00:00
+
+-- Property: PUB006.P_init
+-- Description: Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
+LTLSPEC NAME PUB006.P_init := init;
+
+-- Property: PUB006.P1
+-- Description: Run is enabled only after the full delay.
+LTLSPEC NAME PUB006.P1 := G(BLOWER_RUN <-> (permit & delayDone));
+
+-- Property: PUB006.P2
+-- Description: Loss of demand or safety permissive clears run and its timer.
+LTLSPEC NAME PUB006.P2 := G(!permit -> (!BLOWER_RUN & X(!delayDone)));
+
+-- Property: PUB006.P3
+-- Description: One count per genuine start.
+LTLSPEC NAME PUB006.P3 := G((!runPrev & BLOWER_RUN) -> AERATION_BLOWER_CYCLE_COUNT=countPrev+1);
+
+-- Property: PUB006.P4
+-- Description: No repeated count during continuous operation or stop.
+LTLSPEC NAME PUB006.P4 := G((runPrev | !BLOWER_RUN) -> AERATION_BLOWER_CYCLE_COUNT=countPrev);
+
+-- Property: PUB006.P5
+-- Description: A sustained permitted demand eventually starts under advancing time. Explicit non-Zeno environment premise: physical elapsed time crosses infinitely many 1ms boundaries.
+LTLSPEC NAME PUB006.P5 := (G(F(TimeTick))) -> (G((G(permit)) -> F(BLOWER_RUN)));
+
+-- Property: PUB006.COMPLETE
+-- Description: Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
+LTLSPEC NAME PUB006.COMPLETE := G(CompleteBehavior);

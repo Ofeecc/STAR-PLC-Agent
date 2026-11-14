@@ -1,0 +1,38 @@
+-- Formal verification specification for Task PUB009
+-- Generated: 2026-11-14T08:51:33.863137+00:00
+
+-- Property: PUB009.P_init
+-- Description: Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
+LTLSPEC NAME PUB009.P_init := init;
+
+-- Property: PUB009.P1
+-- Description: Window bounds are checked without silently accepting data.
+LTLSPEC NAME PUB009.P1 := G(!valid -> (error & status=16#8200 & unchangedMean));
+
+-- Property: PUB009.P2
+-- Description: A valid window clears configuration error.
+LTLSPEC NAME PUB009.P2 := G(valid -> (!error & status=0));
+
+-- Property: PUB009.P3
+-- Description: Reset produces an empty history.
+LTLSPEC NAME PUB009.P3 := G((valid & reset) -> (average=0 & !windowSizeReached));
+
+-- Property: PUB009.P4
+-- Description: The result is the arithmetic mean of the active window or zero when empty.
+LTLSPEC NAME PUB009.P4 := G((valid & !reset) -> average=meanOrZero(historyAfter));
+
+-- Property: PUB009.P5
+-- Description: Full-window indication follows history population.
+LTLSPEC NAME PUB009.P5 := G(valid -> (windowSizeReached <-> length(historyAfter)=windowSize));
+
+-- Property: PUB009.P6
+-- Description: Both operands are Boolean propositions. previousTrigger[0]=FALSE; previousTrigger[k+1]=I[k].trigger on every invocation, including invalid/reset.
+LTLSPEC NAME PUB009.P6 := G(trigger <-> X(previousTrigger));
+
+-- Property: PUB009.P7
+-- Description: No event means no sample update.
+LTLSPEC NAME PUB009.P7 := G((valid & !reset & !cyclicExecution & !triggerRise & !windowChanged) -> unchangedMean);
+
+-- Property: PUB009.COMPLETE
+-- Description: Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
+LTLSPEC NAME PUB009.COMPLETE := G(CompleteBehavior);

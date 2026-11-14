@@ -1,0 +1,13 @@
+{
+  "request_id": "c0847fd5d18d4176b0811165a57c28f1",
+  "source_sha256": "479e06bc2c012f0c806133531e5c7a300137d011944492641a89c42f3dac479a",
+  "task_id": "PUB010",
+  "project": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\c4faa536901dd277\\task.project",
+  "candidate": {
+    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    TemperatureSensorInput : REAL;\n    SetTemperature : REAL;\nEND_VAR\nVAR_OUTPUT\n    CurrentTemperature : REAL := 0.0;\n    SetTempDisplay : REAL := 0.0;\n    HeaterStatus : BOOL := FALSE;\n    OverheatProtection : BOOL := FALSE;\n    HeaterOutput : BOOL := FALSE;\nEND_VAR\nVAR\n    heatDemand : BOOL := FALSE;\n    sensorFault : BOOL := FALSE;\n    heatTimer : TON;\n    cooldownTimer : TON;\nEND_VAR",
+    "implementation": "CurrentTemperature := TemperatureSensorInput;\nSetTempDisplay := SetTemperature;\nsensorFault := (TemperatureSensorInput < 0.0) OR (TemperatureSensorInput > 100.0);\nIF NOT sensorFault THEN\n    IF TemperatureSensorInput < SetTemperature THEN\n        heatDemand := TRUE;\n    ELSIF TemperatureSensorInput > SetTemperature THEN\n        heatDemand := FALSE;\n    END_IF;\nEND_IF;\n\nIF OverheatProtection THEN\n    cooldownTimer(IN := TRUE, PT := T#3s);\n    IF cooldownTimer.Q THEN\n        OverheatProtection := FALSE;\n    END_IF;\nELSE\n    cooldownTimer(IN := FALSE, PT := T#3s);\nEND_IF;\n\nheatTimer(IN := (NOT sensorFault) AND heatDemand AND (NOT OverheatProtection), PT := T#5s);\nIF heatTimer.Q THEN\n    OverheatProtection := TRUE;\n    cooldownTimer(IN := TRUE, PT := T#3s);\nEND_IF;\n\nHeaterOutput := (NOT sensorFault) AND heatDemand AND (NOT OverheatProtection);\nHeaterStatus := HeaterOutput;",
+    "supporting_objects": []
+  },
+  "result_path": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\c4faa536901dd277\\codesys_evidence.json",
+  "started_utc": "2026-11-14T14:05:51.596540+00:00"
+}

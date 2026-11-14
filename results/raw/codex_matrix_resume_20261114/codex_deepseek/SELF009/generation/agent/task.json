@@ -1,0 +1,127 @@
+{
+  "id": "SELF009",
+  "title": "Rising edge batch counter with reset sampling",
+  "difficulty": "easy",
+  "requirements": "# SELF009: Rising-Edge Batch Part Counter\n\n## Background\nRising-edge batch counter validating integer `Target` in `1..20`.\n\n## Functional Requirements\n1. Inputs: `PartPulse`, `Reset` (`BOOL`), `Target` (`INT`, valid domain `1..20`). Edge memory `previous_pulse` initializes `FALSE` and updates to `I[k].PartPulse` on EVERY scan (including `Error` or `Reset`).\n2. If `Target` is outside `1..20`, set `Error := TRUE`, `Count := 0`, `Complete := FALSE`.\n3. Else `Error := FALSE`: if `Reset = TRUE`, set `Count := 0` and `Complete := FALSE`; otherwise increment `Count := min(Count + 1, Target)` on `PartPulse` rising edge (`PartPulse AND NOT previous_pulse`) and set `Complete := (Count >= Target)`.\n\n## Interface\n- **Inputs:** `PartPulse: BOOL`, `Reset: BOOL`, `Target: USINT`\n- **Outputs:** `Count: USINT`, `Complete: BOOL`, `Error: BOOL`\n\n## Initial Values\n- `Count=0`, `previous_pulse=false`, `Complete=false`, `Error=false`\n\n## Timing & Evaluation Conventions\n`Target` must be an integer (`bool` rejected). Shrinking `Target` clamps `Count` via `min(..., Target)` and re-evaluates `Complete`.",
+  "scenario": "A packaging batch counts individual sensor edges and prevents a held sensor during reset from being counted again.",
+  "interface": [
+    {
+      "direction": "INPUT",
+      "name": "PartPulse",
+      "type": "BOOL",
+      "description": "Part detection level"
+    },
+    {
+      "direction": "INPUT",
+      "name": "Reset",
+      "type": "BOOL",
+      "description": "Reset batch"
+    },
+    {
+      "direction": "INPUT",
+      "name": "Target",
+      "type": "USINT",
+      "description": "Batch target, valid 1 through 20"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Count",
+      "type": "USINT",
+      "description": "Saturated part count"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Complete",
+      "type": "BOOL",
+      "description": "Target reached"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Error",
+      "type": "BOOL",
+      "description": "Invalid target"
+    }
+  ],
+  "initial_conditions": {
+    "Count": 0,
+    "previous_pulse": false,
+    "Complete": false,
+    "Error": false
+  },
+  "scan_semantics": "At scan k, sample every input once, read retained pre-state q[k], execute one transition, and observe outputs O[k] at the end of that same scan. Updated state becomes q[k+1]. Reset the instance before each test. Step 0 executes normally; initial conditions describe pre-state, not an extra delayed scan. All timing in this task is explicitly counted in invocations, not wall time.",
+  "safety_priority": [
+    "Invalid Target and Reset override counting",
+    "Update edge memory on every scan"
+  ],
+  "assumptions": [
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+  ],
+  "atomic_propositions": {
+    "PartPulse": "I[k].PartPulse: sampled input (BOOL).",
+    "Reset": "I[k].Reset: sampled input (BOOL).",
+    "Target": "I[k].Target: sampled input (USINT).",
+    "Count": "O[k].Count: independently observed post-scan candidate value (USINT); never defined as expected output.",
+    "Complete": "O[k].Complete: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "Error": "O[k].Error: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "first": "k=0; first invocation, not the pre-invocation observation",
+    "invalid": "Target < 1 or Target > 20.",
+    "rise": "PartPulse & !qPulse.",
+    "qPulse": "{\"kind\": \"previous_sampled_input\", \"source\": \"I[k-1].PartPulse\", \"initial\": false, \"update\": \"After EVERY scan k, including invalid/reset/stop, store I[k].PartPulse\"}",
+    "qCount": "{\"kind\": \"previous_observed_output\", \"source\": \"O[k-1].Count\", \"initial\": 0, \"update\": \"After comparing scan k, store ACTUAL O[k].Count; never write into reference state.\"}",
+    "countAfterEdge": "min(qCount + (1 if rise else 0), Target).",
+    "init": "At the separate pre-invocation initial observation before scan k=0: O_init.Count=0, O_init.Complete=false, O_init.Error=false."
+  },
+  "ltl": [
+    {
+      "id": "SELF009.P_init",
+      "kind": "safety",
+      "formula": "init",
+      "description": "Before the first scan invocation, all declared OUTPUT variables and initial instance state hold their declared initial values.",
+      "explanation": "Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "INITIAL_INSTANCE"
+    },
+    {
+      "id": "SELF009.P1",
+      "formula": "G(Error <-> invalid)",
+      "explanation": "Target validation is exact.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "SELF009.P2",
+      "formula": "G((Reset | invalid) -> ((Count = 0) & !Complete))",
+      "explanation": "Reset or invalid target clears the batch.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "SELF009.P3",
+      "formula": "G((!Reset & !invalid) -> (Count = countAfterEdge))",
+      "explanation": "Only rising edges add an item, with saturation.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "SELF009.P4",
+      "formula": "G((!Reset & !invalid) -> (Complete <-> (Count >= Target)))",
+      "explanation": "Complete reports the post-scan count.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "SELF009.P5",
+      "formula": "G(X(qPulse) <-> PartPulse)",
+      "explanation": "Edge memory samples the pulse even during reset.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    }
+  ]
+}

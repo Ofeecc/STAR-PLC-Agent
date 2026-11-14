@@ -1,0 +1,20 @@
+{
+  "request_id": "fb62519fd4494bfc931983015d5a4912",
+  "source_sha256": "14a1229aff3d5e40107fa56001e6438d2587139254973fa60b2499b2cb0d95fd",
+  "task_id": "PUB011",
+  "project": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\9e9591b8c78aec1a\\task.project",
+  "candidate": {
+    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    Mode : BOOL;\n    ForwardButton : BOOL;\n    ReverseButton : BOOL;\n    SensorA : BOOL;\n    SensorB : BOOL;\n    SensorC : BOOL;\n    ButtonA : BOOL;\n    ButtonB : BOOL;\n    ButtonC : BOOL;\nEND_VAR\nVAR_OUTPUT\n    MotorForward : BOOL;\n    MotorReverse : BOOL;\n    CompletionLight : BOOL;\nEND_VAR\nVAR\n    phase : E_TaskPhase := E_TaskPhase.WAIT_A;\nEND_VAR",
+    "implementation": "IF NOT Mode THEN\n    phase := E_TaskPhase.WAIT_A;\n    MotorReverse := ReverseButton AND NOT ForwardButton;\n    MotorForward := ForwardButton AND NOT ReverseButton;\n    CompletionLight := FALSE;\nELSE\n    MotorForward := FALSE;\n    MotorReverse := FALSE;\n    CompletionLight := FALSE;\n\n    CASE phase OF\n        E_TaskPhase.WAIT_A:\n            IF SensorA AND ButtonA THEN\n                phase := E_TaskPhase.MOVE_AB;\n                MotorForward := TRUE;\n            END_IF;\n\n        E_TaskPhase.MOVE_AB:\n            IF SensorB THEN\n                phase := E_TaskPhase.WAIT_B;\n            ELSE\n                MotorForward := TRUE;\n            END_IF;\n\n        E_TaskPhase.WAIT_B:\n            IF SensorB AND ButtonB THEN\n                phase := E_TaskPhase.MOVE_BC;\n                MotorForward := TRUE;\n            END_IF;\n\n        E_TaskPhase.MOVE_BC:\n            IF SensorC THEN\n                phase := E_TaskPhase.WAIT_C;\n            ELSE\n                MotorForward := TRUE;\n            END_IF;\n\n        E_TaskPhase.WAIT_C:\n            IF SensorC AND ButtonC THEN\n                phase := E_TaskPhase.DONE;\n                CompletionLight := TRUE;\n            END_IF;\n\n        E_TaskPhase.DONE:\n            IF SensorC THEN\n                CompletionLight := TRUE;\n            ELSE\n                phase := E_TaskPhase.WAIT_A;\n            END_IF;\n    END_CASE;\nEND_IF;",
+    "supporting_objects": [
+      {
+        "name": "E_TaskPhase",
+        "kind": "DUT",
+        "declaration": "TYPE E_TaskPhase :\n(\n    WAIT_A,\n    MOVE_AB,\n    WAIT_B,\n    MOVE_BC,\n    WAIT_C,\n    DONE\n);\nEND_TYPE",
+        "implementation": ""
+      }
+    ]
+  },
+  "result_path": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\9e9591b8c78aec1a\\codesys_evidence.json",
+  "started_utc": "2026-11-14T13:15:01.186892+00:00"
+}

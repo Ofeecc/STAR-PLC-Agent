@@ -1,0 +1,56 @@
+{
+  "task_id": "PUB006",
+  "source_sha256": "bf278494e603e1ecef23cb62391aa71746c7e2821ac16ac3b0c79cbe828436eb",
+  "st_path": "candidate.st",
+  "ltl_path": "spec.ltl",
+  "properties": [
+    {
+      "id": "PUB006.P_init",
+      "formula": "init",
+      "description": "Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope)."
+    },
+    {
+      "id": "PUB006.P1",
+      "formula": "G(BLOWER_RUN <-> (permit & delayDone))",
+      "description": "Run is enabled only after the full delay."
+    },
+    {
+      "id": "PUB006.P2",
+      "formula": "G(!permit -> (!BLOWER_RUN & X(!delayDone)))",
+      "description": "Loss of demand or safety permissive clears run and its timer."
+    },
+    {
+      "id": "PUB006.P3",
+      "formula": "G((!runPrev & BLOWER_RUN) -> AERATION_BLOWER_CYCLE_COUNT=countPrev+1)",
+      "description": "One count per genuine start."
+    },
+    {
+      "id": "PUB006.P4",
+      "formula": "G((runPrev | !BLOWER_RUN) -> AERATION_BLOWER_CYCLE_COUNT=countPrev)",
+      "description": "No repeated count during continuous operation or stop."
+    },
+    {
+      "id": "PUB006.P5",
+      "formula": "(G(F(TimeTick))) -> (G((G(permit)) -> F(BLOWER_RUN)))",
+      "description": "A sustained permitted demand eventually starts under advancing time. Explicit non-Zeno environment premise: physical elapsed time crosses infinitely many 1ms boundaries."
+    }
+  ],
+  "atomic_propositions": {
+    "permit": "DO_LOW & AERATION_E_STOP_NC",
+    "delayDone": "Permissive has continuously remained true for >=5s after its first sampled TRUE.",
+    "runPrev": "{\"kind\": \"previous_observed_output\", \"source\": \"O[k-1].BLOWER_RUN\", \"initial\": false, \"update\": \"After comparing scan k, store ACTUAL O[k].BLOWER_RUN; never write into reference state.\"}",
+    "countPrev": "{\"kind\": \"previous_observed_output\", \"source\": \"O[k-1].AERATION_BLOWER_CYCLE_COUNT\", \"initial\": 0, \"update\": \"After comparing scan k, store ACTUAL O[k].AERATION_BLOWER_CYCLE_COUNT; never write into reference state.\"}",
+    "interface names": "Identically named sampled input or observed output.",
+    "TimeTick": "Boolean: floor(t[k]/1ms)>floor(t[k-1]/1ms), with t[0]=0, TimeTick[0]=FALSE, t[k]=sum(dt_ms[1..k]). G(F(TimeTick)) states unbounded physical time progress; merely positive dt is insufficient.",
+    "DO_LOW": "I[k].DO_LOW: sampled input (BOOL).",
+    "AERATION_E_STOP_NC": "I[k].AERATION_E_STOP_NC: sampled input (BOOL).",
+    "BLOWER_RUN": "O[k].BLOWER_RUN: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "AERATION_BLOWER_CYCLE_COUNT": "O[k].AERATION_BLOWER_CYCLE_COUNT: independently observed post-scan candidate value (UINT); never defined as expected output.",
+    "init": "At the separate pre-invocation initial observation before scan k=0: O_init.BLOWER_RUN=false, O_init.AERATION_BLOWER_CYCLE_COUNT=0."
+  },
+  "tools_supported": [],
+  "encoding_complete": false,
+  "task_sha256": "8bd0c1fff06598555011f74d5290bd753e21651507dba4b98cdfa603e91b26ca",
+  "bundle_status": "REQUIRES_PROPERTY_AND_MODEL_ENCODING",
+  "created_utc": "2026-11-14T08:02:34.226554+00:00"
+}

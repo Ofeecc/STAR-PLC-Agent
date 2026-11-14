@@ -1,0 +1,209 @@
+Return ONLY a JSON object with declaration, implementation, supporting_objects.
+declaration is CODESYS FUNCTION_BLOCK FB_Task followed by all VAR sections; omit END_FUNCTION_BLOCK.
+implementation is the ST body alone. supporting_objects is a list of helper DUT/POU objects, each with
+name, kind (DUT/FUNCTION/FUNCTION_BLOCK), declaration, implementation; functions need return_type.
+Keep exact task interface names/types and implement all behavior. Define referenced DUTs. No Markdown.
+Do not change requirements or use reference answers. Standard library is available in the project.
+The target is CODESYS 3.5 ST. Compilation is offline; do not contact physical equipment.
+
+You are the existing coding-agent baseline. The complete task is supplied below. The owner has already authorized this noninteractive benchmark and the supplied IDE-simulation tools within the stated limits. Use the supplied compiler, simulator, and formal verification tools directly; shell commands are unnecessary for this task. Use compile_st to compile each candidate. Maximum 3 total compiler calls. Use simulate_st to simulate candidates against your test cases. Maximum 3 total simulation calls. Use verify_st to formally verify FB_Task against the LTL/INVAR specifications (returns PASS or counterexample trace). After compilation errors, counterexamples, or simulation failures, repair and retest within these limits. Stop on successful verification or infrastructure failure. Do not inspect other directories, environment variables, API credentials, reference code, or other runs. Save the exact final submitted source to candidate.json. Return a concise status; raw trusted compiler, formal verification, and simulation evidence will be used for evaluation.
+TASK
+{
+  "id": "PUB010",
+  "title": "Temperature Logic Control",
+  "difficulty": "medium",
+  "requirements": "# Temperature Logic Control\n\n- **Difficulty:** Medium (medium)\n\n## Requirements\n\nWrite a function block FB to implement a temperature control logic. The program should include the following functions:\n1. Read the value of the temperature sensor through an analog input module.\n2. Compare the read temperature value TemperatureSensorInput with the set temperature value SetTemperature.\n3. If the actual temperature is lower than the set temperature, start the heater HeaterOutput.\n4. If the actual temperature is higher than the set temperature, turn off the heater HeaterOutput.\n5. If the heater works continuously for more than a certain period (for convenience, using 5s), it should trigger an overheating protection, automatically turn off the heater, and must wait for a certain period (for convenience, using 3s) before the overheating protection can be lifted.\n6. Provide status indication, displaying the current temperature, set temperature, heater status, and whether overheating protection is triggered.\n7. Provide temperature sensor fault judgment, if the read temperature value TemperatureSensorInput is less than 0 or greater than 100, it is considered a sensor fault, and the heater should be turned off.\n\n## Interface Definition\n\n| Direction | Variable/Field | Data Type | Description |\n| --- | --- | --- | --- |\n| Input | `TemperatureSensorInput` | `REAL` | The input value of the temperature sensor, i.e., the actual temperature |\n| Input | `SetTemperature` | `REAL` | The set temperature value |\n| Output | `CurrentTemperature` | `REAL` | Display of the current temperature |\n| Output | `SetTempDisplay` | `REAL` | Display of the set temperature |\n| Output | `HeaterStatus` | `BOOL` | Display of the heater status |\n| Output | `OverheatProtection` | `BOOL` | Display of the overheating protection status |\n| Output | `HeaterOutput` | `BOOL` | The control output of the heater |",
+  "scenario": "Write a function block FB to implement a temperature control logic. The program should include the following functions:",
+  "interface": [
+    {
+      "direction": "INPUT",
+      "name": "TemperatureSensorInput",
+      "type": "REAL",
+      "description": "The input value of the temperature sensor, i.e., the actual temperature"
+    },
+    {
+      "direction": "INPUT",
+      "name": "SetTemperature",
+      "type": "REAL",
+      "description": "The set temperature value"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "CurrentTemperature",
+      "type": "REAL",
+      "description": "Display of the current temperature"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "SetTempDisplay",
+      "type": "REAL",
+      "description": "Display of the set temperature"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "HeaterStatus",
+      "type": "BOOL",
+      "description": "Display of the heater status"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "OverheatProtection",
+      "type": "BOOL",
+      "description": "Display of the overheating protection status"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "HeaterOutput",
+      "type": "BOOL",
+      "description": "The control output of the heater"
+    }
+  ],
+  "initial_conditions": {
+    "HeaterOutput": false,
+    "HeaterStatus": false,
+    "OverheatProtection": false,
+    "heatDemand": false,
+    "heatElapsed_ms": 0,
+    "cooldownElapsed_ms": 0,
+    "CurrentTemperature": 0.0,
+    "SetTempDisplay": 0.0
+  },
+  "scan_semantics": "At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, outputs O[k] are observed after execution, and q[k+1] is the updated state. Each test creates a fresh FB instance before step 0. An initialized instance has not yet executed a scan. Timer elapsed time is zero on the first eligible sampled invocation; dt_ms is elapsed wall time since the previous invocation, not automatically a synthetic input to the FB. No unobserved past input stability is assumed. All sequences here are expected values.",
+  "safety_priority": [
+    "Sensor fault or active overheat protection overrides the heat demand.",
+    "Protection shutdown is evaluated before the output is finalized."
+  ],
+  "assumptions": [
+    "At equality TemperatureSensorInput=SetTemperature, retain the last heat-demand state. On a fresh instance the retained demand is FALSE.",
+    "The prose says \"more than\" a period and gives 5s. The evaluation resolves this to a 5-second threshold: protection trips at continuous heating elapsed>=5s, beginning with elapsed zero at the first energized sample.",
+    "Protection is latched for at least 3s from its trip. At elapsed>=3s it may clear and heat can restart in the same scan if the sensor is valid and demand remains.",
+    "A sensor fault immediately turns heat off and resets continuous-heating time. It does not clear or restart an already active cooldown.",
+    "The display outputs mirror their corresponding sampled temperature and setpoint even during a fault. HeaterStatus equals HeaterOutput. Inputs are held stable between timed samples.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "Evaluation decision: retain the existing >=5s trip threshold as an explicit benchmark interpretation of the source more-than wording; cooldown MUST clear at the first observed elapsed>=3s, though a sensor fault or absent demand still prevents heating. No spontaneous protection is allowed. This benchmark interpretation is not claimed to be instructor clarification.",
+    "Floating-point inputs and intermediate reference arithmetic are finite. Existing fixed traces retain their declared absolute tolerance; claims do not extend to arbitrary magnitudes without a separately specified numeric error policy.",
+    "Scan k=0 initializes the internal elapsed-time clock at 0 ms (ignoring dt_ms[0]); subsequent scans advance by dt_ms[k]. During sensorFault (TemperatureSensorInput < 0 or > 100), the internal retained heat demand freezes at its prior state.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+  ],
+  "ltl": [
+    {
+      "id": "PUB010.P_init",
+      "kind": "safety",
+      "formula": "init",
+      "description": "Before the first scan invocation, all declared OUTPUT variables and initial instance state hold their declared initial values.",
+      "explanation": "Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "INITIAL_INSTANCE"
+    },
+    {
+      "id": "PUB010.P1",
+      "formula": "G(sensorFault -> !HeaterOutput)",
+      "explanation": "Invalid sensor data must never energize the heater.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB010.P2",
+      "formula": "G(OverheatProtection -> !HeaterOutput)",
+      "explanation": "The heater remains off during cooldown.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB010.P3",
+      "formula": "G(HeaterStatus=HeaterOutput)",
+      "explanation": "The status output reports actual commanded heat.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB010.P4",
+      "formula": "G((CurrentTemperature=TemperatureSensorInput) & (SetTempDisplay=SetTemperature))",
+      "explanation": "The displays mirror sampled values.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB010.P5",
+      "formula": "G((!sensorFault & !OverheatProtection & demand & !heatLimitReached) -> HeaterOutput)",
+      "explanation": "A permitted heat demand energizes the heater.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB010.P6",
+      "formula": "G(heatLimitReached -> (OverheatProtection & !HeaterOutput))",
+      "explanation": "The continuous-heating threshold trips protection in the same scan.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB010.P7",
+      "formula": "G((protectPrev & !cooldownDone) -> OverheatProtection)",
+      "explanation": "Protection cannot clear before its cooldown expires.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB010.P8",
+      "formula": "(G(F(TimeTick))) -> (G((OverheatProtection & G(!sensorFault & demand)) -> F(HeaterOutput)))",
+      "explanation": "With advancing time and persistent valid demand, heating resumes after finite cooldown. Explicit non-Zeno environment premise: physical elapsed time crosses infinitely many 1ms boundaries.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB010.P9",
+      "kind": "safety",
+      "formula": "G(!sensorFault & !OverheatProtection & !demand -> !HeaterOutput)",
+      "description": "When there is no heat demand, HeaterOutput stays FALSE.",
+      "explanation": "Prevents constant-ON or false heating when temperature is at or above setpoint.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB010.P10",
+      "kind": "safety",
+      "formula": "G(protectPrev & cooldownDone -> !OverheatProtection)",
+      "description": "Once at least 3s cooldown has elapsed from trip time, OverheatProtection MUST clear immediately on that scan.",
+      "explanation": "Prevents permanent latch-up beyond 3s cooldown.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB010.P11",
+      "formula": "G((TemperatureSensorInput>SetTemperature) -> !HeaterOutput)",
+      "explanation": "Explicit correction of a demonstrated omission.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    }
+  ],
+  "atomic_propositions": {
+    "sensorFault": "TemperatureSensorInput<0 OR TemperatureSensorInput>100",
+    "demand": "Ghost retained demand; when 0<=TemperatureSensorInput<=100, set below SetTemperature, clear above SetTemperature, retain at equality; frozen during sensorFault; initial FALSE.",
+    "heatLimitReached": "Continuous energized time has reached 5s, with first energized scan at elapsed zero.",
+    "cooldownDone": "When OverheatProtection was previously active, at least 3s has elapsed since its trip timestamp at the current scan clock (clock - protection_start >= 3s).",
+    "protectPrev": "{\"kind\": \"previous_observed_output\", \"source\": \"O[k-1].OverheatProtection\", \"initial\": false, \"update\": \"After comparing scan k, store ACTUAL O[k].OverheatProtection; never write into reference state.\"}",
+    "interface names": "Identically named sampled input or observed output.",
+    "TimeTick": "Boolean: floor(t[k]/1ms)>floor(t[k-1]/1ms), with t[0]=0, TimeTick[0]=FALSE, t[k]=sum(dt_ms[1..k]). G(F(TimeTick)) states unbounded physical time progress; merely positive dt is insufficient.",
+    "TemperatureSensorInput": "I[k].TemperatureSensorInput: sampled input (REAL).",
+    "SetTemperature": "I[k].SetTemperature: sampled input (REAL).",
+    "CurrentTemperature": "O[k].CurrentTemperature: independently observed post-scan candidate value (REAL); never defined as expected output.",
+    "SetTempDisplay": "O[k].SetTempDisplay: independently observed post-scan candidate value (REAL); never defined as expected output.",
+    "HeaterStatus": "O[k].HeaterStatus: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "OverheatProtection": "O[k].OverheatProtection: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "HeaterOutput": "O[k].HeaterOutput: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "init": "At the separate pre-invocation initial observation before scan k=0: O_init.CurrentTemperature=0.0, O_init.SetTempDisplay=0.0, O_init.HeaterStatus=false, O_init.OverheatProtection=false, O_init.HeaterOutput=false."
+  }
+}

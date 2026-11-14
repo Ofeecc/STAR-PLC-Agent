@@ -1,0 +1,306 @@
+Return ONLY a JSON object with declaration, implementation, supporting_objects.
+declaration is CODESYS FUNCTION_BLOCK FB_Task followed by all VAR sections; omit END_FUNCTION_BLOCK.
+implementation is the ST body alone. supporting_objects is a list of helper DUT/POU objects, each with
+name, kind (DUT/FUNCTION/FUNCTION_BLOCK), declaration, implementation; functions need return_type.
+Keep exact task interface names/types and implement all behavior. Define referenced DUTs. No Markdown.
+Do not change requirements or use reference answers. Standard library is available in the project.
+The target is CODESYS 3.5 ST. Compilation is offline; do not contact physical equipment.
+
+You are the existing coding-agent baseline. The complete task is supplied below. The owner has already authorized this noninteractive benchmark and the supplied IDE-simulation tools within the stated limits. Use the supplied compiler, simulator, and formal verification tools directly; shell commands are unnecessary for this task. Use compile_st to compile each candidate. Maximum 3 total compiler calls. Use simulate_st to simulate candidates against your test cases. Maximum 3 total simulation calls. Use verify_st to formally verify FB_Task against the LTL/INVAR specifications (returns PASS or counterexample trace). After compilation errors, counterexamples, or simulation failures, repair and retest within these limits. Stop on successful verification or infrastructure failure. Do not inspect other directories, environment variables, API credentials, reference code, or other runs. Save the exact final submitted source to candidate.json. Return a concise status; raw trusted compiler, formal verification, and simulation evidence will be used for evaluation.
+TASK
+{
+  "id": "PUB017",
+  "title": "Recipe Management System",
+  "difficulty": "hard",
+  "requirements": "# Recipe Management System\n\n- **Difficulty:** Hard (hard)\n\n## Requirements\n\nA factory's production line needs to produce a variety of products based on different recipes. The control center of the production line requires a recipe management system that allows operators to add, delete, modify, and query recipe data.\nControl requirements:\nRecipe data should include recipe number, raw material type, raw material ratio, and production temperature.\nThe system should allow input of new recipe data and store it in the recipe database.\nThe system should allow deletion or modification of existing recipe data by recipe number.\nThe system should allow querying recipe details by recipe number and output the recipe.\nNotes:\n1. Recipes are constructed using the ST_Recipe data type, which includes recipe number (recipeID), raw material type (ingredientType), raw material ratio (ingredientRatio), and production temperature (productionTemperature). The recipe database can store up to 10 recipes, constructed with ARRAY[1..10] OF ST_Recipe, where recipe numbers must not be duplicated, and a recipe number of 0 indicates an empty slot.\n2. When a query recipe request signal (queryRecipe) is triggered, the system first compares the recipe number (recipeID) from the input recipe (recipeIn) with all recipes in the recipe database recipe. If the number does not exist, an error status (error=true) and error code (status=16#8001) are output. If the number exists, the recipe is output to the recipe query result (recipeQueryResult).\n3. When an add recipe request signal (addRecipe) is triggered, the system first compares the recipe number (recipeID) from the input recipe (recipeIn) with all recipes in the recipe database (recipe). If a duplicate number exists, an error status (error=true) and error code (status=16#8002) are output. If there is no empty slot in the recipe database (recipe), an error status (error=true) and error code (status=16#8003) are output. If there are no errors, the input recipe (recipeIn) is stored in the recipe database (recipe), prioritizing the empty slot with the smallest array index.\n4. When a delete recipe request signal (deleteRecipe) is triggered, the system first compares the recipe number (recipeID) from the input recipe (recipeIn) with all recipes in the recipe database (recipe). If the number does not exist, an error status (error=true) and error code (status=16#8004) are output. If the number exists, the recipe is deleted, i.e., the recipe number (recipeID) in the recipe database (recipe) is set to 0.\n5. When a modify recipe request signal (modifyRecipe) is triggered, the system first compares the recipe number (recipeID) from the input recipe (recipeIn) with all recipes in the recipe database (recipe). If the number does not exist, an error status (error=true) and error code (status=16#8005) are output. If the number exists, the recipe is replaced with the input recipe (recipeIn).\n\n## Interface Definition\n\n| Direction | Variable/Field | Data Type | Description |\n| --- | --- | --- | --- |\n| Input | `addRecipe` | `BOOL` | Add Recipe Request Signal |\n| Input | `deleteRecipe` | `BOOL` | Delete Recipe Request Signal |\n| Input | `modifyRecipe` | `BOOL` | Modify Recipe Request Signal |\n| Input | `queryRecipe` | `BOOL` | Query Recipe Request Signal |\n| Input | `recipeIn` | `ST_Recipe` | Input Recipe |\n| Output | `recipeAdded` | `BOOL` | Recipe Added Success Indicator |\n| Output | `recipeDeleted` | `BOOL` | Recipe Deleted Success Indicator |\n| Output | `recipeModified` | `BOOL` | Recipe Modified Success Indicator |\n| Output | `recipeQueryResult` | `ST_Recipe` | Recipe Query Result Output |\n| Output | `error` | `BOOL` | Error Status Indicator<br>FALSE: No Error Occurred<br>TRUE: Execution Error |\n| Output | `status` | `WORD` | Status Code |\n| Input/Output | `recipe` | `ARRAY[1..10] OF ST_Recipe` | Recipe Database |\n\n**Data type `ST_Recipe`**\n\n| Field | Data Type | Description |\n| --- | --- | --- |\n| `recipeID` | `INT` | Recipe identifier; zero denotes an unused database slot. |\n| `ingredientType` | `INT` | Ingredient-type identifier. |\n| `ingredientRatio` | `REAL` | Ingredient proportion. |\n| `productionTemperature` | `REAL` | Production temperature. |",
+  "scenario": "A bounded recipe database supports atomic add/delete/modify/query and deterministic empty-slot selection.",
+  "interface": [
+    {
+      "direction": "INPUT",
+      "name": "addRecipe",
+      "type": "BOOL",
+      "description": "Add Recipe Request Signal"
+    },
+    {
+      "direction": "INPUT",
+      "name": "deleteRecipe",
+      "type": "BOOL",
+      "description": "Delete Recipe Request Signal"
+    },
+    {
+      "direction": "INPUT",
+      "name": "modifyRecipe",
+      "type": "BOOL",
+      "description": "Modify Recipe Request Signal"
+    },
+    {
+      "direction": "INPUT",
+      "name": "queryRecipe",
+      "type": "BOOL",
+      "description": "Query Recipe Request Signal"
+    },
+    {
+      "direction": "INPUT",
+      "name": "recipeIn",
+      "type": "ST_Recipe",
+      "description": "Input Recipe"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "recipeAdded",
+      "type": "BOOL",
+      "description": "Recipe Added Success Indicator"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "recipeDeleted",
+      "type": "BOOL",
+      "description": "Recipe Deleted Success Indicator"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "recipeModified",
+      "type": "BOOL",
+      "description": "Recipe Modified Success Indicator"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "recipeQueryResult",
+      "type": "ST_Recipe",
+      "description": "Recipe Query Result Output"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "error",
+      "type": "BOOL",
+      "description": "Error Status Indicator<br>FALSE: No Error Occurred<br>TRUE: Execution Error"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "status",
+      "type": "WORD",
+      "description": "Status Code"
+    },
+    {
+      "direction": "IN_OUT",
+      "name": "recipe",
+      "type": "ARRAY[1..10] OF ST_Recipe",
+      "description": "Recipe Database"
+    }
+  ],
+  "initial_conditions": {
+    "recipe": [
+      {
+        "recipeID": 0,
+        "ingredientType": 0,
+        "ingredientRatio": 0.0,
+        "productionTemperature": 0.0
+      },
+      {
+        "recipeID": 0,
+        "ingredientType": 0,
+        "ingredientRatio": 0.0,
+        "productionTemperature": 0.0
+      },
+      {
+        "recipeID": 0,
+        "ingredientType": 0,
+        "ingredientRatio": 0.0,
+        "productionTemperature": 0.0
+      },
+      {
+        "recipeID": 0,
+        "ingredientType": 0,
+        "ingredientRatio": 0.0,
+        "productionTemperature": 0.0
+      },
+      {
+        "recipeID": 0,
+        "ingredientType": 0,
+        "ingredientRatio": 0.0,
+        "productionTemperature": 0.0
+      },
+      {
+        "recipeID": 0,
+        "ingredientType": 0,
+        "ingredientRatio": 0.0,
+        "productionTemperature": 0.0
+      },
+      {
+        "recipeID": 0,
+        "ingredientType": 0,
+        "ingredientRatio": 0.0,
+        "productionTemperature": 0.0
+      },
+      {
+        "recipeID": 0,
+        "ingredientType": 0,
+        "ingredientRatio": 0.0,
+        "productionTemperature": 0.0
+      },
+      {
+        "recipeID": 0,
+        "ingredientType": 0,
+        "ingredientRatio": 0.0,
+        "productionTemperature": 0.0
+      },
+      {
+        "recipeID": 0,
+        "ingredientType": 0,
+        "ingredientRatio": 0.0,
+        "productionTemperature": 0.0
+      }
+    ],
+    "recipeAdded": false,
+    "recipeDeleted": false,
+    "recipeModified": false,
+    "recipeQueryResult": {
+      "recipeID": 0,
+      "ingredientType": 0,
+      "ingredientRatio": 0.0,
+      "productionTemperature": 0.0
+    },
+    "error": false,
+    "status": 0
+  },
+  "scan_semantics": "Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call. Retained pre-state q[k] becomes q[k+1]. Each test resets the instance. A transition affects the same observed scan. dt_ms is elapsed time since the preceding invocation; the first invocation starts IEC timers at elapsed zero. CycleTime inputs, where supplied, are attributed to the current invocation rather than inferred from dt_ms.",
+  "safety_priority": [
+    "Duplicate checking precedes database-full checking.",
+    "Failed requests must not mutate the database.",
+    "Insertion uses the lowest-index empty slot."
+  ],
+  "assumptions": [
+    "At most one request rising edge may occur per call; simultaneous rising edges across addRecipe, deleteRecipe, modifyRecipe, and queryRecipe are outside the valid domain (rejected with ValueError).",
+    "Any nonzero INT (-32768..32767, excluding 0) is valid as recipeID (positive or negative); zero denotes an unused slot and addRecipe with recipeID=0 is rejected with ValueError.",
+    "Success indicators are one-invocation pulses. error/status clear on idle.",
+    "recipeQueryResult retains the last successful query until another successful query.",
+    "Deleting a record clears its recipeID to 0; its remaining ST_Recipe fields remain unconstrained on the deletion scan (subject to valid ST_Recipe field types and finite values) and preserve sampled caller values on later non-overwriting scans.",
+    "The caller-owned recipe array is initialized once and persists across steps; do not overwrite it with initial values per scan.",
+    "Compare REAL values with absolute tolerance 1e-5.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "Floating-point inputs and intermediate reference arithmetic are finite. Existing fixed traces retain their declared absolute tolerance; claims do not extend to arbitrary magnitudes without a separately specified numeric error policy.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+  ],
+  "atomic_propositions": {
+    "q_missing": "rising(queryRecipe) AND ID absent from pre-database",
+    "a_dup": "rising(addRecipe) AND ID exists",
+    "a_full": "rising(addRecipe) AND ID absent AND all slots full",
+    "d_missing": "rising(deleteRecipe) AND ID absent",
+    "m_missing": "rising(modifyRecipe) AND ID absent",
+    "e1": "error AND status=16#8001",
+    "e2": "error AND status=16#8002",
+    "e3": "error AND status=16#8003",
+    "e4": "error AND status=16#8004",
+    "e5": "error AND status=16#8005",
+    "error": "O[k].error: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "same": "database equals pre-database",
+    "add_ok": "rising(addRecipe) AND nonzero INT recipeIn.recipeID absent from pre-database AND empty slot exists",
+    "insert": "lowest-index pre-empty slot equals recipeIn; all other slots unchanged",
+    "add_success": "recipeAdded AND NOT error AND status=0",
+    "query_ok": "rising(queryRecipe) AND matching record exists",
+    "result": "recipeQueryResult equals matching pre-record",
+    "idle": "no rising request",
+    "clear": "NOT error AND status=0 AND NOT recipeAdded AND NOT recipeDeleted AND NOT recipeModified",
+    "unique": "all nonzero IDs are pairwise distinct",
+    "addRecipe": "I[k].addRecipe: sampled input (BOOL).",
+    "deleteRecipe": "I[k].deleteRecipe: sampled input (BOOL).",
+    "modifyRecipe": "I[k].modifyRecipe: sampled input (BOOL).",
+    "queryRecipe": "I[k].queryRecipe: sampled input (BOOL).",
+    "recipeIn": "I[k].recipeIn: sampled input (ST_Recipe).",
+    "recipeAdded": "O[k].recipeAdded: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "recipeDeleted": "O[k].recipeDeleted: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "recipeModified": "O[k].recipeModified: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "recipeQueryResult": "O[k].recipeQueryResult: independently observed post-scan candidate value (ST_Recipe); never defined as expected output.",
+    "status": "O[k].status: independently observed post-scan candidate value (WORD); never defined as expected output.",
+    "recipe": "O[k].recipe: independently observed post-scan candidate value (ARRAY[1..10] OF ST_Recipe); never defined as expected output. I[k].recipe denotes separately captured caller value before invocation.",
+    "delete_ok": "rising(deleteRecipe) AND matching record exists in pre-database",
+    "deleted": "matching slot recipeID=0 AND recipeDeleted AND NOT error AND status=0 AND all other slots preserved",
+    "modify_ok": "rising(modifyRecipe) AND matching record exists in pre-database",
+    "modified": "matching slot equals recipeIn AND recipeModified AND NOT error AND status=0 AND all other slots preserved",
+    "init": "At the separate pre-invocation initial observation before scan k=0: O_init.recipeAdded=false, O_init.recipeDeleted=false, O_init.recipeModified=false, O_init.recipeQueryResult={\"recipeID\": 0, \"ingredientType\": 0, \"ingredientRatio\": 0.0, \"productionTemperature\": 0.0}, O_init.error=false, O_init.status=0."
+  },
+  "ltl": [
+    {
+      "id": "PUB017.P_init",
+      "kind": "safety",
+      "formula": "init",
+      "description": "Before the first scan invocation, all declared OUTPUT variables and initial instance state hold their declared initial values.",
+      "explanation": "Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "INITIAL_INSTANCE"
+    },
+    {
+      "id": "PUB017.P1",
+      "name": "Errors",
+      "formula": "G((q_missing -> e1) & (a_dup -> e2) & (a_full -> e3) & (d_missing -> e4) & (m_missing -> e5))",
+      "explanation": "Distinct failures produce the official status codes.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB017.P2",
+      "name": "No mutation",
+      "formula": "G(error -> same)",
+      "explanation": "Rejected operations preserve all records.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB017.P3",
+      "name": "Lowest insertion",
+      "formula": "G(add_ok -> (insert & add_success))",
+      "explanation": "Adds use the lowest free slot.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB017.P4",
+      "name": "Query",
+      "formula": "G(query_ok -> result)",
+      "explanation": "Query returns the complete matched record.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB017.P5",
+      "name": "Idle",
+      "formula": "G(idle -> clear)",
+      "explanation": "Indicators and invocation errors clear on idle.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB017.P6",
+      "name": "Uniqueness",
+      "formula": "G(unique)",
+      "explanation": "All operations preserve ID uniqueness from a valid initial database.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB017.P7",
+      "kind": "safety",
+      "formula": "G((delete_ok -> deleted) & (modify_ok -> modified) & (idle -> same))",
+      "description": "Successful delete clears the matching slot ID, successful modify replaces that slot with recipeIn, and idle calls preserve the database.",
+      "explanation": "Closes independent LTL coverage of delete, modify, and idle preservation missing in P1..P6.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    }
+  ],
+  "supporting_types": [
+    {
+      "name": "ST_Recipe",
+      "kind": "DUT",
+      "declaration": "TYPE ST_Recipe :\nSTRUCT\n recipeID : INT;\n ingredientType : INT;\n ingredientRatio : REAL;\n productionTemperature : REAL;\nEND_STRUCT\nEND_TYPE",
+      "source": "Official field table; types unchanged."
+    }
+  ]
+}

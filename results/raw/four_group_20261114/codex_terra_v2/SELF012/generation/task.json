@@ -1,0 +1,181 @@
+{
+  "id": "SELF012",
+  "title": "Bounded automatic fault retries with a recovery dwell",
+  "difficulty": "hard",
+  "requirements": "# SELF012: Fault-Tolerant Retry and Lockout Controller\n\n## Background\nFault-tolerant motor controller permitting up to 2 automatic restarts after a 2-scan fault-free dwell.\n\n## Functional Requirements\n1. Inputs: `Start`, `Stop`, `Fault`, `Reset` (`BOOL`). Internal state: `mode` (`IDLE`/`RUNNING`/`WAIT`/`LOCKED`), `Attempts` (`0..2`), `free_scans` (`0..2`).\n2. Valid reset (`Reset = TRUE AND Fault = FALSE AND Start = FALSE`) clears `mode := IDLE`, `Attempts := 0`, `free_scans := 0`.\n3. If already `LOCKED`, remain `LOCKED`. Else `Stop = TRUE` forces `mode := IDLE`, `free_scans := 0` while preserving `Attempts` across manual stop/restart.\n4. In `RUNNING`: if `Fault = TRUE`, enter `LOCKED` when `Attempts >= 2`, else enter `WAIT` with `free_scans := 0`.\n5. In `WAIT`: if `Fault = TRUE`, clear `free_scans := 0`; else increment `free_scans`, and when `free_scans >= 2`, increment `Attempts += 1`, clear `free_scans := 0`, and return to `RUNNING`.\n6. In `IDLE`: `Start = TRUE AND Fault = FALSE` enters `RUNNING` (keeping `Attempts`). Outputs match post-transition `mode`: `Run <-> RUNNING`, `Locked <-> LOCKED`, plus `Attempts`.\n\n## Interface\n- **Inputs:** `Start: BOOL`, `Stop: BOOL`, `Fault: BOOL`, `Reset: BOOL`\n- **Outputs:** `Run: BOOL`, `Locked: BOOL`, `Attempts: USINT`\n\n## Initial Values\n- `state=\"IDLE\"`, `Attempts=0`, `recovery_free_scans=0`, `Run=false`, `Locked=false`\n\n## Timing & Evaluation Conventions\nRetries use scan-level fault-free dwell (`free_scans >= 2`); each scan executes one step.",
+  "scenario": "A laboratory feeder allows two automatic retries after a transient process fault and locks out a repeatedly failing actuator.",
+  "interface": [
+    {
+      "direction": "INPUT",
+      "name": "Start",
+      "type": "BOOL",
+      "description": "Operator start request"
+    },
+    {
+      "direction": "INPUT",
+      "name": "Stop",
+      "type": "BOOL",
+      "description": "Abort without clearing retry count"
+    },
+    {
+      "direction": "INPUT",
+      "name": "Fault",
+      "type": "BOOL",
+      "description": "Process fault"
+    },
+    {
+      "direction": "INPUT",
+      "name": "Reset",
+      "type": "BOOL",
+      "description": "Clear retry history with Start released"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Run",
+      "type": "BOOL",
+      "description": "Feeder command"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Locked",
+      "type": "BOOL",
+      "description": "Retry exhaustion lockout"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Attempts",
+      "type": "USINT",
+      "description": "Automatic restarts issued, zero through two"
+    }
+  ],
+  "initial_conditions": {
+    "state": "IDLE",
+    "Attempts": 0,
+    "recovery_free_scans": 0,
+    "Run": false,
+    "Locked": false
+  },
+  "scan_semantics": "At scan k, sample every input once, read retained pre-state q[k], execute one transition, and observe outputs O[k] at the end of that same scan. Updated state becomes q[k+1]. Reset the instance before each test. Step 0 executes normally; initial conditions describe pre-state, not an extra delayed scan. All timing in this task is explicitly counted in invocations, not wall time.",
+  "safety_priority": [
+    "Valid reset",
+    "Latched lockout",
+    "Stop",
+    "Running fault",
+    "Recovery dwell",
+    "Idle start"
+  ],
+  "assumptions": [
+    "The fault is an educational process input, not a personnel safety function.",
+    "Operator stop/start does not restore the automatic retry budget; only accepted Reset does.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+  ],
+  "atomic_propositions": {
+    "Start": "I[k].Start: sampled input (BOOL).",
+    "Stop": "I[k].Stop: sampled input (BOOL).",
+    "Fault": "I[k].Fault: sampled input (BOOL).",
+    "Reset": "I[k].Reset: sampled input (BOOL).",
+    "Run": "O[k].Run: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "Locked": "O[k].Locked: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "Attempts": "O[k].Attempts: independently observed post-scan candidate value (USINT); never defined as expected output.",
+    "first": "k=0; first invocation, not the pre-invocation observation",
+    "qLocked": "Spre.reference.state.mode=3",
+    "qRunning": "Spre.reference.state.mode=1",
+    "qWait": "Spre.reference.state.mode=2",
+    "qAttempts": "{\"kind\": \"previous_observed_output\", \"source\": \"O[k-1].Attempts\", \"initial\": 0, \"update\": \"After comparing scan k, store ACTUAL O[k].Attempts; never write into reference state.\"}",
+    "validReset": "Reset & !Fault & !Start.",
+    "retryDue": "Spre.reference.state.mode=2 AND NOT I[k].Fault AND Spre.reference.state.free>=1",
+    "normal": "!validReset & !Stop.",
+    "init": "At the separate pre-invocation initial observation before scan k=0: Spre.mode=IDLE, O_init.Run=false, O_init.Locked=false, O_init.Attempts=0.",
+    "qIdle": "Spre.reference.state.mode=0",
+    "refAttempts": "Spre.reference.state.attempts"
+  },
+  "ltl": [
+    {
+      "id": "SELF012.P_init",
+      "kind": "safety",
+      "formula": "init",
+      "description": "Before the first scan invocation, all declared OUTPUT variables and initial instance state hold their declared initial values.",
+      "explanation": "Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "INITIAL_INSTANCE"
+    },
+    {
+      "id": "SELF012.P1",
+      "formula": "G(Fault -> !Run)",
+      "explanation": "A present fault cannot command the feeder.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "SELF012.P2",
+      "formula": "G((Attempts >= 0) & (Attempts <= 2))",
+      "explanation": "Automatic restart count stays within the budget.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "SELF012.P3",
+      "formula": "G(validReset -> (!Run & !Locked & (Attempts = 0)))",
+      "explanation": "Accepted reset clears history and leaves the feeder stopped.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "SELF012.P4",
+      "formula": "G((qLocked & !validReset) -> (Locked & !Run))",
+      "explanation": "Lockout requires a safe explicit reset.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "SELF012.P5",
+      "formula": "G((qRunning & Fault & normal & (refAttempts = 2)) -> Locked)",
+      "explanation": "Lock out on Fault from RUNNING once reference attempts already reached 2 (uses Spre.attempts to stay immune to candidate undercounting).",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "SELF012.P6",
+      "formula": "G((retryDue & normal) -> (Run & (Attempts = refAttempts + 1)))",
+      "explanation": "On fault-free retry dwell completion, restart Run and output Attempts = Spre.attempts + 1.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "SELF012.P7",
+      "formula": "G((qWait & Fault & normal) -> !Run)",
+      "explanation": "A fault during recovery clears progress and prevents restart.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "SELF012.P8",
+      "kind": "safety",
+      "formula": "G(((qIdle & normal & !(Start & !Fault)) -> (!Run & !Locked & Attempts=refAttempts)) & ((qIdle & normal & Start & !Fault) -> (Run & !Locked & Attempts=refAttempts)) & ((qRunning & !Fault & normal) -> (Run & !Locked & Attempts=refAttempts)))",
+      "description": "Covers IDLE hold, IDLE->RUNNING start, RUNNING normal continuation, and Attempts preservation across Start/Stop.",
+      "explanation": "Eliminates vacuous under-counting and missing IDLE/RUNNING forward constraints.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "SELF012.P9",
+      "kind": "safety",
+      "formula": "G(((normal & qWait & !retryDue) -> (!Run & !Locked & Attempts=refAttempts)) & ((!qLocked & !(qRunning & Fault & normal & refAttempts=2)) -> !Locked) & (!(Run & Locked)))",
+      "description": "Covers WAIT dwell holding, forbids premature Locked before exhausting 2 retries, and enforces Run/Locked exclusion.",
+      "explanation": "Completes SELF012 independent safety closure.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    }
+  ]
+}

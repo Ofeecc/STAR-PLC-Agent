@@ -1,0 +1,148 @@
+{
+  "id": "SELF003",
+  "title": "Emergency stop reset with restart inhibition",
+  "difficulty": "medium",
+  "requirements": "# SELF003: Safety-Reset Latched Motor Control\n\n## Background\nMotor latch requiring explicit isolated reset after power-up or E-stop loss.\n\n## Functional Requirements\n1. Inputs: `Start`, `Stop`, `EStopNC` (`TRUE` when healthy), and `Reset` (`BOOL`).\n2. If `EStopNC = FALSE`, set `ResetRequired := TRUE` and `Run := FALSE` immediately.\n3. While `ResetRequired = TRUE`, `Run` stays `FALSE`; `ResetRequired` clears to `FALSE` only when `Reset = TRUE AND Start = FALSE AND Stop = FALSE`.\n4. When `ResetRequired = FALSE` and `EStopNC = TRUE`: `Stop = TRUE` clears `Run := FALSE`; else `Start = TRUE` sets `Run := TRUE`; else `Run` retains.\n\n## Interface\n- **Inputs:** `Start: BOOL`, `Stop: BOOL`, `EStopNC: BOOL`, `Reset: BOOL`\n- **Outputs:** `Run: BOOL`, `ResetRequired: BOOL`\n\n## Initial Values\n- `Run=false`, `ResetRequired=true`\n\n## Timing & Evaluation Conventions\nSafety-circuit logic evaluates priority strictly in the order E-stop > ResetRequired > Stop > Start.",
+  "scenario": "A workshop spindle requires a deliberate reset with Start released before a restart after emergency-stop release.",
+  "interface": [
+    {
+      "direction": "INPUT",
+      "name": "Start",
+      "type": "BOOL",
+      "description": "Start request"
+    },
+    {
+      "direction": "INPUT",
+      "name": "Stop",
+      "type": "BOOL",
+      "description": "Normal stop request"
+    },
+    {
+      "direction": "INPUT",
+      "name": "EStopNC",
+      "type": "BOOL",
+      "description": "TRUE means emergency stop released"
+    },
+    {
+      "direction": "INPUT",
+      "name": "Reset",
+      "type": "BOOL",
+      "description": "Reset request"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Run",
+      "type": "BOOL",
+      "description": "Spindle run command"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "ResetRequired",
+      "type": "BOOL",
+      "description": "Restart inhibition latch"
+    }
+  ],
+  "initial_conditions": {
+    "Run": false,
+    "ResetRequired": true
+  },
+  "scan_semantics": "At scan k, sample every input once, read retained pre-state q[k], execute one transition, and observe outputs O[k] at the end of that same scan. Updated state becomes q[k+1]. Reset the instance before each test. Step 0 executes normally; initial conditions describe pre-state, not an extra delayed scan. All timing in this task is explicitly counted in invocations, not wall time.",
+  "safety_priority": [
+    "Emergency stop overrides all requests",
+    "Restart inhibition overrides Start",
+    "Normal stop overrides Start"
+  ],
+  "assumptions": [
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+  ],
+  "atomic_propositions": {
+    "Start": "I[k].Start: sampled input (BOOL).",
+    "Stop": "I[k].Stop: sampled input (BOOL).",
+    "EStopNC": "I[k].EStopNC: sampled input (BOOL).",
+    "Reset": "I[k].Reset: sampled input (BOOL).",
+    "Run": "O[k].Run: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "ResetRequired": "O[k].ResetRequired: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "first": "k=0; first invocation, not the pre-invocation observation",
+    "qRequired": "{\"kind\": \"previous_observed_output\", \"source\": \"O[k-1].ResetRequired\", \"initial\": true, \"update\": \"After comparing scan k, store ACTUAL O[k].ResetRequired; never write into reference state.\"}",
+    "qRun": "{\"kind\": \"previous_observed_output\", \"source\": \"O[k-1].Run\", \"initial\": false, \"update\": \"After comparing scan k, store ACTUAL O[k].Run; never write into reference state.\"}",
+    "validReset": "EStopNC & Reset & !Start & !Stop.",
+    "init": "At the separate pre-invocation initial observation before scan k=0: O_init.Run=false, O_init.ResetRequired=true."
+  },
+  "ltl": [
+    {
+      "id": "SELF003.P_init",
+      "kind": "safety",
+      "formula": "init",
+      "description": "Before the first scan invocation, all declared OUTPUT variables and initial instance state hold their declared initial values.",
+      "explanation": "Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "INITIAL_INSTANCE"
+    },
+    {
+      "id": "SELF003.P1",
+      "formula": "G(first -> (qRequired & !qRun))",
+      "explanation": "A fresh instance requires reset.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "SELF003.P2",
+      "formula": "G(!EStopNC -> (!Run & ResetRequired))",
+      "explanation": "Emergency stop forces safe outputs immediately.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "SELF003.P3",
+      "formula": "G(qRequired -> !Run)",
+      "explanation": "Reset acceptance and motor start cannot share one scan.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "SELF003.P4",
+      "formula": "G((qRequired & EStopNC) -> (ResetRequired <-> !validReset))",
+      "explanation": "Reset requires released Start and Stop.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "SELF003.P5",
+      "formula": "G((!qRequired & EStopNC & !Stop & Start) -> Run)",
+      "explanation": "A subsequent permitted start energizes the motor.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "SELF003.P6",
+      "formula": "G((!qRequired & EStopNC & Stop) -> !Run)",
+      "explanation": "Stop has priority after reset.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "SELF003.P7",
+      "formula": "G((!qRequired & EStopNC) -> !ResetRequired)",
+      "explanation": "Explicit correction of a demonstrated omission.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "SELF003.P8",
+      "formula": "G((!qRequired & EStopNC & !Stop & !Start) -> (Run <-> qRun))",
+      "explanation": "Explicit correction of a demonstrated omission.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    }
+  ]
+}

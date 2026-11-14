@@ -1,0 +1,92 @@
+{
+  "task_id": "PUB010",
+  "source_sha256": "7b62c1a6eaef2b647281690f3ef77119606fb15420c4e28676a1e7e8c4bff7ed",
+  "st_path": "candidate.st",
+  "ltl_path": "spec.ltl",
+  "properties": [
+    {
+      "id": "PUB010.P_init",
+      "formula": "init",
+      "description": "Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope)."
+    },
+    {
+      "id": "PUB010.P1",
+      "formula": "G(sensorFault -> !HeaterOutput)",
+      "description": "Invalid sensor data must never energize the heater."
+    },
+    {
+      "id": "PUB010.P2",
+      "formula": "G(OverheatProtection -> !HeaterOutput)",
+      "description": "The heater remains off during cooldown."
+    },
+    {
+      "id": "PUB010.P3",
+      "formula": "G(HeaterStatus=HeaterOutput)",
+      "description": "The status output reports actual commanded heat."
+    },
+    {
+      "id": "PUB010.P4",
+      "formula": "G((CurrentTemperature=TemperatureSensorInput) & (SetTempDisplay=SetTemperature))",
+      "description": "The displays mirror sampled values."
+    },
+    {
+      "id": "PUB010.P5",
+      "formula": "G((!sensorFault & !OverheatProtection & demand & !heatLimitReached) -> HeaterOutput)",
+      "description": "A permitted heat demand energizes the heater."
+    },
+    {
+      "id": "PUB010.P6",
+      "formula": "G(heatLimitReached -> (OverheatProtection & !HeaterOutput))",
+      "description": "The continuous-heating threshold trips protection in the same scan."
+    },
+    {
+      "id": "PUB010.P7",
+      "formula": "G((protectPrev & !cooldownDone) -> OverheatProtection)",
+      "description": "Protection cannot clear before its cooldown expires."
+    },
+    {
+      "id": "PUB010.P8",
+      "formula": "(G(F(TimeTick))) -> (G((OverheatProtection & G(!sensorFault & demand)) -> F(HeaterOutput)))",
+      "description": "With advancing time and persistent valid demand, heating resumes after finite cooldown. Explicit non-Zeno environment premise: physical elapsed time crosses infinitely many 1ms boundaries."
+    },
+    {
+      "id": "PUB010.P9",
+      "formula": "G(!sensorFault & !OverheatProtection & !demand -> !HeaterOutput)",
+      "description": "Prevents constant-ON or false heating when temperature is at or above setpoint."
+    },
+    {
+      "id": "PUB010.P10",
+      "formula": "G(protectPrev & cooldownDone -> !OverheatProtection)",
+      "description": "Prevents permanent latch-up beyond 3s cooldown."
+    },
+    {
+      "id": "PUB010.P11",
+      "formula": "G((TemperatureSensorInput>SetTemperature) -> !HeaterOutput)",
+      "description": "Explicit correction of a demonstrated omission."
+    }
+  ],
+  "atomic_propositions": {
+    "sensorFault": "TemperatureSensorInput<0 OR TemperatureSensorInput>100",
+    "demand": "Ghost retained demand; when 0<=TemperatureSensorInput<=100, set below SetTemperature, clear above SetTemperature, retain at equality; frozen during sensorFault; initial FALSE.",
+    "heatLimitReached": "Continuous energized time has reached 5s, with first energized scan at elapsed zero.",
+    "cooldownDone": "When OverheatProtection was previously active, at least 3s has elapsed since its trip timestamp at the current scan clock (clock - protection_start >= 3s).",
+    "protectPrev": "{\"kind\": \"previous_observed_output\", \"source\": \"O[k-1].OverheatProtection\", \"initial\": false, \"update\": \"After comparing scan k, store ACTUAL O[k].OverheatProtection; never write into reference state.\"}",
+    "interface names": "Identically named sampled input or observed output.",
+    "TimeTick": "Boolean: floor(t[k]/1ms)>floor(t[k-1]/1ms), with t[0]=0, TimeTick[0]=FALSE, t[k]=sum(dt_ms[1..k]). G(F(TimeTick)) states unbounded physical time progress; merely positive dt is insufficient.",
+    "TemperatureSensorInput": "I[k].TemperatureSensorInput: sampled input (REAL).",
+    "SetTemperature": "I[k].SetTemperature: sampled input (REAL).",
+    "CurrentTemperature": "O[k].CurrentTemperature: independently observed post-scan candidate value (REAL); never defined as expected output.",
+    "SetTempDisplay": "O[k].SetTempDisplay: independently observed post-scan candidate value (REAL); never defined as expected output.",
+    "HeaterStatus": "O[k].HeaterStatus: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "OverheatProtection": "O[k].OverheatProtection: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "HeaterOutput": "O[k].HeaterOutput: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "init": "At the separate pre-invocation initial observation before scan k=0: O_init.CurrentTemperature=0.0, O_init.SetTempDisplay=0.0, O_init.HeaterStatus=false, O_init.OverheatProtection=false, O_init.HeaterOutput=false."
+  },
+  "tools_supported": [],
+  "encoding_complete": false,
+  "task_sha256": "0e44e456bad0f3b2c25fcd5a0c2914871b444e233203d8e5e76da9daf6abc61e",
+  "bundle_status": "UNSUPPORTED_ST",
+  "created_utc": "2026-11-14T13:15:57.844591+00:00",
+  "verification_status": "UNSUPPORTED_ST",
+  "reason": "Conditional or looped invocation of stateful FUNCTION_BLOCK 'cooldownTimer' inside IF/CASE/FOR is outside the sound synchronous scan fragment; invoke 'cooldownTimer(...)' unconditionally once per scan and pass conditions via input pins"
+}

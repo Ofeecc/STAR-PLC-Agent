@@ -1,0 +1,117 @@
+{
+  "id": "SELF006",
+  "title": "Tank filling with hysteresis and sensor inconsistency",
+  "difficulty": "easy",
+  "requirements": "# SELF006: Tank Hysteresis Fill Controller with Contradiction Detection\n\n## Background\nTank fill controller using low/high float probes with contradictory sensor fault protection.\n\n## Functional Requirements\n1. Inputs: `LowWet` (`TRUE` when level >= low probe), `HighWet` (`TRUE` when level >= high probe), `Inhibit` (`BOOL`).\n2. `SensorFault := HighWet AND NOT LowWet` (physically impossible probe combination).\n3. If `SensorFault = TRUE` or `Inhibit = TRUE` or `HighWet = TRUE`, force `Fill := FALSE`.\n4. Else if `LowWet = FALSE`, set `Fill := TRUE`; otherwise retain previous `Fill`.\n\n## Interface\n- **Inputs:** `LowWet: BOOL`, `HighWet: BOOL`, `Inhibit: BOOL`\n- **Outputs:** `Fill: BOOL`, `SensorFault: BOOL`\n\n## Initial Values\n- `Fill=false`, `SensorFault=false`\n\n## Timing & Evaluation Conventions\nBoth outputs reflect post-evaluation state on every scan.",
+  "scenario": "A refill tank avoids contactor chatter between low and high level switches and detects physically inconsistent switch combinations.",
+  "interface": [
+    {
+      "direction": "INPUT",
+      "name": "LowWet",
+      "type": "BOOL",
+      "description": "Water reaches lower switch"
+    },
+    {
+      "direction": "INPUT",
+      "name": "HighWet",
+      "type": "BOOL",
+      "description": "Water reaches upper switch"
+    },
+    {
+      "direction": "INPUT",
+      "name": "Inhibit",
+      "type": "BOOL",
+      "description": "External fill inhibit"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Fill",
+      "type": "BOOL",
+      "description": "Inlet valve command"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "SensorFault",
+      "type": "BOOL",
+      "description": "Inconsistent level switches"
+    }
+  ],
+  "initial_conditions": {
+    "Fill": false,
+    "SensorFault": false
+  },
+  "scan_semantics": "At scan k, sample every input once, read retained pre-state q[k], execute one transition, and observe outputs O[k] at the end of that same scan. Updated state becomes q[k+1]. Reset the instance before each test. Step 0 executes normally; initial conditions describe pre-state, not an extra delayed scan. All timing in this task is explicitly counted in invocations, not wall time.",
+  "safety_priority": [
+    "Inconsistent sensors or Inhibit stop filling",
+    "High switch stops",
+    "Low switch starts",
+    "Middle level retains"
+  ],
+  "assumptions": [
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+  ],
+  "atomic_propositions": {
+    "LowWet": "I[k].LowWet: sampled input (BOOL).",
+    "HighWet": "I[k].HighWet: sampled input (BOOL).",
+    "Inhibit": "I[k].Inhibit: sampled input (BOOL).",
+    "Fill": "O[k].Fill: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "SensorFault": "O[k].SensorFault: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "first": "k=0; first invocation, not the pre-invocation observation",
+    "qFill": "{\"kind\": \"previous_observed_output\", \"source\": \"O[k-1].Fill\", \"initial\": false, \"update\": \"After comparing scan k, store ACTUAL O[k].Fill; never write into reference state.\"}",
+    "middle": "LowWet & !HighWet.",
+    "init": "At the separate pre-invocation initial observation before scan k=0: O_init.Fill=false, O_init.SensorFault=false."
+  },
+  "ltl": [
+    {
+      "id": "SELF006.P_init",
+      "kind": "safety",
+      "formula": "init",
+      "description": "Before the first scan invocation, all declared OUTPUT variables and initial instance state hold their declared initial values.",
+      "explanation": "Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "INITIAL_INSTANCE"
+    },
+    {
+      "id": "SELF006.P1",
+      "formula": "G(SensorFault <-> (HighWet & !LowWet))",
+      "explanation": "Fault exactly identifies inconsistent switches.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "SELF006.P2",
+      "formula": "G((SensorFault | Inhibit | HighWet) -> !Fill)",
+      "explanation": "Inhibit, fault and full tank force shutoff.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "SELF006.P3",
+      "formula": "G((!LowWet & !HighWet & !Inhibit) -> Fill)",
+      "explanation": "A low tank starts filling.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "SELF006.P4",
+      "formula": "G((middle & !Inhibit) -> (Fill <-> qFill))",
+      "explanation": "The middle band retains the prior command.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "SELF006.P5",
+      "formula": "G(first -> !qFill)",
+      "explanation": "No retained filling command exists on reset.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    }
+  ]
+}

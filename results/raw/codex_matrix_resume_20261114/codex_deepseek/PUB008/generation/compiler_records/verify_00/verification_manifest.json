@@ -1,0 +1,78 @@
+{
+  "task_id": "PUB008",
+  "source_sha256": "85838c2964a26d83d754c27b2ba35300ebd3a7bf50d121f8d0bb28dca6b98c59",
+  "st_path": "candidate.st",
+  "ltl_path": "spec.ltl",
+  "properties": [
+    {
+      "id": "PUB008.P1",
+      "formula": "G(readonlyPreserved)",
+      "description": "Input arrays and configuration are never modified."
+    },
+    {
+      "id": "PUB008.P2",
+      "formula": "G(AllChannels_P2)",
+      "description": "Disabled and unprocessed channels are unchanged."
+    },
+    {
+      "id": "PUB008.P3",
+      "formula": "G(AllChannels_P3)",
+      "description": "Unsupported modes return the defined status without conversion."
+    },
+    {
+      "id": "PUB008.P4",
+      "formula": "G(AllChannels_P4)",
+      "description": "Invalid limits return their status without conversion."
+    },
+    {
+      "id": "PUB008.P5",
+      "formula": "G(AllChannels_P5)",
+      "description": "Successful enabled channels clear their status."
+    },
+    {
+      "id": "PUB008.P6",
+      "formula": "G(AllChannels_P6)",
+      "description": "Linear scale uses the correct unipolar or bipolar range."
+    },
+    {
+      "id": "PUB008.P7",
+      "formula": "G(AllChannels_P7)",
+      "description": "Standard-temperature resolution is one tenth."
+    },
+    {
+      "id": "PUB008.P8",
+      "formula": "G(AllChannels_P8)",
+      "description": "Climatic-temperature resolution is one hundredth."
+    }
+  ],
+  "atomic_propositions": {
+    "j": "An ordinal position starting at zero.",
+    "enabled(j)": "j<count and sampled channels[j].enable.",
+    "modeOK(j)": "Sampled measuringMode is 0,1,2.",
+    "limitsOK(j)": "Sampled hiLIM>loLIM.",
+    "raw(j)": "Sampled analogValues at its lower bound+j.",
+    "scaled(j)": "loLIM+(raw/27648)*(hiLIM-loLIM) for unipolar; loLIM+((raw+27648)/55296)*(hiLIM-loLIM) for bipolar.",
+    "preserved(j)": "The channel retVal/outputValue equal sampled values.",
+    "readonlyPreserved": "analogValues and channel configuration equal all their sampled values.",
+    "channel output names": "Post-scan fields of the channel at the indicated ordinal position.",
+    "sampledOutputValue(j)": "The caller-provided outputValue before this scan.",
+    "measuringMode(j)": "The sampled measuringMode configuration for ordinal j.",
+    "AllChannels_P2": "{\"operator\": \"finite_conjunction\", \"variable\": \"j\", \"lower_inclusive\": 0, \"upper_exclusive\": \"len(I[k].channels)\", \"empty_value\": true, \"body\": \"!enabled(j) -> preserved(j)\", \"instantiation\": \"For concrete caller binding N, substitute j=0,...,N-1 and join the Boolean bodies with &. N is binding length, never count.\", \"index_mapping\": \"j is zero-based ordinal; PLC index is each array own lower bound + j.\", \"guard\": \"enabled(j) := j<I[k].count AND I[k].channels[j].enable; short-circuit before raw(j) access.\", \"numeric_comparison\": \"Converted outputValue uses the comparison policy; status/config/preserved fields are exact.\"}",
+    "AllChannels_P3": "{\"operator\": \"finite_conjunction\", \"variable\": \"j\", \"lower_inclusive\": 0, \"upper_exclusive\": \"len(I[k].channels)\", \"empty_value\": true, \"body\": \"(enabled(j) & !modeOK(j)) -> (retVal(j)=16#8001 & outputValue(j)=sampledOutputValue(j))\", \"instantiation\": \"For concrete caller binding N, substitute j=0,...,N-1 and join the Boolean bodies with &. N is binding length, never count.\", \"index_mapping\": \"j is zero-based ordinal; PLC index is each array own lower bound + j.\", \"guard\": \"enabled(j) := j<I[k].count AND I[k].channels[j].enable; short-circuit before raw(j) access.\", \"numeric_comparison\": \"Converted outputValue uses the comparison policy; status/config/preserved fields are exact.\"}",
+    "AllChannels_P4": "{\"operator\": \"finite_conjunction\", \"variable\": \"j\", \"lower_inclusive\": 0, \"upper_exclusive\": \"len(I[k].channels)\", \"empty_value\": true, \"body\": \"(enabled(j) & modeOK(j) & !limitsOK(j)) -> (retVal(j)=16#8002 & outputValue(j)=sampledOutputValue(j))\", \"instantiation\": \"For concrete caller binding N, substitute j=0,...,N-1 and join the Boolean bodies with &. N is binding length, never count.\", \"index_mapping\": \"j is zero-based ordinal; PLC index is each array own lower bound + j.\", \"guard\": \"enabled(j) := j<I[k].count AND I[k].channels[j].enable; short-circuit before raw(j) access.\", \"numeric_comparison\": \"Converted outputValue uses the comparison policy; status/config/preserved fields are exact.\"}",
+    "AllChannels_P5": "{\"operator\": \"finite_conjunction\", \"variable\": \"j\", \"lower_inclusive\": 0, \"upper_exclusive\": \"len(I[k].channels)\", \"empty_value\": true, \"body\": \"(enabled(j) & modeOK(j) & limitsOK(j)) -> retVal(j)=0\", \"instantiation\": \"For concrete caller binding N, substitute j=0,...,N-1 and join the Boolean bodies with &. N is binding length, never count.\", \"index_mapping\": \"j is zero-based ordinal; PLC index is each array own lower bound + j.\", \"guard\": \"enabled(j) := j<I[k].count AND I[k].channels[j].enable; short-circuit before raw(j) access.\", \"numeric_comparison\": \"Converted outputValue uses the comparison policy; status/config/preserved fields are exact.\"}",
+    "AllChannels_P6": "{\"operator\": \"finite_conjunction\", \"variable\": \"j\", \"lower_inclusive\": 0, \"upper_exclusive\": \"len(I[k].channels)\", \"empty_value\": true, \"body\": \"(enabled(j) & limitsOK(j) & measuringMode(j)=0) -> outputValue(j)=scaled(j)\", \"instantiation\": \"For concrete caller binding N, substitute j=0,...,N-1 and join the Boolean bodies with &. N is binding length, never count.\", \"index_mapping\": \"j is zero-based ordinal; PLC index is each array own lower bound + j.\", \"guard\": \"enabled(j) := j<I[k].count AND I[k].channels[j].enable; short-circuit before raw(j) access.\", \"numeric_comparison\": \"Converted outputValue uses the comparison policy; status/config/preserved fields are exact.\"}",
+    "AllChannels_P7": "{\"operator\": \"finite_conjunction\", \"variable\": \"j\", \"lower_inclusive\": 0, \"upper_exclusive\": \"len(I[k].channels)\", \"empty_value\": true, \"body\": \"(enabled(j) & limitsOK(j) & measuringMode(j)=1) -> outputValue(j)=raw(j)/10\", \"instantiation\": \"For concrete caller binding N, substitute j=0,...,N-1 and join the Boolean bodies with &. N is binding length, never count.\", \"index_mapping\": \"j is zero-based ordinal; PLC index is each array own lower bound + j.\", \"guard\": \"enabled(j) := j<I[k].count AND I[k].channels[j].enable; short-circuit before raw(j) access.\", \"numeric_comparison\": \"Converted outputValue uses the comparison policy; status/config/preserved fields are exact.\"}",
+    "AllChannels_P8": "{\"operator\": \"finite_conjunction\", \"variable\": \"j\", \"lower_inclusive\": 0, \"upper_exclusive\": \"len(I[k].channels)\", \"empty_value\": true, \"body\": \"(enabled(j) & limitsOK(j) & measuringMode(j)=2) -> outputValue(j)=raw(j)/100\", \"instantiation\": \"For concrete caller binding N, substitute j=0,...,N-1 and join the Boolean bodies with &. N is binding length, never count.\", \"index_mapping\": \"j is zero-based ordinal; PLC index is each array own lower bound + j.\", \"guard\": \"enabled(j) := j<I[k].count AND I[k].channels[j].enable; short-circuit before raw(j) access.\", \"numeric_comparison\": \"Converted outputValue uses the comparison policy; status/config/preserved fields are exact.\"}",
+    "count": "I[k].count: sampled input (DINT).",
+    "analogValues": "O[k].analogValues: independently observed post-scan candidate value (ARRAY[*] OF INT); never defined as expected output. I[k].analogValues denotes separately captured caller value before invocation.",
+    "channels": "O[k].channels: independently observed post-scan candidate value (ARRAY[*] OF ST_AnalogChannel); never defined as expected output. I[k].channels denotes separately captured caller value before invocation."
+  },
+  "tools_supported": [],
+  "encoding_complete": false,
+  "task_sha256": "5eca7fdf2bfbf054e70c4bf643f89774c7c1e9b0465c1e327f192edc83aa89c3",
+  "bundle_status": "UNSUPPORTED_ST",
+  "created_utc": "2026-11-14T13:12:04.168062+00:00",
+  "verification_status": "UNSUPPORTED_ST",
+  "reason": "Expected integer bound, got '*'"
+}

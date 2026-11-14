@@ -1,0 +1,169 @@
+{
+  "state_machine": {
+    "states": [
+      {
+        "name": "ALL_STOPPED",
+        "description": "All internal run commands are FALSE; pumpGroup[*].RunComd is FALSE.",
+        "internal": {
+          "runCmd": [
+            false,
+            false,
+            false,
+            false,
+            false
+          ]
+        }
+      },
+      {
+        "name": "MANUAL_RUNNING",
+        "description": "Run commands latched from the last manual start; mode or selection changes without start are ignored.",
+        "internal": {
+          "runCmd": "latched manual selection snapshot"
+        }
+      },
+      {
+        "name": "AUTO_RUNNING",
+        "description": "Run commands latched from the last automatic start; mode or priority changes without start are ignored.",
+        "internal": {
+          "runCmd": "latched top-three priority snapshot"
+        }
+      }
+    ],
+    "transitions": [
+      {
+        "from": "ANY",
+        "to": "ALL_STOPPED",
+        "priority": 1,
+        "condition": "stop",
+        "actions": [
+          "runCmd[1..5] := FALSE",
+          "state := ALL_STOPPED"
+        ],
+        "note": "Stop wins over simultaneous start."
+      },
+      {
+        "from": "ANY",
+        "to": "MANUAL_RUNNING",
+        "priority": 2,
+        "condition": "!stop & start & !mode",
+        "actions": [
+          "for i=1..5: runCmd[i] := pumpGroup[i].selection",
+          "state := MANUAL_RUNNING"
+        ]
+      },
+      {
+        "from": "ANY",
+        "to": "AUTO_RUNNING",
+        "priority": 3,
+        "condition": "!stop & start & mode",
+        "actions": [
+          "sort pumps by pumpGroup[i].priority descending, tie by lower array index",
+          "runCmd[i] := TRUE for the first three sorted pumps and FALSE for the other two",
+          "state := AUTO_RUNNING"
+        ]
+      },
+      {
+        "from": "ANY",
+        "to": "SELF",
+        "priority": 4,
+        "condition": "!stop & !start",
+        "actions": [
+          "hold state and runCmd[1..5] unchanged"
+        ],
+        "note": "Mode, priority, and selection changes do not reselect without start."
+      }
+    ]
+  },
+  "timer_plan": {
+    "required": false,
+    "timers": [],
+    "pt_durations": {},
+    "reset_conditions": [],
+    "notes": "No TON/TOF/TP timing is specified. Stage 3 of the scan is an explicit no-op."
+  },
+  "priorities": {
+    "safety": [
+      "stop has highest priority and overrides start; when stop is TRUE all pumpGroup[1..5].RunComd are FALSE.",
+      "Only pumpGroup[i].RunComd may be written; pumpGroup[i].priority and pumpGroup[i].selection must remain unchanged.",
+      "Initial RunComd state is FALSE and remains FALSE until a valid start command.",
+      "No timer delay or automatic retry may delay or override stop."
+    ],
+    "operational": [
+      "Manual mode: start latches RunComd[i] := selection[i].",
+      "Automatic mode: start selects exactly three pumps with the highest priority; ties break by lower array index.",
+      "start is level-sensitive and reselects on every TRUE scan; stop and start are evaluated with stop first.",
+      "When neither stop nor start is TRUE, hold all RunComd values; mode, priority, or selection changes alone do not reselect.",
+      "Selection is ignored in automatic mode; priority is ignored for manual pump selection except as read-only data."
+    ]
+  },
+  "initial_values": {
+    "state": "ALL_STOPPED",
+    "runCmd": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ],
+    "pumpGroup[1..5].RunComd": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ],
+    "modeSampled": false,
+    "startSampled": false,
+    "stopSampled": false,
+    "prioritySampled": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "selectionSampled": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ],
+    "runPrev": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ],
+    "topThreeIndices": []
+  },
+  "scan_execution_order": [
+    "1. Edge sampling: sample all inputs once at scan start: modeSampled := mode; startSampled := start; stopSampled := stop; prioritySampled[i] := pumpGroup[i].priority; selectionSampled[i] := pumpGroup[i].selection; runPrev[i] := pumpGroup[i].RunComd. No R_TRIG/F_TRIG is required because start and stop are level-sensitive.",
+    "2. Safety/reset priority and state transitions: apply stop first. If stopSampled then set state := ALL_STOPPED and runCmd[1..5] := FALSE. Else if startSampled then reselect: if !modeSampled then runCmd[i] := selectionSampled[i] and state := MANUAL_RUNNING; else runCmd[i] := TRUE for the top three pumps by prioritySampled descending with lower-index tie-break and FALSE otherwise, state := AUTO_RUNNING. Else hold state and runCmd unchanged. Never write priority or selection.",
+    "3. Unconditional top-level timer FB calls outside CASE/IF: no timer FBs are required by this specification, so this stage is an explicit no-op. Future timer FB calls would be invoked unconditionally here before output assignment.",
+    "4. Unified output assignments: write only pumpGroup[i].RunComd := runCmd[i] for i=1..5. Do not write pumpGroup[i].priority or pumpGroup[i].selection. All observed outputs are assigned after the state-transition logic."
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G((stop) -> ((!pumpGroup[1].RunComd) & (!pumpGroup[2].RunComd) & (!pumpGroup[3].RunComd) & (!pumpGroup[4].RunComd) & (!pumpGroup[5].RunComd)))"
+    },
+    {
+      "id": "A2",
+      "formula": "G((!stop & start & !mode) -> ((pumpGroup[1].RunComd = pumpGroup[1].selection) & (pumpGroup[2].RunComd = pumpGroup[2].selection) & (pumpGroup[3].RunComd = pumpGroup[3].selection) & (pumpGroup[4].RunComd = pumpGroup[4].selection) & (pumpGroup[5].RunComd = pumpGroup[5].selection)))"
+    },
+    {
+      "id": "A3",
+      "formula": "G((!stop & start & mode) -> ((pumpGroup[1].RunComd <-> TopThree1) & (pumpGroup[2].RunComd <-> TopThree2) & (pumpGroup[3].RunComd <-> TopThree3) & (pumpGroup[4].RunComd <-> TopThree4) & (pumpGroup[5].RunComd <-> TopThree5)))"
+    },
+    {
+      "id": "A4",
+      "formula": "G((!stop & !start) -> ((pumpGroup[1].RunComd = runPrev[1]) & (pumpGroup[2].RunComd = runPrev[2]) & (pumpGroup[3].RunComd = runPrev[3]) & (pumpGroup[4].RunComd = runPrev[4]) & (pumpGroup[5].RunComd = runPrev[5])))"
+    },
+    {
+      "id": "A5",
+      "formula": "G(readOnlyPreserved)"
+    }
+  ]
+}

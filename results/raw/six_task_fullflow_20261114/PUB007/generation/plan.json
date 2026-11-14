@@ -1,0 +1,142 @@
+{
+  "state_machine": [
+    {
+      "state": "STOPPED",
+      "description": "Initial and stopped state. All RunComd outputs are FALSE after stop/reset.",
+      "transitions": [
+        {
+          "to": "STOPPED",
+          "guard": "stop",
+          "action": "Clear all pumpGroup[i].RunComd to FALSE; stop wins over start."
+        },
+        {
+          "to": "STOPPED",
+          "guard": "!stop & !start",
+          "action": "Retain all RunComd FALSE; mode/priority/selection changes alone do not reselect."
+        },
+        {
+          "to": "MANUAL_RUN",
+          "guard": "!stop & start & !mode",
+          "action": "Latch RunComd[i] := sampled pumpGroup[i].selection."
+        },
+        {
+          "to": "AUTO_RUN",
+          "guard": "!stop & start & mode",
+          "action": "Latch RunComd[i] := TopThree[i] computed from sampled priorities."
+        }
+      ]
+    },
+    {
+      "state": "MANUAL_RUN",
+      "description": "Last start event was a manual selection. RunComd values are retained while neither start nor stop is TRUE.",
+      "transitions": [
+        {
+          "to": "STOPPED",
+          "guard": "stop",
+          "action": "Clear all pumpGroup[i].RunComd to FALSE; stop wins over start."
+        },
+        {
+          "to": "MANUAL_RUN",
+          "guard": "!stop & !start",
+          "action": "Retain all RunComd values; mode/priority/selection changes alone do not reselect."
+        },
+        {
+          "to": "MANUAL_RUN",
+          "guard": "!stop & start & !mode",
+          "action": "Reselect and latch RunComd[i] := sampled pumpGroup[i].selection."
+        },
+        {
+          "to": "AUTO_RUN",
+          "guard": "!stop & start & mode",
+          "action": "Reselect and latch RunComd[i] := TopThree[i] computed from sampled priorities."
+        }
+      ]
+    },
+    {
+      "state": "AUTO_RUN",
+      "description": "Last start event was automatic top-three selection. RunComd values are retained while neither start nor stop is TRUE.",
+      "transitions": [
+        {
+          "to": "STOPPED",
+          "guard": "stop",
+          "action": "Clear all pumpGroup[i].RunComd to FALSE; stop wins over start."
+        },
+        {
+          "to": "AUTO_RUN",
+          "guard": "!stop & !start",
+          "action": "Retain all RunComd values; mode/priority/selection changes alone do not reselect."
+        },
+        {
+          "to": "MANUAL_RUN",
+          "guard": "!stop & start & !mode",
+          "action": "Reselect and latch RunComd[i] := sampled pumpGroup[i].selection."
+        },
+        {
+          "to": "AUTO_RUN",
+          "guard": "!stop & start & mode",
+          "action": "Reselect and latch RunComd[i] := TopThree[i] computed from sampled priorities."
+        }
+      ]
+    }
+  ],
+  "timer_plan": {
+    "timers": [],
+    "pt_durations": "N/A",
+    "reset_conditions": "No PT timers are required. Stop/reset clears commands immediately. Each TRUE start scan re-latches the active command set immediately.",
+    "implementation_note": "Stage 3 exists but contains no timer FB calls."
+  },
+  "priorities": {
+    "safety": [
+      "1. stop has absolute priority: if stop is TRUE, all five RunComd outputs are forced FALSE even when start is also TRUE.",
+      "2. Never write pumpGroup[i].priority or pumpGroup[i].selection; only pumpGroup[i].RunComd may be written.",
+      "3. Safety/reset and stop handling execute before start selection and before unified output assignment."
+    ],
+    "operational": [
+      "4. start is level-sensitive: each scan where start is TRUE and stop is FALSE reselects and latches the active command set.",
+      "5. With !stop & !start, retain previous RunComd values; changes to mode, priority, or selection alone do not reselect.",
+      "6. Manual start: RunComd[i] follows sampled pumpGroup[i].selection exactly.",
+      "7. Automatic start: RunComd is TRUE for exactly the three highest-priority pumps; larger priority wins, equal priority resolves by lower array index first.",
+      "8. Compute automatic TopThree from sampled priorities at the start event only.",
+      "9. All RunComd outputs are assigned once in the unified output stage; no partial early writes."
+    ]
+  },
+  "initial_values": {
+    "state": "STOPPED",
+    "pumpGroup[1..5].RunComd": false,
+    "runNext[1..5]": false,
+    "topThree[1..5]": false,
+    "startPrev": false,
+    "stopPrev": false,
+    "sampledMode": false,
+    "sampledStart": false,
+    "sampledStop": false
+  },
+  "scan_execution_order": [
+    "1. Edge sampling: sample mode, start, stop, and pumpGroup[i].priority/selection/RunComd once for the scan. Update startPrev/stopPrev for diagnostics only; start/stop behavior remains level-sensitive and not edge-triggered. Do not write RunComd in this stage.",
+    "2. Safety/reset priority and state transitions: evaluate stop first. If stop is TRUE, set state := STOPPED and request clearing all commands; stop wins over start. Else if start is TRUE, set state := MANUAL_RUN when mode is FALSE and state := AUTO_RUN when mode is TRUE, with a pending reselect/latch request. Else retain state and command set. Never assign priority or selection fields.",
+    "3. Unconditional top-level timer FB calls outside CASE/IF: no timer FBs exist in this design; execute this section unconditionally as an empty timer-call block.",
+    "4. Unified output assignments: compute TopThree once from sampled priorities only when required. For each i = 1..5: if stop is TRUE then runNext[i] := FALSE; else if start is TRUE then if mode is TRUE then runNext[i] := TopThree[i] else runNext[i] := sampled pumpGroup[i].selection; else runNext[i] := prior pumpGroup[i].RunComd; assign pumpGroup[i].RunComd := runNext[i]. No RunComd write occurs outside this final stage."
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G(stop -> ((!pumpGroup[1].RunComd) & (!pumpGroup[2].RunComd) & (!pumpGroup[3].RunComd) & (!pumpGroup[4].RunComd) & (!pumpGroup[5].RunComd)))"
+    },
+    {
+      "id": "A2",
+      "formula": "G((!stop & start & !mode) -> ((pumpGroup[1].RunComd <-> pumpGroup[1].selection) & (pumpGroup[2].RunComd <-> pumpGroup[2].selection) & (pumpGroup[3].RunComd <-> pumpGroup[3].selection) & (pumpGroup[4].RunComd <-> pumpGroup[4].selection) & (pumpGroup[5].RunComd <-> pumpGroup[5].selection)))"
+    },
+    {
+      "id": "A3",
+      "formula": "G((!stop & start & mode) -> ((pumpGroup[1].RunComd <-> TopThree(1)) & (pumpGroup[2].RunComd <-> TopThree(2)) & (pumpGroup[3].RunComd <-> TopThree(3)) & (pumpGroup[4].RunComd <-> TopThree(4)) & (pumpGroup[5].RunComd <-> TopThree(5))))"
+    },
+    {
+      "id": "A4",
+      "formula": "G((!stop & !start) -> ((pumpGroup[1].RunComd <-> Y(pumpGroup[1].RunComd)) & (pumpGroup[2].RunComd <-> Y(pumpGroup[2].RunComd)) & (pumpGroup[3].RunComd <-> Y(pumpGroup[3].RunComd)) & (pumpGroup[4].RunComd <-> Y(pumpGroup[4].RunComd)) & (pumpGroup[5].RunComd <-> Y(pumpGroup[5].RunComd))))"
+    },
+    {
+      "id": "A5",
+      "formula": "G(readOnlyPreserved)"
+    }
+  ]
+}

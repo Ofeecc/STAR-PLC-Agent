@@ -1,0 +1,50 @@
+-- Formal verification specification for Task PUB020
+-- Generated: 2026-11-14T14:21:28.047554+00:00
+
+-- Property: PUB020.P_init
+-- Description: Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
+LTLSPEC NAME PUB020.P_init := init;
+
+-- Property: PUB020.P1
+-- Description: Motor directions cannot overlap.
+LTLSPEC NAME PUB020.P1 := G(!(fwd & rev));
+
+-- Property: PUB020.P2
+-- Description: Manual commands follow level inputs with neutral conflict handling.
+LTLSPEC NAME PUB020.P2 := G(!auto -> ((fwd <-> mf) & (rev <-> mr)));
+
+-- Property: PUB020.P3
+-- Description: The automatic route never reverses.
+LTLSPEC NAME PUB020.P3 := G(auto -> !rev);
+
+-- Property: PUB020.P4
+-- Description: An arrived item stops before processing.
+LTLSPEC NAME PUB020.P4 := G(auto & arrival -> stopped);
+
+-- Property: PUB020.P5
+-- Description: The acceptance interval is inclusive and its setpoint is linear.
+LTLSPEC NAME PUB020.P5 := G(judged -> ((valid -> qualified) & (!valid -> reject)));
+
+-- Property: PUB020.P6
+-- Description: No unqualified or unrelated scan changes the last accepted setpoint.
+LTLSPEC NAME PUB020.P6 := G(no_judgment -> same_temp);
+
+-- Property: PUB020.P7
+-- Description: Output arrival and removal control the light.
+LTLSPEC NAME PUB020.P7 := G((output_arrival -> light) & (removed -> clear));
+
+-- Property: PUB020.P8
+-- Description: Only the ordered processing route advances qualified products.
+LTLSPEC NAME PUB020.P8 := G(order);
+
+-- Property: PUB020.P9
+-- Description: With continuing automatic mode, eventual movement/processing feedback and accepted weights, each feed eventually completes.
+LTLSPEC NAME PUB020.P9 := (G(auto) & G(arrival_pending -> F arrival) & G(processing_wait -> F matching_completion) & G(judged -> valid)) -> G(feed -> F light);
+
+-- Property: PUB020.P10
+-- Description: Closes independent LTL coverage of manual/waiting/transport actuator behavior.
+LTLSPEC NAME PUB020.P10 := G((!auto -> (!kick & !CompletionLight)) & (auto & post_wait -> stopped) & (auto & post_move -> (fwd & !rev)));
+
+-- Property: PUB020.COMPLETE
+-- Description: Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
+LTLSPEC NAME PUB020.COMPLETE := G(CompleteBehavior);

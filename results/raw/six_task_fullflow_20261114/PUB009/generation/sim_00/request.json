@@ -1,0 +1,1136 @@
+{
+  "request_id": "121a2d6b131e45328052e3e1b6a01f76",
+  "mode": "IDE_SIMULATION_ONLY",
+  "no_physical_connection": true,
+  "workspace": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\fe05cd8499f453c0",
+  "project": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\fe05cd8499f453c0\\simulation.project",
+  "template": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\fe05cd8499f453c0\\benchmark.project",
+  "task_id": "PUB009",
+  "task_sha256": "665acc52e3dbb74bd40ac92951bcd02068aba679978cd06df09e07c8811717c6",
+  "source_sha256": "b8e1bdca0ad4f833c9749c0069e6dfd5e33059368c155b2a7c52ccfcbda81379",
+  "candidate": {
+    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    cyclicExecution : BOOL;\n    trigger : BOOL;\n    value : LREAL;\n    windowSize : INT;\n    reset : BOOL;\nEND_VAR\nVAR_OUTPUT\n    average : LREAL := 0.0;\n    windowSizeReached : BOOL := FALSE;\n    {attribute 'analysis' := '-27'}\n    error : BOOL := FALSE;\n    {attribute 'analysis' := '-27'}\n    status : WORD := 16#0000;\nEND_VAR\nVAR\n    previousTrigger : BOOL := FALSE;\n    lastValidWindowSize : INT := 0;\n    historyBuffer : ARRAY[0..99] OF LREAL;\n    historyCount : INT := 0;\n    historyHead : INT := 0;\n    historySum : LREAL := 0.0;\n    internalAverage : LREAL := 0.0;\n    internalWindowSizeReached : BOOL := FALSE;\n    invalidWindow : BOOL := FALSE;\n    triggerRise : BOOL := FALSE;\n    windowChanged : BOOL := FALSE;\n    validWindow : BOOL := FALSE;\nEND_VAR",
+    "implementation": "triggerRise := trigger AND NOT previousTrigger;\npreviousTrigger := trigger;\n\nvalidWindow := (windowSize >= 1) AND (windowSize <= 100);\n\nIF NOT validWindow THEN\n    invalidWindow := TRUE;\nELSE\n    invalidWindow := FALSE;\n    IF reset THEN\n        historyCount := 0;\n        historyHead := 0;\n        historySum := 0.0;\n        internalAverage := 0.0;\n        internalWindowSizeReached := FALSE;\n        lastValidWindowSize := windowSize;\n    ELSE\n        windowChanged := (windowSize <> lastValidWindowSize);\n        IF windowChanged THEN\n            historyCount := 0;\n            historyHead := 0;\n            historySum := 0.0;\n            internalAverage := 0.0;\n            internalWindowSizeReached := FALSE;\n            lastValidWindowSize := windowSize;\n        END_IF;\n\n        IF cyclicExecution OR triggerRise THEN\n            IF historyCount < windowSize THEN\n                historyBuffer[historyHead] := value;\n                historySum := historySum + value;\n                historyCount := historyCount + 1;\n                historyHead := (historyHead + 1) MOD windowSize;\n                internalAverage := historySum / historyCount;\n                internalWindowSizeReached := (historyCount >= windowSize);\n            ELSE\n                historySum := historySum - historyBuffer[historyHead] + value;\n                historyBuffer[historyHead] := value;\n                historyHead := (historyHead + 1) MOD windowSize;\n                internalAverage := historySum / historyCount;\n                internalWindowSizeReached := TRUE;\n            END_IF;\n        END_IF;\n    END_IF;\nEND_IF;\n\naverage := internalAverage;\nwindowSizeReached := internalWindowSizeReached;\nerror := invalidWindow;\nIF invalidWindow THEN\n    status := 16#8200;\nELSE\n    status := 16#0000;\nEND_IF;",
+    "supporting_objects": []
+  },
+  "program": {
+    "declaration": "PROGRAM PLC_PRG\nVAR\n BenchStep : UDINT := 0;\n BenchCalls : UDINT := 0;\n BenchDone : BOOL := FALSE;\n BenchUut0 : FB_Task;\n BenchUut1 : FB_Task;\n TraceIn_cyclicExecution : ARRAY[0..14] OF BOOL;\n TraceIn_trigger : ARRAY[0..14] OF BOOL;\n TraceIn_value : ARRAY[0..14] OF LREAL;\n TraceIn_windowSize : ARRAY[0..14] OF INT;\n TraceIn_reset : ARRAY[0..14] OF BOOL;\n TraceOut_average : ARRAY[0..14] OF LREAL;\n TraceOut_windowSizeReached : ARRAY[0..14] OF BOOL;\n TraceOut_error : ARRAY[0..14] OF BOOL;\n TraceOut_status : ARRAY[0..14] OF WORD;\nEND_VAR",
+    "implementation": "IF NOT BenchDone THEN\n CASE BenchStep OF\n 0:\n   BenchUut0.cyclicExecution := TRUE;\n   BenchUut0.trigger := FALSE;\n   BenchUut0.value := LREAL#2.0;\n   BenchUut0.windowSize := INT#3;\n   BenchUut0.reset := FALSE;\n   TraceIn_cyclicExecution[0] := BenchUut0.cyclicExecution;\n   TraceIn_trigger[0] := BenchUut0.trigger;\n   TraceIn_value[0] := BenchUut0.value;\n   TraceIn_windowSize[0] := BenchUut0.windowSize;\n   TraceIn_reset[0] := BenchUut0.reset;\n   BenchUut0();\n   TraceOut_average[0] := BenchUut0.average;\n   TraceOut_windowSizeReached[0] := BenchUut0.windowSizeReached;\n   TraceOut_error[0] := BenchUut0.error;\n   TraceOut_status[0] := BenchUut0.status;\n   BenchCalls := BenchCalls + 1;\n 1:\n   BenchUut0.cyclicExecution := FALSE;\n   BenchUut0.trigger := FALSE;\n   BenchUut0.value := LREAL#3.0;\n   BenchUut0.windowSize := INT#3;\n   BenchUut0.reset := FALSE;\n   TraceIn_cyclicExecution[1] := BenchUut0.cyclicExecution;\n   TraceIn_trigger[1] := BenchUut0.trigger;\n   TraceIn_value[1] := BenchUut0.value;\n   TraceIn_windowSize[1] := BenchUut0.windowSize;\n   TraceIn_reset[1] := BenchUut0.reset;\n   BenchUut0();\n   TraceOut_average[1] := BenchUut0.average;\n   TraceOut_windowSizeReached[1] := BenchUut0.windowSizeReached;\n   TraceOut_error[1] := BenchUut0.error;\n   TraceOut_status[1] := BenchUut0.status;\n   BenchCalls := BenchCalls + 1;\n 2:\n   BenchUut0.cyclicExecution := FALSE;\n   BenchUut0.trigger := TRUE;\n   BenchUut0.value := LREAL#4.0;\n   BenchUut0.windowSize := INT#3;\n   BenchUut0.reset := FALSE;\n   TraceIn_cyclicExecution[2] := BenchUut0.cyclicExecution;\n   TraceIn_trigger[2] := BenchUut0.trigger;\n   TraceIn_value[2] := BenchUut0.value;\n   TraceIn_windowSize[2] := BenchUut0.windowSize;\n   TraceIn_reset[2] := BenchUut0.reset;\n   BenchUut0();\n   TraceOut_average[2] := BenchUut0.average;\n   TraceOut_windowSizeReached[2] := BenchUut0.windowSizeReached;\n   TraceOut_error[2] := BenchUut0.error;\n   TraceOut_status[2] := BenchUut0.status;\n   BenchCalls := BenchCalls + 1;\n 3:\n   BenchUut0.cyclicExecution := FALSE;\n   BenchUut0.trigger := TRUE;\n   BenchUut0.value := LREAL#6.0;\n   BenchUut0.windowSize := INT#3;\n   BenchUut0.reset := FALSE;\n   TraceIn_cyclicExecution[3] := BenchUut0.cyclicExecution;\n   TraceIn_trigger[3] := BenchUut0.trigger;\n   TraceIn_value[3] := BenchUut0.value;\n   TraceIn_windowSize[3] := BenchUut0.windowSize;\n   TraceIn_reset[3] := BenchUut0.reset;\n   BenchUut0();\n   TraceOut_average[3] := BenchUut0.average;\n   TraceOut_windowSizeReached[3] := BenchUut0.windowSizeReached;\n   TraceOut_error[3] := BenchUut0.error;\n   TraceOut_status[3] := BenchUut0.status;\n   BenchCalls := BenchCalls + 1;\n 4:\n   BenchUut0.cyclicExecution := FALSE;\n   BenchUut0.trigger := FALSE;\n   BenchUut0.value := LREAL#0.0;\n   BenchUut0.windowSize := INT#3;\n   BenchUut0.reset := FALSE;\n   TraceIn_cyclicExecution[4] := BenchUut0.cyclicExecution;\n   TraceIn_trigger[4] := BenchUut0.trigger;\n   TraceIn_value[4] := BenchUut0.value;\n   TraceIn_windowSize[4] := BenchUut0.windowSize;\n   TraceIn_reset[4] := BenchUut0.reset;\n   BenchUut0();\n   TraceOut_average[4] := BenchUut0.average;\n   TraceOut_windowSizeReached[4] := BenchUut0.windowSizeReached;\n   TraceOut_error[4] := BenchUut0.error;\n   TraceOut_status[4] := BenchUut0.status;\n   BenchCalls := BenchCalls + 1;\n 5:\n   BenchUut0.cyclicExecution := FALSE;\n   BenchUut0.trigger := TRUE;\n   BenchUut0.value := LREAL#8.0;\n   BenchUut0.windowSize := INT#3;\n   BenchUut0.reset := FALSE;\n   TraceIn_cyclicExecution[5] := BenchUut0.cyclicExecution;\n   TraceIn_trigger[5] := BenchUut0.trigger;\n   TraceIn_value[5] := BenchUut0.value;\n   TraceIn_windowSize[5] := BenchUut0.windowSize;\n   TraceIn_reset[5] := BenchUut0.reset;\n   BenchUut0();\n   TraceOut_average[5] := BenchUut0.average;\n   TraceOut_windowSizeReached[5] := BenchUut0.windowSizeReached;\n   TraceOut_error[5] := BenchUut0.error;\n   TraceOut_status[5] := BenchUut0.status;\n   BenchCalls := BenchCalls + 1;\n 6:\n   BenchUut0.cyclicExecution := TRUE;\n   BenchUut0.trigger := TRUE;\n   BenchUut0.value := LREAL#10.0;\n   BenchUut0.windowSize := INT#3;\n   BenchUut0.reset := FALSE;\n   TraceIn_cyclicExecution[6] := BenchUut0.cyclicExecution;\n   TraceIn_trigger[6] := BenchUut0.trigger;\n   TraceIn_value[6] := BenchUut0.value;\n   TraceIn_windowSize[6] := BenchUut0.windowSize;\n   TraceIn_reset[6] := BenchUut0.reset;\n   BenchUut0();\n   TraceOut_average[6] := BenchUut0.average;\n   TraceOut_windowSizeReached[6] := BenchUut0.windowSizeReached;\n   TraceOut_error[6] := BenchUut0.error;\n   TraceOut_status[6] := BenchUut0.status;\n   BenchCalls := BenchCalls + 1;\n 7:\n   BenchUut0.cyclicExecution := TRUE;\n   BenchUut0.trigger := FALSE;\n   BenchUut0.value := LREAL#0.0;\n   BenchUut0.windowSize := INT#3;\n   BenchUut0.reset := TRUE;\n   TraceIn_cyclicExecution[7] := BenchUut0.cyclicExecution;\n   TraceIn_trigger[7] := BenchUut0.trigger;\n   TraceIn_value[7] := BenchUut0.value;\n   TraceIn_windowSize[7] := BenchUut0.windowSize;\n   TraceIn_reset[7] := BenchUut0.reset;\n   BenchUut0();\n   TraceOut_average[7] := BenchUut0.average;\n   TraceOut_windowSizeReached[7] := BenchUut0.windowSizeReached;\n   TraceOut_error[7] := BenchUut0.error;\n   TraceOut_status[7] := BenchUut0.status;\n   BenchCalls := BenchCalls + 1;\n 8:\n   BenchUut1.cyclicExecution := TRUE;\n   BenchUut1.trigger := FALSE;\n   BenchUut1.value := LREAL#10.0;\n   BenchUut1.windowSize := INT#2;\n   BenchUut1.reset := FALSE;\n   TraceIn_cyclicExecution[8] := BenchUut1.cyclicExecution;\n   TraceIn_trigger[8] := BenchUut1.trigger;\n   TraceIn_value[8] := BenchUut1.value;\n   TraceIn_windowSize[8] := BenchUut1.windowSize;\n   TraceIn_reset[8] := BenchUut1.reset;\n   BenchUut1();\n   TraceOut_average[8] := BenchUut1.average;\n   TraceOut_windowSizeReached[8] := BenchUut1.windowSizeReached;\n   TraceOut_error[8] := BenchUut1.error;\n   TraceOut_status[8] := BenchUut1.status;\n   BenchCalls := BenchCalls + 1;\n 9:\n   BenchUut1.cyclicExecution := TRUE;\n   BenchUut1.trigger := FALSE;\n   BenchUut1.value := LREAL#20.0;\n   BenchUut1.windowSize := INT#2;\n   BenchUut1.reset := FALSE;\n   TraceIn_cyclicExecution[9] := BenchUut1.cyclicExecution;\n   TraceIn_trigger[9] := BenchUut1.trigger;\n   TraceIn_value[9] := BenchUut1.value;\n   TraceIn_windowSize[9] := BenchUut1.windowSize;\n   TraceIn_reset[9] := BenchUut1.reset;\n   BenchUut1();\n   TraceOut_average[9] := BenchUut1.average;\n   TraceOut_windowSizeReached[9] := BenchUut1.windowSizeReached;\n   TraceOut_error[9] := BenchUut1.error;\n   TraceOut_status[9] := BenchUut1.status;\n   BenchCalls := BenchCalls + 1;\n 10:\n   BenchUut1.cyclicExecution := TRUE;\n   BenchUut1.trigger := FALSE;\n   BenchUut1.value := LREAL#99.0;\n   BenchUut1.windowSize := INT#0;\n   BenchUut1.reset := FALSE;\n   TraceIn_cyclicExecution[10] := BenchUut1.cyclicExecution;\n   TraceIn_trigger[10] := BenchUut1.trigger;\n   TraceIn_value[10] := BenchUut1.value;\n   TraceIn_windowSize[10] := BenchUut1.windowSize;\n   TraceIn_reset[10] := BenchUut1.reset;\n   BenchUut1();\n   TraceOut_average[10] := BenchUut1.average;\n   TraceOut_windowSizeReached[10] := BenchUut1.windowSizeReached;\n   TraceOut_error[10] := BenchUut1.error;\n   TraceOut_status[10] := BenchUut1.status;\n   BenchCalls := BenchCalls + 1;\n 11:\n   BenchUut1.cyclicExecution := TRUE;\n   BenchUut1.trigger := FALSE;\n   BenchUut1.value := LREAL#88.0;\n   BenchUut1.windowSize := INT#101;\n   BenchUut1.reset := FALSE;\n   TraceIn_cyclicExecution[11] := BenchUut1.cyclicExecution;\n   TraceIn_trigger[11] := BenchUut1.trigger;\n   TraceIn_value[11] := BenchUut1.value;\n   TraceIn_windowSize[11] := BenchUut1.windowSize;\n   TraceIn_reset[11] := BenchUut1.reset;\n   BenchUut1();\n   TraceOut_average[11] := BenchUut1.average;\n   TraceOut_windowSizeReached[11] := BenchUut1.windowSizeReached;\n   TraceOut_error[11] := BenchUut1.error;\n   TraceOut_status[11] := BenchUut1.status;\n   BenchCalls := BenchCalls + 1;\n 12:\n   BenchUut1.cyclicExecution := TRUE;\n   BenchUut1.trigger := FALSE;\n   BenchUut1.value := LREAL#30.0;\n   BenchUut1.windowSize := INT#2;\n   BenchUut1.reset := FALSE;\n   TraceIn_cyclicExecution[12] := BenchUut1.cyclicExecution;\n   TraceIn_trigger[12] := BenchUut1.trigger;\n   TraceIn_value[12] := BenchUut1.value;\n   TraceIn_windowSize[12] := BenchUut1.windowSize;\n   TraceIn_reset[12] := BenchUut1.reset;\n   BenchUut1();\n   TraceOut_average[12] := BenchUut1.average;\n   TraceOut_windowSizeReached[12] := BenchUut1.windowSizeReached;\n   TraceOut_error[12] := BenchUut1.error;\n   TraceOut_status[12] := BenchUut1.status;\n   BenchCalls := BenchCalls + 1;\n 13:\n   BenchUut1.cyclicExecution := TRUE;\n   BenchUut1.trigger := FALSE;\n   BenchUut1.value := LREAL#100.0;\n   BenchUut1.windowSize := INT#1;\n   BenchUut1.reset := TRUE;\n   TraceIn_cyclicExecution[13] := BenchUut1.cyclicExecution;\n   TraceIn_trigger[13] := BenchUut1.trigger;\n   TraceIn_value[13] := BenchUut1.value;\n   TraceIn_windowSize[13] := BenchUut1.windowSize;\n   TraceIn_reset[13] := BenchUut1.reset;\n   BenchUut1();\n   TraceOut_average[13] := BenchUut1.average;\n   TraceOut_windowSizeReached[13] := BenchUut1.windowSizeReached;\n   TraceOut_error[13] := BenchUut1.error;\n   TraceOut_status[13] := BenchUut1.status;\n   BenchCalls := BenchCalls + 1;\n 14:\n   BenchUut1.cyclicExecution := TRUE;\n   BenchUut1.trigger := FALSE;\n   BenchUut1.value := LREAL#7.0;\n   BenchUut1.windowSize := INT#1;\n   BenchUut1.reset := FALSE;\n   TraceIn_cyclicExecution[14] := BenchUut1.cyclicExecution;\n   TraceIn_trigger[14] := BenchUut1.trigger;\n   TraceIn_value[14] := BenchUut1.value;\n   TraceIn_windowSize[14] := BenchUut1.windowSize;\n   TraceIn_reset[14] := BenchUut1.reset;\n   BenchUut1();\n   TraceOut_average[14] := BenchUut1.average;\n   TraceOut_windowSizeReached[14] := BenchUut1.windowSizeReached;\n   TraceOut_error[14] := BenchUut1.error;\n   TraceOut_status[14] := BenchUut1.status;\n   BenchCalls := BenchCalls + 1;\n END_CASE;\n BenchStep := BenchStep + 1;\n IF BenchStep >= 15 THEN BenchDone := TRUE; END_IF;\nEND_IF;",
+    "step_count": 15,
+    "steps": [
+      {
+        "index": 0,
+        "case_id": "case_1",
+        "case_step": 0,
+        "dt_ms": 0
+      },
+      {
+        "index": 1,
+        "case_id": "case_1",
+        "case_step": 1,
+        "dt_ms": 0
+      },
+      {
+        "index": 2,
+        "case_id": "case_1",
+        "case_step": 2,
+        "dt_ms": 0
+      },
+      {
+        "index": 3,
+        "case_id": "case_1",
+        "case_step": 3,
+        "dt_ms": 0
+      },
+      {
+        "index": 4,
+        "case_id": "case_1",
+        "case_step": 4,
+        "dt_ms": 0
+      },
+      {
+        "index": 5,
+        "case_id": "case_1",
+        "case_step": 5,
+        "dt_ms": 0
+      },
+      {
+        "index": 6,
+        "case_id": "case_1",
+        "case_step": 6,
+        "dt_ms": 0
+      },
+      {
+        "index": 7,
+        "case_id": "case_1",
+        "case_step": 7,
+        "dt_ms": 0
+      },
+      {
+        "index": 8,
+        "case_id": "case_2",
+        "case_step": 0,
+        "dt_ms": 0
+      },
+      {
+        "index": 9,
+        "case_id": "case_2",
+        "case_step": 1,
+        "dt_ms": 0
+      },
+      {
+        "index": 10,
+        "case_id": "case_2",
+        "case_step": 2,
+        "dt_ms": 0
+      },
+      {
+        "index": 11,
+        "case_id": "case_2",
+        "case_step": 3,
+        "dt_ms": 0
+      },
+      {
+        "index": 12,
+        "case_id": "case_2",
+        "case_step": 4,
+        "dt_ms": 0
+      },
+      {
+        "index": 13,
+        "case_id": "case_2",
+        "case_step": 5,
+        "dt_ms": 0
+      },
+      {
+        "index": 14,
+        "case_id": "case_2",
+        "case_step": 6,
+        "dt_ms": 0
+      }
+    ],
+    "inputs": [
+      {
+        "direction": "INPUT",
+        "name": "cyclicExecution",
+        "type": "BOOL",
+        "description": "When TRUE, periodic reading is performed, and trigger has no effect"
+      },
+      {
+        "direction": "INPUT",
+        "name": "trigger",
+        "type": "BOOL",
+        "description": "External trigger signal, reads value upon each rising edge"
+      },
+      {
+        "direction": "INPUT",
+        "name": "value",
+        "type": "LREAL",
+        "description": "Newly read data value"
+      },
+      {
+        "direction": "INPUT",
+        "name": "windowSize",
+        "type": "INT",
+        "description": "The window size for the moving average, which must be between 1 and 100"
+      },
+      {
+        "direction": "INPUT",
+        "name": "reset",
+        "type": "BOOL",
+        "description": "Reset signal, resets the moving average calculation when TRUE"
+      }
+    ],
+    "outputs": [
+      {
+        "direction": "OUTPUT",
+        "name": "average",
+        "type": "LREAL",
+        "description": "The moving average"
+      },
+      {
+        "direction": "OUTPUT",
+        "name": "windowSizeReached",
+        "type": "BOOL",
+        "description": "FALSE: Maximum window width not yet reached TRUE: Maximum window width has been reached"
+      },
+      {
+        "direction": "OUTPUT",
+        "name": "error",
+        "type": "BOOL",
+        "description": "FALSE: No error occurred TRUE: An error occurred during the execution of FB"
+      },
+      {
+        "direction": "OUTPUT",
+        "name": "status",
+        "type": "WORD",
+        "description": "Status code"
+      }
+    ],
+    "trace_expressions": [
+      "PLC_PRG.TraceIn_cyclicExecution[0]",
+      "PLC_PRG.TraceIn_trigger[0]",
+      "PLC_PRG.TraceIn_value[0]",
+      "PLC_PRG.TraceIn_windowSize[0]",
+      "PLC_PRG.TraceIn_reset[0]",
+      "PLC_PRG.TraceOut_average[0]",
+      "PLC_PRG.TraceOut_windowSizeReached[0]",
+      "PLC_PRG.TraceOut_error[0]",
+      "PLC_PRG.TraceOut_status[0]",
+      "PLC_PRG.TraceIn_cyclicExecution[1]",
+      "PLC_PRG.TraceIn_trigger[1]",
+      "PLC_PRG.TraceIn_value[1]",
+      "PLC_PRG.TraceIn_windowSize[1]",
+      "PLC_PRG.TraceIn_reset[1]",
+      "PLC_PRG.TraceOut_average[1]",
+      "PLC_PRG.TraceOut_windowSizeReached[1]",
+      "PLC_PRG.TraceOut_error[1]",
+      "PLC_PRG.TraceOut_status[1]",
+      "PLC_PRG.TraceIn_cyclicExecution[2]",
+      "PLC_PRG.TraceIn_trigger[2]",
+      "PLC_PRG.TraceIn_value[2]",
+      "PLC_PRG.TraceIn_windowSize[2]",
+      "PLC_PRG.TraceIn_reset[2]",
+      "PLC_PRG.TraceOut_average[2]",
+      "PLC_PRG.TraceOut_windowSizeReached[2]",
+      "PLC_PRG.TraceOut_error[2]",
+      "PLC_PRG.TraceOut_status[2]",
+      "PLC_PRG.TraceIn_cyclicExecution[3]",
+      "PLC_PRG.TraceIn_trigger[3]",
+      "PLC_PRG.TraceIn_value[3]",
+      "PLC_PRG.TraceIn_windowSize[3]",
+      "PLC_PRG.TraceIn_reset[3]",
+      "PLC_PRG.TraceOut_average[3]",
+      "PLC_PRG.TraceOut_windowSizeReached[3]",
+      "PLC_PRG.TraceOut_error[3]",
+      "PLC_PRG.TraceOut_status[3]",
+      "PLC_PRG.TraceIn_cyclicExecution[4]",
+      "PLC_PRG.TraceIn_trigger[4]",
+      "PLC_PRG.TraceIn_value[4]",
+      "PLC_PRG.TraceIn_windowSize[4]",
+      "PLC_PRG.TraceIn_reset[4]",
+      "PLC_PRG.TraceOut_average[4]",
+      "PLC_PRG.TraceOut_windowSizeReached[4]",
+      "PLC_PRG.TraceOut_error[4]",
+      "PLC_PRG.TraceOut_status[4]",
+      "PLC_PRG.TraceIn_cyclicExecution[5]",
+      "PLC_PRG.TraceIn_trigger[5]",
+      "PLC_PRG.TraceIn_value[5]",
+      "PLC_PRG.TraceIn_windowSize[5]",
+      "PLC_PRG.TraceIn_reset[5]",
+      "PLC_PRG.TraceOut_average[5]",
+      "PLC_PRG.TraceOut_windowSizeReached[5]",
+      "PLC_PRG.TraceOut_error[5]",
+      "PLC_PRG.TraceOut_status[5]",
+      "PLC_PRG.TraceIn_cyclicExecution[6]",
+      "PLC_PRG.TraceIn_trigger[6]",
+      "PLC_PRG.TraceIn_value[6]",
+      "PLC_PRG.TraceIn_windowSize[6]",
+      "PLC_PRG.TraceIn_reset[6]",
+      "PLC_PRG.TraceOut_average[6]",
+      "PLC_PRG.TraceOut_windowSizeReached[6]",
+      "PLC_PRG.TraceOut_error[6]",
+      "PLC_PRG.TraceOut_status[6]",
+      "PLC_PRG.TraceIn_cyclicExecution[7]",
+      "PLC_PRG.TraceIn_trigger[7]",
+      "PLC_PRG.TraceIn_value[7]",
+      "PLC_PRG.TraceIn_windowSize[7]",
+      "PLC_PRG.TraceIn_reset[7]",
+      "PLC_PRG.TraceOut_average[7]",
+      "PLC_PRG.TraceOut_windowSizeReached[7]",
+      "PLC_PRG.TraceOut_error[7]",
+      "PLC_PRG.TraceOut_status[7]",
+      "PLC_PRG.TraceIn_cyclicExecution[8]",
+      "PLC_PRG.TraceIn_trigger[8]",
+      "PLC_PRG.TraceIn_value[8]",
+      "PLC_PRG.TraceIn_windowSize[8]",
+      "PLC_PRG.TraceIn_reset[8]",
+      "PLC_PRG.TraceOut_average[8]",
+      "PLC_PRG.TraceOut_windowSizeReached[8]",
+      "PLC_PRG.TraceOut_error[8]",
+      "PLC_PRG.TraceOut_status[8]",
+      "PLC_PRG.TraceIn_cyclicExecution[9]",
+      "PLC_PRG.TraceIn_trigger[9]",
+      "PLC_PRG.TraceIn_value[9]",
+      "PLC_PRG.TraceIn_windowSize[9]",
+      "PLC_PRG.TraceIn_reset[9]",
+      "PLC_PRG.TraceOut_average[9]",
+      "PLC_PRG.TraceOut_windowSizeReached[9]",
+      "PLC_PRG.TraceOut_error[9]",
+      "PLC_PRG.TraceOut_status[9]",
+      "PLC_PRG.TraceIn_cyclicExecution[10]",
+      "PLC_PRG.TraceIn_trigger[10]",
+      "PLC_PRG.TraceIn_value[10]",
+      "PLC_PRG.TraceIn_windowSize[10]",
+      "PLC_PRG.TraceIn_reset[10]",
+      "PLC_PRG.TraceOut_average[10]",
+      "PLC_PRG.TraceOut_windowSizeReached[10]",
+      "PLC_PRG.TraceOut_error[10]",
+      "PLC_PRG.TraceOut_status[10]",
+      "PLC_PRG.TraceIn_cyclicExecution[11]",
+      "PLC_PRG.TraceIn_trigger[11]",
+      "PLC_PRG.TraceIn_value[11]",
+      "PLC_PRG.TraceIn_windowSize[11]",
+      "PLC_PRG.TraceIn_reset[11]",
+      "PLC_PRG.TraceOut_average[11]",
+      "PLC_PRG.TraceOut_windowSizeReached[11]",
+      "PLC_PRG.TraceOut_error[11]",
+      "PLC_PRG.TraceOut_status[11]",
+      "PLC_PRG.TraceIn_cyclicExecution[12]",
+      "PLC_PRG.TraceIn_trigger[12]",
+      "PLC_PRG.TraceIn_value[12]",
+      "PLC_PRG.TraceIn_windowSize[12]",
+      "PLC_PRG.TraceIn_reset[12]",
+      "PLC_PRG.TraceOut_average[12]",
+      "PLC_PRG.TraceOut_windowSizeReached[12]",
+      "PLC_PRG.TraceOut_error[12]",
+      "PLC_PRG.TraceOut_status[12]",
+      "PLC_PRG.TraceIn_cyclicExecution[13]",
+      "PLC_PRG.TraceIn_trigger[13]",
+      "PLC_PRG.TraceIn_value[13]",
+      "PLC_PRG.TraceIn_windowSize[13]",
+      "PLC_PRG.TraceIn_reset[13]",
+      "PLC_PRG.TraceOut_average[13]",
+      "PLC_PRG.TraceOut_windowSizeReached[13]",
+      "PLC_PRG.TraceOut_error[13]",
+      "PLC_PRG.TraceOut_status[13]",
+      "PLC_PRG.TraceIn_cyclicExecution[14]",
+      "PLC_PRG.TraceIn_trigger[14]",
+      "PLC_PRG.TraceIn_value[14]",
+      "PLC_PRG.TraceIn_windowSize[14]",
+      "PLC_PRG.TraceIn_reset[14]",
+      "PLC_PRG.TraceOut_average[14]",
+      "PLC_PRG.TraceOut_windowSizeReached[14]",
+      "PLC_PRG.TraceOut_error[14]",
+      "PLC_PRG.TraceOut_status[14]"
+    ],
+    "trace_mapping": [
+      {
+        "step_index": 0,
+        "case_id": "case_1",
+        "case_step": 0,
+        "dt_expr": null,
+        "inputs": {
+          "cyclicExecution": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_cyclicExecution[0]",
+            "type": "BOOL"
+          },
+          "trigger": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_trigger[0]",
+            "type": "BOOL"
+          },
+          "value": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_value[0]",
+            "type": "LREAL"
+          },
+          "windowSize": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_windowSize[0]",
+            "type": "INT"
+          },
+          "reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_reset[0]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "average": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_average[0]",
+            "type": "LREAL"
+          },
+          "windowSizeReached": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_windowSizeReached[0]",
+            "type": "BOOL"
+          },
+          "error": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_error[0]",
+            "type": "BOOL"
+          },
+          "status": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_status[0]",
+            "type": "WORD"
+          }
+        }
+      },
+      {
+        "step_index": 1,
+        "case_id": "case_1",
+        "case_step": 1,
+        "dt_expr": null,
+        "inputs": {
+          "cyclicExecution": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_cyclicExecution[1]",
+            "type": "BOOL"
+          },
+          "trigger": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_trigger[1]",
+            "type": "BOOL"
+          },
+          "value": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_value[1]",
+            "type": "LREAL"
+          },
+          "windowSize": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_windowSize[1]",
+            "type": "INT"
+          },
+          "reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_reset[1]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "average": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_average[1]",
+            "type": "LREAL"
+          },
+          "windowSizeReached": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_windowSizeReached[1]",
+            "type": "BOOL"
+          },
+          "error": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_error[1]",
+            "type": "BOOL"
+          },
+          "status": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_status[1]",
+            "type": "WORD"
+          }
+        }
+      },
+      {
+        "step_index": 2,
+        "case_id": "case_1",
+        "case_step": 2,
+        "dt_expr": null,
+        "inputs": {
+          "cyclicExecution": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_cyclicExecution[2]",
+            "type": "BOOL"
+          },
+          "trigger": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_trigger[2]",
+            "type": "BOOL"
+          },
+          "value": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_value[2]",
+            "type": "LREAL"
+          },
+          "windowSize": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_windowSize[2]",
+            "type": "INT"
+          },
+          "reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_reset[2]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "average": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_average[2]",
+            "type": "LREAL"
+          },
+          "windowSizeReached": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_windowSizeReached[2]",
+            "type": "BOOL"
+          },
+          "error": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_error[2]",
+            "type": "BOOL"
+          },
+          "status": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_status[2]",
+            "type": "WORD"
+          }
+        }
+      },
+      {
+        "step_index": 3,
+        "case_id": "case_1",
+        "case_step": 3,
+        "dt_expr": null,
+        "inputs": {
+          "cyclicExecution": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_cyclicExecution[3]",
+            "type": "BOOL"
+          },
+          "trigger": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_trigger[3]",
+            "type": "BOOL"
+          },
+          "value": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_value[3]",
+            "type": "LREAL"
+          },
+          "windowSize": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_windowSize[3]",
+            "type": "INT"
+          },
+          "reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_reset[3]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "average": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_average[3]",
+            "type": "LREAL"
+          },
+          "windowSizeReached": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_windowSizeReached[3]",
+            "type": "BOOL"
+          },
+          "error": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_error[3]",
+            "type": "BOOL"
+          },
+          "status": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_status[3]",
+            "type": "WORD"
+          }
+        }
+      },
+      {
+        "step_index": 4,
+        "case_id": "case_1",
+        "case_step": 4,
+        "dt_expr": null,
+        "inputs": {
+          "cyclicExecution": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_cyclicExecution[4]",
+            "type": "BOOL"
+          },
+          "trigger": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_trigger[4]",
+            "type": "BOOL"
+          },
+          "value": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_value[4]",
+            "type": "LREAL"
+          },
+          "windowSize": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_windowSize[4]",
+            "type": "INT"
+          },
+          "reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_reset[4]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "average": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_average[4]",
+            "type": "LREAL"
+          },
+          "windowSizeReached": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_windowSizeReached[4]",
+            "type": "BOOL"
+          },
+          "error": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_error[4]",
+            "type": "BOOL"
+          },
+          "status": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_status[4]",
+            "type": "WORD"
+          }
+        }
+      },
+      {
+        "step_index": 5,
+        "case_id": "case_1",
+        "case_step": 5,
+        "dt_expr": null,
+        "inputs": {
+          "cyclicExecution": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_cyclicExecution[5]",
+            "type": "BOOL"
+          },
+          "trigger": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_trigger[5]",
+            "type": "BOOL"
+          },
+          "value": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_value[5]",
+            "type": "LREAL"
+          },
+          "windowSize": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_windowSize[5]",
+            "type": "INT"
+          },
+          "reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_reset[5]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "average": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_average[5]",
+            "type": "LREAL"
+          },
+          "windowSizeReached": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_windowSizeReached[5]",
+            "type": "BOOL"
+          },
+          "error": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_error[5]",
+            "type": "BOOL"
+          },
+          "status": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_status[5]",
+            "type": "WORD"
+          }
+        }
+      },
+      {
+        "step_index": 6,
+        "case_id": "case_1",
+        "case_step": 6,
+        "dt_expr": null,
+        "inputs": {
+          "cyclicExecution": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_cyclicExecution[6]",
+            "type": "BOOL"
+          },
+          "trigger": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_trigger[6]",
+            "type": "BOOL"
+          },
+          "value": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_value[6]",
+            "type": "LREAL"
+          },
+          "windowSize": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_windowSize[6]",
+            "type": "INT"
+          },
+          "reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_reset[6]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "average": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_average[6]",
+            "type": "LREAL"
+          },
+          "windowSizeReached": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_windowSizeReached[6]",
+            "type": "BOOL"
+          },
+          "error": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_error[6]",
+            "type": "BOOL"
+          },
+          "status": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_status[6]",
+            "type": "WORD"
+          }
+        }
+      },
+      {
+        "step_index": 7,
+        "case_id": "case_1",
+        "case_step": 7,
+        "dt_expr": null,
+        "inputs": {
+          "cyclicExecution": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_cyclicExecution[7]",
+            "type": "BOOL"
+          },
+          "trigger": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_trigger[7]",
+            "type": "BOOL"
+          },
+          "value": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_value[7]",
+            "type": "LREAL"
+          },
+          "windowSize": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_windowSize[7]",
+            "type": "INT"
+          },
+          "reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_reset[7]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "average": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_average[7]",
+            "type": "LREAL"
+          },
+          "windowSizeReached": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_windowSizeReached[7]",
+            "type": "BOOL"
+          },
+          "error": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_error[7]",
+            "type": "BOOL"
+          },
+          "status": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_status[7]",
+            "type": "WORD"
+          }
+        }
+      },
+      {
+        "step_index": 8,
+        "case_id": "case_2",
+        "case_step": 0,
+        "dt_expr": null,
+        "inputs": {
+          "cyclicExecution": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_cyclicExecution[8]",
+            "type": "BOOL"
+          },
+          "trigger": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_trigger[8]",
+            "type": "BOOL"
+          },
+          "value": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_value[8]",
+            "type": "LREAL"
+          },
+          "windowSize": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_windowSize[8]",
+            "type": "INT"
+          },
+          "reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_reset[8]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "average": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_average[8]",
+            "type": "LREAL"
+          },
+          "windowSizeReached": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_windowSizeReached[8]",
+            "type": "BOOL"
+          },
+          "error": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_error[8]",
+            "type": "BOOL"
+          },
+          "status": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_status[8]",
+            "type": "WORD"
+          }
+        }
+      },
+      {
+        "step_index": 9,
+        "case_id": "case_2",
+        "case_step": 1,
+        "dt_expr": null,
+        "inputs": {
+          "cyclicExecution": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_cyclicExecution[9]",
+            "type": "BOOL"
+          },
+          "trigger": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_trigger[9]",
+            "type": "BOOL"
+          },
+          "value": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_value[9]",
+            "type": "LREAL"
+          },
+          "windowSize": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_windowSize[9]",
+            "type": "INT"
+          },
+          "reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_reset[9]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "average": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_average[9]",
+            "type": "LREAL"
+          },
+          "windowSizeReached": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_windowSizeReached[9]",
+            "type": "BOOL"
+          },
+          "error": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_error[9]",
+            "type": "BOOL"
+          },
+          "status": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_status[9]",
+            "type": "WORD"
+          }
+        }
+      },
+      {
+        "step_index": 10,
+        "case_id": "case_2",
+        "case_step": 2,
+        "dt_expr": null,
+        "inputs": {
+          "cyclicExecution": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_cyclicExecution[10]",
+            "type": "BOOL"
+          },
+          "trigger": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_trigger[10]",
+            "type": "BOOL"
+          },
+          "value": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_value[10]",
+            "type": "LREAL"
+          },
+          "windowSize": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_windowSize[10]",
+            "type": "INT"
+          },
+          "reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_reset[10]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "average": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_average[10]",
+            "type": "LREAL"
+          },
+          "windowSizeReached": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_windowSizeReached[10]",
+            "type": "BOOL"
+          },
+          "error": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_error[10]",
+            "type": "BOOL"
+          },
+          "status": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_status[10]",
+            "type": "WORD"
+          }
+        }
+      },
+      {
+        "step_index": 11,
+        "case_id": "case_2",
+        "case_step": 3,
+        "dt_expr": null,
+        "inputs": {
+          "cyclicExecution": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_cyclicExecution[11]",
+            "type": "BOOL"
+          },
+          "trigger": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_trigger[11]",
+            "type": "BOOL"
+          },
+          "value": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_value[11]",
+            "type": "LREAL"
+          },
+          "windowSize": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_windowSize[11]",
+            "type": "INT"
+          },
+          "reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_reset[11]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "average": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_average[11]",
+            "type": "LREAL"
+          },
+          "windowSizeReached": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_windowSizeReached[11]",
+            "type": "BOOL"
+          },
+          "error": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_error[11]",
+            "type": "BOOL"
+          },
+          "status": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_status[11]",
+            "type": "WORD"
+          }
+        }
+      },
+      {
+        "step_index": 12,
+        "case_id": "case_2",
+        "case_step": 4,
+        "dt_expr": null,
+        "inputs": {
+          "cyclicExecution": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_cyclicExecution[12]",
+            "type": "BOOL"
+          },
+          "trigger": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_trigger[12]",
+            "type": "BOOL"
+          },
+          "value": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_value[12]",
+            "type": "LREAL"
+          },
+          "windowSize": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_windowSize[12]",
+            "type": "INT"
+          },
+          "reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_reset[12]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "average": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_average[12]",
+            "type": "LREAL"
+          },
+          "windowSizeReached": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_windowSizeReached[12]",
+            "type": "BOOL"
+          },
+          "error": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_error[12]",
+            "type": "BOOL"
+          },
+          "status": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_status[12]",
+            "type": "WORD"
+          }
+        }
+      },
+      {
+        "step_index": 13,
+        "case_id": "case_2",
+        "case_step": 5,
+        "dt_expr": null,
+        "inputs": {
+          "cyclicExecution": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_cyclicExecution[13]",
+            "type": "BOOL"
+          },
+          "trigger": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_trigger[13]",
+            "type": "BOOL"
+          },
+          "value": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_value[13]",
+            "type": "LREAL"
+          },
+          "windowSize": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_windowSize[13]",
+            "type": "INT"
+          },
+          "reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_reset[13]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "average": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_average[13]",
+            "type": "LREAL"
+          },
+          "windowSizeReached": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_windowSizeReached[13]",
+            "type": "BOOL"
+          },
+          "error": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_error[13]",
+            "type": "BOOL"
+          },
+          "status": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_status[13]",
+            "type": "WORD"
+          }
+        }
+      },
+      {
+        "step_index": 14,
+        "case_id": "case_2",
+        "case_step": 6,
+        "dt_expr": null,
+        "inputs": {
+          "cyclicExecution": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_cyclicExecution[14]",
+            "type": "BOOL"
+          },
+          "trigger": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_trigger[14]",
+            "type": "BOOL"
+          },
+          "value": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_value[14]",
+            "type": "LREAL"
+          },
+          "windowSize": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_windowSize[14]",
+            "type": "INT"
+          },
+          "reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_reset[14]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "average": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_average[14]",
+            "type": "LREAL"
+          },
+          "windowSizeReached": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_windowSizeReached[14]",
+            "type": "BOOL"
+          },
+          "error": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_error[14]",
+            "type": "BOOL"
+          },
+          "status": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_status[14]",
+            "type": "WORD"
+          }
+        }
+      }
+    ]
+  },
+  "result_path": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\fe05cd8499f453c0\\simulation_evidence.json"
+}

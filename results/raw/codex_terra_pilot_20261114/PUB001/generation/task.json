@@ -1,0 +1,207 @@
+{
+  "id": "PUB001",
+  "title": "Automated Filling Line Control",
+  "difficulty": "easy",
+  "requirements": "# Automated Filling Line Control\n\n- **Difficulty:** Easy (easy)\n\n## Requirements\n\nAn automated filling line responsible for cleaning, filling, capping, and packaging bottles. Each step of the production line is controlled by PLC and triggered by signals from sensors and operators.\nControl requirements:\nWhen the sensor bottleSensor detects a bottle, it triggers the start of the cleaning pump and continues to work.\nAfter cleaning is completed, the operator operates the button cleaningConfirmButton to trigger the cleaning completion signal, automatically starting the filling valve for filling.\nAfter filling is completed, the operator operates the button fillingConfirmButton to trigger the filling completion signal, automatically starting the capping machine for capping.\nAfter capping is completed, the operator operates the button cappingConfirmButton to trigger the capping completion signal, starting the packing machine for packaging.\nAfter packaging is completed, the operator operates the button packingConfirmButton to trigger the packaging completion signal, lighting up the packaging completion indicator light.\nAfter the operator picks up the packaged bottle, they press the confirmation button finishedButton to reset the indicator light and prepare for the next bottle's production cycle.\n\n## Interface Definition\n\n| Direction | Variable/Field | Data Type | Description |\n| --- | --- | --- | --- |\n| Input | `bottleSensor` | `BOOL` | The bottle reaches the sensor, triggering a signal when a bottle is detected |\n| Input | `cleaningConfirmButton` | `BOOL` | Operator confirmation button, used to confirm the completion of the cleaning process |\n| Input | `fillingConfirmButton` | `BOOL` | Operator confirmation button, used to confirm the completion of the filling process |\n| Input | `cappingConfirmButton` | `BOOL` | Operator confirmation button, used to confirm the completion of the capping process |\n| Input | `packingConfirmButton` | `BOOL` | Operator confirmation button, used to confirm the completion of the packaging process |\n| Input | `finishedButton` | `BOOL` | Operator confirmation button, used to confirm that the bottle has been picked up |\n| Output | `Pump_Motor` | `BOOL` | Control output for the operation of the cleaning pump motor |\n| Output | `Filling_Valve` | `BOOL` | Control output for the operation of the filling valve |\n| Output | `Capping_Machine` | `BOOL` | Control output for the operation of the capping machine |\n| Output | `Packing_Machine` | `BOOL` | Control output for the operation of the packing machine |\n| Output | `Completion_Light` | `BOOL` | Indicator light for packaging completion |",
+  "scenario": "An automated filling line responsible for cleaning, filling, capping, and packaging bottles. Each step of the production line is controlled by PLC and triggered by signals from sensors and operators.",
+  "interface": [
+    {
+      "direction": "INPUT",
+      "name": "bottleSensor",
+      "type": "BOOL",
+      "description": "The bottle reaches the sensor, triggering a signal when a bottle is detected"
+    },
+    {
+      "direction": "INPUT",
+      "name": "cleaningConfirmButton",
+      "type": "BOOL",
+      "description": "Operator confirmation button, used to confirm the completion of the cleaning process"
+    },
+    {
+      "direction": "INPUT",
+      "name": "fillingConfirmButton",
+      "type": "BOOL",
+      "description": "Operator confirmation button, used to confirm the completion of the filling process"
+    },
+    {
+      "direction": "INPUT",
+      "name": "cappingConfirmButton",
+      "type": "BOOL",
+      "description": "Operator confirmation button, used to confirm the completion of the capping process"
+    },
+    {
+      "direction": "INPUT",
+      "name": "packingConfirmButton",
+      "type": "BOOL",
+      "description": "Operator confirmation button, used to confirm the completion of the packaging process"
+    },
+    {
+      "direction": "INPUT",
+      "name": "finishedButton",
+      "type": "BOOL",
+      "description": "Operator confirmation button, used to confirm that the bottle has been picked up"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Pump_Motor",
+      "type": "BOOL",
+      "description": "Control output for the operation of the cleaning pump motor"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Filling_Valve",
+      "type": "BOOL",
+      "description": "Control output for the operation of the filling valve"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Capping_Machine",
+      "type": "BOOL",
+      "description": "Control output for the operation of the capping machine"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Packing_Machine",
+      "type": "BOOL",
+      "description": "Control output for the operation of the packing machine"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Completion_Light",
+      "type": "BOOL",
+      "description": "Indicator light for packaging completion"
+    }
+  ],
+  "initial_conditions": {
+    "phase": 0,
+    "Pump_Motor": false,
+    "Filling_Valve": false,
+    "Capping_Machine": false,
+    "Packing_Machine": false,
+    "Completion_Light": false
+  },
+  "scan_semantics": "At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, outputs O[k] are observed after execution, and q[k+1] is the updated state. Each test creates a fresh FB instance before step 0. An initialized instance has not yet executed a scan. Timer elapsed time is zero on the first eligible sampled invocation; dt_ms is elapsed wall time since the previous invocation, not automatically a synthetic input to the FB. No unobserved past input stability is assumed. All sequences here are expected values.",
+  "safety_priority": [
+    "Active phase restricts which confirmation can be accepted.",
+    "Only the current phase actuator may run."
+  ],
+  "assumptions": [
+    "The five process actuators are mutually exclusive; each completed phase switches off its actuator when the next starts.",
+    "One phase transition at most is allowed per scan. Confirmation signals outside their active phase are ignored.",
+    "Confirmation inputs are level sampled. A held confirmation can complete its relevant phase on a later scan, but cannot skip several phases in one scan.",
+    "finishedButton resets only the completed phase. A bottle still present can start a new cleaning cycle on the following idle scan.",
+    "For the progress property, future confirmations are ordered and sustained until their matching phase accepts them. Unordered one-scan pulses do not imply completion.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+  ],
+  "ltl": [
+    {
+      "id": "PUB001.P_init",
+      "formula": "init",
+      "explanation": "A fresh instance is idle with outputs off before first execution.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "INITIAL_INSTANCE"
+    },
+    {
+      "id": "PUB001.P1",
+      "formula": "G(oneHotOutputs)",
+      "explanation": "No two processing stages are energized together.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB001.P2",
+      "formula": "G((phase=0 & bottleSensor) -> (Pump_Motor & X(phase=1)))",
+      "explanation": "Bottle detection starts cleaning in the same scan.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB001.P3",
+      "formula": "G((phase=1 & cleaningConfirmButton) -> (Filling_Valve & X(phase=2)))",
+      "explanation": "A phase-specific confirmation advances exactly one stage.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB001.P4",
+      "formula": "G((phase=2 & fillingConfirmButton) -> (Capping_Machine & X(phase=3)))",
+      "explanation": "A phase-specific confirmation advances exactly one stage.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB001.P5",
+      "formula": "G((phase=3 & cappingConfirmButton) -> (Packing_Machine & X(phase=4)))",
+      "explanation": "A phase-specific confirmation advances exactly one stage.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB001.P6",
+      "formula": "G((phase=4 & packingConfirmButton) -> (Completion_Light & X(phase=5)))",
+      "explanation": "A phase-specific confirmation advances exactly one stage.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB001.P7",
+      "formula": "G((phase=5 & !finishedButton) -> (Completion_Light & X(phase=5)))",
+      "explanation": "Completion persists until pickup is confirmed.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB001.P8",
+      "formula": "G((phase=5 & finishedButton) -> (!Completion_Light & X(phase=0)))",
+      "explanation": "On finishedButton during completion, clear Completion_Light and return to IDLE.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB001.P9",
+      "formula": "G((phase=1 & G((phase=1) -> F(cleaningConfirmButton)) & G((phase=2) -> F(fillingConfirmButton)) & G((phase=3) -> F(cappingConfirmButton)) & G((phase=4) -> F(packingConfirmButton))) -> F(Completion_Light))",
+      "explanation": "Conditional progress: from cleaning, if every active phase eventually receives its matching confirmation, completion eventually occurs.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB001.P10",
+      "kind": "safety",
+      "formula": "G(((phase=0 & !bottleSensor) -> (!Pump_Motor & !Filling_Valve & !Capping_Machine & !Packing_Machine & !Completion_Light & X(phase=0))) & ((phase=1 & !cleaningConfirmButton) -> (Pump_Motor & !Filling_Valve & !Capping_Machine & !Packing_Machine & !Completion_Light & X(phase=1))) & ((phase=2 & !fillingConfirmButton) -> (!Pump_Motor & Filling_Valve & !Capping_Machine & !Packing_Machine & !Completion_Light & X(phase=2))) & ((phase=3 & !cappingConfirmButton) -> (!Pump_Motor & !Filling_Valve & Capping_Machine & !Packing_Machine & !Completion_Light & X(phase=3))) & ((phase=4 & !packingConfirmButton) -> (!Pump_Motor & !Filling_Valve & !Capping_Machine & Packing_Machine & !Completion_Light & X(phase=4))) & ((phase=5 & finishedButton) -> (!Pump_Motor & !Filling_Valve & !Capping_Machine & !Packing_Machine & !Completion_Light & X(phase=0))))",
+      "description": "Idle stays all-off until bottleSensor, active phases 1..4 hold only their actuator until confirmed, and finishedButton clears all five outputs to IDLE.",
+      "explanation": "Closes the unconfirmed phase-hold and finish-clearing obligations left implicit by P3..P9.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    }
+  ],
+  "atomic_propositions": {
+    "phase": "Spre.phase (0..5); phase at the next LTL position is this scan's Spost.phase",
+    "oneHotOutputs": "sum(int(O[k][n]) for n in [Pump_Motor,Filling_Valve,Capping_Machine,Packing_Machine,Completion_Light]) <= 1",
+    "init": "At the separate pre-invocation initial observation: Spre.phase=0 AND each actual listed initial output is FALSE",
+    "all variable names": "The identically named sampled input or end-of-scan output in interface.",
+    "bottleSensor": "I[k].bottleSensor: sampled input (BOOL).",
+    "cleaningConfirmButton": "I[k].cleaningConfirmButton: sampled input (BOOL).",
+    "fillingConfirmButton": "I[k].fillingConfirmButton: sampled input (BOOL).",
+    "cappingConfirmButton": "I[k].cappingConfirmButton: sampled input (BOOL).",
+    "packingConfirmButton": "I[k].packingConfirmButton: sampled input (BOOL).",
+    "finishedButton": "I[k].finishedButton: sampled input (BOOL).",
+    "Pump_Motor": "O[k].Pump_Motor: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "Filling_Valve": "O[k].Filling_Valve: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "Capping_Machine": "O[k].Capping_Machine: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "Packing_Machine": "O[k].Packing_Machine: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "Completion_Light": "O[k].Completion_Light: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "phase0_idle": "phase=0"
+  }
+}

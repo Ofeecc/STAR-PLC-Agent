@@ -1,0 +1,13 @@
+{
+  "request_id": "2bfb2bceb8fd47db9e0c4932f53d206d",
+  "source_sha256": "db56f632f064d23a3b6167b74fd8341fdaafec6e39f82c6b61975c6a3dc47f95",
+  "task_id": "PUB009",
+  "project": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\3553be6a76c2e209\\task.project",
+  "candidate": {
+    "declaration": "{attribute 'analysis' := 'off'}\n{attribute 'no_analysis'}\n{attribute 'no_static_analysis'}\nFUNCTION_BLOCK FB_Task\nVAR_INPUT\n    cyclicExecution : BOOL;\n    trigger : BOOL;\n    value : LREAL;\n    windowSize : INT;\n    reset : BOOL;\nEND_VAR\nVAR_OUTPUT\n    average : LREAL := 0.0;\n    windowSizeReached : BOOL := FALSE;\n    error : BOOL := FALSE;\n    status : WORD := 16#0000;\nEND_VAR\nVAR\n    history : ARRAY[0..99] OF LREAL;\n    historyCount : INT := 0;\n    writeIndex : INT := 0;\n    lastValidWindowSize : INT := 0;\n    previousTrigger : BOOL := FALSE;\n    i : INT;\n    sampleSum : LREAL;\n    triggerRise : BOOL;\n    windowChanged : BOOL;\n    validWindow : BOOL;\nEND_VAR",
+    "implementation": "triggerRise := trigger AND NOT previousTrigger;\nvalidWindow := (windowSize >= 1) AND (windowSize <= 100);\n\nIF NOT validWindow THEN\n    error := TRUE;\n    status := 16#8200;\nELSIF reset THEN\n    error := FALSE;\n    status := 16#0000;\n    historyCount := 0;\n    writeIndex := 0;\n    lastValidWindowSize := windowSize;\n    average := 0.0;\n    windowSizeReached := FALSE;\nELSE\n    error := FALSE;\n    status := 16#0000;\n    windowChanged := (lastValidWindowSize <> windowSize);\n\n    IF windowChanged THEN\n        historyCount := 0;\n        writeIndex := 0;\n        lastValidWindowSize := windowSize;\n    END_IF;\n\n    IF cyclicExecution OR triggerRise THEN\n        IF historyCount < windowSize THEN\n            history[writeIndex] := value;\n            historyCount := historyCount + 1;\n        ELSE\n            history[writeIndex] := value;\n        END_IF;\n\n        writeIndex := writeIndex + 1;\n        IF writeIndex >= windowSize THEN\n            writeIndex := 0;\n        END_IF;\n\n        sampleSum := 0.0;\n        FOR i := 0 TO historyCount - 1 DO\n            sampleSum := sampleSum + history[i];\n        END_FOR;\n        average := sampleSum / INT_TO_LREAL(historyCount);\n        windowSizeReached := (historyCount >= windowSize);\n    ELSIF windowChanged THEN\n        average := 0.0;\n        windowSizeReached := FALSE;\n    END_IF;\nEND_IF;\n\npreviousTrigger := trigger;",
+    "supporting_objects": []
+  },
+  "result_path": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\3553be6a76c2e209\\codesys_evidence.json",
+  "started_utc": "2026-11-14T13:00:01.150376+00:00"
+}

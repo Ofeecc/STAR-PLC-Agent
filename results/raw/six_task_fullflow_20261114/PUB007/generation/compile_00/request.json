@@ -1,0 +1,20 @@
+{
+  "request_id": "ebfe9590b75b47e796e963b9a426623b",
+  "source_sha256": "68f4bb8642ca997f54cf671f25e5f64b58a23af371b2ad646bcb06c6e295a8da",
+  "task_id": "PUB007",
+  "project": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\e1ae93c24e5e389e\\task.project",
+  "candidate": {
+    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    mode : BOOL;\n    start : BOOL;\n    stop : BOOL;\nEND_VAR\nVAR_IN_OUT\n    pumpGroup : ARRAY[1..5] OF ST_Pump;\nEND_VAR\nVAR\n    sampledMode : BOOL;\n    sampledStart : BOOL;\n    sampledStop : BOOL;\n    autoRequest : BOOL;\n    runNext : ARRAY[1..5] OF BOOL;\n    topThree : ARRAY[1..5] OF BOOL;\n    i : INT;\n    j : INT;\n    rank : INT;\nEND_VAR",
+    "implementation": "// Stage 1: sample inputs once for the scan\nsampledMode := mode;\nsampledStart := start;\nsampledStop := stop;\n\n// Stage 2: select operating request; stop has priority over start\nautoRequest := FALSE;\nIF (NOT sampledStop) AND sampledStart AND sampledMode THEN\n    autoRequest := TRUE;\nEND_IF;\n\n// Stage 3: no timer FBs are required in this design\n\n// Stage 4: unified output assignment\nIF autoRequest THEN\n    FOR i := 1 TO 5 DO\n        topThree[i] := FALSE;\n    END_FOR;\n\n    FOR i := 1 TO 5 DO\n        rank := 0;\n        FOR j := 1 TO 5 DO\n            IF (pumpGroup[j].priority > pumpGroup[i].priority)\n               OR ((pumpGroup[j].priority = pumpGroup[i].priority) AND (j < i)) THEN\n                rank := rank + 1;\n            END_IF;\n        END_FOR;\n\n        IF rank < 3 THEN\n            topThree[i] := TRUE;\n        END_IF;\n    END_FOR;\nEND_IF;\n\nFOR i := 1 TO 5 DO\n    IF sampledStop THEN\n        runNext[i] := FALSE;\n    ELSIF sampledStart THEN\n        IF sampledMode THEN\n            runNext[i] := topThree[i];\n        ELSE\n            runNext[i] := pumpGroup[i].selection;\n        END_IF;\n    ELSE\n        runNext[i] := pumpGroup[i].RunComd;\n    END_IF;\nEND_FOR;\n\nFOR i := 1 TO 5 DO\n    pumpGroup[i].RunComd := runNext[i];\nEND_FOR;",
+    "supporting_objects": [
+      {
+        "name": "ST_Pump",
+        "kind": "DUT",
+        "declaration": "TYPE ST_Pump :\nSTRUCT\n    priority : INT;\n    selection : BOOL;\n    RunComd : BOOL;\nEND_STRUCT\nEND_TYPE",
+        "implementation": ""
+      }
+    ]
+  },
+  "result_path": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\e1ae93c24e5e389e\\codesys_evidence.json",
+  "started_utc": "2026-11-14T08:34:51.773171+00:00"
+}

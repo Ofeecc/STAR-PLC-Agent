@@ -1,0 +1,111 @@
+{
+  "state_machine": {
+    "initial_state": "PROCESS_BATCH",
+    "states": [
+      {
+        "name": "PROCESS_BATCH",
+        "description": "Stateless per-scan batch processing state. On every invocation, sample inputs once, process ordinals j in [0, count), and write only channels[].retVal and channels[].outputValue for enabled channels according to mode/limit validation."
+      }
+    ],
+    "transitions": [
+      {
+        "from": "PROCESS_BATCH",
+        "to": "PROCESS_BATCH",
+        "condition": "every function-block invocation/scan",
+        "actions": [
+          "stage 1: sample count, array lower bounds, analogValues, channel configuration fields, and pre-scan retVal/outputValue",
+          "stage 2: enforce read-only safety, classify each ordinal as skip/preserve, invalid mode, invalid limits, or convert mode 0/1/2",
+          "stage 3: call no timers because no timer FBs are required",
+          "stage 4: perform unified output assignment only for processed enabled channels"
+        ]
+      }
+    ]
+  },
+  "timer_plan": {
+    "timers": [],
+    "pt_durations": {},
+    "reset_conditions": "None. No timer FBs, PT durations, or reset conditions are required for this stateless batch-conversion function block.",
+    "notes": "Stage 3 is explicitly empty. If timers were added later, their FB calls would be unconditional top-level calls outside CASE/IF."
+  },
+  "priorities": [
+    "Never modify analogValues or any channel configuration field: enable, hiLIM, loLIM, bipolar, measuringMode.",
+    "Process only ordinals j from 0 through count-1, pairing analogValues and channels at each array's own lower bound plus j.",
+    "Preserve retVal and outputValue for disabled channels and for ordinals greater than or equal to count.",
+    "For enabled channels, validate measuringMode before limit validation. If measuringMode is not 0, 1, or 2, set retVal=16#8001 and preserve outputValue.",
+    "For enabled channels with valid measuringMode, validate limits in every mode. If hiLIM <= loLIM, set retVal=16#8002 and preserve outputValue.",
+    "For enabled channels with valid measuringMode and valid limits, perform conversion, set retVal=0, and write outputValue.",
+    "Sample all inputs and preserve pre-scan output values before making any output writes.",
+    "Perform output assignments only in the final unified output stage; do not write outputs inside per-channel conversion calculations."
+  ],
+  "initial_values": {
+    "count": "caller-provided DINT; read-only to the FB",
+    "analogValues": "caller-provided ARRAY[*] OF INT; read-only and never modified by the FB",
+    "channels": "caller-provided ARRAY[*] OF ST_AnalogChannel; only retVal and outputValue may be written for enabled processed channels",
+    "loopIndex_j": "0 at the start of each scan; incremented while j < count",
+    "analogLowerBound": "sampled each scan from LOWER_BOUND(analogValues)",
+    "channelLowerBound": "sampled each scan from LOWER_BOUND(channels)",
+    "retVal_success": "16#0000",
+    "retVal_invalid_mode": "16#8001",
+    "retVal_invalid_limits": "16#8002",
+    "temp_raw": "sampled analogValues[LOWER_BOUND(analogValues)+j] as needed",
+    "temp_scaled": "0.0 before mode-0 scaling computation",
+    "preserved_outputValue": "pre-scan channels[].outputValue sampled before any writes",
+    "state": "PROCESS_BATCH"
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "edge sampling",
+      "details": "At the top of each scan, sample count, array lower bounds, analogValues elements, channel configuration fields, and pre-scan retVal/outputValue values. No edge-triggered history is required; sample once for later stages."
+    },
+    {
+      "stage": 2,
+      "name": "safety/reset priority and state transitions",
+      "details": "Enter/remain in PROCESS_BATCH. Enforce read-only rules. For each j in [0, count), evaluate enabled = channels[LOWER_BOUND(channels)+j].enable. Validate measuringMode first; if invalid, classify as ERROR_MODE. Otherwise validate hiLIM > loLIM; if invalid, classify as ERROR_LIMITS. Otherwise classify as CONVERT_MODE0, CONVERT_MODE1, or CONVERT_MODE2. Reset per-scan decision flags."
+    },
+    {
+      "stage": 3,
+      "name": "unconditional top-level timer FB calls outside CASE/IF",
+      "details": "No timer FBs are used. This stage is intentionally empty. Any future timer calls must be placed here as unconditional top-level calls outside CASE/IF."
+    },
+    {
+      "stage": 4,
+      "name": "unified output assignments",
+      "details": "After all per-channel decisions, write outputs. For j < count and enabled: if ERROR_MODE, set retVal=16#8001 and preserve outputValue; if ERROR_LIMITS, set retVal=16#8002 and preserve outputValue; if valid, set retVal=0 and write the computed outputValue. For disabled or out-of-count channels, do not write retVal or outputValue. Never write analogValues or channel configuration fields."
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G(forall j in [0,len(channels)): analogValues[LOWER_BOUND(analogValues)+j] = PRE(analogValues[LOWER_BOUND(analogValues)+j]) AND channels[LOWER_BOUND(channels)+j].enable = PRE(channels[LOWER_BOUND(channels)+j].enable) AND channels[LOWER_BOUND(channels)+j].hiLIM = PRE(channels[LOWER_BOUND(channels)+j].hiLIM) AND channels[LOWER_BOUND(channels)+j].loLIM = PRE(channels[LOWER_BOUND(channels)+j].loLIM) AND channels[LOWER_BOUND(channels)+j].bipolar = PRE(channels[LOWER_BOUND(channels)+j].bipolar) AND channels[LOWER_BOUND(channels)+j].measuringMode = PRE(channels[LOWER_BOUND(channels)+j].measuringMode))"
+    },
+    {
+      "id": "A2",
+      "formula": "G(forall j in [0,len(channels)): (NOT(j < count AND channels[LOWER_BOUND(channels)+j].enable)) -> (channels[LOWER_BOUND(channels)+j].retVal = PRE(channels[LOWER_BOUND(channels)+j].retVal) AND channels[LOWER_BOUND(channels)+j].outputValue = PRE(channels[LOWER_BOUND(channels)+j].outputValue)))"
+    },
+    {
+      "id": "A3",
+      "formula": "G(forall j in [0,len(channels)): ((j < count AND channels[LOWER_BOUND(channels)+j].enable AND NOT(channels[LOWER_BOUND(channels)+j].measuringMode IN {0,1,2})) -> (channels[LOWER_BOUND(channels)+j].retVal = 16#8001 AND channels[LOWER_BOUND(channels)+j].outputValue = PRE(channels[LOWER_BOUND(channels)+j].outputValue))))"
+    },
+    {
+      "id": "A4",
+      "formula": "G(forall j in [0,len(channels)): ((j < count AND channels[LOWER_BOUND(channels)+j].enable AND channels[LOWER_BOUND(channels)+j].measuringMode IN {0,1,2} AND NOT(channels[LOWER_BOUND(channels)+j].hiLIM > channels[LOWER_BOUND(channels)+j].loLIM)) -> (channels[LOWER_BOUND(channels)+j].retVal = 16#8002 AND channels[LOWER_BOUND(channels)+j].outputValue = PRE(channels[LOWER_BOUND(channels)+j].outputValue))))"
+    },
+    {
+      "id": "A5",
+      "formula": "G(forall j in [0,len(channels)): ((j < count AND channels[LOWER_BOUND(channels)+j].enable AND channels[LOWER_BOUND(channels)+j].measuringMode IN {0,1,2} AND channels[LOWER_BOUND(channels)+j].hiLIM > channels[LOWER_BOUND(channels)+j].loLIM) -> channels[LOWER_BOUND(channels)+j].retVal = 0))"
+    },
+    {
+      "id": "A6",
+      "formula": "G(forall j in [0,len(channels)): ((j < count AND channels[LOWER_BOUND(channels)+j].enable AND channels[LOWER_BOUND(channels)+j].measuringMode = 0 AND channels[LOWER_BOUND(channels)+j].hiLIM > channels[LOWER_BOUND(channels)+j].loLIM) -> channels[LOWER_BOUND(channels)+j].outputValue = (channels[LOWER_BOUND(channels)+j].bipolar ? channels[LOWER_BOUND(channels)+j].loLIM + ((analogValues[LOWER_BOUND(analogValues)+j] + 27648) / 55296) * (channels[LOWER_BOUND(channels)+j].hiLIM - channels[LOWER_BOUND(channels)+j].loLIM) : channels[LOWER_BOUND(channels)+j].loLIM + (analogValues[LOWER_BOUND(analogValues)+j] / 27648) * (channels[LOWER_BOUND(channels)+j].hiLIM - channels[LOWER_BOUND(channels)+j].loLIM))))"
+    },
+    {
+      "id": "A7",
+      "formula": "G(forall j in [0,len(channels)): ((j < count AND channels[LOWER_BOUND(channels)+j].enable AND channels[LOWER_BOUND(channels)+j].measuringMode = 1 AND channels[LOWER_BOUND(channels)+j].hiLIM > channels[LOWER_BOUND(channels)+j].loLIM) -> channels[LOWER_BOUND(channels)+j].outputValue = analogValues[LOWER_BOUND(analogValues)+j] / 10.0))"
+    },
+    {
+      "id": "A8",
+      "formula": "G(forall j in [0,len(channels)): ((j < count AND channels[LOWER_BOUND(channels)+j].enable AND channels[LOWER_BOUND(channels)+j].measuringMode = 2 AND channels[LOWER_BOUND(channels)+j].hiLIM > channels[LOWER_BOUND(channels)+j].loLIM) -> channels[LOWER_BOUND(channels)+j].outputValue = analogValues[LOWER_BOUND(analogValues)+j] / 100.0))"
+    }
+  ]
+}

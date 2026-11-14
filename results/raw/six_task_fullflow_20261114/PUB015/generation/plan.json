@@ -1,0 +1,205 @@
+{
+  "state_machine": {
+    "states": [
+      {
+        "name": "IDLE",
+        "description": "No automatic batch active. In opeMode=FALSE, manual latches may independently drive actuators. In opeMode=TRUE, no auto actuator is driven."
+      },
+      {
+        "name": "FILL_A",
+        "description": "Automatic batch phase; valve A fills until levelSensor >= 50 cm."
+      },
+      {
+        "name": "FILL_B",
+        "description": "Automatic batch phase; valve B fills until levelSensor >= 80 cm."
+      },
+      {
+        "name": "FILL_C",
+        "description": "Three-material automatic phase; valve C fills until levelSensor >= 100 cm."
+      },
+      {
+        "name": "MIX",
+        "description": "Automatic mixing phase; mixing motor runs until mixMotorComplete is TRUE."
+      },
+      {
+        "name": "DRAIN",
+        "description": "Automatic drain phase; valve D remains ON until reset, mode change to manual, or a fresh autoStart edge starts a new batch."
+      }
+    ],
+    "transitions": [
+      {
+        "id": "T_RESET_ESTOP",
+        "from": "ANY",
+        "to": "IDLE",
+        "priority": 1,
+        "condition": "estop = FALSE",
+        "action": "Clear all manual latches, abort auto sequence, set phase=IDLE, force all outputs OFF immediately."
+      },
+      {
+        "id": "T_RESET_MODECHANGE",
+        "from": "ANY",
+        "to": "IDLE",
+        "priority": 2,
+        "condition": "estop = TRUE AND modeChange = TRUE",
+        "action": "Clear all manual latches and auto sequence, set phase=IDLE, suppress all actuator commands this scan."
+      },
+      {
+        "id": "T_IDLE_START",
+        "from": "IDLE",
+        "to": "FILL_A",
+        "priority": 3,
+        "condition": "estop = TRUE AND opeMode = TRUE AND modeChange = FALSE AND rising(autoStart)",
+        "action": "Latch processMode for the active batch; start FILL_A; valve A ON same scan."
+      },
+      {
+        "id": "T_A_TO_B",
+        "from": "FILL_A",
+        "to": "FILL_B",
+        "priority": 3,
+        "condition": "estop = TRUE AND opeMode = TRUE AND modeChange = FALSE AND levelSensor >= 50",
+        "action": "Close valve A; open valve B same scan."
+      },
+      {
+        "id": "T_B_TO_MIX_2MAT",
+        "from": "FILL_B",
+        "to": "MIX",
+        "priority": 3,
+        "condition": "estop = TRUE AND opeMode = TRUE AND modeChange = FALSE AND levelSensor >= 80 AND processModeLatched = FALSE",
+        "action": "Close valve B; start mixing motor same scan. Two-material branch skips valve C."
+      },
+      {
+        "id": "T_B_TO_C_3MAT",
+        "from": "FILL_B",
+        "to": "FILL_C",
+        "priority": 3,
+        "condition": "estop = TRUE AND opeMode = TRUE AND modeChange = FALSE AND levelSensor >= 80 AND processModeLatched = TRUE",
+        "action": "Close valve B; open valve C same scan."
+      },
+      {
+        "id": "T_C_TO_MIX",
+        "from": "FILL_C",
+        "to": "MIX",
+        "priority": 3,
+        "condition": "estop = TRUE AND opeMode = TRUE AND modeChange = FALSE AND levelSensor >= 100",
+        "action": "Close valve C; start mixing motor same scan."
+      },
+      {
+        "id": "T_MIX_TO_DRAIN",
+        "from": "MIX",
+        "to": "DRAIN",
+        "priority": 3,
+        "condition": "estop = TRUE AND opeMode = TRUE AND modeChange = FALSE AND mixMotorComplete = TRUE",
+        "action": "Stop mixing motor; open valve D same scan."
+      },
+      {
+        "id": "T_DRAIN_RESTART",
+        "from": "DRAIN",
+        "to": "FILL_A",
+        "priority": 3,
+        "condition": "estop = TRUE AND opeMode = TRUE AND modeChange = FALSE AND rising(autoStart)",
+        "action": "Start fresh batch; latch processMode; phase=FILL_A; valve A ON same scan."
+      },
+      {
+        "id": "T_DRAIN_HOLD",
+        "from": "DRAIN",
+        "to": "DRAIN",
+        "priority": 3,
+        "condition": "estop = TRUE AND opeMode = TRUE AND modeChange = FALSE AND NOT rising(autoStart)",
+        "action": "Hold valve D ON until reset, manual mode switch, or fresh autoStart."
+      },
+      {
+        "id": "T_MANUAL_A",
+        "from": "IDLE",
+        "to": "IDLE",
+        "priority": 4,
+        "condition": "estop = TRUE AND opeMode = FALSE AND modeChange = FALSE AND rising(valveAStart)",
+        "action": "Toggle manualLatchA only."
+      },
+      {
+        "id": "T_MANUAL_B",
+        "from": "IDLE",
+        "to": "IDLE",
+        "priority": 4,
+        "condition": "estop = TRUE AND opeMode = FALSE AND modeChange = FALSE AND rising(valveBStart)",
+        "action": "Toggle manualLatchB only."
+      },
+      {
+        "id": "T_MANUAL_C",
+        "from": "IDLE",
+        "to": "IDLE",
+        "priority": 4,
+        "condition": "estop = TRUE AND opeMode = FALSE AND modeChange = FALSE AND rising(valveCStart)",
+        "action": "Toggle manualLatchC only."
+      },
+      {
+        "id": "T_MANUAL_D",
+        "from": "IDLE",
+        "to": "IDLE",
+        "priority": 4,
+        "condition": "estop = TRUE AND opeMode = FALSE AND modeChange = FALSE AND rising(valveDStart)",
+        "action": "Toggle manualLatchD only."
+      },
+      {
+        "id": "T_MANUAL_MIX",
+        "from": "IDLE",
+        "to": "IDLE",
+        "priority": 4,
+        "condition": "estop = TRUE AND opeMode = FALSE AND modeChange = FALSE AND rising(mixMotorStart)",
+        "action": "Toggle manualLatchMix only."
+      }
+    ],
+    "notes": "Exactly one automatic phase transition is evaluated per scan using the pre-scan phase. Manual buttons toggle independent latches only in manual mode with no mode change. estop=FALSE has absolute priority. Edge memories update every scan, including during emergency stop and mode-change reset scans."
+  },
+  "timer_plan": {
+    "required": false,
+    "timers": [],
+    "pt_durations": {},
+    "reset_conditions": "No IEC PT timers are required. Rising edges are detected by one-scan previous-state memories. Edge memories update every scan, including estop=FALSE and modeChange scans, and are not reset by estop or mode change. Therefore a held button cannot retrigger after recovery."
+  },
+  "priorities": [
+    "1. Emergency stop: estop=FALSE immediately forces valveARun, valveBRun, valveCRun, valveDRun, and mixMotorRun FALSE; clears manual latches; aborts auto phase to IDLE.",
+    "2. Mode-change isolation: after the first invocation, a change in opeMode clears manual latches and auto sequence, forces outputs OFF for that scan, while edge memories still update.",
+    "3. Automatic sequence: only one auto phase transition per invocation; automatic mode drives at most one actuator at a time.",
+    "4. Manual mode: each actuator has an independent rising-edge toggle latch; held/released buttons hold state, and estop/mode change override all latches.",
+    "5. Batch behavior: processMode is latched at autoStart for the active batch; DRAIN holds valve D until estop, switch to manual, or a fresh autoStart edge starts a new batch from FILL_A."
+  ],
+  "initial_values": {
+    "phase": "IDLE",
+    "valveARun": false,
+    "valveBRun": false,
+    "valveCRun": false,
+    "valveDRun": false,
+    "mixMotorRun": false,
+    "manualLatchA": false,
+    "manualLatchB": false,
+    "manualLatchC": false,
+    "manualLatchD": false,
+    "manualLatchMix": false,
+    "processModeLatched": false,
+    "initialized": false,
+    "prevOpeMode": false,
+    "modeChange": false,
+    "prevValveAStart": false,
+    "prevValveBStart": false,
+    "prevValveCStart": false,
+    "prevValveDStart": false,
+    "prevMixMotorStart": false,
+    "prevAutoStart": false
+  },
+  "scan_execution_order": [
+    "1. Edge sampling: sample all inputs; compute rising edges for valveAStart, valveBStart, valveCStart, valveDStart, mixMotorStart, and autoStart using previous-state memories; compute modeChange = initialized AND (opeMode <> prevOpeMode); first invocation has modeChange=FALSE; update previous-state memories including edge memories even if estop=FALSE or modeChange=TRUE.",
+    "2. Safety/reset priority and state transitions: first apply estop=FALSE reset; else apply modeChange reset/suppression; else if opeMode=TRUE evaluate exactly one automatic phase transition using pre-scan phase and latched processMode; else if opeMode=FALSE apply independent manual toggle latches on rising edges; update phase and latch/sequence state for same-scan output effect.",
+    "3. Unconditional top-level timer FB calls outside CASE/IF: no timer function blocks are required; this stage remains an explicit no-op every scan.",
+    "4. Unified output assignments: if estop=FALSE then all actuator outputs FALSE; else if modeChange=TRUE then all actuator outputs FALSE; else if opeMode=TRUE then drive the single actuator selected by phase (FILL_A=valveA, FILL_B=valveB, FILL_C=valveC, MIX=mixMotor, DRAIN=valveD, IDLE=none); else drive each actuator from its independent manual latch."
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G((estop = FALSE) -> (valveARun = FALSE & valveBRun = FALSE & valveCRun = FALSE & valveDRun = FALSE & mixMotorRun = FALSE))"
+    },
+    {
+      "id": "A2",
+      "formula": "G((estop = TRUE & opeMode = TRUE) -> (!(valveARun & valveBRun) & !(valveARun & valveCRun) & !(valveARun & valveDRun) & !(valveARun & mixMotorRun) & !(valveBRun & valveCRun) & !(valveBRun & valveDRun) & !(valveBRun & mixMotorRun) & !(valveCRun & valveDRun) & !(valveCRun & mixMotorRun) & !(valveDRun & mixMotorRun)))"
+    }
+  ]
+}

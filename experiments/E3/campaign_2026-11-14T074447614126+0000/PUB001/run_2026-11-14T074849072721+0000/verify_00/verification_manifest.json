@@ -1,0 +1,86 @@
+{
+  "task_id": "PUB001",
+  "source_sha256": "f425f161bc1e0066dc6ecba5a7950894cda7d33abeef71fc37a79fceaac68579",
+  "st_path": "candidate.st",
+  "ltl_path": "spec.ltl",
+  "properties": [
+    {
+      "id": "PUB001.P_init",
+      "formula": "init",
+      "description": "A fresh instance is idle with outputs off before first execution."
+    },
+    {
+      "id": "PUB001.P1",
+      "formula": "G(oneHotOutputs)",
+      "description": "No two processing stages are energized together."
+    },
+    {
+      "id": "PUB001.P2",
+      "formula": "G((phase=0 & bottleSensor) -> (Pump_Motor & X(phase=1)))",
+      "description": "Bottle detection starts cleaning in the same scan."
+    },
+    {
+      "id": "PUB001.P3",
+      "formula": "G((phase=1 & cleaningConfirmButton) -> (Filling_Valve & X(phase=2)))",
+      "description": "A phase-specific confirmation advances exactly one stage."
+    },
+    {
+      "id": "PUB001.P4",
+      "formula": "G((phase=2 & fillingConfirmButton) -> (Capping_Machine & X(phase=3)))",
+      "description": "A phase-specific confirmation advances exactly one stage."
+    },
+    {
+      "id": "PUB001.P5",
+      "formula": "G((phase=3 & cappingConfirmButton) -> (Packing_Machine & X(phase=4)))",
+      "description": "A phase-specific confirmation advances exactly one stage."
+    },
+    {
+      "id": "PUB001.P6",
+      "formula": "G((phase=4 & packingConfirmButton) -> (Completion_Light & X(phase=5)))",
+      "description": "A phase-specific confirmation advances exactly one stage."
+    },
+    {
+      "id": "PUB001.P7",
+      "formula": "G((phase=5 & !finishedButton) -> (Completion_Light & X(phase=5)))",
+      "description": "Completion persists until pickup is confirmed."
+    },
+    {
+      "id": "PUB001.P8",
+      "formula": "G((phase=5 & finishedButton) -> (!Completion_Light & X(phase=0)))",
+      "description": "On finishedButton during completion, clear Completion_Light and return to IDLE."
+    },
+    {
+      "id": "PUB001.P9",
+      "formula": "G((phase=1 & G((phase=1) -> F(cleaningConfirmButton)) & G((phase=2) -> F(fillingConfirmButton)) & G((phase=3) -> F(cappingConfirmButton)) & G((phase=4) -> F(packingConfirmButton))) -> F(Completion_Light))",
+      "description": "Conditional progress: from cleaning, if every active phase eventually receives its matching confirmation, completion eventually occurs."
+    },
+    {
+      "id": "PUB001.P10",
+      "formula": "G(((phase=0 & !bottleSensor) -> (!Pump_Motor & !Filling_Valve & !Capping_Machine & !Packing_Machine & !Completion_Light & X(phase=0))) & ((phase=1 & !cleaningConfirmButton) -> (Pump_Motor & !Filling_Valve & !Capping_Machine & !Packing_Machine & !Completion_Light & X(phase=1))) & ((phase=2 & !fillingConfirmButton) -> (!Pump_Motor & Filling_Valve & !Capping_Machine & !Packing_Machine & !Completion_Light & X(phase=2))) & ((phase=3 & !cappingConfirmButton) -> (!Pump_Motor & !Filling_Valve & Capping_Machine & !Packing_Machine & !Completion_Light & X(phase=3))) & ((phase=4 & !packingConfirmButton) -> (!Pump_Motor & !Filling_Valve & !Capping_Machine & Packing_Machine & !Completion_Light & X(phase=4))) & ((phase=5 & finishedButton) -> (!Pump_Motor & !Filling_Valve & !Capping_Machine & !Packing_Machine & !Completion_Light & X(phase=0))))",
+      "description": "Closes the unconfirmed phase-hold and finish-clearing obligations left implicit by P3..P9."
+    }
+  ],
+  "atomic_propositions": {
+    "phase": "Spre.phase (0..5); phase at the next LTL position is this scan's Spost.phase",
+    "oneHotOutputs": "sum(int(O[k][n]) for n in [Pump_Motor,Filling_Valve,Capping_Machine,Packing_Machine,Completion_Light]) <= 1",
+    "init": "At the separate pre-invocation initial observation: Spre.phase=0 AND each actual listed initial output is FALSE",
+    "all variable names": "The identically named sampled input or end-of-scan output in interface.",
+    "bottleSensor": "I[k].bottleSensor: sampled input (BOOL).",
+    "cleaningConfirmButton": "I[k].cleaningConfirmButton: sampled input (BOOL).",
+    "fillingConfirmButton": "I[k].fillingConfirmButton: sampled input (BOOL).",
+    "cappingConfirmButton": "I[k].cappingConfirmButton: sampled input (BOOL).",
+    "packingConfirmButton": "I[k].packingConfirmButton: sampled input (BOOL).",
+    "finishedButton": "I[k].finishedButton: sampled input (BOOL).",
+    "Pump_Motor": "O[k].Pump_Motor: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "Filling_Valve": "O[k].Filling_Valve: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "Capping_Machine": "O[k].Capping_Machine: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "Packing_Machine": "O[k].Packing_Machine: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "Completion_Light": "O[k].Completion_Light: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "phase0_idle": "phase=0"
+  },
+  "tools_supported": [],
+  "encoding_complete": false,
+  "task_sha256": "dfe5b9bbf8df5e29ba06c55b80955309c433ad4bd9c08c453a1f89db0b9371c7",
+  "bundle_status": "REQUIRES_PROPERTY_AND_MODEL_ENCODING",
+  "created_utc": "2026-11-14T07:51:20.430014+00:00"
+}

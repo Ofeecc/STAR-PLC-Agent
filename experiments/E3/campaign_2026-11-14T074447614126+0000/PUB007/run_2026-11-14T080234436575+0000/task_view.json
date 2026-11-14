@@ -1,0 +1,131 @@
+{
+  "id": "PUB007",
+  "title": "Multi-Pump Switching Control System",
+  "difficulty": "medium",
+  "requirements": "# Multi-Pump Switching Control System\n\n- **Difficulty:** Medium (medium)\n\n## Requirements\n\nIn an industrial water supply system, there are 5 pumps, each of which can be controlled independently. The system needs to support both manual and automatic operating modes.\nBased on the value of the mode variable, switch to the corresponding operating mode.\nIn manual mode, control the start and stop of the selected pump based on the value of pumpGroup[1..5].selection.\nIn automatic mode, compare the priority of each pump, and automatically select the 3 pumps with higher priority for water supply according to the method of three in use and two on standby.\n\n## Interface Definition\n\n| Direction | Variable/Field | Data Type | Description |\n| --- | --- | --- | --- |\n| Input | `mode` | `BOOL` | FALSE: Manual mode<br>TRUE: Automatic mode |\n| Input | `start` | `BOOL` | Start button, used to start the manually selected or automatically selected pump |\n| Input | `stop` | `BOOL` | Stop button, used to stop all pumps |\n| Input/Output | `pumpGroup` | `ARRAY[1..5] OF ST_Pump` | Five pump records passed by reference. Read priority and selection; write only RunComd. |\n\n**Data type `ST_Pump`**\n\n| Field | Data Type | Description |\n| --- | --- | --- |\n| `priority` | `INT` | Priority; larger values have higher priority. Read-only to the function block. |\n| `selection` | `BOOL` | Manual-selection state. Read-only to the function block. |\n| `RunComd` | `BOOL` | Run command written by the function block; TRUE runs and FALSE stops. |",
+  "scenario": "In an industrial water supply system, there are 5 pumps, each of which can be controlled independently. The system needs to support both manual and automatic operating modes.",
+  "interface": [
+    {
+      "direction": "INPUT",
+      "name": "mode",
+      "type": "BOOL",
+      "description": "FALSE: Manual mode<br>TRUE: Automatic mode"
+    },
+    {
+      "direction": "INPUT",
+      "name": "start",
+      "type": "BOOL",
+      "description": "Start button, used to start the manually selected or automatically selected pump"
+    },
+    {
+      "direction": "INPUT",
+      "name": "stop",
+      "type": "BOOL",
+      "description": "Stop button, used to stop all pumps"
+    },
+    {
+      "direction": "IN_OUT",
+      "name": "pumpGroup",
+      "type": "ARRAY[1..5] OF ST_Pump",
+      "description": "Five pump records passed by reference. Read priority and selection; write only RunComd."
+    }
+  ],
+  "initial_conditions": {
+    "pumpGroup[].RunComd": false
+  },
+  "scan_semantics": "At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, outputs O[k] are observed after execution, and q[k+1] is the updated state. Each test creates a fresh FB instance before step 0. An initialized instance has not yet executed a scan. Timer elapsed time is zero on the first eligible sampled invocation; dt_ms is elapsed wall time since the previous invocation, not automatically a synthetic input to the FB. No unobserved past input stability is assumed. All sequences here are expected values.",
+  "safety_priority": [
+    "Stop wins over a simultaneous start.",
+    "Read-only priority and selection fields must be unchanged."
+  ],
+  "assumptions": [
+    "stop has priority over start and clears all five commands.",
+    "A start command selects the running set from current mode/configuration; commands are retained while neither button is TRUE. There is no automatic selection change until another start.",
+    "Equal priorities are resolved by lower array index first. Selection is ignored in automatic mode.",
+    "The caller initializes every RunComd FALSE before creating the first operational scan. Only RunComd may be written.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "Evaluation policy confirmation: start is level-sensitive and reselects each TRUE invocation; without start, mode/selection/priority changes do not reselect. Automatic top-three applies to selection events, not unconditionally to every automatic invocation.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+  ],
+  "ltl": [
+    {
+      "id": "PUB007.P1",
+      "formula": "G((stop) -> ((!runs[1]) & (!runs[2]) & (!runs[3]) & (!runs[4]) & (!runs[5])))",
+      "explanation": "Stop de-energizes all pumps.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB007.P2",
+      "formula": "G((!stop & start & !mode) -> ((runs[1]=select[1]) & (runs[2]=select[2]) & (runs[3]=select[3]) & (runs[4]=select[4]) & (runs[5]=select[5])))",
+      "explanation": "Manual start uses exactly the selected pumps.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB007.P3",
+      "formula": "G((!stop & start & mode) -> (((runs[1] <-> TopThree1)) & ((runs[2] <-> TopThree2)) & ((runs[3] <-> TopThree3)) & ((runs[4] <-> TopThree4)) & ((runs[5] <-> TopThree5))))",
+      "explanation": "Automatic start runs exactly the highest-priority three.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB007.P4",
+      "formula": "G((!stop & !start) -> ((runs[1]=runPrev[1]) & (runs[2]=runPrev[2]) & (runs[3]=runPrev[3]) & (runs[4]=runPrev[4]) & (runs[5]=runPrev[5])))",
+      "explanation": "Start/stop operation latches commands.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB007.P5",
+      "formula": "G(readOnlyPreserved)",
+      "explanation": "The FB may not modify priorities or selections.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    }
+  ],
+  "atomic_propositions": {
+    "top3": "Deprecated alias for automatic top-3 selection; active P3 uses expanded TopThree1..TopThree5.",
+    "runPrev[i]": "The pre-scan RunComd value of pump i.",
+    "readOnlyPreserved": "All five priority and selection values equal their sampled values.",
+    "runs[i]": "Post-scan pumpGroup[i].RunComd, for i=1..5.",
+    "select[i]": "Sampled pumpGroup[i].selection.",
+    "interface names": "Identically named sampled input or output.",
+    "TopThree1": "(1-1) is in first three ordinal indices of sorted(range(5), key=lambda j: (-I[k].pumpGroup[j].priority,j)).",
+    "TopThree2": "(2-1) is in first three ordinal indices of sorted(range(5), key=lambda j: (-I[k].pumpGroup[j].priority,j)).",
+    "TopThree3": "(3-1) is in first three ordinal indices of sorted(range(5), key=lambda j: (-I[k].pumpGroup[j].priority,j)).",
+    "TopThree4": "(4-1) is in first three ordinal indices of sorted(range(5), key=lambda j: (-I[k].pumpGroup[j].priority,j)).",
+    "TopThree5": "(5-1) is in first three ordinal indices of sorted(range(5), key=lambda j: (-I[k].pumpGroup[j].priority,j)).",
+    "mode": "I[k].mode: sampled input (BOOL).",
+    "start": "I[k].start: sampled input (BOOL).",
+    "stop": "I[k].stop: sampled input (BOOL).",
+    "pumpGroup": "O[k].pumpGroup: independently observed post-scan candidate value (ARRAY[1..5] OF ST_Pump); never defined as expected output. I[k].pumpGroup denotes separately captured caller value before invocation."
+  },
+  "data_types": {
+    "ST_Pump": {
+      "kind": "STRUCT",
+      "fields": [
+        {
+          "name": "priority",
+          "type": "INT",
+          "access": "read_only"
+        },
+        {
+          "name": "selection",
+          "type": "BOOL",
+          "access": "read_only"
+        },
+        {
+          "name": "RunComd",
+          "type": "BOOL",
+          "access": "written"
+        }
+      ]
+    }
+  }
+}

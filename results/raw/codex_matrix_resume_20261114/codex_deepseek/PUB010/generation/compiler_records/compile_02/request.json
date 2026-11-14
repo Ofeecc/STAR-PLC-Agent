@@ -1,0 +1,13 @@
+{
+  "request_id": "883541cb63db48829db46410b30220dc",
+  "source_sha256": "b37d40c461e255e426eee77b6a15b46294e706ef50ffeaae1874f1bdb3ece775",
+  "task_id": "PUB010",
+  "project": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\4936aa18634925bd\\task.project",
+  "candidate": {
+    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    TemperatureSensorInput : REAL;\n    SetTemperature : REAL;\nEND_VAR\nVAR_OUTPUT\n    CurrentTemperature : REAL;\n    SetTempDisplay : REAL;\n    HeaterStatus : BOOL;\n    OverheatProtection : BOOL;\n    HeaterOutput : BOOL;\nEND_VAR\nVAR\n    sensorFault : BOOL;\n    demand : BOOL;\n    heatLimitReached : BOOL;\n    wasHeating : BOOL;\n    clockTimer : TON;\n    currentTime : TIME;\n    heatStartTime : TIME;\n    protectionStartTime : TIME;\nEND_VAR",
+    "implementation": "CurrentTemperature := TemperatureSensorInput;\nSetTempDisplay := SetTemperature;\nsensorFault := (TemperatureSensorInput < 0.0) OR (TemperatureSensorInput > 100.0);\n\nIF NOT sensorFault THEN\n    IF TemperatureSensorInput < SetTemperature THEN\n        demand := TRUE;\n    ELSIF TemperatureSensorInput > SetTemperature THEN\n        demand := FALSE;\n    END_IF;\nEND_IF;\n\nclockTimer(IN := TRUE, PT := T#24D);\ncurrentTime := clockTimer.ET;\nwasHeating := HeaterOutput;\n\nIF OverheatProtection AND ((currentTime - protectionStartTime) >= T#3S) THEN\n    OverheatProtection := FALSE;\nEND_IF;\n\nheatLimitReached := FALSE;\nIF wasHeating AND NOT sensorFault THEN\n    IF (currentTime - heatStartTime) >= T#5S THEN\n        heatLimitReached := TRUE;\n    END_IF;\nEND_IF;\n\nIF heatLimitReached AND NOT OverheatProtection THEN\n    OverheatProtection := TRUE;\n    protectionStartTime := currentTime;\nEND_IF;\n\nIF sensorFault OR OverheatProtection THEN\n    HeaterOutput := FALSE;\nELSIF demand THEN\n    HeaterOutput := TRUE;\nELSE\n    HeaterOutput := FALSE;\nEND_IF;\nHeaterStatus := HeaterOutput;\n\nIF HeaterOutput THEN\n    IF NOT wasHeating THEN\n        heatStartTime := currentTime;\n    END_IF;\nELSE\n    heatStartTime := currentTime;\nEND_IF;",
+    "supporting_objects": []
+  },
+  "result_path": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\4936aa18634925bd\\codesys_evidence.json",
+  "started_utc": "2026-11-14T13:18:45.449584+00:00"
+}

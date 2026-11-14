@@ -1,0 +1,5 @@
+{
+  "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    VISCOSITY_OK : BOOL;\n    PASTE_E_STOP_NC : BOOL;\n    DebounceTime : TIME;\n    CycleTime : TIME;\nEND_VAR\nVAR_OUTPUT\n    VFD_RUN : BOOL := FALSE;\n    PUMP_MAINT_DUE : BOOL := FALSE;\n    PUMP_RUNTIME_ACC : LTIME := LTIME#0ns;\nEND_VAR\nVAR\n    debounceElapsed : LTIME := LTIME#0ns;\n    viscosityQualified : BOOL := FALSE;\nEND_VAR",
+  "implementation": "IF NOT PASTE_E_STOP_NC THEN\n    debounceElapsed := LTIME#0ns;\n    viscosityQualified := FALSE;\nELSIF NOT VISCOSITY_OK THEN\n    debounceElapsed := LTIME#0ns;\n    viscosityQualified := FALSE;\nELSE\n    IF debounceElapsed >= TIME_TO_LTIME(DebounceTime) THEN\n        viscosityQualified := TRUE;\n    END_IF;\nEND_IF;\n\nVFD_RUN := PASTE_E_STOP_NC AND VISCOSITY_OK AND viscosityQualified;\n\nIF VFD_RUN THEN\n    PUMP_RUNTIME_ACC := PUMP_RUNTIME_ACC + TIME_TO_LTIME(CycleTime);\nEND_IF;\n\nPUMP_MAINT_DUE := PUMP_RUNTIME_ACC >= LTIME#500h;\n\nIF PASTE_E_STOP_NC AND VISCOSITY_OK AND NOT viscosityQualified THEN\n    debounceElapsed := debounceElapsed + TIME_TO_LTIME(CycleTime);\nEND_IF;",
+  "supporting_objects": []
+}

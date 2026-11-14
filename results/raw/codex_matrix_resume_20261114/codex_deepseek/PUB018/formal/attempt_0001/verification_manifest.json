@@ -1,0 +1,80 @@
+{
+  "task_id": "PUB018",
+  "source_sha256": "38e4e70d2c1f38dbe24a8052cf2309989a99d8557db6c22e70c3229803ca5469",
+  "st_path": "candidate.st",
+  "ltl_path": "spec.ltl",
+  "properties": [
+    {
+      "id": "PUB018.P_init",
+      "formula": "init",
+      "description": "Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope)."
+    },
+    {
+      "id": "PUB018.P1",
+      "formula": "G(reset -> (empty & ok))",
+      "description": "Reset overrides simultaneous requests."
+    },
+    {
+      "id": "PUB018.P2",
+      "formula": "G((pop_empty -> (e1 & same)) & (push_full -> (e2 & same)))",
+      "description": "Full and empty failures preserve data."
+    },
+    {
+      "id": "PUB018.P3",
+      "formula": "G((push -> pushed) & (pop -> popped))",
+      "description": "Accepted edges update the ordered logical queue exactly once."
+    },
+    {
+      "id": "PUB018.P4",
+      "formula": "G(bounded)",
+      "description": "Count remains within the actual caller capacity."
+    },
+    {
+      "id": "PUB018.P5",
+      "formula": "G(idle -> (ok & same))",
+      "description": "Held levels do not perform another operation."
+    },
+    {
+      "id": "PUB018.P6",
+      "formula": "G((!pop) -> non_pop_item_preserved)",
+      "description": "Prevents spurious overwriting of caller item when not popping."
+    },
+    {
+      "id": "PUB018.COMPLETE",
+      "formula": "G(CompleteBehavior)",
+      "description": "Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed."
+    }
+  ],
+  "atomic_propositions": {
+    "reset": "I[k].reset: sampled input (BOOL).",
+    "empty": "elementCount=0",
+    "ok": "status=0",
+    "pop_empty": "NOT reset AND rising(dequeue) AND pre-count=0",
+    "push_full": "NOT reset AND rising(enqueue) AND pre-count=capacity",
+    "e1": "status=16#8001",
+    "e2": "status=16#8002",
+    "same": "logical queue equals pre-queue AND item equals sampled item",
+    "push": "NOT reset AND rising(enqueue) AND pre-count<capacity",
+    "pushed": "post-queue=pre-queue appended with sampled item AND count=pre-count+1 AND status=0 AND item equals sampled item",
+    "pop": "NOT reset AND rising(dequeue) AND pre-count>0",
+    "popped": "item=pre-front AND post-queue=pre-queue without front AND count=pre-count-1 AND status=0",
+    "bounded": "0<=elementCount<=actual buffer length",
+    "idle": "NOT reset AND no request rising edge",
+    "CompleteBehavior": "令(Sref[k+1], E[k])=T_PUB018(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\n独立逻辑队列Q初始空、enqPrev/deqPrev=FALSE。非reset下严禁同拍enqueue/dequeue同时上升沿。reset优先QAfter=[]；否则单个enqueue新沿且未满时追加采样item，满报8002；dequeue新沿且非空时返回旧队首并去首，空报8001；其余状态0。elementCount=|QAfter|；仅成功pop改变实际item，其余等于采样item。buffer物理布局不受约束，其正确性由完整可观察出队行为约束。绑定A容量2(DINT)、B容量3(BOOL)，其余正整数容量由实际buffer元数据固定。",
+    "enqueue": "I[k].enqueue: sampled input (BOOL).",
+    "dequeue": "I[k].dequeue: sampled input (BOOL).",
+    "elementCount": "O[k].elementCount: independently observed post-scan candidate value (DINT); never defined as expected output.",
+    "status": "O[k].status: independently observed post-scan candidate value (WORD); never defined as expected output.",
+    "item": "O[k].item: independently observed post-scan candidate value (VARIANT); never defined as expected output. I[k].item denotes separately captured caller value before invocation.",
+    "buffer": "O[k].buffer: independently observed post-scan candidate value (VARIANT); never defined as expected output. I[k].buffer denotes separately captured caller value before invocation.",
+    "non_pop_item_preserved": "item equals sampled caller item",
+    "init": "At the separate pre-invocation initial observation before scan k=0: O_init.elementCount=0, O_init.status=0."
+  },
+  "tools_supported": [],
+  "encoding_complete": false,
+  "task_sha256": "4d6795e28c550440addd72a62bccc806e201ddf4f3f378aa6d303113ff30cb47",
+  "bundle_status": "UNSUPPORTED_ST",
+  "created_utc": "2026-11-14T13:35:29.757678+00:00",
+  "verification_status": "UNSUPPORTED_ST",
+  "reason": "Type POINTER is outside the symbolic verifier fragment"
+}

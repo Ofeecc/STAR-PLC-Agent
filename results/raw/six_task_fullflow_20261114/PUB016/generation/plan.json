@@ -1,0 +1,134 @@
+{
+  "state_machine": [
+    {
+      "state": "IDLE",
+      "description": "Stopped. Waits for a valid start rising edge with sensor1 TRUE."
+    },
+    {
+      "state": "MOVING",
+      "description": "Conveyor runs toward target; arrival at target stops motion and latches currentStation."
+    },
+    {
+      "state": "WAIT_PROCESS",
+      "description": "Stopped at processing station 2-4, waiting for a fresh matching completion rising edge."
+    },
+    {
+      "from": "IDLE",
+      "to": "MOVING",
+      "guard": "startRise && sensor1 && processLength in 1..8 && processSequence[processLength] = 5 && processSequence[1] <> 1",
+      "actions": "currentStation := 1; sequenceIndex := 1; target := processSequence[1]"
+    },
+    {
+      "from": "IDLE",
+      "to": "IDLE",
+      "guard": "else",
+      "actions": "no state change; outputs remain stopped"
+    },
+    {
+      "from": "MOVING",
+      "to": "WAIT_PROCESS",
+      "guard": "sensorAt(target) && target <> 5",
+      "actions": "currentStation := target"
+    },
+    {
+      "from": "MOVING",
+      "to": "IDLE",
+      "guard": "sensorAt(target) && target = 5",
+      "actions": "currentStation := target; sequenceIndex := processLength"
+    },
+    {
+      "from": "MOVING",
+      "to": "MOVING",
+      "guard": "else",
+      "actions": "no state change"
+    },
+    {
+      "from": "WAIT_PROCESS",
+      "to": "MOVING",
+      "guard": "freshMatchingCompletion && sequenceIndex < processLength && processSequence[sequenceIndex + 1] <> currentStation",
+      "actions": "sequenceIndex := sequenceIndex + 1; target := processSequence[sequenceIndex]"
+    },
+    {
+      "from": "WAIT_PROCESS",
+      "to": "WAIT_PROCESS",
+      "guard": "freshMatchingCompletion && sequenceIndex < processLength && processSequence[sequenceIndex + 1] = currentStation",
+      "actions": "sequenceIndex := sequenceIndex + 1; target := processSequence[sequenceIndex]; require a new completion rising edge"
+    },
+    {
+      "from": "WAIT_PROCESS",
+      "to": "IDLE",
+      "guard": "freshMatchingCompletion && sequenceIndex >= processLength (defensive only)",
+      "actions": "stop and return IDLE"
+    },
+    {
+      "from": "WAIT_PROCESS",
+      "to": "WAIT_PROCESS",
+      "guard": "else",
+      "actions": "no state change; remain stopped"
+    }
+  ],
+  "timer_plan": {
+    "timers_required": [],
+    "pt_durations": {},
+    "reset_conditions": "No IEC timers are required. Instance reset clears all retained edge-history bits and resets phase/currentStation/sequenceIndex/target/outputs to initial values.",
+    "stage3_note": "Stage 3 is a no-op for timers. If a watchdog or debounce TON/TOF is added later, its FB call must be unconditional and top-level in stage 3, outside CASE/IF."
+  },
+  "priorities": {
+    "safety": [
+      "conveyorLeft and conveyorRight are mutually exclusive; both FALSE whenever stopped.",
+      "Destination arrival immediately forces stop and prevents completion acceptance in the same scan.",
+      "Completion edges are accepted only in WAIT_PROCESS for the matching current station 2-4; at most one sequence advancement per scan.",
+      "Start is accepted only in IDLE with rising station1Start AND sensor1 TRUE; otherwise remain stopped.",
+      "A same-station next target after completion remains WAIT_PROCESS and requires a new completion rising edge."
+    ],
+    "operational": [
+      "Direction is determined from target versus currentStation; equal target/current means no movement.",
+      "Station 5 arrival terminates the active sequence and returns to IDLE.",
+      "processSequence and processLength are treated as fixed and valid during a product cycle, with final active entry 5."
+    ]
+  },
+  "initial_values": {
+    "phase": "IDLE",
+    "currentStation": 1,
+    "sequenceIndex": 0,
+    "target": 1,
+    "conveyorLeft": false,
+    "conveyorRight": false,
+    "prevStation1Start": false,
+    "prevStation2Complete": false,
+    "prevStation3Complete": false,
+    "prevStation4Complete": false
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "edge sampling",
+      "actions": "Sample all inputs into scan shadow values. Compute startRise := station1Start && !prevStation1Start; comp2Rise := station2Complete && !prevStation2Complete; comp3Rise := station3Complete && !prevStation3Complete; comp4Rise := station4Complete && !prevStation4Complete. Update prev bits to current input values at end of stage. Define sensorAt(s) using sensor1..sensor5."
+    },
+    {
+      "stage": 2,
+      "name": "safety/reset priority and state transitions",
+      "actions": "Apply reset if requested. Enforce safety priorities before normal transitions: do not start unless IDLE && startRise && sensor1; ignore completion unless WAIT_PROCESS and freshMatchingCompletion; do not move on arrival. Execute the state-machine transitions using post-entry phase and one advancement maximum."
+    },
+    {
+      "stage": 3,
+      "name": "unconditional top-level timer FB calls outside CASE/IF",
+      "actions": "No timer FBs are instantiated. Any future timer FB must be called here unconditionally, not inside CASE/IF."
+    },
+    {
+      "stage": 4,
+      "name": "unified output assignments",
+      "actions": "Default conveyorLeft := FALSE and conveyorRight := FALSE. If post-phase = MOVING and NOT sensorAt(target): set conveyorRight := TRUE when target > currentStation; set conveyorLeft := TRUE when target < currentStation; otherwise both remain FALSE. No other code writes outputs."
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G(!(conveyorLeft && conveyorRight))"
+    },
+    {
+      "id": "A2",
+      "formula": "G((station1Start && !sensor1 && !conveyorLeft && !conveyorRight) -> X(!conveyorLeft && !conveyorRight))"
+    }
+  ]
+}

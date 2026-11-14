@@ -1,0 +1,13 @@
+{
+  "request_id": "0f03a641773e482aa8268fc723f6cffe",
+  "source_sha256": "f0f86ad4073d544d0f8124e4a5e34b8cb0ce215de7d2fed23bb3cb77038cde5e",
+  "task_id": "PUB012",
+  "project": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\99bce31b4aee9962\\task.project",
+  "candidate": {
+    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    THICKNESS_FAULT : BOOL;\n    THICKNESS_SIGNAL_VALID : BOOL;\n    CUTTING_RUN : BOOL;\n    FaultTimestamp : DINT;\n    CycleTime : TIME;\nEND_VAR\nVAR_OUTPUT\n    THICKNESS_ALARM : BOOL;\n    Slab_Fault_Counter : UINT;\n    Slab_Runtime_Accumulator : LTIME;\n    Slab_Fault_History : ARRAY[0..4] OF DINT;\nEND_VAR\nVAR\n    _PrevValidFault : BOOL;\n    _HoldActive : BOOL;\n    _HoldElapsed : TIME;\n    _FaultRise : BOOL;\nEND_VAR",
+    "implementation": "_FaultRise := THICKNESS_SIGNAL_VALID AND THICKNESS_FAULT AND NOT _PrevValidFault;\n\nIF NOT THICKNESS_SIGNAL_VALID THEN\n    _HoldActive := FALSE;\n    _HoldElapsed := T#0MS;\n    THICKNESS_ALARM := FALSE;\nELSE\n    IF _FaultRise THEN\n        _HoldActive := TRUE;\n        _HoldElapsed := T#0MS;\n    ELSIF _HoldActive THEN\n        _HoldElapsed := _HoldElapsed + CycleTime;\n        IF _HoldElapsed >= T#500MS THEN\n            _HoldActive := FALSE;\n        END_IF;\n    END_IF;\n\n    THICKNESS_ALARM := THICKNESS_FAULT OR _HoldActive;\nEND_IF;\n\nIF _FaultRise THEN\n    Slab_Fault_History[4] := Slab_Fault_History[3];\n    Slab_Fault_History[3] := Slab_Fault_History[2];\n    Slab_Fault_History[2] := Slab_Fault_History[1];\n    Slab_Fault_History[1] := Slab_Fault_History[0];\n    Slab_Fault_History[0] := FaultTimestamp;\n    Slab_Fault_Counter := Slab_Fault_Counter + 1;\nEND_IF;\n\nIF THICKNESS_SIGNAL_VALID AND NOT THICKNESS_FAULT AND CUTTING_RUN THEN\n    Slab_Runtime_Accumulator := Slab_Runtime_Accumulator + TIME_TO_LTIME(CycleTime);\nEND_IF;\n\n_PrevValidFault := THICKNESS_SIGNAL_VALID AND THICKNESS_FAULT;",
+    "supporting_objects": []
+  },
+  "result_path": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\99bce31b4aee9962\\codesys_evidence.json",
+  "started_utc": "2026-11-14T13:18:32.220626+00:00"
+}

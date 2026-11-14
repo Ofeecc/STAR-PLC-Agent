@@ -1,0 +1,1943 @@
+{
+  "request_id": "fbbb515b83774c65b131bbeb26d24799",
+  "mode": "IDE_SIMULATION_ONLY",
+  "no_physical_connection": true,
+  "workspace": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\3b5d31e426e90f31",
+  "project": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\3b5d31e426e90f31\\simulation.project",
+  "template": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\3b5d31e426e90f31\\benchmark.project",
+  "task_id": "PUB016",
+  "task_sha256": "ee6f79639c975b8565892effa5a707ec28364c4146ba59eccbf9dfe895248bde",
+  "source_sha256": "eb9c4ef4173c47d5bbd2c37ed98415c4d3d97646d70d10fb70c10272dff41a7e",
+  "candidate": {
+    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    processLength : USINT;\n    sensor1 : BOOL;\n    sensor2 : BOOL;\n    sensor3 : BOOL;\n    sensor4 : BOOL;\n    sensor5 : BOOL;\n    station1Start : BOOL;\n    station2Complete : BOOL;\n    station3Complete : BOOL;\n    station4Complete : BOOL;\n    processSequence : ARRAY[1..8] OF USINT;\nEND_VAR\nVAR_OUTPUT\n    conveyorLeft : BOOL;\n    conveyorRight : BOOL;\nEND_VAR\nVAR CONSTANT\n    PHASE_IDLE : INT := 0;\n    PHASE_MOVING : INT := 1;\n    PHASE_WAIT_PROCESS : INT := 2;\nEND_VAR\nVAR\n    phase : INT := 0;\n    currentStation : USINT := 1;\n    sequenceIndex : USINT := 0;\n    target : USINT := 1;\n    prevStation1Start : BOOL := FALSE;\n    prevStation2Complete : BOOL := FALSE;\n    prevStation3Complete : BOOL := FALSE;\n    prevStation4Complete : BOOL := FALSE;\n    startRise : BOOL;\n    comp2Rise : BOOL;\n    comp3Rise : BOOL;\n    comp4Rise : BOOL;\n    targetSensor : BOOL;\n    freshMatchingCompletion : BOOL;\nEND_VAR",
+    "implementation": "startRise := station1Start AND NOT prevStation1Start;\ncomp2Rise := station2Complete AND NOT prevStation2Complete;\ncomp3Rise := station3Complete AND NOT prevStation3Complete;\ncomp4Rise := station4Complete AND NOT prevStation4Complete;\n\ntargetSensor := FALSE;\nCASE target OF\n    1: targetSensor := sensor1;\n    2: targetSensor := sensor2;\n    3: targetSensor := sensor3;\n    4: targetSensor := sensor4;\n    5: targetSensor := sensor5;\nELSE\n    targetSensor := FALSE;\nEND_CASE;\n\nCASE phase OF\n    PHASE_IDLE:\n        IF startRise AND sensor1 AND (processLength >= 1) AND (processLength <= 8) THEN\n            IF (processSequence[processLength] = 5) AND (processSequence[1] <> 1) THEN\n                currentStation := 1;\n                sequenceIndex := 1;\n                target := processSequence[1];\n                phase := PHASE_MOVING;\n            END_IF;\n        END_IF;\n\n    PHASE_MOVING:\n        IF targetSensor THEN\n            currentStation := target;\n            IF target = 5 THEN\n                sequenceIndex := processLength;\n                phase := PHASE_IDLE;\n            ELSE\n                phase := PHASE_WAIT_PROCESS;\n            END_IF;\n        END_IF;\n\n    PHASE_WAIT_PROCESS:\n        freshMatchingCompletion := FALSE;\n        CASE currentStation OF\n            2: freshMatchingCompletion := comp2Rise;\n            3: freshMatchingCompletion := comp3Rise;\n            4: freshMatchingCompletion := comp4Rise;\n        ELSE\n            freshMatchingCompletion := FALSE;\n        END_CASE;\n        IF freshMatchingCompletion THEN\n            IF sequenceIndex < processLength THEN\n                sequenceIndex := sequenceIndex + 1;\n                target := processSequence[sequenceIndex];\n                IF target = currentStation THEN\n                    phase := PHASE_WAIT_PROCESS;\n                ELSE\n                    phase := PHASE_MOVING;\n                END_IF;\n            ELSE\n                phase := PHASE_IDLE;\n            END_IF;\n        END_IF;\n\nELSE\n    phase := PHASE_IDLE;\nEND_CASE;\n\ntargetSensor := FALSE;\nCASE target OF\n    1: targetSensor := sensor1;\n    2: targetSensor := sensor2;\n    3: targetSensor := sensor3;\n    4: targetSensor := sensor4;\n    5: targetSensor := sensor5;\nELSE\n    targetSensor := FALSE;\nEND_CASE;\n\nconveyorLeft := FALSE;\nconveyorRight := FALSE;\nIF (phase = PHASE_MOVING) AND NOT targetSensor THEN\n    IF target > currentStation THEN\n        conveyorRight := TRUE;\n    ELSIF target < currentStation THEN\n        conveyorLeft := TRUE;\n    END_IF;\nEND_IF;\n\nprevStation1Start := station1Start;\nprevStation2Complete := station2Complete;\nprevStation3Complete := station3Complete;\nprevStation4Complete := station4Complete;",
+    "supporting_objects": []
+  },
+  "program": {
+    "declaration": "PROGRAM PLC_PRG\nVAR\n BenchStep : UDINT := 0;\n BenchCalls : UDINT := 0;\n BenchDone : BOOL := FALSE;\n BenchUut0 : FB_Task;\n BenchUut1 : FB_Task;\n TraceIn_processLength : ARRAY[0..12] OF USINT;\n TraceIn_sensor1 : ARRAY[0..12] OF BOOL;\n TraceIn_sensor2 : ARRAY[0..12] OF BOOL;\n TraceIn_sensor3 : ARRAY[0..12] OF BOOL;\n TraceIn_sensor4 : ARRAY[0..12] OF BOOL;\n TraceIn_sensor5 : ARRAY[0..12] OF BOOL;\n TraceIn_station1Start : ARRAY[0..12] OF BOOL;\n TraceIn_station2Complete : ARRAY[0..12] OF BOOL;\n TraceIn_station3Complete : ARRAY[0..12] OF BOOL;\n TraceIn_station4Complete : ARRAY[0..12] OF BOOL;\n TraceIn_processSequence_1 : ARRAY[0..12] OF USINT;\n TraceIn_processSequence_2 : ARRAY[0..12] OF USINT;\n TraceIn_processSequence_3 : ARRAY[0..12] OF USINT;\n TraceIn_processSequence_4 : ARRAY[0..12] OF USINT;\n TraceIn_processSequence_5 : ARRAY[0..12] OF USINT;\n TraceIn_processSequence_6 : ARRAY[0..12] OF USINT;\n TraceIn_processSequence_7 : ARRAY[0..12] OF USINT;\n TraceIn_processSequence_8 : ARRAY[0..12] OF USINT;\n TraceOut_conveyorLeft : ARRAY[0..12] OF BOOL;\n TraceOut_conveyorRight : ARRAY[0..12] OF BOOL;\nEND_VAR",
+    "implementation": "IF NOT BenchDone THEN\n CASE BenchStep OF\n 0:\n   BenchUut0.processLength := USINT#2;\n   BenchUut0.sensor1 := TRUE;\n   BenchUut0.sensor2 := FALSE;\n   BenchUut0.sensor3 := FALSE;\n   BenchUut0.sensor4 := FALSE;\n   BenchUut0.sensor5 := FALSE;\n   BenchUut0.station1Start := FALSE;\n   BenchUut0.station2Complete := FALSE;\n   BenchUut0.station3Complete := FALSE;\n   BenchUut0.station4Complete := FALSE;\n   BenchUut0.processSequence[1] := USINT#2;\n   BenchUut0.processSequence[2] := USINT#5;\n   BenchUut0.processSequence[3] := USINT#0;\n   BenchUut0.processSequence[4] := USINT#0;\n   BenchUut0.processSequence[5] := USINT#0;\n   BenchUut0.processSequence[6] := USINT#0;\n   BenchUut0.processSequence[7] := USINT#0;\n   BenchUut0.processSequence[8] := USINT#0;\n   TraceIn_processLength[0] := BenchUut0.processLength;\n   TraceIn_sensor1[0] := BenchUut0.sensor1;\n   TraceIn_sensor2[0] := BenchUut0.sensor2;\n   TraceIn_sensor3[0] := BenchUut0.sensor3;\n   TraceIn_sensor4[0] := BenchUut0.sensor4;\n   TraceIn_sensor5[0] := BenchUut0.sensor5;\n   TraceIn_station1Start[0] := BenchUut0.station1Start;\n   TraceIn_station2Complete[0] := BenchUut0.station2Complete;\n   TraceIn_station3Complete[0] := BenchUut0.station3Complete;\n   TraceIn_station4Complete[0] := BenchUut0.station4Complete;\n   TraceIn_processSequence_1[0] := BenchUut0.processSequence[1];\n   TraceIn_processSequence_2[0] := BenchUut0.processSequence[2];\n   TraceIn_processSequence_3[0] := BenchUut0.processSequence[3];\n   TraceIn_processSequence_4[0] := BenchUut0.processSequence[4];\n   TraceIn_processSequence_5[0] := BenchUut0.processSequence[5];\n   TraceIn_processSequence_6[0] := BenchUut0.processSequence[6];\n   TraceIn_processSequence_7[0] := BenchUut0.processSequence[7];\n   TraceIn_processSequence_8[0] := BenchUut0.processSequence[8];\n   BenchUut0();\n   TraceOut_conveyorLeft[0] := BenchUut0.conveyorLeft;\n   TraceOut_conveyorRight[0] := BenchUut0.conveyorRight;\n   BenchCalls := BenchCalls + 1;\n 1:\n   BenchUut0.processLength := USINT#2;\n   BenchUut0.sensor1 := TRUE;\n   BenchUut0.sensor2 := FALSE;\n   BenchUut0.sensor3 := FALSE;\n   BenchUut0.sensor4 := FALSE;\n   BenchUut0.sensor5 := FALSE;\n   BenchUut0.station1Start := TRUE;\n   BenchUut0.station2Complete := FALSE;\n   BenchUut0.station3Complete := FALSE;\n   BenchUut0.station4Complete := FALSE;\n   BenchUut0.processSequence[1] := USINT#2;\n   BenchUut0.processSequence[2] := USINT#5;\n   BenchUut0.processSequence[3] := USINT#0;\n   BenchUut0.processSequence[4] := USINT#0;\n   BenchUut0.processSequence[5] := USINT#0;\n   BenchUut0.processSequence[6] := USINT#0;\n   BenchUut0.processSequence[7] := USINT#0;\n   BenchUut0.processSequence[8] := USINT#0;\n   TraceIn_processLength[1] := BenchUut0.processLength;\n   TraceIn_sensor1[1] := BenchUut0.sensor1;\n   TraceIn_sensor2[1] := BenchUut0.sensor2;\n   TraceIn_sensor3[1] := BenchUut0.sensor3;\n   TraceIn_sensor4[1] := BenchUut0.sensor4;\n   TraceIn_sensor5[1] := BenchUut0.sensor5;\n   TraceIn_station1Start[1] := BenchUut0.station1Start;\n   TraceIn_station2Complete[1] := BenchUut0.station2Complete;\n   TraceIn_station3Complete[1] := BenchUut0.station3Complete;\n   TraceIn_station4Complete[1] := BenchUut0.station4Complete;\n   TraceIn_processSequence_1[1] := BenchUut0.processSequence[1];\n   TraceIn_processSequence_2[1] := BenchUut0.processSequence[2];\n   TraceIn_processSequence_3[1] := BenchUut0.processSequence[3];\n   TraceIn_processSequence_4[1] := BenchUut0.processSequence[4];\n   TraceIn_processSequence_5[1] := BenchUut0.processSequence[5];\n   TraceIn_processSequence_6[1] := BenchUut0.processSequence[6];\n   TraceIn_processSequence_7[1] := BenchUut0.processSequence[7];\n   TraceIn_processSequence_8[1] := BenchUut0.processSequence[8];\n   BenchUut0();\n   TraceOut_conveyorLeft[1] := BenchUut0.conveyorLeft;\n   TraceOut_conveyorRight[1] := BenchUut0.conveyorRight;\n   BenchCalls := BenchCalls + 1;\n 2:\n   BenchUut0.processLength := USINT#2;\n   BenchUut0.sensor1 := TRUE;\n   BenchUut0.sensor2 := TRUE;\n   BenchUut0.sensor3 := FALSE;\n   BenchUut0.sensor4 := FALSE;\n   BenchUut0.sensor5 := FALSE;\n   BenchUut0.station1Start := FALSE;\n   BenchUut0.station2Complete := FALSE;\n   BenchUut0.station3Complete := FALSE;\n   BenchUut0.station4Complete := FALSE;\n   BenchUut0.processSequence[1] := USINT#2;\n   BenchUut0.processSequence[2] := USINT#5;\n   BenchUut0.processSequence[3] := USINT#0;\n   BenchUut0.processSequence[4] := USINT#0;\n   BenchUut0.processSequence[5] := USINT#0;\n   BenchUut0.processSequence[6] := USINT#0;\n   BenchUut0.processSequence[7] := USINT#0;\n   BenchUut0.processSequence[8] := USINT#0;\n   TraceIn_processLength[2] := BenchUut0.processLength;\n   TraceIn_sensor1[2] := BenchUut0.sensor1;\n   TraceIn_sensor2[2] := BenchUut0.sensor2;\n   TraceIn_sensor3[2] := BenchUut0.sensor3;\n   TraceIn_sensor4[2] := BenchUut0.sensor4;\n   TraceIn_sensor5[2] := BenchUut0.sensor5;\n   TraceIn_station1Start[2] := BenchUut0.station1Start;\n   TraceIn_station2Complete[2] := BenchUut0.station2Complete;\n   TraceIn_station3Complete[2] := BenchUut0.station3Complete;\n   TraceIn_station4Complete[2] := BenchUut0.station4Complete;\n   TraceIn_processSequence_1[2] := BenchUut0.processSequence[1];\n   TraceIn_processSequence_2[2] := BenchUut0.processSequence[2];\n   TraceIn_processSequence_3[2] := BenchUut0.processSequence[3];\n   TraceIn_processSequence_4[2] := BenchUut0.processSequence[4];\n   TraceIn_processSequence_5[2] := BenchUut0.processSequence[5];\n   TraceIn_processSequence_6[2] := BenchUut0.processSequence[6];\n   TraceIn_processSequence_7[2] := BenchUut0.processSequence[7];\n   TraceIn_processSequence_8[2] := BenchUut0.processSequence[8];\n   BenchUut0();\n   TraceOut_conveyorLeft[2] := BenchUut0.conveyorLeft;\n   TraceOut_conveyorRight[2] := BenchUut0.conveyorRight;\n   BenchCalls := BenchCalls + 1;\n 3:\n   BenchUut0.processLength := USINT#2;\n   BenchUut0.sensor1 := TRUE;\n   BenchUut0.sensor2 := TRUE;\n   BenchUut0.sensor3 := FALSE;\n   BenchUut0.sensor4 := FALSE;\n   BenchUut0.sensor5 := FALSE;\n   BenchUut0.station1Start := FALSE;\n   BenchUut0.station2Complete := TRUE;\n   BenchUut0.station3Complete := FALSE;\n   BenchUut0.station4Complete := FALSE;\n   BenchUut0.processSequence[1] := USINT#2;\n   BenchUut0.processSequence[2] := USINT#5;\n   BenchUut0.processSequence[3] := USINT#0;\n   BenchUut0.processSequence[4] := USINT#0;\n   BenchUut0.processSequence[5] := USINT#0;\n   BenchUut0.processSequence[6] := USINT#0;\n   BenchUut0.processSequence[7] := USINT#0;\n   BenchUut0.processSequence[8] := USINT#0;\n   TraceIn_processLength[3] := BenchUut0.processLength;\n   TraceIn_sensor1[3] := BenchUut0.sensor1;\n   TraceIn_sensor2[3] := BenchUut0.sensor2;\n   TraceIn_sensor3[3] := BenchUut0.sensor3;\n   TraceIn_sensor4[3] := BenchUut0.sensor4;\n   TraceIn_sensor5[3] := BenchUut0.sensor5;\n   TraceIn_station1Start[3] := BenchUut0.station1Start;\n   TraceIn_station2Complete[3] := BenchUut0.station2Complete;\n   TraceIn_station3Complete[3] := BenchUut0.station3Complete;\n   TraceIn_station4Complete[3] := BenchUut0.station4Complete;\n   TraceIn_processSequence_1[3] := BenchUut0.processSequence[1];\n   TraceIn_processSequence_2[3] := BenchUut0.processSequence[2];\n   TraceIn_processSequence_3[3] := BenchUut0.processSequence[3];\n   TraceIn_processSequence_4[3] := BenchUut0.processSequence[4];\n   TraceIn_processSequence_5[3] := BenchUut0.processSequence[5];\n   TraceIn_processSequence_6[3] := BenchUut0.processSequence[6];\n   TraceIn_processSequence_7[3] := BenchUut0.processSequence[7];\n   TraceIn_processSequence_8[3] := BenchUut0.processSequence[8];\n   BenchUut0();\n   TraceOut_conveyorLeft[3] := BenchUut0.conveyorLeft;\n   TraceOut_conveyorRight[3] := BenchUut0.conveyorRight;\n   BenchCalls := BenchCalls + 1;\n 4:\n   BenchUut0.processLength := USINT#2;\n   BenchUut0.sensor1 := FALSE;\n   BenchUut0.sensor2 := FALSE;\n   BenchUut0.sensor3 := FALSE;\n   BenchUut0.sensor4 := FALSE;\n   BenchUut0.sensor5 := FALSE;\n   BenchUut0.station1Start := FALSE;\n   BenchUut0.station2Complete := FALSE;\n   BenchUut0.station3Complete := FALSE;\n   BenchUut0.station4Complete := FALSE;\n   BenchUut0.processSequence[1] := USINT#2;\n   BenchUut0.processSequence[2] := USINT#5;\n   BenchUut0.processSequence[3] := USINT#0;\n   BenchUut0.processSequence[4] := USINT#0;\n   BenchUut0.processSequence[5] := USINT#0;\n   BenchUut0.processSequence[6] := USINT#0;\n   BenchUut0.processSequence[7] := USINT#0;\n   BenchUut0.processSequence[8] := USINT#0;\n   TraceIn_processLength[4] := BenchUut0.processLength;\n   TraceIn_sensor1[4] := BenchUut0.sensor1;\n   TraceIn_sensor2[4] := BenchUut0.sensor2;\n   TraceIn_sensor3[4] := BenchUut0.sensor3;\n   TraceIn_sensor4[4] := BenchUut0.sensor4;\n   TraceIn_sensor5[4] := BenchUut0.sensor5;\n   TraceIn_station1Start[4] := BenchUut0.station1Start;\n   TraceIn_station2Complete[4] := BenchUut0.station2Complete;\n   TraceIn_station3Complete[4] := BenchUut0.station3Complete;\n   TraceIn_station4Complete[4] := BenchUut0.station4Complete;\n   TraceIn_processSequence_1[4] := BenchUut0.processSequence[1];\n   TraceIn_processSequence_2[4] := BenchUut0.processSequence[2];\n   TraceIn_processSequence_3[4] := BenchUut0.processSequence[3];\n   TraceIn_processSequence_4[4] := BenchUut0.processSequence[4];\n   TraceIn_processSequence_5[4] := BenchUut0.processSequence[5];\n   TraceIn_processSequence_6[4] := BenchUut0.processSequence[6];\n   TraceIn_processSequence_7[4] := BenchUut0.processSequence[7];\n   TraceIn_processSequence_8[4] := BenchUut0.processSequence[8];\n   BenchUut0();\n   TraceOut_conveyorLeft[4] := BenchUut0.conveyorLeft;\n   TraceOut_conveyorRight[4] := BenchUut0.conveyorRight;\n   BenchCalls := BenchCalls + 1;\n 5:\n   BenchUut0.processLength := USINT#2;\n   BenchUut0.sensor1 := FALSE;\n   BenchUut0.sensor2 := FALSE;\n   BenchUut0.sensor3 := FALSE;\n   BenchUut0.sensor4 := FALSE;\n   BenchUut0.sensor5 := TRUE;\n   BenchUut0.station1Start := FALSE;\n   BenchUut0.station2Complete := FALSE;\n   BenchUut0.station3Complete := FALSE;\n   BenchUut0.station4Complete := FALSE;\n   BenchUut0.processSequence[1] := USINT#2;\n   BenchUut0.processSequence[2] := USINT#5;\n   BenchUut0.processSequence[3] := USINT#0;\n   BenchUut0.processSequence[4] := USINT#0;\n   BenchUut0.processSequence[5] := USINT#0;\n   BenchUut0.processSequence[6] := USINT#0;\n   BenchUut0.processSequence[7] := USINT#0;\n   BenchUut0.processSequence[8] := USINT#0;\n   TraceIn_processLength[5] := BenchUut0.processLength;\n   TraceIn_sensor1[5] := BenchUut0.sensor1;\n   TraceIn_sensor2[5] := BenchUut0.sensor2;\n   TraceIn_sensor3[5] := BenchUut0.sensor3;\n   TraceIn_sensor4[5] := BenchUut0.sensor4;\n   TraceIn_sensor5[5] := BenchUut0.sensor5;\n   TraceIn_station1Start[5] := BenchUut0.station1Start;\n   TraceIn_station2Complete[5] := BenchUut0.station2Complete;\n   TraceIn_station3Complete[5] := BenchUut0.station3Complete;\n   TraceIn_station4Complete[5] := BenchUut0.station4Complete;\n   TraceIn_processSequence_1[5] := BenchUut0.processSequence[1];\n   TraceIn_processSequence_2[5] := BenchUut0.processSequence[2];\n   TraceIn_processSequence_3[5] := BenchUut0.processSequence[3];\n   TraceIn_processSequence_4[5] := BenchUut0.processSequence[4];\n   TraceIn_processSequence_5[5] := BenchUut0.processSequence[5];\n   TraceIn_processSequence_6[5] := BenchUut0.processSequence[6];\n   TraceIn_processSequence_7[5] := BenchUut0.processSequence[7];\n   TraceIn_processSequence_8[5] := BenchUut0.processSequence[8];\n   BenchUut0();\n   TraceOut_conveyorLeft[5] := BenchUut0.conveyorLeft;\n   TraceOut_conveyorRight[5] := BenchUut0.conveyorRight;\n   BenchCalls := BenchCalls + 1;\n 6:\n   BenchUut1.processLength := USINT#3;\n   BenchUut1.sensor1 := TRUE;\n   BenchUut1.sensor2 := FALSE;\n   BenchUut1.sensor3 := FALSE;\n   BenchUut1.sensor4 := FALSE;\n   BenchUut1.sensor5 := FALSE;\n   BenchUut1.station1Start := FALSE;\n   BenchUut1.station2Complete := FALSE;\n   BenchUut1.station3Complete := FALSE;\n   BenchUut1.station4Complete := FALSE;\n   BenchUut1.processSequence[1] := USINT#2;\n   BenchUut1.processSequence[2] := USINT#2;\n   BenchUut1.processSequence[3] := USINT#5;\n   BenchUut1.processSequence[4] := USINT#0;\n   BenchUut1.processSequence[5] := USINT#0;\n   BenchUut1.processSequence[6] := USINT#0;\n   BenchUut1.processSequence[7] := USINT#0;\n   BenchUut1.processSequence[8] := USINT#0;\n   TraceIn_processLength[6] := BenchUut1.processLength;\n   TraceIn_sensor1[6] := BenchUut1.sensor1;\n   TraceIn_sensor2[6] := BenchUut1.sensor2;\n   TraceIn_sensor3[6] := BenchUut1.sensor3;\n   TraceIn_sensor4[6] := BenchUut1.sensor4;\n   TraceIn_sensor5[6] := BenchUut1.sensor5;\n   TraceIn_station1Start[6] := BenchUut1.station1Start;\n   TraceIn_station2Complete[6] := BenchUut1.station2Complete;\n   TraceIn_station3Complete[6] := BenchUut1.station3Complete;\n   TraceIn_station4Complete[6] := BenchUut1.station4Complete;\n   TraceIn_processSequence_1[6] := BenchUut1.processSequence[1];\n   TraceIn_processSequence_2[6] := BenchUut1.processSequence[2];\n   TraceIn_processSequence_3[6] := BenchUut1.processSequence[3];\n   TraceIn_processSequence_4[6] := BenchUut1.processSequence[4];\n   TraceIn_processSequence_5[6] := BenchUut1.processSequence[5];\n   TraceIn_processSequence_6[6] := BenchUut1.processSequence[6];\n   TraceIn_processSequence_7[6] := BenchUut1.processSequence[7];\n   TraceIn_processSequence_8[6] := BenchUut1.processSequence[8];\n   BenchUut1();\n   TraceOut_conveyorLeft[6] := BenchUut1.conveyorLeft;\n   TraceOut_conveyorRight[6] := BenchUut1.conveyorRight;\n   BenchCalls := BenchCalls + 1;\n 7:\n   BenchUut1.processLength := USINT#3;\n   BenchUut1.sensor1 := TRUE;\n   BenchUut1.sensor2 := FALSE;\n   BenchUut1.sensor3 := FALSE;\n   BenchUut1.sensor4 := FALSE;\n   BenchUut1.sensor5 := FALSE;\n   BenchUut1.station1Start := TRUE;\n   BenchUut1.station2Complete := FALSE;\n   BenchUut1.station3Complete := FALSE;\n   BenchUut1.station4Complete := FALSE;\n   BenchUut1.processSequence[1] := USINT#2;\n   BenchUut1.processSequence[2] := USINT#2;\n   BenchUut1.processSequence[3] := USINT#5;\n   BenchUut1.processSequence[4] := USINT#0;\n   BenchUut1.processSequence[5] := USINT#0;\n   BenchUut1.processSequence[6] := USINT#0;\n   BenchUut1.processSequence[7] := USINT#0;\n   BenchUut1.processSequence[8] := USINT#0;\n   TraceIn_processLength[7] := BenchUut1.processLength;\n   TraceIn_sensor1[7] := BenchUut1.sensor1;\n   TraceIn_sensor2[7] := BenchUut1.sensor2;\n   TraceIn_sensor3[7] := BenchUut1.sensor3;\n   TraceIn_sensor4[7] := BenchUut1.sensor4;\n   TraceIn_sensor5[7] := BenchUut1.sensor5;\n   TraceIn_station1Start[7] := BenchUut1.station1Start;\n   TraceIn_station2Complete[7] := BenchUut1.station2Complete;\n   TraceIn_station3Complete[7] := BenchUut1.station3Complete;\n   TraceIn_station4Complete[7] := BenchUut1.station4Complete;\n   TraceIn_processSequence_1[7] := BenchUut1.processSequence[1];\n   TraceIn_processSequence_2[7] := BenchUut1.processSequence[2];\n   TraceIn_processSequence_3[7] := BenchUut1.processSequence[3];\n   TraceIn_processSequence_4[7] := BenchUut1.processSequence[4];\n   TraceIn_processSequence_5[7] := BenchUut1.processSequence[5];\n   TraceIn_processSequence_6[7] := BenchUut1.processSequence[6];\n   TraceIn_processSequence_7[7] := BenchUut1.processSequence[7];\n   TraceIn_processSequence_8[7] := BenchUut1.processSequence[8];\n   BenchUut1();\n   TraceOut_conveyorLeft[7] := BenchUut1.conveyorLeft;\n   TraceOut_conveyorRight[7] := BenchUut1.conveyorRight;\n   BenchCalls := BenchCalls + 1;\n 8:\n   BenchUut1.processLength := USINT#3;\n   BenchUut1.sensor1 := TRUE;\n   BenchUut1.sensor2 := TRUE;\n   BenchUut1.sensor3 := FALSE;\n   BenchUut1.sensor4 := FALSE;\n   BenchUut1.sensor5 := FALSE;\n   BenchUut1.station1Start := FALSE;\n   BenchUut1.station2Complete := FALSE;\n   BenchUut1.station3Complete := FALSE;\n   BenchUut1.station4Complete := FALSE;\n   BenchUut1.processSequence[1] := USINT#2;\n   BenchUut1.processSequence[2] := USINT#2;\n   BenchUut1.processSequence[3] := USINT#5;\n   BenchUut1.processSequence[4] := USINT#0;\n   BenchUut1.processSequence[5] := USINT#0;\n   BenchUut1.processSequence[6] := USINT#0;\n   BenchUut1.processSequence[7] := USINT#0;\n   BenchUut1.processSequence[8] := USINT#0;\n   TraceIn_processLength[8] := BenchUut1.processLength;\n   TraceIn_sensor1[8] := BenchUut1.sensor1;\n   TraceIn_sensor2[8] := BenchUut1.sensor2;\n   TraceIn_sensor3[8] := BenchUut1.sensor3;\n   TraceIn_sensor4[8] := BenchUut1.sensor4;\n   TraceIn_sensor5[8] := BenchUut1.sensor5;\n   TraceIn_station1Start[8] := BenchUut1.station1Start;\n   TraceIn_station2Complete[8] := BenchUut1.station2Complete;\n   TraceIn_station3Complete[8] := BenchUut1.station3Complete;\n   TraceIn_station4Complete[8] := BenchUut1.station4Complete;\n   TraceIn_processSequence_1[8] := BenchUut1.processSequence[1];\n   TraceIn_processSequence_2[8] := BenchUut1.processSequence[2];\n   TraceIn_processSequence_3[8] := BenchUut1.processSequence[3];\n   TraceIn_processSequence_4[8] := BenchUut1.processSequence[4];\n   TraceIn_processSequence_5[8] := BenchUut1.processSequence[5];\n   TraceIn_processSequence_6[8] := BenchUut1.processSequence[6];\n   TraceIn_processSequence_7[8] := BenchUut1.processSequence[7];\n   TraceIn_processSequence_8[8] := BenchUut1.processSequence[8];\n   BenchUut1();\n   TraceOut_conveyorLeft[8] := BenchUut1.conveyorLeft;\n   TraceOut_conveyorRight[8] := BenchUut1.conveyorRight;\n   BenchCalls := BenchCalls + 1;\n 9:\n   BenchUut1.processLength := USINT#3;\n   BenchUut1.sensor1 := TRUE;\n   BenchUut1.sensor2 := TRUE;\n   BenchUut1.sensor3 := FALSE;\n   BenchUut1.sensor4 := FALSE;\n   BenchUut1.sensor5 := FALSE;\n   BenchUut1.station1Start := FALSE;\n   BenchUut1.station2Complete := TRUE;\n   BenchUut1.station3Complete := FALSE;\n   BenchUut1.station4Complete := FALSE;\n   BenchUut1.processSequence[1] := USINT#2;\n   BenchUut1.processSequence[2] := USINT#2;\n   BenchUut1.processSequence[3] := USINT#5;\n   BenchUut1.processSequence[4] := USINT#0;\n   BenchUut1.processSequence[5] := USINT#0;\n   BenchUut1.processSequence[6] := USINT#0;\n   BenchUut1.processSequence[7] := USINT#0;\n   BenchUut1.processSequence[8] := USINT#0;\n   TraceIn_processLength[9] := BenchUut1.processLength;\n   TraceIn_sensor1[9] := BenchUut1.sensor1;\n   TraceIn_sensor2[9] := BenchUut1.sensor2;\n   TraceIn_sensor3[9] := BenchUut1.sensor3;\n   TraceIn_sensor4[9] := BenchUut1.sensor4;\n   TraceIn_sensor5[9] := BenchUut1.sensor5;\n   TraceIn_station1Start[9] := BenchUut1.station1Start;\n   TraceIn_station2Complete[9] := BenchUut1.station2Complete;\n   TraceIn_station3Complete[9] := BenchUut1.station3Complete;\n   TraceIn_station4Complete[9] := BenchUut1.station4Complete;\n   TraceIn_processSequence_1[9] := BenchUut1.processSequence[1];\n   TraceIn_processSequence_2[9] := BenchUut1.processSequence[2];\n   TraceIn_processSequence_3[9] := BenchUut1.processSequence[3];\n   TraceIn_processSequence_4[9] := BenchUut1.processSequence[4];\n   TraceIn_processSequence_5[9] := BenchUut1.processSequence[5];\n   TraceIn_processSequence_6[9] := BenchUut1.processSequence[6];\n   TraceIn_processSequence_7[9] := BenchUut1.processSequence[7];\n   TraceIn_processSequence_8[9] := BenchUut1.processSequence[8];\n   BenchUut1();\n   TraceOut_conveyorLeft[9] := BenchUut1.conveyorLeft;\n   TraceOut_conveyorRight[9] := BenchUut1.conveyorRight;\n   BenchCalls := BenchCalls + 1;\n 10:\n   BenchUut1.processLength := USINT#3;\n   BenchUut1.sensor1 := TRUE;\n   BenchUut1.sensor2 := TRUE;\n   BenchUut1.sensor3 := FALSE;\n   BenchUut1.sensor4 := FALSE;\n   BenchUut1.sensor5 := FALSE;\n   BenchUut1.station1Start := FALSE;\n   BenchUut1.station2Complete := FALSE;\n   BenchUut1.station3Complete := FALSE;\n   BenchUut1.station4Complete := FALSE;\n   BenchUut1.processSequence[1] := USINT#2;\n   BenchUut1.processSequence[2] := USINT#2;\n   BenchUut1.processSequence[3] := USINT#5;\n   BenchUut1.processSequence[4] := USINT#0;\n   BenchUut1.processSequence[5] := USINT#0;\n   BenchUut1.processSequence[6] := USINT#0;\n   BenchUut1.processSequence[7] := USINT#0;\n   BenchUut1.processSequence[8] := USINT#0;\n   TraceIn_processLength[10] := BenchUut1.processLength;\n   TraceIn_sensor1[10] := BenchUut1.sensor1;\n   TraceIn_sensor2[10] := BenchUut1.sensor2;\n   TraceIn_sensor3[10] := BenchUut1.sensor3;\n   TraceIn_sensor4[10] := BenchUut1.sensor4;\n   TraceIn_sensor5[10] := BenchUut1.sensor5;\n   TraceIn_station1Start[10] := BenchUut1.station1Start;\n   TraceIn_station2Complete[10] := BenchUut1.station2Complete;\n   TraceIn_station3Complete[10] := BenchUut1.station3Complete;\n   TraceIn_station4Complete[10] := BenchUut1.station4Complete;\n   TraceIn_processSequence_1[10] := BenchUut1.processSequence[1];\n   TraceIn_processSequence_2[10] := BenchUut1.processSequence[2];\n   TraceIn_processSequence_3[10] := BenchUut1.processSequence[3];\n   TraceIn_processSequence_4[10] := BenchUut1.processSequence[4];\n   TraceIn_processSequence_5[10] := BenchUut1.processSequence[5];\n   TraceIn_processSequence_6[10] := BenchUut1.processSequence[6];\n   TraceIn_processSequence_7[10] := BenchUut1.processSequence[7];\n   TraceIn_processSequence_8[10] := BenchUut1.processSequence[8];\n   BenchUut1();\n   TraceOut_conveyorLeft[10] := BenchUut1.conveyorLeft;\n   TraceOut_conveyorRight[10] := BenchUut1.conveyorRight;\n   BenchCalls := BenchCalls + 1;\n 11:\n   BenchUut1.processLength := USINT#3;\n   BenchUut1.sensor1 := TRUE;\n   BenchUut1.sensor2 := TRUE;\n   BenchUut1.sensor3 := FALSE;\n   BenchUut1.sensor4 := FALSE;\n   BenchUut1.sensor5 := FALSE;\n   BenchUut1.station1Start := FALSE;\n   BenchUut1.station2Complete := TRUE;\n   BenchUut1.station3Complete := FALSE;\n   BenchUut1.station4Complete := FALSE;\n   BenchUut1.processSequence[1] := USINT#2;\n   BenchUut1.processSequence[2] := USINT#2;\n   BenchUut1.processSequence[3] := USINT#5;\n   BenchUut1.processSequence[4] := USINT#0;\n   BenchUut1.processSequence[5] := USINT#0;\n   BenchUut1.processSequence[6] := USINT#0;\n   BenchUut1.processSequence[7] := USINT#0;\n   BenchUut1.processSequence[8] := USINT#0;\n   TraceIn_processLength[11] := BenchUut1.processLength;\n   TraceIn_sensor1[11] := BenchUut1.sensor1;\n   TraceIn_sensor2[11] := BenchUut1.sensor2;\n   TraceIn_sensor3[11] := BenchUut1.sensor3;\n   TraceIn_sensor4[11] := BenchUut1.sensor4;\n   TraceIn_sensor5[11] := BenchUut1.sensor5;\n   TraceIn_station1Start[11] := BenchUut1.station1Start;\n   TraceIn_station2Complete[11] := BenchUut1.station2Complete;\n   TraceIn_station3Complete[11] := BenchUut1.station3Complete;\n   TraceIn_station4Complete[11] := BenchUut1.station4Complete;\n   TraceIn_processSequence_1[11] := BenchUut1.processSequence[1];\n   TraceIn_processSequence_2[11] := BenchUut1.processSequence[2];\n   TraceIn_processSequence_3[11] := BenchUut1.processSequence[3];\n   TraceIn_processSequence_4[11] := BenchUut1.processSequence[4];\n   TraceIn_processSequence_5[11] := BenchUut1.processSequence[5];\n   TraceIn_processSequence_6[11] := BenchUut1.processSequence[6];\n   TraceIn_processSequence_7[11] := BenchUut1.processSequence[7];\n   TraceIn_processSequence_8[11] := BenchUut1.processSequence[8];\n   BenchUut1();\n   TraceOut_conveyorLeft[11] := BenchUut1.conveyorLeft;\n   TraceOut_conveyorRight[11] := BenchUut1.conveyorRight;\n   BenchCalls := BenchCalls + 1;\n 12:\n   BenchUut1.processLength := USINT#3;\n   BenchUut1.sensor1 := FALSE;\n   BenchUut1.sensor2 := FALSE;\n   BenchUut1.sensor3 := FALSE;\n   BenchUut1.sensor4 := FALSE;\n   BenchUut1.sensor5 := TRUE;\n   BenchUut1.station1Start := FALSE;\n   BenchUut1.station2Complete := FALSE;\n   BenchUut1.station3Complete := FALSE;\n   BenchUut1.station4Complete := FALSE;\n   BenchUut1.processSequence[1] := USINT#2;\n   BenchUut1.processSequence[2] := USINT#2;\n   BenchUut1.processSequence[3] := USINT#5;\n   BenchUut1.processSequence[4] := USINT#0;\n   BenchUut1.processSequence[5] := USINT#0;\n   BenchUut1.processSequence[6] := USINT#0;\n   BenchUut1.processSequence[7] := USINT#0;\n   BenchUut1.processSequence[8] := USINT#0;\n   TraceIn_processLength[12] := BenchUut1.processLength;\n   TraceIn_sensor1[12] := BenchUut1.sensor1;\n   TraceIn_sensor2[12] := BenchUut1.sensor2;\n   TraceIn_sensor3[12] := BenchUut1.sensor3;\n   TraceIn_sensor4[12] := BenchUut1.sensor4;\n   TraceIn_sensor5[12] := BenchUut1.sensor5;\n   TraceIn_station1Start[12] := BenchUut1.station1Start;\n   TraceIn_station2Complete[12] := BenchUut1.station2Complete;\n   TraceIn_station3Complete[12] := BenchUut1.station3Complete;\n   TraceIn_station4Complete[12] := BenchUut1.station4Complete;\n   TraceIn_processSequence_1[12] := BenchUut1.processSequence[1];\n   TraceIn_processSequence_2[12] := BenchUut1.processSequence[2];\n   TraceIn_processSequence_3[12] := BenchUut1.processSequence[3];\n   TraceIn_processSequence_4[12] := BenchUut1.processSequence[4];\n   TraceIn_processSequence_5[12] := BenchUut1.processSequence[5];\n   TraceIn_processSequence_6[12] := BenchUut1.processSequence[6];\n   TraceIn_processSequence_7[12] := BenchUut1.processSequence[7];\n   TraceIn_processSequence_8[12] := BenchUut1.processSequence[8];\n   BenchUut1();\n   TraceOut_conveyorLeft[12] := BenchUut1.conveyorLeft;\n   TraceOut_conveyorRight[12] := BenchUut1.conveyorRight;\n   BenchCalls := BenchCalls + 1;\n END_CASE;\n BenchStep := BenchStep + 1;\n IF BenchStep >= 13 THEN BenchDone := TRUE; END_IF;\nEND_IF;",
+    "step_count": 13,
+    "steps": [
+      {
+        "index": 0,
+        "case_id": "case_1",
+        "case_step": 0,
+        "dt_ms": 0
+      },
+      {
+        "index": 1,
+        "case_id": "case_1",
+        "case_step": 1,
+        "dt_ms": 0
+      },
+      {
+        "index": 2,
+        "case_id": "case_1",
+        "case_step": 2,
+        "dt_ms": 0
+      },
+      {
+        "index": 3,
+        "case_id": "case_1",
+        "case_step": 3,
+        "dt_ms": 0
+      },
+      {
+        "index": 4,
+        "case_id": "case_1",
+        "case_step": 4,
+        "dt_ms": 0
+      },
+      {
+        "index": 5,
+        "case_id": "case_1",
+        "case_step": 5,
+        "dt_ms": 0
+      },
+      {
+        "index": 6,
+        "case_id": "case_2",
+        "case_step": 0,
+        "dt_ms": 0
+      },
+      {
+        "index": 7,
+        "case_id": "case_2",
+        "case_step": 1,
+        "dt_ms": 0
+      },
+      {
+        "index": 8,
+        "case_id": "case_2",
+        "case_step": 2,
+        "dt_ms": 0
+      },
+      {
+        "index": 9,
+        "case_id": "case_2",
+        "case_step": 3,
+        "dt_ms": 0
+      },
+      {
+        "index": 10,
+        "case_id": "case_2",
+        "case_step": 4,
+        "dt_ms": 0
+      },
+      {
+        "index": 11,
+        "case_id": "case_2",
+        "case_step": 5,
+        "dt_ms": 0
+      },
+      {
+        "index": 12,
+        "case_id": "case_2",
+        "case_step": 6,
+        "dt_ms": 0
+      }
+    ],
+    "inputs": [
+      {
+        "direction": "INPUT",
+        "name": "processLength",
+        "type": "USINT",
+        "description": "Active process-sequence length, 1..8; the final active entry must be station 5."
+      },
+      {
+        "direction": "INPUT",
+        "name": "sensor1",
+        "type": "BOOL",
+        "description": "Sensor at 1# station"
+      },
+      {
+        "direction": "INPUT",
+        "name": "sensor2",
+        "type": "BOOL",
+        "description": "Sensor at 2# station"
+      },
+      {
+        "direction": "INPUT",
+        "name": "sensor3",
+        "type": "BOOL",
+        "description": "Sensor at 3# station"
+      },
+      {
+        "direction": "INPUT",
+        "name": "sensor4",
+        "type": "BOOL",
+        "description": "Sensor at 4# station"
+      },
+      {
+        "direction": "INPUT",
+        "name": "sensor5",
+        "type": "BOOL",
+        "description": "Sensor at 5# station"
+      },
+      {
+        "direction": "INPUT",
+        "name": "station1Start",
+        "type": "BOOL",
+        "description": "Start button at 1# station"
+      },
+      {
+        "direction": "INPUT",
+        "name": "station2Complete",
+        "type": "BOOL",
+        "description": "Processing completion signal at 2# station"
+      },
+      {
+        "direction": "INPUT",
+        "name": "station3Complete",
+        "type": "BOOL",
+        "description": "Processing completion signal at 3# station"
+      },
+      {
+        "direction": "INPUT",
+        "name": "station4Complete",
+        "type": "BOOL",
+        "description": "Processing completion signal at 4# station"
+      },
+      {
+        "direction": "INPUT",
+        "name": "processSequence",
+        "type": "ARRAY[1..8] OF USINT",
+        "description": "Processing sequence"
+      }
+    ],
+    "outputs": [
+      {
+        "direction": "OUTPUT",
+        "name": "conveyorLeft",
+        "type": "BOOL",
+        "description": "Conveyor turns left"
+      },
+      {
+        "direction": "OUTPUT",
+        "name": "conveyorRight",
+        "type": "BOOL",
+        "description": "Conveyor turns right"
+      }
+    ],
+    "trace_expressions": [
+      "PLC_PRG.TraceIn_processLength[0]",
+      "PLC_PRG.TraceIn_sensor1[0]",
+      "PLC_PRG.TraceIn_sensor2[0]",
+      "PLC_PRG.TraceIn_sensor3[0]",
+      "PLC_PRG.TraceIn_sensor4[0]",
+      "PLC_PRG.TraceIn_sensor5[0]",
+      "PLC_PRG.TraceIn_station1Start[0]",
+      "PLC_PRG.TraceIn_station2Complete[0]",
+      "PLC_PRG.TraceIn_station3Complete[0]",
+      "PLC_PRG.TraceIn_station4Complete[0]",
+      "PLC_PRG.TraceIn_processSequence_1[0]",
+      "PLC_PRG.TraceIn_processSequence_2[0]",
+      "PLC_PRG.TraceIn_processSequence_3[0]",
+      "PLC_PRG.TraceIn_processSequence_4[0]",
+      "PLC_PRG.TraceIn_processSequence_5[0]",
+      "PLC_PRG.TraceIn_processSequence_6[0]",
+      "PLC_PRG.TraceIn_processSequence_7[0]",
+      "PLC_PRG.TraceIn_processSequence_8[0]",
+      "PLC_PRG.TraceOut_conveyorLeft[0]",
+      "PLC_PRG.TraceOut_conveyorRight[0]",
+      "PLC_PRG.TraceIn_processLength[1]",
+      "PLC_PRG.TraceIn_sensor1[1]",
+      "PLC_PRG.TraceIn_sensor2[1]",
+      "PLC_PRG.TraceIn_sensor3[1]",
+      "PLC_PRG.TraceIn_sensor4[1]",
+      "PLC_PRG.TraceIn_sensor5[1]",
+      "PLC_PRG.TraceIn_station1Start[1]",
+      "PLC_PRG.TraceIn_station2Complete[1]",
+      "PLC_PRG.TraceIn_station3Complete[1]",
+      "PLC_PRG.TraceIn_station4Complete[1]",
+      "PLC_PRG.TraceIn_processSequence_1[1]",
+      "PLC_PRG.TraceIn_processSequence_2[1]",
+      "PLC_PRG.TraceIn_processSequence_3[1]",
+      "PLC_PRG.TraceIn_processSequence_4[1]",
+      "PLC_PRG.TraceIn_processSequence_5[1]",
+      "PLC_PRG.TraceIn_processSequence_6[1]",
+      "PLC_PRG.TraceIn_processSequence_7[1]",
+      "PLC_PRG.TraceIn_processSequence_8[1]",
+      "PLC_PRG.TraceOut_conveyorLeft[1]",
+      "PLC_PRG.TraceOut_conveyorRight[1]",
+      "PLC_PRG.TraceIn_processLength[2]",
+      "PLC_PRG.TraceIn_sensor1[2]",
+      "PLC_PRG.TraceIn_sensor2[2]",
+      "PLC_PRG.TraceIn_sensor3[2]",
+      "PLC_PRG.TraceIn_sensor4[2]",
+      "PLC_PRG.TraceIn_sensor5[2]",
+      "PLC_PRG.TraceIn_station1Start[2]",
+      "PLC_PRG.TraceIn_station2Complete[2]",
+      "PLC_PRG.TraceIn_station3Complete[2]",
+      "PLC_PRG.TraceIn_station4Complete[2]",
+      "PLC_PRG.TraceIn_processSequence_1[2]",
+      "PLC_PRG.TraceIn_processSequence_2[2]",
+      "PLC_PRG.TraceIn_processSequence_3[2]",
+      "PLC_PRG.TraceIn_processSequence_4[2]",
+      "PLC_PRG.TraceIn_processSequence_5[2]",
+      "PLC_PRG.TraceIn_processSequence_6[2]",
+      "PLC_PRG.TraceIn_processSequence_7[2]",
+      "PLC_PRG.TraceIn_processSequence_8[2]",
+      "PLC_PRG.TraceOut_conveyorLeft[2]",
+      "PLC_PRG.TraceOut_conveyorRight[2]",
+      "PLC_PRG.TraceIn_processLength[3]",
+      "PLC_PRG.TraceIn_sensor1[3]",
+      "PLC_PRG.TraceIn_sensor2[3]",
+      "PLC_PRG.TraceIn_sensor3[3]",
+      "PLC_PRG.TraceIn_sensor4[3]",
+      "PLC_PRG.TraceIn_sensor5[3]",
+      "PLC_PRG.TraceIn_station1Start[3]",
+      "PLC_PRG.TraceIn_station2Complete[3]",
+      "PLC_PRG.TraceIn_station3Complete[3]",
+      "PLC_PRG.TraceIn_station4Complete[3]",
+      "PLC_PRG.TraceIn_processSequence_1[3]",
+      "PLC_PRG.TraceIn_processSequence_2[3]",
+      "PLC_PRG.TraceIn_processSequence_3[3]",
+      "PLC_PRG.TraceIn_processSequence_4[3]",
+      "PLC_PRG.TraceIn_processSequence_5[3]",
+      "PLC_PRG.TraceIn_processSequence_6[3]",
+      "PLC_PRG.TraceIn_processSequence_7[3]",
+      "PLC_PRG.TraceIn_processSequence_8[3]",
+      "PLC_PRG.TraceOut_conveyorLeft[3]",
+      "PLC_PRG.TraceOut_conveyorRight[3]",
+      "PLC_PRG.TraceIn_processLength[4]",
+      "PLC_PRG.TraceIn_sensor1[4]",
+      "PLC_PRG.TraceIn_sensor2[4]",
+      "PLC_PRG.TraceIn_sensor3[4]",
+      "PLC_PRG.TraceIn_sensor4[4]",
+      "PLC_PRG.TraceIn_sensor5[4]",
+      "PLC_PRG.TraceIn_station1Start[4]",
+      "PLC_PRG.TraceIn_station2Complete[4]",
+      "PLC_PRG.TraceIn_station3Complete[4]",
+      "PLC_PRG.TraceIn_station4Complete[4]",
+      "PLC_PRG.TraceIn_processSequence_1[4]",
+      "PLC_PRG.TraceIn_processSequence_2[4]",
+      "PLC_PRG.TraceIn_processSequence_3[4]",
+      "PLC_PRG.TraceIn_processSequence_4[4]",
+      "PLC_PRG.TraceIn_processSequence_5[4]",
+      "PLC_PRG.TraceIn_processSequence_6[4]",
+      "PLC_PRG.TraceIn_processSequence_7[4]",
+      "PLC_PRG.TraceIn_processSequence_8[4]",
+      "PLC_PRG.TraceOut_conveyorLeft[4]",
+      "PLC_PRG.TraceOut_conveyorRight[4]",
+      "PLC_PRG.TraceIn_processLength[5]",
+      "PLC_PRG.TraceIn_sensor1[5]",
+      "PLC_PRG.TraceIn_sensor2[5]",
+      "PLC_PRG.TraceIn_sensor3[5]",
+      "PLC_PRG.TraceIn_sensor4[5]",
+      "PLC_PRG.TraceIn_sensor5[5]",
+      "PLC_PRG.TraceIn_station1Start[5]",
+      "PLC_PRG.TraceIn_station2Complete[5]",
+      "PLC_PRG.TraceIn_station3Complete[5]",
+      "PLC_PRG.TraceIn_station4Complete[5]",
+      "PLC_PRG.TraceIn_processSequence_1[5]",
+      "PLC_PRG.TraceIn_processSequence_2[5]",
+      "PLC_PRG.TraceIn_processSequence_3[5]",
+      "PLC_PRG.TraceIn_processSequence_4[5]",
+      "PLC_PRG.TraceIn_processSequence_5[5]",
+      "PLC_PRG.TraceIn_processSequence_6[5]",
+      "PLC_PRG.TraceIn_processSequence_7[5]",
+      "PLC_PRG.TraceIn_processSequence_8[5]",
+      "PLC_PRG.TraceOut_conveyorLeft[5]",
+      "PLC_PRG.TraceOut_conveyorRight[5]",
+      "PLC_PRG.TraceIn_processLength[6]",
+      "PLC_PRG.TraceIn_sensor1[6]",
+      "PLC_PRG.TraceIn_sensor2[6]",
+      "PLC_PRG.TraceIn_sensor3[6]",
+      "PLC_PRG.TraceIn_sensor4[6]",
+      "PLC_PRG.TraceIn_sensor5[6]",
+      "PLC_PRG.TraceIn_station1Start[6]",
+      "PLC_PRG.TraceIn_station2Complete[6]",
+      "PLC_PRG.TraceIn_station3Complete[6]",
+      "PLC_PRG.TraceIn_station4Complete[6]",
+      "PLC_PRG.TraceIn_processSequence_1[6]",
+      "PLC_PRG.TraceIn_processSequence_2[6]",
+      "PLC_PRG.TraceIn_processSequence_3[6]",
+      "PLC_PRG.TraceIn_processSequence_4[6]",
+      "PLC_PRG.TraceIn_processSequence_5[6]",
+      "PLC_PRG.TraceIn_processSequence_6[6]",
+      "PLC_PRG.TraceIn_processSequence_7[6]",
+      "PLC_PRG.TraceIn_processSequence_8[6]",
+      "PLC_PRG.TraceOut_conveyorLeft[6]",
+      "PLC_PRG.TraceOut_conveyorRight[6]",
+      "PLC_PRG.TraceIn_processLength[7]",
+      "PLC_PRG.TraceIn_sensor1[7]",
+      "PLC_PRG.TraceIn_sensor2[7]",
+      "PLC_PRG.TraceIn_sensor3[7]",
+      "PLC_PRG.TraceIn_sensor4[7]",
+      "PLC_PRG.TraceIn_sensor5[7]",
+      "PLC_PRG.TraceIn_station1Start[7]",
+      "PLC_PRG.TraceIn_station2Complete[7]",
+      "PLC_PRG.TraceIn_station3Complete[7]",
+      "PLC_PRG.TraceIn_station4Complete[7]",
+      "PLC_PRG.TraceIn_processSequence_1[7]",
+      "PLC_PRG.TraceIn_processSequence_2[7]",
+      "PLC_PRG.TraceIn_processSequence_3[7]",
+      "PLC_PRG.TraceIn_processSequence_4[7]",
+      "PLC_PRG.TraceIn_processSequence_5[7]",
+      "PLC_PRG.TraceIn_processSequence_6[7]",
+      "PLC_PRG.TraceIn_processSequence_7[7]",
+      "PLC_PRG.TraceIn_processSequence_8[7]",
+      "PLC_PRG.TraceOut_conveyorLeft[7]",
+      "PLC_PRG.TraceOut_conveyorRight[7]",
+      "PLC_PRG.TraceIn_processLength[8]",
+      "PLC_PRG.TraceIn_sensor1[8]",
+      "PLC_PRG.TraceIn_sensor2[8]",
+      "PLC_PRG.TraceIn_sensor3[8]",
+      "PLC_PRG.TraceIn_sensor4[8]",
+      "PLC_PRG.TraceIn_sensor5[8]",
+      "PLC_PRG.TraceIn_station1Start[8]",
+      "PLC_PRG.TraceIn_station2Complete[8]",
+      "PLC_PRG.TraceIn_station3Complete[8]",
+      "PLC_PRG.TraceIn_station4Complete[8]",
+      "PLC_PRG.TraceIn_processSequence_1[8]",
+      "PLC_PRG.TraceIn_processSequence_2[8]",
+      "PLC_PRG.TraceIn_processSequence_3[8]",
+      "PLC_PRG.TraceIn_processSequence_4[8]",
+      "PLC_PRG.TraceIn_processSequence_5[8]",
+      "PLC_PRG.TraceIn_processSequence_6[8]",
+      "PLC_PRG.TraceIn_processSequence_7[8]",
+      "PLC_PRG.TraceIn_processSequence_8[8]",
+      "PLC_PRG.TraceOut_conveyorLeft[8]",
+      "PLC_PRG.TraceOut_conveyorRight[8]",
+      "PLC_PRG.TraceIn_processLength[9]",
+      "PLC_PRG.TraceIn_sensor1[9]",
+      "PLC_PRG.TraceIn_sensor2[9]",
+      "PLC_PRG.TraceIn_sensor3[9]",
+      "PLC_PRG.TraceIn_sensor4[9]",
+      "PLC_PRG.TraceIn_sensor5[9]",
+      "PLC_PRG.TraceIn_station1Start[9]",
+      "PLC_PRG.TraceIn_station2Complete[9]",
+      "PLC_PRG.TraceIn_station3Complete[9]",
+      "PLC_PRG.TraceIn_station4Complete[9]",
+      "PLC_PRG.TraceIn_processSequence_1[9]",
+      "PLC_PRG.TraceIn_processSequence_2[9]",
+      "PLC_PRG.TraceIn_processSequence_3[9]",
+      "PLC_PRG.TraceIn_processSequence_4[9]",
+      "PLC_PRG.TraceIn_processSequence_5[9]",
+      "PLC_PRG.TraceIn_processSequence_6[9]",
+      "PLC_PRG.TraceIn_processSequence_7[9]",
+      "PLC_PRG.TraceIn_processSequence_8[9]",
+      "PLC_PRG.TraceOut_conveyorLeft[9]",
+      "PLC_PRG.TraceOut_conveyorRight[9]",
+      "PLC_PRG.TraceIn_processLength[10]",
+      "PLC_PRG.TraceIn_sensor1[10]",
+      "PLC_PRG.TraceIn_sensor2[10]",
+      "PLC_PRG.TraceIn_sensor3[10]",
+      "PLC_PRG.TraceIn_sensor4[10]",
+      "PLC_PRG.TraceIn_sensor5[10]",
+      "PLC_PRG.TraceIn_station1Start[10]",
+      "PLC_PRG.TraceIn_station2Complete[10]",
+      "PLC_PRG.TraceIn_station3Complete[10]",
+      "PLC_PRG.TraceIn_station4Complete[10]",
+      "PLC_PRG.TraceIn_processSequence_1[10]",
+      "PLC_PRG.TraceIn_processSequence_2[10]",
+      "PLC_PRG.TraceIn_processSequence_3[10]",
+      "PLC_PRG.TraceIn_processSequence_4[10]",
+      "PLC_PRG.TraceIn_processSequence_5[10]",
+      "PLC_PRG.TraceIn_processSequence_6[10]",
+      "PLC_PRG.TraceIn_processSequence_7[10]",
+      "PLC_PRG.TraceIn_processSequence_8[10]",
+      "PLC_PRG.TraceOut_conveyorLeft[10]",
+      "PLC_PRG.TraceOut_conveyorRight[10]",
+      "PLC_PRG.TraceIn_processLength[11]",
+      "PLC_PRG.TraceIn_sensor1[11]",
+      "PLC_PRG.TraceIn_sensor2[11]",
+      "PLC_PRG.TraceIn_sensor3[11]",
+      "PLC_PRG.TraceIn_sensor4[11]",
+      "PLC_PRG.TraceIn_sensor5[11]",
+      "PLC_PRG.TraceIn_station1Start[11]",
+      "PLC_PRG.TraceIn_station2Complete[11]",
+      "PLC_PRG.TraceIn_station3Complete[11]",
+      "PLC_PRG.TraceIn_station4Complete[11]",
+      "PLC_PRG.TraceIn_processSequence_1[11]",
+      "PLC_PRG.TraceIn_processSequence_2[11]",
+      "PLC_PRG.TraceIn_processSequence_3[11]",
+      "PLC_PRG.TraceIn_processSequence_4[11]",
+      "PLC_PRG.TraceIn_processSequence_5[11]",
+      "PLC_PRG.TraceIn_processSequence_6[11]",
+      "PLC_PRG.TraceIn_processSequence_7[11]",
+      "PLC_PRG.TraceIn_processSequence_8[11]",
+      "PLC_PRG.TraceOut_conveyorLeft[11]",
+      "PLC_PRG.TraceOut_conveyorRight[11]",
+      "PLC_PRG.TraceIn_processLength[12]",
+      "PLC_PRG.TraceIn_sensor1[12]",
+      "PLC_PRG.TraceIn_sensor2[12]",
+      "PLC_PRG.TraceIn_sensor3[12]",
+      "PLC_PRG.TraceIn_sensor4[12]",
+      "PLC_PRG.TraceIn_sensor5[12]",
+      "PLC_PRG.TraceIn_station1Start[12]",
+      "PLC_PRG.TraceIn_station2Complete[12]",
+      "PLC_PRG.TraceIn_station3Complete[12]",
+      "PLC_PRG.TraceIn_station4Complete[12]",
+      "PLC_PRG.TraceIn_processSequence_1[12]",
+      "PLC_PRG.TraceIn_processSequence_2[12]",
+      "PLC_PRG.TraceIn_processSequence_3[12]",
+      "PLC_PRG.TraceIn_processSequence_4[12]",
+      "PLC_PRG.TraceIn_processSequence_5[12]",
+      "PLC_PRG.TraceIn_processSequence_6[12]",
+      "PLC_PRG.TraceIn_processSequence_7[12]",
+      "PLC_PRG.TraceIn_processSequence_8[12]",
+      "PLC_PRG.TraceOut_conveyorLeft[12]",
+      "PLC_PRG.TraceOut_conveyorRight[12]"
+    ],
+    "trace_mapping": [
+      {
+        "step_index": 0,
+        "case_id": "case_1",
+        "case_step": 0,
+        "dt_expr": null,
+        "inputs": {
+          "processLength": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_processLength[0]",
+            "type": "USINT"
+          },
+          "sensor1": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor1[0]",
+            "type": "BOOL"
+          },
+          "sensor2": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor2[0]",
+            "type": "BOOL"
+          },
+          "sensor3": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor3[0]",
+            "type": "BOOL"
+          },
+          "sensor4": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor4[0]",
+            "type": "BOOL"
+          },
+          "sensor5": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor5[0]",
+            "type": "BOOL"
+          },
+          "station1Start": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station1Start[0]",
+            "type": "BOOL"
+          },
+          "station2Complete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station2Complete[0]",
+            "type": "BOOL"
+          },
+          "station3Complete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station3Complete[0]",
+            "type": "BOOL"
+          },
+          "station4Complete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station4Complete[0]",
+            "type": "BOOL"
+          },
+          "processSequence": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_1[0]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_2[0]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_3[0]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_4[0]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_5[0]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_6[0]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_7[0]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_8[0]",
+                "type": "USINT"
+              }
+            ]
+          }
+        },
+        "outputs": {
+          "conveyorLeft": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_conveyorLeft[0]",
+            "type": "BOOL"
+          },
+          "conveyorRight": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_conveyorRight[0]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 1,
+        "case_id": "case_1",
+        "case_step": 1,
+        "dt_expr": null,
+        "inputs": {
+          "processLength": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_processLength[1]",
+            "type": "USINT"
+          },
+          "sensor1": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor1[1]",
+            "type": "BOOL"
+          },
+          "sensor2": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor2[1]",
+            "type": "BOOL"
+          },
+          "sensor3": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor3[1]",
+            "type": "BOOL"
+          },
+          "sensor4": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor4[1]",
+            "type": "BOOL"
+          },
+          "sensor5": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor5[1]",
+            "type": "BOOL"
+          },
+          "station1Start": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station1Start[1]",
+            "type": "BOOL"
+          },
+          "station2Complete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station2Complete[1]",
+            "type": "BOOL"
+          },
+          "station3Complete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station3Complete[1]",
+            "type": "BOOL"
+          },
+          "station4Complete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station4Complete[1]",
+            "type": "BOOL"
+          },
+          "processSequence": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_1[1]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_2[1]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_3[1]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_4[1]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_5[1]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_6[1]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_7[1]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_8[1]",
+                "type": "USINT"
+              }
+            ]
+          }
+        },
+        "outputs": {
+          "conveyorLeft": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_conveyorLeft[1]",
+            "type": "BOOL"
+          },
+          "conveyorRight": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_conveyorRight[1]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 2,
+        "case_id": "case_1",
+        "case_step": 2,
+        "dt_expr": null,
+        "inputs": {
+          "processLength": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_processLength[2]",
+            "type": "USINT"
+          },
+          "sensor1": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor1[2]",
+            "type": "BOOL"
+          },
+          "sensor2": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor2[2]",
+            "type": "BOOL"
+          },
+          "sensor3": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor3[2]",
+            "type": "BOOL"
+          },
+          "sensor4": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor4[2]",
+            "type": "BOOL"
+          },
+          "sensor5": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor5[2]",
+            "type": "BOOL"
+          },
+          "station1Start": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station1Start[2]",
+            "type": "BOOL"
+          },
+          "station2Complete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station2Complete[2]",
+            "type": "BOOL"
+          },
+          "station3Complete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station3Complete[2]",
+            "type": "BOOL"
+          },
+          "station4Complete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station4Complete[2]",
+            "type": "BOOL"
+          },
+          "processSequence": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_1[2]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_2[2]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_3[2]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_4[2]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_5[2]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_6[2]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_7[2]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_8[2]",
+                "type": "USINT"
+              }
+            ]
+          }
+        },
+        "outputs": {
+          "conveyorLeft": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_conveyorLeft[2]",
+            "type": "BOOL"
+          },
+          "conveyorRight": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_conveyorRight[2]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 3,
+        "case_id": "case_1",
+        "case_step": 3,
+        "dt_expr": null,
+        "inputs": {
+          "processLength": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_processLength[3]",
+            "type": "USINT"
+          },
+          "sensor1": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor1[3]",
+            "type": "BOOL"
+          },
+          "sensor2": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor2[3]",
+            "type": "BOOL"
+          },
+          "sensor3": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor3[3]",
+            "type": "BOOL"
+          },
+          "sensor4": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor4[3]",
+            "type": "BOOL"
+          },
+          "sensor5": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor5[3]",
+            "type": "BOOL"
+          },
+          "station1Start": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station1Start[3]",
+            "type": "BOOL"
+          },
+          "station2Complete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station2Complete[3]",
+            "type": "BOOL"
+          },
+          "station3Complete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station3Complete[3]",
+            "type": "BOOL"
+          },
+          "station4Complete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station4Complete[3]",
+            "type": "BOOL"
+          },
+          "processSequence": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_1[3]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_2[3]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_3[3]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_4[3]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_5[3]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_6[3]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_7[3]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_8[3]",
+                "type": "USINT"
+              }
+            ]
+          }
+        },
+        "outputs": {
+          "conveyorLeft": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_conveyorLeft[3]",
+            "type": "BOOL"
+          },
+          "conveyorRight": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_conveyorRight[3]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 4,
+        "case_id": "case_1",
+        "case_step": 4,
+        "dt_expr": null,
+        "inputs": {
+          "processLength": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_processLength[4]",
+            "type": "USINT"
+          },
+          "sensor1": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor1[4]",
+            "type": "BOOL"
+          },
+          "sensor2": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor2[4]",
+            "type": "BOOL"
+          },
+          "sensor3": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor3[4]",
+            "type": "BOOL"
+          },
+          "sensor4": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor4[4]",
+            "type": "BOOL"
+          },
+          "sensor5": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor5[4]",
+            "type": "BOOL"
+          },
+          "station1Start": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station1Start[4]",
+            "type": "BOOL"
+          },
+          "station2Complete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station2Complete[4]",
+            "type": "BOOL"
+          },
+          "station3Complete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station3Complete[4]",
+            "type": "BOOL"
+          },
+          "station4Complete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station4Complete[4]",
+            "type": "BOOL"
+          },
+          "processSequence": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_1[4]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_2[4]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_3[4]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_4[4]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_5[4]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_6[4]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_7[4]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_8[4]",
+                "type": "USINT"
+              }
+            ]
+          }
+        },
+        "outputs": {
+          "conveyorLeft": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_conveyorLeft[4]",
+            "type": "BOOL"
+          },
+          "conveyorRight": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_conveyorRight[4]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 5,
+        "case_id": "case_1",
+        "case_step": 5,
+        "dt_expr": null,
+        "inputs": {
+          "processLength": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_processLength[5]",
+            "type": "USINT"
+          },
+          "sensor1": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor1[5]",
+            "type": "BOOL"
+          },
+          "sensor2": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor2[5]",
+            "type": "BOOL"
+          },
+          "sensor3": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor3[5]",
+            "type": "BOOL"
+          },
+          "sensor4": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor4[5]",
+            "type": "BOOL"
+          },
+          "sensor5": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor5[5]",
+            "type": "BOOL"
+          },
+          "station1Start": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station1Start[5]",
+            "type": "BOOL"
+          },
+          "station2Complete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station2Complete[5]",
+            "type": "BOOL"
+          },
+          "station3Complete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station3Complete[5]",
+            "type": "BOOL"
+          },
+          "station4Complete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station4Complete[5]",
+            "type": "BOOL"
+          },
+          "processSequence": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_1[5]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_2[5]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_3[5]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_4[5]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_5[5]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_6[5]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_7[5]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_8[5]",
+                "type": "USINT"
+              }
+            ]
+          }
+        },
+        "outputs": {
+          "conveyorLeft": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_conveyorLeft[5]",
+            "type": "BOOL"
+          },
+          "conveyorRight": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_conveyorRight[5]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 6,
+        "case_id": "case_2",
+        "case_step": 0,
+        "dt_expr": null,
+        "inputs": {
+          "processLength": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_processLength[6]",
+            "type": "USINT"
+          },
+          "sensor1": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor1[6]",
+            "type": "BOOL"
+          },
+          "sensor2": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor2[6]",
+            "type": "BOOL"
+          },
+          "sensor3": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor3[6]",
+            "type": "BOOL"
+          },
+          "sensor4": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor4[6]",
+            "type": "BOOL"
+          },
+          "sensor5": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor5[6]",
+            "type": "BOOL"
+          },
+          "station1Start": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station1Start[6]",
+            "type": "BOOL"
+          },
+          "station2Complete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station2Complete[6]",
+            "type": "BOOL"
+          },
+          "station3Complete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station3Complete[6]",
+            "type": "BOOL"
+          },
+          "station4Complete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station4Complete[6]",
+            "type": "BOOL"
+          },
+          "processSequence": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_1[6]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_2[6]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_3[6]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_4[6]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_5[6]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_6[6]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_7[6]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_8[6]",
+                "type": "USINT"
+              }
+            ]
+          }
+        },
+        "outputs": {
+          "conveyorLeft": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_conveyorLeft[6]",
+            "type": "BOOL"
+          },
+          "conveyorRight": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_conveyorRight[6]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 7,
+        "case_id": "case_2",
+        "case_step": 1,
+        "dt_expr": null,
+        "inputs": {
+          "processLength": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_processLength[7]",
+            "type": "USINT"
+          },
+          "sensor1": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor1[7]",
+            "type": "BOOL"
+          },
+          "sensor2": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor2[7]",
+            "type": "BOOL"
+          },
+          "sensor3": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor3[7]",
+            "type": "BOOL"
+          },
+          "sensor4": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor4[7]",
+            "type": "BOOL"
+          },
+          "sensor5": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor5[7]",
+            "type": "BOOL"
+          },
+          "station1Start": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station1Start[7]",
+            "type": "BOOL"
+          },
+          "station2Complete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station2Complete[7]",
+            "type": "BOOL"
+          },
+          "station3Complete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station3Complete[7]",
+            "type": "BOOL"
+          },
+          "station4Complete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station4Complete[7]",
+            "type": "BOOL"
+          },
+          "processSequence": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_1[7]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_2[7]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_3[7]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_4[7]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_5[7]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_6[7]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_7[7]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_8[7]",
+                "type": "USINT"
+              }
+            ]
+          }
+        },
+        "outputs": {
+          "conveyorLeft": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_conveyorLeft[7]",
+            "type": "BOOL"
+          },
+          "conveyorRight": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_conveyorRight[7]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 8,
+        "case_id": "case_2",
+        "case_step": 2,
+        "dt_expr": null,
+        "inputs": {
+          "processLength": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_processLength[8]",
+            "type": "USINT"
+          },
+          "sensor1": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor1[8]",
+            "type": "BOOL"
+          },
+          "sensor2": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor2[8]",
+            "type": "BOOL"
+          },
+          "sensor3": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor3[8]",
+            "type": "BOOL"
+          },
+          "sensor4": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor4[8]",
+            "type": "BOOL"
+          },
+          "sensor5": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor5[8]",
+            "type": "BOOL"
+          },
+          "station1Start": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station1Start[8]",
+            "type": "BOOL"
+          },
+          "station2Complete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station2Complete[8]",
+            "type": "BOOL"
+          },
+          "station3Complete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station3Complete[8]",
+            "type": "BOOL"
+          },
+          "station4Complete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station4Complete[8]",
+            "type": "BOOL"
+          },
+          "processSequence": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_1[8]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_2[8]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_3[8]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_4[8]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_5[8]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_6[8]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_7[8]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_8[8]",
+                "type": "USINT"
+              }
+            ]
+          }
+        },
+        "outputs": {
+          "conveyorLeft": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_conveyorLeft[8]",
+            "type": "BOOL"
+          },
+          "conveyorRight": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_conveyorRight[8]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 9,
+        "case_id": "case_2",
+        "case_step": 3,
+        "dt_expr": null,
+        "inputs": {
+          "processLength": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_processLength[9]",
+            "type": "USINT"
+          },
+          "sensor1": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor1[9]",
+            "type": "BOOL"
+          },
+          "sensor2": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor2[9]",
+            "type": "BOOL"
+          },
+          "sensor3": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor3[9]",
+            "type": "BOOL"
+          },
+          "sensor4": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor4[9]",
+            "type": "BOOL"
+          },
+          "sensor5": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor5[9]",
+            "type": "BOOL"
+          },
+          "station1Start": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station1Start[9]",
+            "type": "BOOL"
+          },
+          "station2Complete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station2Complete[9]",
+            "type": "BOOL"
+          },
+          "station3Complete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station3Complete[9]",
+            "type": "BOOL"
+          },
+          "station4Complete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station4Complete[9]",
+            "type": "BOOL"
+          },
+          "processSequence": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_1[9]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_2[9]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_3[9]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_4[9]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_5[9]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_6[9]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_7[9]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_8[9]",
+                "type": "USINT"
+              }
+            ]
+          }
+        },
+        "outputs": {
+          "conveyorLeft": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_conveyorLeft[9]",
+            "type": "BOOL"
+          },
+          "conveyorRight": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_conveyorRight[9]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 10,
+        "case_id": "case_2",
+        "case_step": 4,
+        "dt_expr": null,
+        "inputs": {
+          "processLength": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_processLength[10]",
+            "type": "USINT"
+          },
+          "sensor1": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor1[10]",
+            "type": "BOOL"
+          },
+          "sensor2": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor2[10]",
+            "type": "BOOL"
+          },
+          "sensor3": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor3[10]",
+            "type": "BOOL"
+          },
+          "sensor4": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor4[10]",
+            "type": "BOOL"
+          },
+          "sensor5": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor5[10]",
+            "type": "BOOL"
+          },
+          "station1Start": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station1Start[10]",
+            "type": "BOOL"
+          },
+          "station2Complete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station2Complete[10]",
+            "type": "BOOL"
+          },
+          "station3Complete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station3Complete[10]",
+            "type": "BOOL"
+          },
+          "station4Complete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station4Complete[10]",
+            "type": "BOOL"
+          },
+          "processSequence": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_1[10]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_2[10]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_3[10]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_4[10]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_5[10]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_6[10]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_7[10]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_8[10]",
+                "type": "USINT"
+              }
+            ]
+          }
+        },
+        "outputs": {
+          "conveyorLeft": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_conveyorLeft[10]",
+            "type": "BOOL"
+          },
+          "conveyorRight": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_conveyorRight[10]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 11,
+        "case_id": "case_2",
+        "case_step": 5,
+        "dt_expr": null,
+        "inputs": {
+          "processLength": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_processLength[11]",
+            "type": "USINT"
+          },
+          "sensor1": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor1[11]",
+            "type": "BOOL"
+          },
+          "sensor2": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor2[11]",
+            "type": "BOOL"
+          },
+          "sensor3": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor3[11]",
+            "type": "BOOL"
+          },
+          "sensor4": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor4[11]",
+            "type": "BOOL"
+          },
+          "sensor5": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor5[11]",
+            "type": "BOOL"
+          },
+          "station1Start": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station1Start[11]",
+            "type": "BOOL"
+          },
+          "station2Complete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station2Complete[11]",
+            "type": "BOOL"
+          },
+          "station3Complete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station3Complete[11]",
+            "type": "BOOL"
+          },
+          "station4Complete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station4Complete[11]",
+            "type": "BOOL"
+          },
+          "processSequence": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_1[11]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_2[11]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_3[11]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_4[11]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_5[11]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_6[11]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_7[11]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_8[11]",
+                "type": "USINT"
+              }
+            ]
+          }
+        },
+        "outputs": {
+          "conveyorLeft": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_conveyorLeft[11]",
+            "type": "BOOL"
+          },
+          "conveyorRight": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_conveyorRight[11]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 12,
+        "case_id": "case_2",
+        "case_step": 6,
+        "dt_expr": null,
+        "inputs": {
+          "processLength": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_processLength[12]",
+            "type": "USINT"
+          },
+          "sensor1": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor1[12]",
+            "type": "BOOL"
+          },
+          "sensor2": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor2[12]",
+            "type": "BOOL"
+          },
+          "sensor3": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor3[12]",
+            "type": "BOOL"
+          },
+          "sensor4": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor4[12]",
+            "type": "BOOL"
+          },
+          "sensor5": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_sensor5[12]",
+            "type": "BOOL"
+          },
+          "station1Start": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station1Start[12]",
+            "type": "BOOL"
+          },
+          "station2Complete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station2Complete[12]",
+            "type": "BOOL"
+          },
+          "station3Complete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station3Complete[12]",
+            "type": "BOOL"
+          },
+          "station4Complete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_station4Complete[12]",
+            "type": "BOOL"
+          },
+          "processSequence": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_1[12]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_2[12]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_3[12]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_4[12]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_5[12]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_6[12]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_7[12]",
+                "type": "USINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceIn_processSequence_8[12]",
+                "type": "USINT"
+              }
+            ]
+          }
+        },
+        "outputs": {
+          "conveyorLeft": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_conveyorLeft[12]",
+            "type": "BOOL"
+          },
+          "conveyorRight": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_conveyorRight[12]",
+            "type": "BOOL"
+          }
+        }
+      }
+    ]
+  },
+  "result_path": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\3b5d31e426e90f31\\simulation_evidence.json"
+}

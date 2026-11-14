@@ -1,0 +1,116 @@
+{
+  "id": "SELF008",
+  "title": "Consecutive scan qualification with an immediate trip",
+  "difficulty": "easy",
+  "requirements": "# SELF008: Preset-Qualified Delay Counter\n\n## Background\nSequential delay counter validating integer `Preset` in `1..5` across continuous `Request` scans.\n\n## Functional Requirements\n1. Inputs: `Request`, `Trip` (`BOOL`), `Preset` (`INT`, valid domain `1..5`).\n2. If `Request = FALSE`, `Trip = TRUE`, or `Preset` is outside `1..5`, reset `Count := 0` and set `Ready := FALSE`.\n3. Otherwise increment `Count := min(Count + 1, Preset)` and set `Ready := (Count >= Preset)`.\n\n## Interface\n- **Inputs:** `Request: BOOL`, `Trip: BOOL`, `Preset: USINT`\n- **Outputs:** `Ready: BOOL`, `Count: USINT`\n\n## Initial Values\n- `Count=0`, `Ready=false`\n\n## Timing & Evaluation Conventions\n`Preset` must be an integer (`bool` rejected); each qualifying scan counts as `1`.",
+  "scenario": "A cyclic quality check accepts a request only after a configurable number of consecutive healthy invocations.",
+  "interface": [
+    {
+      "direction": "INPUT",
+      "name": "Request",
+      "type": "BOOL",
+      "description": "Raw qualification request"
+    },
+    {
+      "direction": "INPUT",
+      "name": "Trip",
+      "type": "BOOL",
+      "description": "Immediate inhibit"
+    },
+    {
+      "direction": "INPUT",
+      "name": "Preset",
+      "type": "USINT",
+      "description": "Required consecutive scans, valid 1 through 5"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Ready",
+      "type": "BOOL",
+      "description": "Qualified request"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Count",
+      "type": "USINT",
+      "description": "Saturated consecutive scan count"
+    }
+  ],
+  "initial_conditions": {
+    "Count": 0,
+    "Ready": false
+  },
+  "scan_semantics": "At scan k, sample every input once, read retained pre-state q[k], execute one transition, and observe outputs O[k] at the end of that same scan. Updated state becomes q[k+1]. Reset the instance before each test. Step 0 executes normally; initial conditions describe pre-state, not an extra delayed scan. All timing in this task is explicitly counted in invocations, not wall time.",
+  "safety_priority": [
+    "Trip, missing request and invalid Preset clear progress"
+  ],
+  "assumptions": [
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+  ],
+  "atomic_propositions": {
+    "Request": "I[k].Request: sampled input (BOOL).",
+    "Trip": "I[k].Trip: sampled input (BOOL).",
+    "Preset": "I[k].Preset: sampled input (USINT).",
+    "Ready": "O[k].Ready: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "Count": "O[k].Count: independently observed post-scan candidate value (USINT); never defined as expected output.",
+    "first": "k=0; first invocation, not the pre-invocation observation",
+    "invalid": "Preset < 1 or Preset > 5.",
+    "qualified": "Count >= Preset and Preset is valid.",
+    "qCount": "{\"kind\": \"previous_observed_output\", \"source\": \"O[k-1].Count\", \"initial\": 0, \"update\": \"After comparing scan k, store ACTUAL O[k].Count; never write into reference state.\"}",
+    "nextCount": "min(qCount+1, Preset) as an integer expression.",
+    "init": "At the separate pre-invocation initial observation before scan k=0: O_init.Ready=false, O_init.Count=0."
+  },
+  "ltl": [
+    {
+      "id": "SELF008.P_init",
+      "kind": "safety",
+      "formula": "init",
+      "description": "Before the first scan invocation, all declared OUTPUT variables and initial instance state hold their declared initial values.",
+      "explanation": "Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "INITIAL_INSTANCE"
+    },
+    {
+      "id": "SELF008.P1",
+      "formula": "G((Trip | !Request | invalid) -> (!Ready & (Count = 0)))",
+      "explanation": "Every interruption clears qualification immediately.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "SELF008.P2",
+      "formula": "G((Request & !Trip & !invalid) -> (Count = nextCount))",
+      "explanation": "Healthy scans increment and saturate precisely.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "SELF008.P3",
+      "formula": "G(Ready <-> qualified)",
+      "explanation": "The indication agrees with the post-scan count.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "SELF008.P4",
+      "formula": "G(!invalid -> ((Count >= 0) & (Count <= Preset)))",
+      "explanation": "The counter stays within bounds.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "SELF008.P5",
+      "formula": "(G(Request & !Trip & !invalid)) -> F Ready",
+      "explanation": "A perpetually valid request qualifies within at most five scans, even if valid Preset varies.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    }
+  ]
+}

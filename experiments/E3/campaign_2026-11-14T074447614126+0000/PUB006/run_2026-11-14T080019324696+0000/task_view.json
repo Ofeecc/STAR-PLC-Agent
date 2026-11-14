@@ -1,0 +1,114 @@
+{
+  "id": "PUB006",
+  "title": "Aeration Blower Delayed Start",
+  "difficulty": "easy",
+  "requirements": "# Aeration Blower Delayed Start\n\n- **Difficulty:** Easy (easy)\n\n## Requirements\n\nControl a wastewater-treatment aeration blower with a low-dissolved-oxygen demand, a 5-second start delay, emergency-stop priority and start-cycle counting.\n\n1. Start delay timing when both DO_LOW and AERATION_E_STOP_NC are TRUE. Allow BLOWER_RUN to become TRUE only after these conditions have remained satisfied for 5 seconds.\n2. If DO_LOW becomes FALSE or an emergency stop occurs, immediately disable BLOWER_RUN and reset the start timer, whether timing is incomplete or complete. A new demand must wait the full 5 seconds again.\n3. Increment AERATION_BLOWER_CYCLE_COUNT once on each FALSE-to-TRUE transition of BLOWER_RUN. Do not count repeatedly during continuous operation.\n4. At power-up, initialize the blower to OFF and the start count to zero. The start delay gates a BOOL enable; no continuous speed ramp is required.\n\n## Interface Definition\n\n| Direction | Variable/Field | Data Type | Description |\n| --- | --- | --- | --- |\n| Input | `DO_LOW` | `BOOL` | Dissolved oxygen is below its threshold and aeration is needed. |\n| Input | `AERATION_E_STOP_NC` | `BOOL` | TRUE means the emergency stop is inactive; FALSE means it is active. |\n| Output | `BLOWER_RUN` | `BOOL` | Blower motor-contactor run command. |\n| Output | `AERATION_BLOWER_CYCLE_COUNT` | `UINT` | Count of actual blower starts. |",
+  "scenario": "Control a wastewater-treatment aeration blower with a low-dissolved-oxygen demand, a 5-second start delay, emergency-stop priority and start-cycle counting.",
+  "interface": [
+    {
+      "direction": "INPUT",
+      "name": "DO_LOW",
+      "type": "BOOL",
+      "description": "Dissolved oxygen is below its threshold and aeration is needed."
+    },
+    {
+      "direction": "INPUT",
+      "name": "AERATION_E_STOP_NC",
+      "type": "BOOL",
+      "description": "TRUE means the emergency stop is inactive; FALSE means it is active."
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "BLOWER_RUN",
+      "type": "BOOL",
+      "description": "Blower motor-contactor run command."
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "AERATION_BLOWER_CYCLE_COUNT",
+      "type": "UINT",
+      "description": "Count of actual blower starts."
+    }
+  ],
+  "initial_conditions": {
+    "BLOWER_RUN": false,
+    "AERATION_BLOWER_CYCLE_COUNT": 0,
+    "delayElapsed_ms": 0
+  },
+  "scan_semantics": "At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, outputs O[k] are observed after execution, and q[k+1] is the updated state. Each test creates a fresh FB instance before step 0. An initialized instance has not yet executed a scan. Timer elapsed time is zero on the first eligible sampled invocation; dt_ms is elapsed wall time since the previous invocation, not automatically a synthetic input to the FB. No unobserved past input stability is assumed. All sequences here are expected values.",
+  "safety_priority": [
+    "DO_LOW FALSE or emergency stop overrides timing and resets it immediately."
+  ],
+  "assumptions": [
+    "Start delay elapsed is zero at the first sample of DO_LOW & AERATION_E_STOP_NC; run becomes TRUE at elapsed>=5s.",
+    "Count increments on the same invocation that changes end-of-scan BLOWER_RUN from FALSE to TRUE.",
+    "Tests stay below UINT overflow; overflow behavior is outside the specified operating domain.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+  ],
+  "ltl": [
+    {
+      "id": "PUB006.P_init",
+      "kind": "safety",
+      "formula": "init",
+      "description": "Before the first scan invocation, all declared OUTPUT variables and initial instance state hold their declared initial values.",
+      "explanation": "Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "INITIAL_INSTANCE"
+    },
+    {
+      "id": "PUB006.P1",
+      "formula": "G(BLOWER_RUN <-> (permit & delayDone))",
+      "explanation": "Run is enabled only after the full delay.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB006.P2",
+      "formula": "G(!permit -> (!BLOWER_RUN & X(!delayDone)))",
+      "explanation": "Loss of demand or safety permissive clears run and its timer.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB006.P3",
+      "formula": "G((!runPrev & BLOWER_RUN) -> AERATION_BLOWER_CYCLE_COUNT=countPrev+1)",
+      "explanation": "One count per genuine start.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB006.P4",
+      "formula": "G((runPrev | !BLOWER_RUN) -> AERATION_BLOWER_CYCLE_COUNT=countPrev)",
+      "explanation": "No repeated count during continuous operation or stop.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB006.P5",
+      "formula": "(G(F(TimeTick))) -> (G((G(permit)) -> F(BLOWER_RUN)))",
+      "explanation": "A sustained permitted demand eventually starts under advancing time. Explicit non-Zeno environment premise: physical elapsed time crosses infinitely many 1ms boundaries.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    }
+  ],
+  "atomic_propositions": {
+    "permit": "DO_LOW & AERATION_E_STOP_NC",
+    "delayDone": "Permissive has continuously remained true for >=5s after its first sampled TRUE.",
+    "runPrev": "{\"kind\": \"previous_observed_output\", \"source\": \"O[k-1].BLOWER_RUN\", \"initial\": false, \"update\": \"After comparing scan k, store ACTUAL O[k].BLOWER_RUN; never write into reference state.\"}",
+    "countPrev": "{\"kind\": \"previous_observed_output\", \"source\": \"O[k-1].AERATION_BLOWER_CYCLE_COUNT\", \"initial\": 0, \"update\": \"After comparing scan k, store ACTUAL O[k].AERATION_BLOWER_CYCLE_COUNT; never write into reference state.\"}",
+    "interface names": "Identically named sampled input or observed output.",
+    "TimeTick": "Boolean: floor(t[k]/1ms)>floor(t[k-1]/1ms), with t[0]=0, TimeTick[0]=FALSE, t[k]=sum(dt_ms[1..k]). G(F(TimeTick)) states unbounded physical time progress; merely positive dt is insufficient.",
+    "DO_LOW": "I[k].DO_LOW: sampled input (BOOL).",
+    "AERATION_E_STOP_NC": "I[k].AERATION_E_STOP_NC: sampled input (BOOL).",
+    "BLOWER_RUN": "O[k].BLOWER_RUN: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "AERATION_BLOWER_CYCLE_COUNT": "O[k].AERATION_BLOWER_CYCLE_COUNT: independently observed post-scan candidate value (UINT); never defined as expected output.",
+    "init": "At the separate pre-invocation initial observation before scan k=0: O_init.BLOWER_RUN=false, O_init.AERATION_BLOWER_CYCLE_COUNT=0."
+  }
+}

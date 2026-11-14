@@ -1,0 +1,189 @@
+Return ONLY a JSON object with declaration, implementation, supporting_objects.
+declaration is CODESYS FUNCTION_BLOCK FB_Task followed by all VAR sections; omit END_FUNCTION_BLOCK.
+implementation is the ST body alone. supporting_objects is a list of helper DUT/POU objects, each with
+name, kind (DUT/FUNCTION/FUNCTION_BLOCK), declaration, implementation; functions need return_type.
+Keep exact task interface names/types and implement all behavior. Define referenced DUTs. No Markdown.
+Do not change requirements or use reference answers. Standard library is available in the project.
+The target is CODESYS 3.5 ST. Compilation is offline; do not contact physical equipment.
+
+You are the existing coding-agent baseline. The complete task is supplied below. The owner has already authorized this noninteractive benchmark and the supplied IDE-simulation tools within the stated limits. Use the supplied compiler, simulator, and formal verification tools directly; shell commands are unnecessary for this task. Use compile_st to compile each candidate. Maximum 3 total compiler calls. Use simulate_st to simulate candidates against your test cases. Maximum 3 total simulation calls. Use verify_st to formally verify FB_Task against the LTL/INVAR specifications (returns PASS or counterexample trace). After compilation errors, counterexamples, or simulation failures, repair and retest within these limits. Stop on successful verification or infrastructure failure. Do not inspect other directories, environment variables, API credentials, reference code, or other runs. Save the exact final submitted source to candidate.json. Return a concise status; raw trusted compiler, formal verification, and simulation evidence will be used for evaluation.
+TASK
+{
+  "id": "SELF004",
+  "title": "Pallet indexing with a latched jam fault",
+  "difficulty": "medium",
+  "requirements": "# SELF004: Transfer Conveyor Cycle with Jam Fault\n\n## Background\nFour-state (`IDLE`, `MOVING`, `COMPLETE`, `FAULT`) transfer conveyor cycle with jam supervision.\n\n## Functional Requirements\n1. Inputs: `Start`, `Stop`, `AtExit`, `Jam`, `Reset` (`BOOL`).\n2. Priority order per scan: (1) `Jam = TRUE` -> `FAULT`; (2) `Reset = TRUE` -> `IDLE`; (3) if already in `FAULT`, remain in `FAULT` until cleared by `Reset` (without `Jam`); (4) `Stop = TRUE` -> `IDLE`; (5) if in `MOVING` and `AtExit = TRUE` -> `COMPLETE`; (6) if in `IDLE`, `Start = TRUE`, and `AtExit = FALSE` -> `MOVING`; (7) otherwise hold state.\n3. Outputs reflect post-transition state: `Belt <-> MOVING`, `Complete <-> COMPLETE`, `Fault <-> FAULT` (at most one active).\n\n## Interface\n- **Inputs:** `Start: BOOL`, `Stop: BOOL`, `AtExit: BOOL`, `Jam: BOOL`, `Reset: BOOL`\n- **Outputs:** `Belt: BOOL`, `Complete: BOOL`, `Fault: BOOL`\n\n## Initial Values\n- `state=\"IDLE\"`, `Belt=false`, `Complete=false`, `Fault=false`\n\n## Timing & Evaluation Conventions\nAll signals are level-sensitive; a single scan executes at most one state step.",
+  "scenario": "A small conveyor indexes one pallet to an exit sensor and preserves a jam indication until a deliberate reset.",
+  "interface": [
+    {
+      "direction": "INPUT",
+      "name": "Start",
+      "type": "BOOL",
+      "description": "Start one pallet"
+    },
+    {
+      "direction": "INPUT",
+      "name": "Stop",
+      "type": "BOOL",
+      "description": "Abort cycle"
+    },
+    {
+      "direction": "INPUT",
+      "name": "AtExit",
+      "type": "BOOL",
+      "description": "Pallet at exit"
+    },
+    {
+      "direction": "INPUT",
+      "name": "Jam",
+      "type": "BOOL",
+      "description": "Jam detected"
+    },
+    {
+      "direction": "INPUT",
+      "name": "Reset",
+      "type": "BOOL",
+      "description": "Clear completion or cleared jam"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Belt",
+      "type": "BOOL",
+      "description": "Conveyor command"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Complete",
+      "type": "BOOL",
+      "description": "Pallet cycle completed"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Fault",
+      "type": "BOOL",
+      "description": "Latched jam fault"
+    }
+  ],
+  "initial_conditions": {
+    "state": "IDLE",
+    "Belt": false,
+    "Complete": false,
+    "Fault": false
+  },
+  "scan_semantics": "At scan k, sample every input once, read retained pre-state q[k], execute one transition, and observe outputs O[k] at the end of that same scan. Updated state becomes q[k+1]. Reset the instance before each test. Step 0 executes normally; initial conditions describe pre-state, not an extra delayed scan. All timing in this task is explicitly counted in invocations, not wall time.",
+  "safety_priority": [
+    "Jam",
+    "Reset when Jam is FALSE",
+    "Latched fault",
+    "Stop",
+    "Normal transition"
+  ],
+  "assumptions": [
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+  ],
+  "atomic_propositions": {
+    "Start": "I[k].Start: sampled input (BOOL).",
+    "Stop": "I[k].Stop: sampled input (BOOL).",
+    "AtExit": "I[k].AtExit: sampled input (BOOL).",
+    "Jam": "I[k].Jam: sampled input (BOOL).",
+    "Reset": "I[k].Reset: sampled input (BOOL).",
+    "Belt": "O[k].Belt: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "Complete": "O[k].Complete: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "Fault": "O[k].Fault: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "first": "k=0; first invocation, not the pre-invocation observation",
+    "qIdle": "Spre.reference.state.mode=0",
+    "qMoving": "Spre.reference.state.mode=1",
+    "qComplete": "Spre.reference.state.mode=2",
+    "qFault": "Spre.reference.state.mode=3",
+    "init": "At the separate pre-invocation initial observation before scan k=0: Spre.mode=IDLE, O_init.Belt=false, O_init.Complete=false, O_init.Fault=false."
+  },
+  "ltl": [
+    {
+      "id": "SELF004.P_init",
+      "kind": "safety",
+      "formula": "init",
+      "description": "Before the first scan invocation, all declared OUTPUT variables and initial instance state hold their declared initial values.",
+      "explanation": "Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "INITIAL_INSTANCE"
+    },
+    {
+      "id": "SELF004.P1",
+      "formula": "G(Jam -> (Fault & !Belt & !Complete))",
+      "explanation": "Jam wins over Reset and Start.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "SELF004.P2",
+      "formula": "G((qFault & !Reset) -> Fault)",
+      "explanation": "Fault requires an explicit clear operation.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "SELF004.P3",
+      "formula": "G((!Jam & Reset) -> (!Belt & !Complete & !Fault))",
+      "explanation": "A cleared-jam reset returns IDLE.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "SELF004.P4",
+      "formula": "G((qIdle & !Jam & !Reset & !Stop & Start & !AtExit) -> Belt)",
+      "explanation": "A valid idle start moves the pallet.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "SELF004.P5",
+      "formula": "G((qMoving & AtExit & !Jam & !Reset & !Stop) -> (Complete & !Belt))",
+      "explanation": "Exit arrival stops indexing in the same scan.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "SELF004.P6",
+      "formula": "G(!(Belt & (Complete | Fault)))",
+      "explanation": "Movement excludes completion and fault outputs.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "SELF004.P7",
+      "formula": "G(Fault -> (G Fault | (Fault U (!Jam & Reset))))",
+      "explanation": "A latched jam remains until a cleared-jam reset, or forever if no such reset occurs; this does not assume eventual reset.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "SELF004.P8",
+      "kind": "safety",
+      "formula": "G((!Jam & !Reset & !qFault & Stop -> (!Belt & !Complete & !Fault)) & (qIdle & !Jam & !Reset & (!Start | AtExit) -> (!Belt & !Complete & !Fault)) & (qMoving & !Jam & !Reset & !Stop & !AtExit -> (Belt & !Complete & !Fault)) & (qComplete & !Jam & !Reset & !Stop -> (Complete & !Belt & !Fault)))",
+      "description": "Covers Stop returning to IDLE from MOVING/COMPLETE, IDLE holding when unstarted or blocked at exit, MOVING holding before AtExit, and COMPLETE holding until Stop/Reset/Jam.",
+      "explanation": "Prevents degenerate implementations that refuse to stop or drop MOVING/COMPLETE prematurely.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "SELF004.P9",
+      "kind": "safety",
+      "formula": "G(!(Belt & Complete) & (!(Jam | qFault) -> !Fault) & ((qIdle | qFault | Stop | Reset) -> !Complete))",
+      "description": "Guarantees Belt/Complete mutual exclusion, forbids spontaneous Fault, and prevents spurious Complete without moving to AtExit.",
+      "explanation": "Eliminates remaining false-positive satisfaction paths on P1..P8.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    }
+  ]
+}

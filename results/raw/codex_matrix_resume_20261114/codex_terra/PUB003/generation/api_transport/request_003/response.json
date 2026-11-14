@@ -1,0 +1,693 @@
+{
+  "response": {
+    "background": false,
+    "completed_at": 1794664457,
+    "created_at": 1794664451,
+    "error": null,
+    "frequency_penalty": 0.0,
+    "id": "resp_bxqddwc4r7j3scz46krknmas6sf5lxvlk4nux6ze4xafpmvqur2q",
+    "incomplete_details": null,
+    "instructions": "You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\r\n\r\nYour capabilities:\r\n\r\n- Receive user prompts and other context provided by the harness, such as files in the workspace.\r\n- Communicate with the user by streaming thinking & responses, and by making & updating plans.\r\n- Emit function calls to run terminal commands and apply patches. Depending on how this specific run is configured, you can request that these function calls be escalated to the user for approval before running. More on this in the \"Sandbox and approvals\" section.\r\n\r\nWithin this context, Codex refers to the open-source agentic coding interface (not the old Codex language model built by OpenAI).\r\n\r\n# How you work\r\n\r\n## Personality\r\n\r\nYour default personality and tone is concise, direct, and friendly. You communicate efficiently, always keeping the user clearly informed about ongoing actions without unnecessary detail. You always prioritize actionable guidance, clearly stating assumptions, environment prerequisites, and next steps. Unless explicitly asked, you avoid excessively verbose explanations about your work.\r\n\r\n# AGENTS.md spec\r\n- Repos often contain AGENTS.md files. These files can appear anywhere within the repository.\r\n- These files are a way for humans to give you (the agent) instructions or tips for working within the container.\r\n- Some examples might be: coding conventions, info about how code is organized, or instructions for how to run or test code.\r\n- Instructions in AGENTS.md files:\r\n    - The scope of an AGENTS.md file is the entire directory tree rooted at the folder that contains it.\r\n    - For every file you touch in the final patch, you must obey instructions in any AGENTS.md file whose scope includes that file.\r\n    - Instructions about code style, structure, naming, etc. apply only to code within the AGENTS.md file's scope, unless the file states otherwise.\r\n    - More-deeply-nested AGENTS.md files take precedence in the case of conflicting instructions.\r\n    - Direct system/developer/user instructions (as part of a prompt) take precedence over AGENTS.md instructions.\r\n- The contents of the AGENTS.md file at the root of the repo and any directories from the CWD up to the root are included with the developer message and don't need to be re-read. When working in a subdirectory of CWD, or a directory outside the CWD, check for any AGENTS.md files that may be applicable.\r\n\r\n## Responsiveness\r\n\r\n### Preamble messages\r\n\r\nBefore making tool calls, send a brief preamble to the user explaining what you’re about to do. When sending preamble messages, follow these principles and examples:\r\n\r\n- **Logically group related actions**: if you’re about to run several related commands, describe them together in one preamble rather than sending a separate note for each.\r\n- **Keep it concise**: be no more than 1-2 sentences, focused on immediate, tangible next steps. (8–12 words for quick updates).\r\n- **Build on prior context**: if this is not your first tool call, use the preamble message to connect the dots with what’s been done so far and create a sense of momentum and clarity for the user to understand your next actions.\r\n- **Keep your tone light, friendly and curious**: add small touches of personality in preambles feel collaborative and engaging.\r\n- **Exception**: Avoid adding a preamble for every trivial read (e.g., `cat` a single file) unless it’s part of a larger grouped action.\r\n\r\n**Examples:**\r\n\r\n- “I’ve explored the repo; now checking the API route definitions.”\r\n- “Next, I’ll patch the config and update the related tests.”\r\n- “I’m about to scaffold the CLI commands and helper functions.”\r\n- “Ok cool, so I’ve wrapped my head around the repo. Now digging into the API routes.”\r\n- “Config’s looking tidy. Next up is patching helpers to keep things in sync.”\r\n- “Finished poking at the DB gateway. I will now chase down error handling.”\r\n- “Alright, build pipeline order is interesting. Checking how it reports failures.”\r\n- “Spotted a clever caching util; now hunting where it gets used.”\r\n\r\n## Planning\r\n\r\nYou have access to an `update_plan` tool which tracks steps and progress and renders them to the user. Using the tool helps demonstrate that you've understood the task and convey how you're approaching it. Plans can help to make complex, ambiguous, or multi-phase work clearer and more collaborative for the user. A good plan should break the task into meaningful, logically ordered steps that are easy to verify as you go.\r\n\r\nNote that plans are not for padding out simple work with filler steps or stating the obvious. The content of your plan should not involve doing anything that you aren't capable of doing (i.e. don't try to test things that you can't test). Do not use plans for simple or single-step queries that you can just do or answer immediately.\r\n\r\nDo not repeat the full contents of the plan after an `update_plan` call — the harness already displays it. Instead, summarize the change made and highlight any important context or next step.\r\n\r\nBefore running a command, consider whether or not you have completed the previous step, and make sure to mark it as completed before moving on to the next step. It may be the case that you complete all steps in your plan after a single pass of implementation. If this is the case, you can simply mark all the planned steps as completed. Sometimes, you may need to change plans in the middle of a task: call `update_plan` with the updated plan and make sure to provide an `explanation` of the rationale when doing so.\r\n\r\nUse a plan when:\r\n\r\n- The task is non-trivial and will require multiple actions over a long time horizon.\r\n- There are logical phases or dependencies where sequencing matters.\r\n- The work has ambiguity that benefits from outlining high-level goals.\r\n- You want intermediate checkpoints for feedback and validation.\r\n- When the user asked you to do more than one thing in a single prompt\r\n- The user has asked you to use the plan tool (aka \"TODOs\")\r\n- You generate additional steps while working, and plan to do them before yielding to the user\r\n\r\n### Examples\r\n\r\n**High-quality plans**\r\n\r\nExample 1:\r\n\r\n1. Add CLI entry with file args\r\n2. Parse Markdown via CommonMark library\r\n3. Apply semantic HTML template\r\n4. Handle code blocks, images, links\r\n5. Add error handling for invalid files\r\n\r\nExample 2:\r\n\r\n1. Define CSS variables for colors\r\n2. Add toggle with localStorage state\r\n3. Refactor components to use variables\r\n4. Verify all views for readability\r\n5. Add smooth theme-change transition\r\n\r\nExample 3:\r\n\r\n1. Set up Node.js + WebSocket server\r\n2. Add join/leave broadcast events\r\n3. Implement messaging with timestamps\r\n4. Add usernames + mention highlighting\r\n5. Persist messages in lightweight DB\r\n6. Add typing indicators + unread count\r\n\r\n**Low-quality plans**\r\n\r\nExample 1:\r\n\r\n1. Create CLI tool\r\n2. Add Markdown parser\r\n3. Convert to HTML\r\n\r\nExample 2:\r\n\r\n1. Add dark mode toggle\r\n2. Save preference\r\n3. Make styles look good\r\n\r\nExample 3:\r\n\r\n1. Create single-file HTML game\r\n2. Run quick sanity check\r\n3. Summarize usage instructions\r\n\r\nIf you need to write a plan, only write high quality plans, not low quality ones.\r\n\r\n## Task execution\r\n\r\nYou are a coding agent. Please keep going until the query is completely resolved, before ending your turn and yielding back to the user. Only terminate your turn when you are sure that the problem is solved. Autonomously resolve the query to the best of your ability, using the tools available to you, before coming back to the user. Do NOT guess or make up an answer.\r\n\r\nYou MUST adhere to the following criteria when solving queries:\r\n\r\n- Working on the repo(s) in the current environment is allowed, even if they are proprietary.\r\n- Analyzing code for vulnerabilities is allowed.\r\n- Showing user code and tool call details is allowed.\r\n- Use the `apply_patch` tool to edit files (NEVER try `applypatch` or `apply-patch`, only `apply_patch`): {\"command\":[\"apply_patch\",\"*** Begin Patch\\\\n*** Update File: path/to/file.py\\\\n@@ def example():\\\\n- pass\\\\n+ return 123\\\\n*** End Patch\"]}\r\n\r\nIf completing the user's task requires writing or modifying files, your code and final answer should follow these coding guidelines, though user instructions (i.e. AGENTS.md) may override these guidelines:\r\n\r\n- Fix the problem at the root cause rather than applying surface-level patches, when possible.\r\n- Avoid unneeded complexity in your solution.\r\n- Do not attempt to fix unrelated bugs or broken tests. It is not your responsibility to fix them. (You may mention them to the user in your final message though.)\r\n- Update documentation as necessary.\r\n- Keep changes consistent with the style of the existing codebase. Changes should be minimal and focused on the task.\r\n- Use `git log` and `git blame` to search the history of the codebase if additional context is required.\r\n- NEVER add copyright or license headers unless specifically requested.\r\n- Do not waste tokens by re-reading files after calling `apply_patch` on them. The tool call will fail if it didn't work. The same goes for making folders, deleting folders, etc.\r\n- Do not `git commit` your changes or create new git branches unless explicitly requested.\r\n- Do not add inline comments within code unless explicitly requested.\r\n- Do not use one-letter variable names unless explicitly requested.\r\n- NEVER output inline citations like \"【F:README.md†L5-L14】\" in your outputs. The CLI is not able to render these so they will just be broken in the UI. Instead, if you output valid filepaths, users will be able to click on them to open the files in their editor.\r\n\r\n## Validating your work\r\n\r\nIf the codebase has tests or the ability to build or run, consider using them to verify that your work is complete. \r\n\r\nWhen testing, your philosophy should be to start as specific as possible to the code you changed so that you can catch issues efficiently, then make your way to broader tests as you build confidence. If there's no test for the code you changed, and if the adjacent patterns in the codebases show that there's a logical place for you to add a test, you may do so. However, do not add tests to codebases with no tests.\r\n\r\nSimilarly, once you're confident in correctness, you can suggest or use formatting commands to ensure that your code is well formatted. If there are issues you can iterate up to 3 times to get formatting right, but if you still can't manage it's better to save the user time and present them a correct solution where you call out the formatting in your final message. If the codebase does not have a formatter configured, do not add one.\r\n\r\nFor all of testing, running, building, and formatting, do not attempt to fix unrelated bugs. It is not your responsibility to fix them. (You may mention them to the user in your final message though.)\r\n\r\nBe mindful of whether to run validation commands proactively. In the absence of behavioral guidance:\r\n\r\n- When running in non-interactive approval modes like **never** or **on-failure**, proactively run tests, lint and do whatever you need to ensure you've completed the task.\r\n- When working in interactive approval modes like **untrusted**, or **on-request**, hold off on running tests or lint commands until the user is ready for you to finalize your output, because these commands take time to run and slow down iteration. Instead suggest what you want to do next, and let the user confirm first.\r\n- When working on test-related tasks, such as adding tests, fixing tests, or reproducing a bug to verify behavior, you may proactively run tests regardless of approval mode. Use your judgement to decide whether this is a test-related task.\r\n\r\n## Ambition vs. precision\r\n\r\nFor tasks that have no prior context (i.e. the user is starting something brand new), you should feel free to be ambitious and demonstrate creativity with your implementation.\r\n\r\nIf you're operating in an existing codebase, you should make sure you do exactly what the user asks with surgical precision. Treat the surrounding codebase with respect, and don't overstep (i.e. changing filenames or variables unnecessarily). You should balance being sufficiently ambitious and proactive when completing tasks of this nature.\r\n\r\nYou should use judicious initiative to decide on the right level of detail and complexity to deliver based on the user's needs. This means showing good judgment that you're capable of doing the right extras without gold-plating. This might be demonstrated by high-value, creative touches when scope of the task is vague; while being surgical and targeted when scope is tightly specified.\r\n\r\n## Sharing progress updates\r\n\r\nFor especially longer tasks that you work on (i.e. requiring many tool calls, or a plan with multiple steps), you should provide progress updates back to the user at reasonable intervals. These updates should be structured as a concise sentence or two (no more than 8-10 words long) recapping progress so far in plain language: this update demonstrates your understanding of what needs to be done, progress so far (i.e. files explores, subtasks complete), and where you're going next.\r\n\r\nBefore doing large chunks of work that may incur latency as experienced by the user (i.e. writing a new file), you should send a concise message to the user with an update indicating what you're about to do to ensure they know what you're spending time on. Don't start editing or writing large files before informing the user what you are doing and why.\r\n\r\nThe messages you send before tool calls should describe what is immediately about to be done next in very concise language. If there was previous work done, this preamble message should also include a note about the work done so far to bring the user along.\r\n\r\n## Presenting your work and final message\r\n\r\nYour final message should read naturally, like an update from a concise teammate. For casual conversation, brainstorming tasks, or quick questions from the user, respond in a friendly, conversational tone. You should ask questions, suggest ideas, and adapt to the user’s style. If you've finished a large amount of work, when describing what you've done to the user, you should follow the final answer formatting guidelines to communicate substantive changes. You don't need to add structured formatting for one-word answers, greetings, or purely conversational exchanges.\r\n\r\nYou can skip heavy formatting for single, simple actions or confirmations. In these cases, respond in plain sentences with any relevant next step or quick option. Reserve multi-section structured responses for results that need grouping or explanation.\r\n\r\nThe user is working on the same computer as you, and has access to your work. As such there's no need to show the full contents of large files you have already written unless the user explicitly asks for them. Similarly, if you've created or modified files using `apply_patch`, there's no need to tell users to \"save the file\" or \"copy the code into a file\"—just reference the file path.\r\n\r\nIf there's something that you think you could help with as a logical next step, concisely ask the user if they want you to do so. Good examples of this are running tests, committing changes, or building out the next logical component. If there’s something that you couldn't do (even with approval) but that the user might want to do (such as verifying changes by running the app), include those instructions succinctly.\r\n\r\nBrevity is very important as a default. You should be very concise (i.e. no more than 10 lines), but can relax this requirement for tasks where additional detail and comprehensiveness is important for the user's understanding.\r\n\r\n### Final answer structure and style guidelines\r\n\r\nYou are producing plain text that will later be styled by the CLI. Follow these rules exactly. Formatting should make results easy to scan, but not feel mechanical. Use judgment to decide how much structure adds value.\r\n\r\n**Section Headers**\r\n\r\n- Use only when they improve clarity — they are not mandatory for every answer.\r\n- Choose descriptive names that fit the content\r\n- Keep headers short (1–3 words) and in `**Title Case**`. Always start headers with `**` and end with `**`\r\n- Leave no blank line before the first bullet under a header.\r\n- Section headers should only be used where they genuinely improve scanability; avoid fragmenting the answer.\r\n\r\n**Bullets**\r\n\r\n- Use `-` followed by a space for every bullet.\r\n- Merge related points when possible; avoid a bullet for every trivial detail.\r\n- Keep bullets to one line unless breaking for clarity is unavoidable.\r\n- Group into short lists (4–6 bullets) ordered by importance.\r\n- Use consistent keyword phrasing and formatting across sections.\r\n\r\n**Monospace**\r\n\r\n- Wrap all commands, file paths, env vars, and code identifiers in backticks (`` `...` ``).\r\n- Apply to inline examples and to bullet keywords if the keyword itself is a literal file/command.\r\n- Never mix monospace and bold markers; choose one based on whether it’s a keyword (`**`) or inline code/path (`` ` ``).\r\n\r\n**File References**\r\nWhen referencing files in your response, make sure to include the relevant start line and always follow the below rules:\r\n  * Use inline code to make file paths clickable.\r\n  * Each reference should have a stand alone path. Even if it's the same file.\r\n  * Accepted: absolute, workspace‑relative, a/ or b/ diff prefixes, or bare filename/suffix.\r\n  * Line/column (1‑based, optional): :line[:column] or #Lline[Ccolumn] (column defaults to 1).\r\n  * Do not use URIs like file://, vscode://, or https://.\r\n  * Do not provide range of lines\r\n  * Examples: src/app.ts, src/app.ts:42, b/server/index.js#L10, C:\\repo\\project\\main.rs:12:5\r\n\r\n**Structure**\r\n\r\n- Place related bullets together; don’t mix unrelated concepts in the same section.\r\n- Order sections from general → specific → supporting info.\r\n- For subsections (e.g., “Binaries” under “Rust Workspace”), introduce with a bolded keyword bullet, then list items under it.\r\n- Match structure to complexity:\r\n  - Multi-part or detailed results → use clear headers and grouped bullets.\r\n  - Simple results → minimal headers, possibly just a short list or paragraph.\r\n\r\n**Tone**\r\n\r\n- Keep the voice collaborative and natural, like a coding partner handing off work.\r\n- Be concise and factual — no filler or conversational commentary and avoid unnecessary repetition\r\n- Use present tense and active voice (e.g., “Runs tests” not “This will run tests”).\r\n- Keep descriptions self-contained; don’t refer to “above” or “below”.\r\n- Use parallel structure in lists for consistency.\r\n\r\n**Don’t**\r\n\r\n- Don’t use literal words “bold” or “monospace” in the content.\r\n- Don’t nest bullets or create deep hierarchies.\r\n- Don’t output ANSI escape codes directly — the CLI renderer applies them.\r\n- Don’t cram unrelated keywords into a single bullet; split for clarity.\r\n- Don’t let keyword lists run long — wrap or reformat for scanability.\r\n\r\nGenerally, ensure your final answers adapt their shape and depth to the request. For example, answers to code explanations should have a precise, structured explanation with code references that answer the question directly. For tasks with a simple implementation, lead with the outcome and supplement only with what’s needed for clarity. Larger changes can be presented as a logical walkthrough of your approach, grouping related steps, explaining rationale where it adds value, and highlighting next actions to accelerate the user. Your answers should provide the right level of detail while being easily scannable.\r\n\r\nFor casual greetings, acknowledgements, or other one-off conversational messages that are not delivering substantive information or structured results, respond naturally without section headers or bullet formatting.\r\n\r\n# Tool Guidelines\r\n\r\n## Shell commands\r\n\r\nWhen using the shell, you must adhere to the following guidelines:\r\n\r\n- When searching for text or files, prefer using `rg` or `rg --files` respectively because `rg` is much faster than alternatives like `grep`. (If the `rg` command is not found, then use alternatives.)\r\n- Do not use python scripts to attempt to output larger chunks of a file.\r\n\r\n## `update_plan`\r\n\r\nA tool named `update_plan` is available to you. You can use it to keep an up‑to‑date, step‑by‑step plan for the task.\r\n\r\nTo create a new plan, call `update_plan` with a short list of 1‑sentence steps (no more than 5-7 words each) with a `status` for each step (`pending`, `in_progress`, or `completed`).\r\n\r\nWhen steps have been completed, use `update_plan` to mark each finished step as `completed` and the next step you are working on as `in_progress`. There should always be exactly one `in_progress` step until everything is done. You can mark multiple items as complete in a single `update_plan` call.\r\n\r\nIf all steps are complete, ensure you call `update_plan` to mark all steps as `completed`.\r\n",
+    "max_output_tokens": 24576,
+    "max_tool_calls": null,
+    "metadata": {},
+    "model": "gpt-6.1-terra",
+    "object": "response",
+    "output": [
+      {
+        "content": [],
+        "encrypted_content": "rsn_eyJhbGciOiJFUzI1NiIsInR5cCI6ImFyY2grandzIiwicHJvZmlsZSI6ImFyY2gtMSIsImlzcyI6ImF3cyIsImtpZCI6Ijg5QlBvSGthaEpyWnlQTjY4R1FTRGYzR2JCcVR3cGxPeFQ1Ml9BN2JXLUkiLCJjZXJ0aWZpY2F0ZSI6ImV5SmhiR2NpT2lKRlV6STFOaUlzSW5SNWNDSTZJbUZ5WTJndGMybG5ibVZ5SzJwM2N5SXNJbkJ5YjJacGJHVWlPaUpoY21Ob0xURWlMQ0pwYzNNaU9pSmhkM01pTENKcmFXUWlPaUpzY0MxblEyNUdVemh0UzB0WVMzUjZWbTFPY2poaFdWbDBjMUIyT1dWQk1rUTBVWGhRWnpCa2MyMDRJbjAuZXlKcWQyc2lPbnNpYTNSNUlqb2lSVU1pTENKamNuWWlPaUpRTFRJMU5pSXNJbmdpT2lKdFZ6bEdOazE2U21sTkxWRXRRVWRwYkRKUlpqSk9VRlpJUkVaSVJteHFUR1pxVkhaRmFXRmtXa2huSWl3aWVTSTZJbVE1VDBOVVlrTkpRVXc1WVRBd1gwOXJaMkZ4TlRNM2VGZFNVREJtYW5WelQzZDBVbUk1TFU5WmRUUWlMQ0oxYzJVaU9pSnphV2NpTENKaGJHY2lPaUpGVXpJMU5pSXNJbXRwWkNJNklqZzVRbEJ2U0d0aGFFcHlXbmxRVGpZNFIxRlRSR1l6UjJKQ2NWUjNjR3hQZUZRMU1sOUJOMkpYTFVraWZTd2ljSEp2ZG1sa1pYSnpJanBiSW05aGFTSmRMQ0ozY21sMFpWOW1jbTl0SWpveE56azBOakE1TXpFMUxDSjNjbWwwWlY5MWJuUnBiQ0k2TVRjNU5EWTVOVGN4TlN3aWNtVmhaRjkxYm5ScGJDSTZNVGc0T1RjME1EZ3dNSDAueHdneGI0SmZOZUNuQTBabjlYQ1U0bUIzcDZuOU01NXhUaF9XRkRWcklNTGNzckxLeDFHbEtUME9nb2I2Z184SU1BckFSVURKMFJ1YXczZmJLMmhTZ2ciLCJpc3NfbWV0YSI6eyJyb3V0aW5nIjoiSUFEOCJ9fQ.eyJwcm90ZWN0ZWQiOiJleUppY21GdVkyaGZhV1FpT2lKUGIybFJVM1puTTFSM2EwMXVRbVY0WmtWSU15MUJJaXdpYzJGc2RDSTZJbWRhT1c1eVQzWXRjRGd4VEU1bGFVTmlVSFp6TldKalVVMUZiMHB2WWtoRlRVWm5XVzAwWW1Rd00wMGlMQ0pqYjI1MFpXNTBYMjV2Ym1ObElqb2lMV1JKTkZGWlYxRTVXSHByUlhVd1l5SXNJbkpsWTJsd2FXVnVkSE1pT2x0N0luQnNZWFJtYjNKdElqb2lZWGR6SWl3aWEybGtJam9pVGtSR1FrWnNhRUpsYlcwek9DMW1UekJJVUhKRWQwc3ROVFZNZWtWUk5XVnBVM0Z6VUZaTGJFUkVheUlzSW1WdVkzSjVjSFJsWkY5aWNtRnVZMmdpT2lKTFIybEZjbVJvVDFGemJVVjFiRWRqZWtsdVRGbHRZVTlZUmxKWmNFMUpTREpmY0VOaldFMUpTRGhxTkRWVmVIZFhRVlJLYjFSWlFrNTBiWGxsYVRWeFdGbzRkVzh4UWpCcGNFSlhZbTU1VTB4WWRscG9TRnBKV2xnNFl6Wk1RMVZDWW1SelVXaDVOalpNTjFGTlYzcExXRzlvZG00dE5FTnllWG96UldWS2RYaDVaWEUxUlhWcWN6SnVNM0JSTUV3dGNXWTFTbEY1WDBZMk5EZEpZMmxOUWpSU1RqZzRYMU5IT1hGblIwVmhjREIzUVVzMWF6UmpRMll0VFZSRUxVcFNhVEZzU0hGc1JUaHpNR1pDY21SUE1YVTRTSEZpYjFCa2VYRlJaRWh2Y21wcldWSmhTRlZhWVdSSmJIbGpPVEpJUVZCalRVZDViblF6TkVGWFdGSllRamd0U0U1bVZWRkhja2h3ZWtwU1RuVnFSR2hMTjJKVU9VdDJiSE5wZVRsS2FVOW9TbTlPUldoUWFtWlZXRlp0UkVJd2IzQkdla3B4WVZGcGRtMURiRVZ6VjJGbFYzQTBVa2xNUzJsWVZWSmFSbUpSYUVWUWFVVTBkVFpZY1ZsTmJsUlhaMmhxUWxBMFRFNTFlV0UzZVcxT2VpMXdORTB5U0hod1JtZGxkMEpZUWtwRWVrbHVVbDkwT1dvM05UYzBORWx2Tkd0ak1tMTFhSGhhZFVObFFuRlhhbkp1T0ZGbGRXeFBWSFJ1UWtSSk5tbzFRbmxCVUVacmFUZHlhR1JIWjBaRlZpMDRiV1JuU1dkTFZIUktjekJsV0U0NGJuQmxXbkEyVEc5SFVIRjBRa1IyT0Vrd1lscFRkRkIyT1hOTFlXMDNXR00wT1VNMGRrOVNNM1pqZUNKOVhYMCIsImNpcGhlcnRleHQiOiJUSHN2cjB2blFTSVJmZlQ2c1dtZ1VHNDIwR2FmQTNEQ2xXN3ZJLXpMS2FEOVBjalh4WjZ1Yk5TeDVxZHVsaTN3Y3hfUHIxcF9WdVg1RGpYdVZ2emgzNjUxaGphSmVVRlg4VWpqbmNGS2tTQ1o2Y2tJcE15eFhsYUtMMk53UmxiMGxoU0FWN0puandvOG9KOExTVXZ1eUpjT3hfdGtKRi1hMDZMaF9Pb3YtbjlteE9uRm4tTV9tcEFCSEpFSGh1RE5zTldFaHZDS1FGR3oxVEVCZDQwV2sxUjRkeTVSRkZ1d3YyNGl0amRrc0JSVHZ6U1lLWjdlLTJIbUQ3eldnNTEwRjl5NlUzWEFvOFJIUlhfLXFUN1lTdHRGMnZOYkt4VlVwc3c4YzY0MzFpN0cwYzJHbEo0WkwycFRqQXZXdXctZTJIalN3ZVMzUVJIck5tbF9qNzRpM0Y4ZUQ4eUt4c0ZqNkJRclN1S0FDcUVHb0I3QTJ4VVl2dk9kVWlpYXpXX2pYeTNueUs0TTNtc1pqcVRYQ2hNdjVNQk82WFZPYXNzczREUnBHN2h6emFQQW40OTZoSEI5OV9QVDI2QmE2QUJHVDBrWk5BUHlVTXpDY1lETVZwa1puNndZS09hSzlrSHVTbG53QkE1TWppajVLTjNYX0FYTWFVMGJwTXk4VWlNTzlEUnpFWDdqbzZhcVBQVWpBel9GbUxRamVQYUdXcG9IdzNBUDVDZHB4M0F6ZXY5eFd0MjcwaDFKcXM2cURSZVlZU0FEU00xTVpPWWg4aXJfV215TENWN2N6VXktRjZNQU84VUVjSzJVT1RwWkFSb0NqSFFCU2dNQnFIS1k5QjlPRWtmc2hYUk9CeHFmc3gzSVF5cjZwelNCdE9GdEZOUzV0Z1NsQXVVWXFtWld3c2VhMGtTSVNNRDUyMTkyYVcwMDFCSG0zNDdtQUFlaXN5Z1AtaDhLNENFY1Y0SkVMSWJZVEdYaUxSOU1kWDZLcFlwTDBUNkZBUnBOODk4YnlST0h0elFQZXBkRGI2RmNnaWZPdmVFanhqM2pSTHEzU1lzWU5Dc055SUhRc1A3MDFtWnVDYTJHNDlKbEtkd29CWFlGeTRqcDFuSklKWWNEUEJsOUNwUmctcGZ2TGJDcV9meXozaHBsc0hOelZwWlFnR1ZZNDNIV0hkUDZiakVXV3NnZHU5VWg2VDdUVGZnelhqWWtlVWxveXFkSlh4REdCbzk2U0JnRG1QMG1OZkhFLXJ3R25weGZrSThUNlB2bC1MX1hFelNFUXJMRTh3X2xRd3lUQ01XNDFHbkNYR19Ubkh0RnhlLXJJekVFOUFCQzQwaFNCMnlqRnRrX0RVc1RiZkFzYWNzM25yeE5VYTRic1JVS3RJRFcxTjNGVDVNNzB2cURaUDR3SkNSajVObXJOQVRiaGIwMV9TU2FoNlNjazdndzR5ZVoxeUVKdnFsY3JrZjNDX3BpeUIxN05YelkxVktvWElmY0l0UnJuZ2ktQ21MQ2JoWjE1Q3NvcGxYRExTb0xWcHdRWnZwZXZVbzA2Qk9MdWpKbEliWUVyTW1ZWVZMaWNRQ0xMb2s1YXFZTEdvSzhyZGowRGdTbDUxVk9LQUhXY3pwRW0ycmlKLVBMQ0hNclIzb1drUmYyTFM3TmFvZGl5WmRuNE1ldDRWUGZPSVl5cWlGc083TWlmeE56QnRzNG5reVFSSlN4YTQyZGd6Q3NTZnlZR3NWb0lxS3ZiamZkeGo5ZkYwNWRKaHRLR214WUxpZ29fNXVCd0lWaHBIUkZ4OWdJekk2ZUlVcW9ydVBERFFwMkd1T0UwUDVROTFPalB5YTVyS09rZ2VmcE9qQnR6STJmd1B3aWNBME8wZk0wS3loS2xPcnl1REhxZEcyNlNuM2dZaHBjWUN3TUllUVFGczFrYjgzaXpfdGZxVnAzMEstWHc3a25ZQXNsdlFpZHV3OGVPYk5lXzZTcVVIQTk0ekVSVjA1SzNiaFVkLXhYVHQwNWlnX1Y1TG0wU3FoaDg0WFNmTjZFY083RU5lNlhQX2pzc0txSGNzV0ZDLU91bVYxdWJVLXZSbE5YX3VYbXNNaENfMS00Z2hDR3lWaGM5VFMxc0xfcXhxZ0NQREZrenJHbjlYeGtlQWNjemI1UFMxaTNCYUczMVNZUnZwZWRXTTAwTW9ZU0JiLUFWTlZqVmpqN2VydmFaZWRzWmtFSkhCLXVXeWNjMFBiRy1YYlVBdVRpakhzWDZUQ2I4TlYzM2JabjhyLXBnV2p0OHVZUnNRemNUVXpPcFg3YV9yWFN2TWlZcFp0aXJ6cjBnZzFpTUswLXpTSlFWbm5wbVdWY1lYMjQ2VUpsWnkxdUhORE85cTktX0pQNnA0cG9ZUmxJNGh5RFNFT2tkTGtnSWJ3dENTZlNCaHh1Nm0zbEZmSXFsYlo5alEzVHkyS2hwZXN2dmQ3d3hkTDY2Nk5ucTRINkh4eTBoMzdpNlFrdXREazZmb3hjN2dRNlc1ZjF4WUhycnRNMlBRdk9PNW80RXVfRHRxcGVYTEZqN1BDOWNkcTJ4NGR6bVpheHJSaDBxQjh6UDVQM1Q5TDVTVXQyZkd6MzR6bUtWa0twQVdsM0xHczBBbjdVRmxfcjhid253c24tSnNxeno3dEtneGN6ZzZVQjgxNTQ4bFNxeWlabHQ0bGpta3Y0dVc4dGloZTRKRDFPSkR0a01YS0Z0eTNXUGFXek4zY0Fmc3BvNXoxeFU0M3d6LVJvanNZRUNRNFVtblMycGdTQzJvYUhqaVhpRXRFaEJFQnMxb0VEMjAwRXMtdnVrREpBWDYwM0J4eEFOMTk3LTd5ZHhreWxUOFU2aFVGQU4wUC1abWNQeWw0ODZNOEJPRFR2eWI5RnRmbmNTNGQ1SmZNczVSQ1FUQktkT1Nqc3Ffckg1YjdmOVBYZ2p5TkZSV0NmbnlFTEFHaXZuLWZWWHRpRW1HWTJFajYydWk5bUVWLWNMUGF4Rjdja0x2ZDI3WFBnN01NUC1tVUt3Y0NfSklkR05NU1hKX18tQUJINjdyTnZ6Ujl6VHdCdjlTMGhmRnBWM1JrOGJpQmNxWWx3b1hFZU9RS0ZKV0lBRFNubVZjeFAxYl9nRlFHNktpZm1yUW9rRkNYcmFtZGV3UGIwS3Y0NEtURUEyUUtVb0xmWXBVQkc1dnJweTBLOVhVVE9tc0lweDROSWJMM3FJWGN6SDZMX3NPaU16OTVJWGxVQzBJWDBmeUtZb05odVZDVTBVRzU2VGtPc1YxOE5kbnN3NVZsb1dIS0FZMDVjTG44ZWZWMFZYbWhfM0oxVlpOVDRId2x0N0NudldsS0FTaTZjdTdvLW9QeDRiMjZtNEpUWl9hSVBKRjFqSkZJdnFHV1VyZHpFWmE4LTJxTTE3UEZjckhHMUtMOWtwTVZ5QzZiTTQxVzlxQ3BhMzE5Z2l6WkxtMkFRTWNZNm1LVWNScmk1RXAzZ28yYThLWWxlSzd6NTBCSTBtZW5YMXZwYVNwMjQ5c1FRYVV2MnJwUTVvNThkelpFM0ZMLThhTFN2Q2VTbGotaVpFMUw0aXE5dUE4YjBOck00czN6RTJDNnl4TFpqS0poNlJWb3BKY0N0X054a1dVOWRKc24tRmk0Rmxid3JJemYtbzNVbUUzUDBmeFVRalFvUVh4LTFKNWdvZDFBN0s3VHgweTVndnhEaWk2ZjJQa01uc3M4S1Q4dnpRMVBpbEJqR0hkU0JkdVlibEdza0ZmWndNcEQ1bmpOWEl0UW16dnB4U1lscGlPQUpwR25wc3Qydms0SGtDdUV3ZnduYlFsQnA3R2Y1M01UUkZ2S3NwOGxsVkRnQ2xoWGE3Ri1Ldm5rT3VIM2F2ZnlnQk96ejJVZnNHang5UG5CeG45NUhVc0U5Zzd1ZDB1c3Q1dFowUlJ4Q3kyRV9HNVpadlQ3d3YzWGx3Q1R5YUhrY05kWklQR2tWYWxRTzRMNnctTGVqTGNCaWJJYUVGVmRfaU5aUkF2RUZSSl83RTJZZWU4bzB1dl9Xc1RFUWthMGwtWnF3aTJWVWZhaG00ZVUtd20zVTNneDFlaXU3Tmxscjk4MFREWTI0V2tuODdMa2gxeUNtMFdsWk1aa0Vxb0hqa3FZT2R3Z183NFoxQjJRY29TeU5WYmJzVUhKeHpGZGNQY1VzelA0Nkw3TnRtZUdOTTRSOVZDSy10dkdfWU45aFpDRWdHVkRuVlFUU3lOd2g4U2R5UVRTMjM2X1VzNTFacVVMbFhiNVVwY0VtWU5CdlpPc1RlS2haYlNWVTdMelJxcmE2OG5IZngwbkE1TmVkbVVOOVo3RjI5Sk5Uc0JDUGZnVTk2dzluSTRGZ1ZpQ1NzRVlUNHRvckdjLWhSekkyNUsxVlhFV3pWcnV3V3lQenZ2WlRmRVYyRXRnU3E1V3ZOWWdGbDVsS1pKOXRrU1MzQTRaN3piQUZSQzBDdkNqQ0FCZ005dFEwcXRrTWQ5amtfNER5ekxGQ2dQWHlOQVF0VHlEaGVhcGZBS1p3Q3MyYzIyWkJaeTd3QmFObmhwM3RNalk3ZnJVcGlJbmpNRW5XbzVXUWVmcTNHWW5FcGtabXY3by1saEhiMHo4a2R3WEJ0ZGlOd1V2UWxBS2FzWXl4Mm5KbGtsV2NHc3VMSGliMGhkVTllcEF5MGxXekJSM190eVVMYTJGRlpDWTBIb1lPaXktamx4eUk4OHFqYVJZdG43ckFaVDA4T09BSk5lWkFZeG5GZE1VMEc5ODJ5M18zb3o1RGtKWGxuRmpzS0MxUUc4YVhkb3F5UHY3SWRMRDRhdGRoOEhwSWZFT2pQWnAwRE9ZdTYyTmhxenlLYTc0bEE4WHFlWlcyMmJUbm55aFNhX25hUzBQQVZpREdwZUlUNHJIek1fbktBZ3Y3WjB6T2xxcHp6bWxTUGhURDJTWUZ2N1Z4REU1NWozZ3lhTEVEcjd0dHhSTjc0NmNmQ0lwVFNiSlhZb25oOFYtNXF5dWM4VUVxQlBvZHdYRkM4cGxpNFhiOVFER3FILTZraHY2aGFIZTQzNkhlb21fR0V2V0hacGRQRl9ZZllVWHUzQ29FWmpMNno3M0IwZnJQWUFWUmhvS0NyMGh2T1FsbS04cXItVF9KREp5VTI2bTVGRXZwdW1la29PVFNUYjVLWXA3V1lWbWdjamFsNmd6c2VsVnIzWExxVzZ4bGlPQXE4R1BOLWo2VjRNdElJODF0Y29jZGgtNEstRGpoV213eWZzX0VucC0taVRtLV9vazNuS1dCNGR6WU4tWTZuOHNfbFZCYVhvMTBHYVhHMF9JMWY4dXFwQTZtNEhQLXZZZkxCZEhKYnVRc1lRSnJKa0prODhBSGNvWUVMZ3ltQW9semJaRFBDWEt0ZTFmUDNZU2ZmaHY0dHhNZHg0cDY5aEdURGh6Y2VmZm1FMlJ6UGxGMGgxQ0lrd2o0VFFOeUdpNlpNbmw5Q0lBa0J3M0lCZ2pzU2tPS1R3b0UwWWFRMnNKWnd6VXQ2SnVPcWluZG5wbVExRXI5RS1COGYyN1o2aXJmY3lNOVpuZDdrbThtdTczbS1aN2xaVDZqdFNSMkxaUTZWYXAzcFRuNVZhbEpvekhwXy1WUHg5VWlKOGNWaGR2UnFmTElUMGx5bmtvcHFMTWNXRjRab1g4LVh6bEpmYUlvX0M1TVl0ZlNYamV4WU1uVlJjcEp3WjNTWGZTbUFMSy05WWhlT3ByREUwcHJ0X18zQjR1QnlSbGt0V3lWMlBlOXV0R0JCdkVvYnJMVU1WYUVxSmRWWDNYc1VuWEpKajBWeU4yMHhhdGpJbVhzTHcxdnNqYnlFbWVRWkRlZ0hSdy1felpkOFI5ZjVaMjNWU1QtbDM1WVBhV1IyMVhrUjUwZ0FhWEswaGVnWVlRb1ZoTkkxY2NQclR1VG5FV0tOdFc0d3lyOWZBYU1lUmExdWxEaklXTWEwdkR1WDhiU2hBWUNBUG9LOE5aMVJZYUJWSFBrODk1dEdYVFJ6eV83N1RQb3B6ZURqT2JWSDd4Mkp2SldmTlpiT3dKeUFZZW0tSjlMbUpOcnNOOWEyZXdXTU03a2toTlVpS250bFFMLXdSTjNFbEgxa1p2MUF6RExNZV94WHR3QkkxWjgtSzgwVVM4SXZYcFpXSU1OalFRM1hpWEtaOG4tdWJMLTJBT1dyUTFFcnBrXzNlellMNXFpOGh4MDhSM2pkNXVBRnNPUl9IY3hRd3ZTS0lKRUJ0Nzc1cWFVNlpIV1RKOGFpZTY1UXR2czVmMHJEbUF5WkVHaGs1T0JlY25QVDBVZ3lQbEJiNjNQcnlGTWFFSmlQUWwteWdjdFk2SXNOTnQ4M0NrOTJOS2h1Y3MtYmp0SHliYXN3U19SSzVob1R2bzBfbVNFc2JVMGk3S212TW9iOVBFQ0VpVzJkNDZfUlpXWjBEVEZCUG02N3ZFbVVNMTAzSzd2WU85c0w5anplMzJFb21qcmhzN2dkQmJRZ2JXYW84Y0lLVHRHZ1Z0bUtPams3M090UjU3aFdBNktEWUVOZDdONFBGMXhnOXpfei1vOFZlcUwwb29mX3dPeGtqUDUxam81aF9OOXRXdEFjVnN6bktwQ2R4STlONEJwRU9HcWJEdGRIaHlDZ0xQalA0eVo0NkhJWDd5SFVMVFF0cENpR2pkTVJ0cm9hamNOSkRCbDhMRjd4dENvMndPSUJzcGlnN2R0Zm9SVFpPaU4yWnJrSGR5eEV4SG9NOGxSQlhsWU0ybE12Z3BxY3V2bnhhaDVGUG5GbkpneW9NS2dZY3U5UExyV0Q0SHB4dnRhbEFLYmhFLVZvVTVCd2NqRkFYTndFUWhsNnJScFZiWG9uMGxFMkducThuZmRFMWQ0RjI0RFJXeTNFSkc3UFJ5QkZJNlVOdUZkaVU4ZEtyQVQ0ZkxDU0VqSU1oMmprZTkwd3dyX1FLRHhUX3dBdWw3WUpIcHY0WTVNQnZnN1d2NHFnWGVpcDBwakppOHFTLXhNV1pIdGxmSWNRd1R1VXhYUTI3czVjZzZITHVROXoxcE56clJqMFVQVm5pVGhDLW5nOVpLWEc5blM3MDNleFpHRWd6M1hjVUktNWxCNE0yQVJTWnJVWTBYWnh2cDBFN2UwVU54SzV6cVppaU1VcUN1ZUhFYjFtLWR6SXZacEVpWEpqMW85cUt5QlFoWjB5NllIVW96LWVFdU5rR3FnRFoyOG5WR0stdEMtSkYyQXY0ZjVtQ0xJSDBYZ1hsSFdYek9feEhsU2pzUHplZDRQNEZIN0o0TktSaWxZUnBzR3oxdndEN3RGQVFBOGhGNkpSWGRudURnMmRqRTEyRmVXcno1ZmM2bmZDbUJiMVFuaHRTTFF2Nm9KR3kzdHhYOHV4cFhFckp6clZ1OU5rVm42dEtLVEVMU0czR21xOTYzQUgxck5ISEozTzZjU0gxSFVjZjdRN0ZTXzJVZFBuLU55Vnp5UHVtRjAxNnIyZTVfSkhXRmI3elM4by1NTE5rV0VkQmtvX0dIWjdCZzNyTzRnWXMyMzlBRlNJZUszYU90VlRjMF92UE8zRWVDUzNZVzZRLXBFRC1WVFJGMXMtaEs1Qjk5MlhOcTdIQ0RCbE0tTUhpOGp0TGE5MWw3MEIxQ0dTck9MWU9DUTE5U1k4WkRiaUZJZFQ5enpVcWdVemlrOVN2eTdZeTJKb1BXUVBXb3RacUIxVFAySW1RV1JIV3dQNmpBaGdsdWJpRnI2eDdxLWhsbXpWWkJhUThhVzRId3lPbGRtaGtoOUFCay1iT1FKQkxaNHJtNklvVHhTZDZqcVM1MmpHV3BXUGkwUlRCV3FKVjViOEZRMjFWZ04tWmpJQV9mckp2T0EwVm1uMlVsZm5hRFRvbDluYzVIQ2ZyZ1UwYVRWbktyMzRKdXM4LVpKQ2RvRWZPTGp6VjBCTHYwNDRteTh2b09GVUhFVjZJb1ZtN2RmYTVDX2JCbnFIWmM4dzZBckxBRGRiWFNBOF9CNjZ2c0ZiNmJjaW1lYlJGOFVVX2hVMW1sQUdMM2l0WE9YYVVTdTNrMFptWmlZZWZRQ0M5TUhRWTRxTkJYZVUySkF2SWNySDIyeFJSOVJPdWNMT3JCeWR5SEdMLVRFU1RYVFNURkpXaVozd0tMZzl4aGlvUGZLU3dqeW92QWE5U1R3OGdlNy1DMXBpRVFwWWNkLVVSSXRIRUk3aVByNnlLdDZuMi1ueVBRZjFnVmllaW1RSTZQXzBwOGh4eEh2a3lneFg1Q2ZQaXFQVnpUMnBtWVFBQ2dQTFE3RF9FeWhIWi14LU4xUllOOHVyRzhQbnZQaWJhSzNIZFZhcndZM2EwWE94dDhrMnh0TllWNi1CalFXYWNZdjc2aUZYbHNwQmt4TTVKaEpXMjA0TE1CaERTNjExWkpHNXFyUnkxNzh0djZndkNpcTA2cU1xQ1VGSnpycUF3VWlZakFvRm9xeW1iVUpmTk1TekVxeUJTY0wzcGo2RkVKclF1ODc3ZUtLUXZ4eTJxMlBTY3dGM2pyU3FxSlNGZGE0WUdMT21EMGZ6Y1B0VHF0UnN4TVlvWkt3VlpKVVNQX2kxMk5STV9JMTQwbFl5MDFCTmxmNG9RSDIwcHAxYkJXZXpsWWt0WlFzR2ktMC1GYkJJSTZ5VnlmOGxvNjhkc3U3SGVUNzFETHN4ck5zOVZ0WHNadkF4cE4xaGtQdXdpZm5VcUFIc2pnLUZub1RtT3NETVdicVoyZXQ2cUtka0R6cGFoV2VHeVUzVkF0TzlYMFBWeXVmWXBHejFHYUliejFOZFVSNEhpaWV4ak5nNGhGN2VBTElRMm9mOUF6QUU0U0dqRmxoYXlFT0FtQWtRMXdvWWswMndTVEZEWHM4bWh0MGlTWjNpYk1XMFNyajhieDVwcGk3TC1wdkwyY1ZFN08xeERTUDdyczRUYjFzaFpUU3Q2YjVCaFRmNWR4N0p1T3BtYkhqbWZTYml0SXVseXlyc1hQRV9QeHRJY3gwUEN4RWRucVJBNWZUY3A3aGpNU0Y2SFpCNHFVVTg2bGFxaF9uaDZyNGxsRlQwNjNMUktLdXc2OUJEcGlVWHJ0S3ZpQ0RwU3lDaHBVQWtVeFNxM1dmNnNfb0poVVo4SWJhTHhNcTR2S2ppYlc5eDJNR1JCZG1XY05jWmxuQ0JLQmZ3RFdadFREVUw4Nmg5M1BIWEF2SDd1djZmMzFfSGFHQkVLRngxSXJ6RzlVT1JDR1lZN29ZY28wdmZUSVg1SFlwa2dwdGlmVUF1Z3NFTHlJbnhPZE42QjRvUzIzc2pJWTZ0WUMtLV9SM3pDbW9FZE8tVXpxOUpJd2U5MUF5aEV1X2xFbnBFYW1fTzF5cndNVmZPMURGVmVPRWo4cEhYeGxvMlQ2M3pTVy1EX0JBemZrX240V1VQVEVaRkxzd3pwX0FSTHB2dm5FeHhPTEl4ajFXcUtQV1BDOUItcUpUZWk5eG84QzN5MmRDcG1EUmVkVEo0TzdzZEhBZmlfX3JWT1haem8tdUNSdGlZbndFNENaSFJVUkVYZjFWWHp0MEs0elVKUmh5clNfOEU2Yjc4Z2NobzlmSzRRN1ZJUVdpYmJDVEFTYlFnNUl3UHVETVQ0YTJwMzBJX3RaTHh2RmhwVVpJMlBaenlKa3Z0NDdBME1uRDItaTl2WDdVSjZodjJwWFNiR2ItQXFqVlduZmpHVVVLMDVfSlZ1LTJsT2FTWW1kTFFtWEppTjA0Qk1TbnRSYlpLM3Y2LUktYzNieWUtM3hpaUU2WUtNYVlFMDNYZlEzNkZkT3E5TGJOOXNRREYzV0JuWWVoX1JoN1E0VWx4T1pNSkpGY3JZcXJJX052YWJ1VXI2bVdsTUNkMlNnc3p0cG9yY3JDUDhEdzZJVzdZRVlaYkFlYnk3UWJJOWRGd0FLMXdGd1pMMGNscTdqX25fVkh4OTVJcENtbVAxcmhheXoyTEZjbGxyTjB3cFNPX0VUVVpjdHRSaDdSMHhOOXJkUHlHby1BbUU2Wm1YWDFmeWV0Sl84cW1nUGNMWHVaWFp1Tm5xdGRXandDaDdpcjJQWDZCVGZDN3NuYlpfUWMyVEhpaC1RYW9tbkFXWFFCMDJqNVotd1BlNlJaaWFIR1NKQXl1VnQ1NWJBRlc1MmNKaHNDUEtabGZnTzNiNVJtS0huTnJzcHRnNjIzV3VraEVGZWhPcDl1YktLcnNmamQycHdJM2dkVS1TYVF0ZzdhU0h5Vjc3enZTSnB3NTVQWXctRW02dk9IdmtTc3QtRWtBR193aWx1YjJrVWxzY1BOZGk0cGRuOENPRnFtTE9mWXZiY0dkb3BxMkNlU09KeWN2b0JwbWlZRzdrUFdFVEFKQlBMRExfa2F1MXZwZktyYmRIcnRCV0lZZGZSc3loTUJkaGF5cFU3c0ZTamRGbzNKb2lWQnBHRXZ4ZkdxLVlDMkltYmJnUFlJUzI2Uzdid19WQkt2Q0M5aThnUWh5LUZGckVMT0x0TEh4NWRFU1gyMVctXy1UX2xBTWR0UE9vN1QzRThkdS11N01LZFNZRUREbHlVbktSb2pHdHZSbzVpazBReG5YSTJoSEtBcHVSMFNMbVN2cjVGRmZXX1A1cXhhRHctYmpHVnBBeHFCc3BEaUwxYjFCaXl1ZW9fNVZBT1lRWGxSbUhIQ1FWalFxS2g4VkY1UkIwWVJoSTBqOTNYNWIxcGw5cU1meWJSdDR3ZHdzTHhVU2pOVWFkUlczX0t1ekh3WU9OSERWQmpITktRS2RRUE9iSnFvVi10SnpNTjE1QzhTLUJnalBWdE1pSnN0UEZYNVY3ZkxYNGs5VGpnb08wUWtDRmF4RzZOUy05ME45ekhxa0RKYllrVzRKQkxlekZaQS01SHotMVpqZmptR05LbGlsclZhYkg0OW5jYTQxekFMSW9yQnVfUkcxejNzNktkN0JzMTdFUSJ9.zrnLdGNTZBcn3diU6hOajr52k83WVR6krDRsYwzsKLyQIvGVO9x0IdW-7INx-HZcYcLVYyxBK-l6Ex0lc2-S0w",
+        "id": "rs_f8a2720a836a517fb93dc2fdd9662abd",
+        "summary": [],
+        "type": "reasoning"
+      },
+      {
+        "content": [
+          {
+            "annotations": [],
+            "logprobs": [],
+            "text": "{\"declaration\":\"FUNCTION_BLOCK FB_Task\\nVAR_INPUT\\n    Value : REAL;\\n    hiLevel : REAL;\\n    loLevel : REAL;\\n    hystWindow : REAL;\\nEND_VAR\\nVAR_OUTPUT\\n    hiAlarm : BOOL := FALSE;\\n    loAlarm : BOOL := FALSE;\\n    {attribute 'analysis' := '-27'}\\n    error : BOOL := FALSE;\\n    status : WORD := 16#0000;\\nEND_VAR\\nVAR\\n    span : REAL;\\n    highRelease : REAL;\\n    lowRelease : REAL;\\nEND_VAR\",\"implementation\":\"IF loLevel >= hiLevel THEN\\n    error := TRUE;\\n    status := 16#8001;\\n    RETURN;\\nEND_IF;\\n\\nspan := hiLevel - loLevel;\\nIF hystWindow >= span THEN\\n    error := TRUE;\\n    status := 16#8002;\\n    RETURN;\\nEND_IF;\\n\\nerror := FALSE;\\nstatus := 16#0000;\\nhighRelease := hiLevel - hystWindow;\\nlowRelease := loLevel + hystWindow;\\n\\nIF Value > hiLevel THEN\\n    hiAlarm := TRUE;\\nELSIF Value < highRelease THEN\\n    hiAlarm := FALSE;\\nEND_IF;\\n\\nIF Value < loLevel THEN\\n    loAlarm := TRUE;\\nELSIF Value > lowRelease THEN\\n    loAlarm := FALSE;\\nEND_IF;\",\"supporting_objects\":[],\"verification_status\":\"Compilation passed. Simulation encountered an infrastructure FileExistsError; formal verification was not run. candidate.json could not be saved because the filesystem is read-only.\"}",
+            "type": "output_text"
+          }
+        ],
+        "id": "msg_a7ff89637b9251e3a42ae15a01cfc011",
+        "phase": "final_answer",
+        "role": "assistant",
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "parallel_tool_calls": false,
+    "presence_penalty": 0.0,
+    "previous_response_id": null,
+    "prompt_cache_key": "01a1da54-a858-7a31-8ac2-48c8c51ae993",
+    "prompt_cache_retention": "in_memory",
+    "reasoning": {
+      "summary": null,
+      "effort": "high",
+      "context": "all_turns"
+    },
+    "safety_identifier": null,
+    "service_tier": "default",
+    "status": "completed",
+    "store": false,
+    "temperature": 1.0,
+    "text": {
+      "format": {
+        "type": "text"
+      },
+      "verbosity": "medium"
+    },
+    "tool_choice": "auto",
+    "tools": [
+      {
+        "description": "Runs a Powershell command (Windows) and returns its output.\n\nExamples of valid command strings:\n\n- ls -a (show hidden): \"Get-ChildItem -Force\"\n- recursive find by name: \"Get-ChildItem -Recurse -Filter *.py\"\n- recursive grep: \"Get-ChildItem -Path C:\\\\myrepo -Recurse | Select-String -Pattern 'TODO' -CaseSensitive\"\n- ps aux | grep python: \"Get-Process | Where-Object { $_.ProcessName -like '*python*' }\"\n- setting an env var: \"$env:FOO='bar'; echo $env:FOO\"\n- running an inline Python script: \"@'\\\\nprint('Hello, world!')\\\\n'@ | python -\"\n\nWindows safety rules:\n- Do not compose destructive filesystem commands across shells. Do not enumerate paths in PowerShell and then pass them to `cmd /c`, batch builtins, or another shell for deletion or moving. Use one shell end-to-end, prefer native PowerShell cmdlets such as `Remove-Item` / `Move-Item` with `-LiteralPath`, and avoid string-built shell commands for file operations.\n- Before any recursive delete or move on Windows, verify the resolved absolute target paths stay within the intended workspace or explicitly named target directory. Never issue a recursive delete or move against a computed path if the final target has not been checked.\n- When using `Start-Process` to launch a background helper or service, pass `-WindowStyle Hidden` unless the user explicitly asked for a visible interactive window. Use visible windows only for interactive tools the user needs to see or control.",
+        "name": "shell_command",
+        "output_schema": null,
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "command": {
+              "type": "string",
+              "description": "Shell script to run in the user's default shell."
+            },
+            "justification": {
+              "type": "string",
+              "description": "User-facing approval question for `require_escalated`; omit otherwise."
+            },
+            "login": {
+              "type": "boolean",
+              "description": "True runs with login shell semantics; false disables them. Defaults to true."
+            },
+            "prefix_rule": {
+              "type": "array",
+              "description": "Reusable approval prefix for `cmd`, only with `sandbox_permissions: \"require_escalated\"`; for example [\"git\", \"pull\"].",
+              "items": {
+                "type": "string"
+              }
+            },
+            "sandbox_permissions": {
+              "type": "string",
+              "description": "Per-command sandbox override. Defaults to `use_default`; use `require_escalated` for unsandboxed execution.",
+              "enum": [
+                "use_default",
+                "require_escalated"
+              ]
+            },
+            "timeout_ms": {
+              "type": "number",
+              "description": "Maximum command runtime. Defaults to 10000 ms."
+            },
+            "workdir": {
+              "type": "string",
+              "description": "Working directory for the command. Defaults to the turn cwd."
+            }
+          },
+          "required": [
+            "command"
+          ],
+          "additionalProperties": false
+        },
+        "strict": false,
+        "type": "function"
+      },
+      {
+        "description": "Lists resources provided by MCP servers. Resources allow servers to share data that provides context to language models, such as files, database schemas, or application-specific information. Prefer resources over web search when possible.",
+        "name": "list_mcp_resources",
+        "output_schema": null,
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "cursor": {
+              "type": "string",
+              "description": "Opaque cursor from a previous list_mcp_resources call; omit for the first page."
+            },
+            "server": {
+              "type": "string",
+              "description": "MCP server name. Omit to list resources from every configured server."
+            }
+          },
+          "additionalProperties": false
+        },
+        "strict": false,
+        "type": "function"
+      },
+      {
+        "description": "Lists resource templates provided by MCP servers. Parameterized resource templates allow servers to share data that takes parameters and provides context to language models, such as files, database schemas, or application-specific information. Prefer resource templates over web search when possible.",
+        "name": "list_mcp_resource_templates",
+        "output_schema": null,
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "cursor": {
+              "type": "string",
+              "description": "Opaque cursor from a previous list_mcp_resource_templates call; omit for the first page."
+            },
+            "server": {
+              "type": "string",
+              "description": "MCP server name. Omit to list resource templates from every configured server."
+            }
+          },
+          "additionalProperties": false
+        },
+        "strict": false,
+        "type": "function"
+      },
+      {
+        "description": "Read a specific resource from an MCP server given the server name and resource URI.",
+        "name": "read_mcp_resource",
+        "output_schema": null,
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "server": {
+              "type": "string",
+              "description": "MCP server name exactly as configured. Must match the 'server' field returned by list_mcp_resources."
+            },
+            "uri": {
+              "type": "string",
+              "description": "Resource URI to read. Must be one of the URIs returned by list_mcp_resources."
+            }
+          },
+          "required": [
+            "server",
+            "uri"
+          ],
+          "additionalProperties": false
+        },
+        "strict": false,
+        "type": "function"
+      },
+      {
+        "description": "Updates the task plan.\nProvide an optional explanation and a list of plan items, each with a step and status.\nAt most one step can be in_progress at a time.\n",
+        "name": "update_plan",
+        "output_schema": null,
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "explanation": {
+              "type": "string",
+              "description": "Optional explanation for this plan update."
+            },
+            "plan": {
+              "type": "array",
+              "description": "The list of steps",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "description": "Step status.",
+                    "enum": [
+                      "pending",
+                      "in_progress",
+                      "completed"
+                    ]
+                  },
+                  "step": {
+                    "type": "string",
+                    "description": "Task step text."
+                  }
+                },
+                "required": [
+                  "step",
+                  "status"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "plan"
+          ],
+          "additionalProperties": false
+        },
+        "strict": false,
+        "type": "function"
+      },
+      {
+        "description": "Request user input for one to three short questions and wait for the response. Set autoResolutionMs, from 60000 to 240000 milliseconds, only when the question is useful but non-blocking and continuing with best judgment is acceptable if the user does not answer; omit it when explicit user input is required. This tool is only available in Plan mode.",
+        "name": "request_user_input",
+        "output_schema": null,
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "autoResolutionMs": {
+              "type": "number",
+              "description": "Optional auto-resolution window in milliseconds, from 60000 to 240000. Include this only when the question is useful but non-blocking and continuing with best judgment is acceptable if the user does not answer; omit it when explicit user input is required before continuing. Use 60000 for lightly helpful context and up to 240000 when the answer would materially unblock better work."
+            },
+            "questions": {
+              "type": "array",
+              "description": "Questions to show the user. Prefer 1 and do not exceed 3",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "header": {
+                    "type": "string",
+                    "description": "Short header label shown in the UI (12 or fewer chars)."
+                  },
+                  "id": {
+                    "type": "string",
+                    "description": "Stable identifier for mapping answers (snake_case)."
+                  },
+                  "options": {
+                    "type": "array",
+                    "description": "Provide 2-3 mutually exclusive choices. Put the recommended option first and suffix its label with \"(Recommended)\". Do not include an \"Other\" option in this list; the client will add a free-form \"Other\" option automatically.",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "description": {
+                          "type": "string",
+                          "description": "One short sentence explaining impact/tradeoff if selected."
+                        },
+                        "label": {
+                          "type": "string",
+                          "description": "User-facing label (1-5 words)."
+                        }
+                      },
+                      "required": [
+                        "label",
+                        "description"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "question": {
+                    "type": "string",
+                    "description": "Single-sentence prompt shown to the user."
+                  }
+                },
+                "required": [
+                  "id",
+                  "header",
+                  "question",
+                  "options"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "questions"
+          ],
+          "additionalProperties": false
+        },
+        "strict": false,
+        "type": "function"
+      },
+      {
+        "description": "View a local image file from the filesystem when visual inspection is needed. Use this for images already available on disk.",
+        "name": "view_image",
+        "output_schema": null,
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "Local filesystem path to an image file."
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "additionalProperties": false
+        },
+        "strict": false,
+        "type": "function"
+      },
+      {
+        "description": "Tools for spawning and managing sub-agents.",
+        "name": "multi_agent_v1",
+        "tools": [
+          {
+            "description": "Close an agent and any open descendants when they are no longer needed, and return the target agent's previous status before shutdown was requested. Completed agents remain open and count toward the concurrency limit until closed. Don't keep agents open for too long if they are not needed anymore.",
+            "name": "close_agent",
+            "output_schema": null,
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "target": {
+                  "type": "string",
+                  "description": "Agent id to close (from spawn_agent)."
+                }
+              },
+              "required": [
+                "target"
+              ],
+              "additionalProperties": false
+            },
+            "strict": false,
+            "type": "function"
+          },
+          {
+            "description": "Resume a previously closed agent by id so it can receive send_input and wait_agent calls.",
+            "name": "resume_agent",
+            "output_schema": null,
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Agent id to resume."
+                }
+              },
+              "required": [
+                "id"
+              ],
+              "additionalProperties": false
+            },
+            "strict": false,
+            "type": "function"
+          },
+          {
+            "description": "Send a message to an existing agent. Use interrupt=true to redirect work immediately. You should reuse the agent by send_input if you believe your assigned task is highly dependent on the context of a previous task.",
+            "name": "send_input",
+            "output_schema": null,
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "interrupt": {
+                  "type": "boolean",
+                  "description": "True interrupts the current task and handles this message immediately; false or omitted queues it."
+                },
+                "items": {
+                  "type": "array",
+                  "description": "Structured input items. Use this to pass explicit mentions (for example app:// connector paths).",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "image_url": {
+                        "type": "string",
+                        "description": "Image URL when type is image."
+                      },
+                      "name": {
+                        "type": "string",
+                        "description": "Display name when type is skill or mention."
+                      },
+                      "path": {
+                        "type": "string",
+                        "description": "Path when type is local_image/skill, or structured mention target such as app://<connector-id> or plugin://<plugin-name>@<marketplace-name> when type is mention."
+                      },
+                      "text": {
+                        "type": "string",
+                        "description": "Text content when type is text."
+                      },
+                      "type": {
+                        "type": "string",
+                        "description": "Input item type: text, image, local_image, skill, or mention."
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "message": {
+                  "type": "string",
+                  "description": "Legacy plain-text message to send to the agent. Use either message or items."
+                },
+                "target": {
+                  "type": "string",
+                  "description": "Agent id to message (from spawn_agent)."
+                }
+              },
+              "required": [
+                "target"
+              ],
+              "additionalProperties": false
+            },
+            "strict": false,
+            "type": "function"
+          },
+          {
+            "description": "\n        \n        Available model overrides (optional; inherited parent model is preferred):\n- `gpt-5.5`: Frontier model for complex coding, research, and real-world work. Reasoning efforts: low, medium (default), high, xhigh. Service tiers: priority.\n- `gpt-5.4`: Strong model for everyday coding. Reasoning efforts: low, medium (default), high, xhigh. Service tiers: priority.\n- `gpt-5.4-mini`: Small, fast, and cost-efficient model for simpler coding tasks. Reasoning efforts: low, medium (default), high, xhigh.\n- `gpt-5.3-codex`: Coding-optimized model. Reasoning efforts: low, medium (default), high, xhigh.\n- `gpt-5.2`: Optimized for professional work and long-running agents. Reasoning efforts: low, medium (default), high, xhigh.\n        Spawn a sub-agent for a well-scoped task. Returns the spawned agent id plus the user-facing nickname when available. Spawned agents inherit your current model by default. Omit `model` to use that preferred default; set `model` only when an explicit override is needed.\nThis spawn_agent tool provides you access to sub-agents that inherit your current model by default. Do not set the `model` field unless the user explicitly asks for a different model or there is a clear ta[REDACTED] reason. You should follow the rules and guidelines below to use this tool.\n\nDo not spawn sub-agents unless the user explicitly asks for sub-agents, delegation, or parallel agent work.\nRequests for depth, thoroughness, research, investigation, or detailed codebase analysis do not count as permission to spawn.\nAgent-role guidance below only helps choose which agent to use after spawning is already authorized; it never authorizes spawning by itself.\n\n### When to delegate vs. do the subtask yourself\n- First, quickly analyze the overall user task and form a succinct high-level plan. Identify which tasks are immediate blockers on the critical path, and which tasks are sidecar tasks that are needed but can run in parallel without blocking the next local step. As part of that plan, explicitly decide what immediate task you should do locally right now. Do this planning step before delegating to agents so you do not hand off the immediate blocking task to a submodel and then waste time waiting on it.\n- Use a subagent when a subtask is easy enough for it to handle and can run in parallel with your local work. Prefer delegating concrete, bounded sidecar tasks that materially advance the main task without blocking your immediate next local step.\n- Do not delegate urgent blocking work when your immediate next step depends on that result. If the very next action is blocked on that task, the main rollout should usually do it locally to keep the critical path moving.\n- Keep work local when the subtask is too difficult to delegate well and when it is tightly coupled, urgent, or likely to block your immediate next step.\n\n### Designing delegated subtasks\n- Subtasks must be concrete, well-defined, and self-contained.\n- Delegated subtasks must materially advance the main task.\n- Do not duplicate work between the main rollout and delegated subtasks.\n- Avoid issuing multiple delegate calls on the same unresolved thread unless the new delegated task is genuinely different and necessary.\n- Narrow the delegated ask to the concrete output you need next.\n- For coding tasks, prefer delegating concrete code-change worker subtasks over read-only explorer analysis when the subagent can make a bounded patch in a clear write scope.\n- When delegating coding work, instruct the submodel to edit files directly in its forked workspace and list the file paths it changed in the final answer.\n- For code-edit subtasks, decompose work so each delegated task has a disjoint write set.\n\n### After you delegate\n- Call wait_agent very sparingly. Only call wait_agent when you need the result immediately for the next critical-path step and you are blocked until it returns.\n- Do not redo delegated subagent tasks yourself; focus on integrating results or tackling non-overlapping work.\n- While the subagent is running in the background, do meaningful non-overlapping work immediately.\n- Do not repeatedly wait by reflex.\n- When a delegated coding task returns, quickly review the uploaded changes, then integrate or refine them.\n\n### Parallel delegation patterns\n- Run multiple independent information-seeking subtasks in parallel when you have distinct questions that can be answered independently.\n- Split implementation into disjoint codebase slices and spawn multiple agents for them in parallel when the write scopes do not overlap.\n- Delegate verification only when it can run in parallel with ongoing implementation and is likely to catch a concrete risk before final integration.\n- The key is to find opportunities to spawn multiple independent subtasks in parallel within the same round, while ensuring each subtask is well-defined, self-contained, and materially advances the main task.",
+            "name": "spawn_agent",
+            "output_schema": null,
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "agent_type": {
+                  "type": "string",
+                  "description": "Optional type name for the new agent. If omitted, `default` is used.\nAvailable roles:\ndefault: {\nDefault agent.\n}\nexplorer: {\nUse `explorer` for specific codebase questions.\nExplorers are fast and authoritative.\nThey must be used to ask specific, well-scoped questions on the codebase.\nRules:\n- In order to avoid redundant work, you should avoid exploring the same problem that explorers have already covered. Typically, you should trust the explorer results without additional verification. You are still allowed to inspect the code yourself to gain the needed context!\n- You are encouraged to spawn up multiple explorers in parallel when you have multiple distinct questions to ask about the codebase that can be answered independently. This allows you to get more information faster without waiting for one question to finish before asking the next. While waiting for the explorer results, you can continue working on other local tasks that do not depend on those results. This parallelism is a key advantage of delegation, so use it whenever you have multiple questions to ask.\n- Reuse existing explorers for related questions.\n}\nworker: {\nUse for execution and production work.\nTypical tasks:\n- Implement part of a feature\n- Fix tests or bugs\n- Split large refactors into independent chunks\nRules:\n- Explicitly assign **ownership** of the task (files / responsibility). When the subtask involves code changes, you should clearly specify which files or modules the worker is responsible for. This helps avoid merge conflicts and ensures accountability. For example, you can say \"Worker 1 is responsible for updating the authentication module, while Worker 2 will handle the database layer.\" By defining clear ownership, you can delegate more effectively and reduce coordination overhead.\n- Always tell workers they are **not alone in the codebase**, and they should not revert the edits made by others, and they should adjust their implementation to accommodate the changes made by others. This is important because there may be multiple workers making changes in parallel, and they need to be aware of each other's work to avoid conflicts and ensure a cohesive final product.\n}"
+                },
+                "fork_context": {
+                  "type": "boolean",
+                  "description": "True forks the current thread history into the new agent; false or omitted starts with only the initial prompt."
+                },
+                "items": {
+                  "type": "array",
+                  "description": "Structured input items. Use this to pass explicit mentions (for example app:// connector paths).",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "image_url": {
+                        "type": "string",
+                        "description": "Image URL when type is image."
+                      },
+                      "name": {
+                        "type": "string",
+                        "description": "Display name when type is skill or mention."
+                      },
+                      "path": {
+                        "type": "string",
+                        "description": "Path when type is local_image/skill, or structured mention target such as app://<connector-id> or plugin://<plugin-name>@<marketplace-name> when type is mention."
+                      },
+                      "text": {
+                        "type": "string",
+                        "description": "Text content when type is text."
+                      },
+                      "type": {
+                        "type": "string",
+                        "description": "Input item type: text, image, local_image, skill, or mention."
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "message": {
+                  "type": "string",
+                  "description": "Initial plain-text task for the new agent. Use either message or items."
+                },
+                "model": {
+                  "type": "string",
+                  "description": "Model override for the new agent. Omit unless an explicit override is needed."
+                },
+                "reasoning_effort": {
+                  "type": "string",
+                  "description": "Reasoning effort override for the new agent. Omit to inherit the parent effort."
+                },
+                "service_tier": {
+                  "type": "string",
+                  "description": "Service tier override for the new agent. Omit unless explicitly requested."
+                }
+              },
+              "additionalProperties": false
+            },
+            "strict": false,
+            "type": "function"
+          },
+          {
+            "description": "Wait for agents to reach a final status. Completed statuses may include the agent's final message. Returns empty status when timed out. Once the agent reaches a final status, a notification message will be received containing the same completed status.",
+            "name": "wait_agent",
+            "output_schema": null,
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "targets": {
+                  "type": "array",
+                  "description": "Agent ids to wait on. Pass multiple ids to wait for whichever finishes first.",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "timeout_ms": {
+                  "type": "number",
+                  "description": "Timeout in milliseconds. Defaults to 30000, min 10000, max 3600000. Prefer longer waits (minutes) to avoid busy polling."
+                }
+              },
+              "required": [
+                "targets"
+              ],
+              "additionalProperties": false
+            },
+            "strict": false,
+            "type": "function"
+          }
+        ],
+        "type": "namespace"
+      },
+      {
+        "description": "Tools in the mcp__plc namespace.",
+        "name": "mcp__plc",
+        "tools": [
+          {
+            "description": "Compile FB_Task with the actual CODESYS compiler. At most 3 attempts including first pass.",
+            "name": "compile_st",
+            "output_schema": null,
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "source": {
+                  "type": "object",
+                  "properties": {
+                    "declaration": {
+                      "type": "string"
+                    },
+                    "implementation": {
+                      "type": "string"
+                    },
+                    "supporting_objects": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {}
+                      }
+                    }
+                  },
+                  "required": [
+                    "declaration",
+                    "implementation"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "source"
+              ],
+              "additionalProperties": false
+            },
+            "strict": false,
+            "type": "function"
+          },
+          {
+            "description": "Simulate FB_Task against test cases. At most 3 simulation attempts.",
+            "name": "simulate_st",
+            "output_schema": null,
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "cases": {
+                  "type": "array",
+                  "description": "List of test cases with steps (inputs, expected, optional dt_ms)",
+                  "items": {
+                    "type": "object",
+                    "properties": {}
+                  }
+                },
+                "source": {
+                  "type": "object",
+                  "properties": {
+                    "declaration": {
+                      "type": "string"
+                    },
+                    "implementation": {
+                      "type": "string"
+                    },
+                    "supporting_objects": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {}
+                      }
+                    }
+                  },
+                  "required": [
+                    "declaration",
+                    "implementation"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "source",
+                "cases"
+              ],
+              "additionalProperties": false
+            },
+            "strict": false,
+            "type": "function"
+          },
+          {
+            "description": "Formally verify FB_Task against the task's LTL/INVAR specification using ST->SMV symbolic compilation and NuSMV/nuXmv. Returns PASS, COUNTEREXAMPLE (with offending scan trace), UNSUPPORTED_ST, TIMEOUT, or TOOL_ERROR.",
+            "name": "verify_st",
+            "output_schema": null,
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "assertions": {
+                  "type": "array",
+                  "description": "Optional temporal/invariant assertions ({id, formula}) over declared port names.",
+                  "items": {
+                    "type": "object",
+                    "properties": {}
+                  }
+                },
+                "source": {
+                  "type": "object",
+                  "properties": {
+                    "declaration": {
+                      "type": "string"
+                    },
+                    "implementation": {
+                      "type": "string"
+                    },
+                    "supporting_objects": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {}
+                      }
+                    }
+                  },
+                  "required": [
+                    "declaration",
+                    "implementation"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "source"
+              ],
+              "additionalProperties": false
+            },
+            "strict": false,
+            "type": "function"
+          }
+        ],
+        "type": "namespace"
+      }
+    ],
+    "top_logprobs": 0,
+    "top_p": 0.98,
+    "truncation": "disabled",
+    "usage": {
+      "input_tokens": 18473,
+      "input_tokens_details": {
+        "cache_write_tokens": 1457,
+        "cached_tokens": 17014
+      },
+      "output_tokens": 807,
+      "output_tokens_details": {
+        "reasoning_tokens": 461
+      },
+      "total_tokens": 19280,
+      "cost": "¥0.03325"
+    },
+    "user": null,
+    "moderation": null
+  },
+  "usage": {
+    "input_tokens": 18473,
+    "input_tokens_details": {
+      "cache_write_tokens": 1457,
+      "cached_tokens": 17014
+    },
+    "output_tokens": 807,
+    "output_tokens_details": {
+      "reasoning_tokens": 461
+    },
+    "total_tokens": 19280,
+    "cost": "¥0.03325"
+  },
+  "accounted_tokens": 19280,
+  "usage_accounting": "PROVIDER"
+}

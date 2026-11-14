@@ -1,0 +1,319 @@
+{
+  "state_machine": {
+    "initial_state": "IDLE",
+    "states": [
+      {
+        "name": "IDLE",
+        "phase": 0,
+        "description": "Waiting for a bottle. All outputs OFF.",
+        "outputs": {
+          "Pump_Motor": false,
+          "Filling_Valve": false,
+          "Capping_Machine": false,
+          "Packing_Machine": false,
+          "Completion_Light": false
+        }
+      },
+      {
+        "name": "CLEANING",
+        "phase": 1,
+        "description": "Cleaning pump runs until cleaningConfirmButton is accepted.",
+        "outputs": {
+          "Pump_Motor": true,
+          "Filling_Valve": false,
+          "Capping_Machine": false,
+          "Packing_Machine": false,
+          "Completion_Light": false
+        }
+      },
+      {
+        "name": "FILLING",
+        "phase": 2,
+        "description": "Filling valve runs until fillingConfirmButton is accepted.",
+        "outputs": {
+          "Pump_Motor": false,
+          "Filling_Valve": true,
+          "Capping_Machine": false,
+          "Packing_Machine": false,
+          "Completion_Light": false
+        }
+      },
+      {
+        "name": "CAPPING",
+        "phase": 3,
+        "description": "Capping machine runs until cappingConfirmButton is accepted.",
+        "outputs": {
+          "Pump_Motor": false,
+          "Filling_Valve": false,
+          "Capping_Machine": true,
+          "Packing_Machine": false,
+          "Completion_Light": false
+        }
+      },
+      {
+        "name": "PACKING",
+        "phase": 4,
+        "description": "Packing machine runs until packingConfirmButton is accepted.",
+        "outputs": {
+          "Pump_Motor": false,
+          "Filling_Valve": false,
+          "Capping_Machine": false,
+          "Packing_Machine": true,
+          "Completion_Light": false
+        }
+      },
+      {
+        "name": "COMPLETE",
+        "phase": 5,
+        "description": "Packaging completion light is ON until finishedButton confirms pickup.",
+        "outputs": {
+          "Pump_Motor": false,
+          "Filling_Valve": false,
+          "Capping_Machine": false,
+          "Packing_Machine": false,
+          "Completion_Light": true
+        }
+      }
+    ],
+    "transitions": [
+      {
+        "from": "COMPLETE",
+        "to": "IDLE",
+        "condition": "phase = 5 AND finishedButton = TRUE",
+        "actions": [
+          "phase := 0",
+          "Completion_Light is cleared by stage-4 unified output assignment"
+        ]
+      },
+      {
+        "from": "IDLE",
+        "to": "CLEANING",
+        "condition": "phase = 0 AND bottleSensor = TRUE",
+        "actions": [
+          "phase := 1",
+          "Pump_Motor is energized by stage-4 unified output assignment in the same scan"
+        ]
+      },
+      {
+        "from": "CLEANING",
+        "to": "FILLING",
+        "condition": "phase = 1 AND cleaningConfirmButton = TRUE",
+        "actions": [
+          "phase := 2",
+          "Filling_Valve is energized by stage-4 unified output assignment in the same scan"
+        ]
+      },
+      {
+        "from": "FILLING",
+        "to": "CAPPING",
+        "condition": "phase = 2 AND fillingConfirmButton = TRUE",
+        "actions": [
+          "phase := 3",
+          "Capping_Machine is energized by stage-4 unified output assignment in the same scan"
+        ]
+      },
+      {
+        "from": "CAPPING",
+        "to": "PACKING",
+        "condition": "phase = 3 AND cappingConfirmButton = TRUE",
+        "actions": [
+          "phase := 4",
+          "Packing_Machine is energized by stage-4 unified output assignment in the same scan"
+        ]
+      },
+      {
+        "from": "PACKING",
+        "to": "COMPLETE",
+        "condition": "phase = 4 AND packingConfirmButton = TRUE",
+        "actions": [
+          "phase := 5",
+          "Completion_Light is energized by stage-4 unified output assignment in the same scan"
+        ]
+      },
+      {
+        "from": "IDLE",
+        "to": "IDLE",
+        "condition": "phase = 0 AND bottleSensor = FALSE",
+        "actions": [
+          "hold phase 0",
+          "all outputs OFF"
+        ]
+      },
+      {
+        "from": "CLEANING",
+        "to": "CLEANING",
+        "condition": "phase = 1 AND cleaningConfirmButton = FALSE",
+        "actions": [
+          "hold phase 1",
+          "Pump_Motor remains ON"
+        ]
+      },
+      {
+        "from": "FILLING",
+        "to": "FILLING",
+        "condition": "phase = 2 AND fillingConfirmButton = FALSE",
+        "actions": [
+          "hold phase 2",
+          "Filling_Valve remains ON"
+        ]
+      },
+      {
+        "from": "CAPPING",
+        "to": "CAPPING",
+        "condition": "phase = 3 AND cappingConfirmButton = FALSE",
+        "actions": [
+          "hold phase 3",
+          "Capping_Machine remains ON"
+        ]
+      },
+      {
+        "from": "PACKING",
+        "to": "PACKING",
+        "condition": "phase = 4 AND packingConfirmButton = FALSE",
+        "actions": [
+          "hold phase 4",
+          "Packing_Machine remains ON"
+        ]
+      },
+      {
+        "from": "COMPLETE",
+        "to": "COMPLETE",
+        "condition": "phase = 5 AND finishedButton = FALSE",
+        "actions": [
+          "hold phase 5",
+          "Completion_Light remains ON"
+        ]
+      }
+    ],
+    "transition_rules": [
+      "At most one phase transition is allowed per scan.",
+      "In COMPLETE, finishedButton reset has priority and prevents any other transition in that scan.",
+      "Confirmations are accepted only in their matching active phase; all other confirmations are ignored.",
+      "Confirmation inputs are level-sampled; a held confirmation can complete its phase on a later scan.",
+      "A bottle still present after finishedButton reset starts a new cleaning cycle only on the following idle scan, not in the same scan."
+    ]
+  },
+  "timer_plan": {
+    "required": false,
+    "timers": [],
+    "notes": "No PT timers are required. All transitions are sensor/operator-confirmation driven. No timer reset conditions are defined."
+  },
+  "priorities": [
+    "Safety: enforce one-hot output restriction; at most one of Pump_Motor, Filling_Valve, Capping_Machine, Packing_Machine, Completion_Light may be TRUE.",
+    "Safety: only the actuator associated with the current phase may be energized; all other process outputs are forced FALSE by the final unified output assignment.",
+    "Operational: at most one phase transition per scan; phase skipping is prohibited.",
+    "Operational: confirmation buttons are accepted only in their matching active phase; confirmations outside the active phase are ignored.",
+    "Operational: finishedButton resets only the COMPLETE phase and has reset priority when phase = 5.",
+    "Operational: bottleSensor starts cleaning only from IDLE; if bottleSensor remains TRUE after a finished reset, the next cleaning cycle starts on the following scan.",
+    "Operational: confirmation inputs are level-sampled, not rising-edge-required; a held confirmation may complete its phase on a later scan.",
+    "Operational: outputs are assigned from the post-transition phase so same-scan actuation matches the required behavior."
+  ],
+  "initial_values": {
+    "phase": 0,
+    "Pump_Motor": false,
+    "Filling_Valve": false,
+    "Capping_Machine": false,
+    "Packing_Machine": false,
+    "Completion_Light": false,
+    "bottleSensor_prev": false,
+    "cleaningConfirmButton_prev": false,
+    "fillingConfirmButton_prev": false,
+    "cappingConfirmButton_prev": false,
+    "packingConfirmButton_prev": false,
+    "finishedButton_prev": false
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "edge_sampling",
+      "description": "Sample all physical inputs once at the start of the scan and update optional rising-edge memories. State transitions use the sampled level values, not edge-only conditions.",
+      "actions": [
+        "bottleSensor_s := bottleSensor",
+        "cleaningConfirmButton_s := cleaningConfirmButton",
+        "fillingConfirmButton_s := fillingConfirmButton",
+        "cappingConfirmButton_s := cappingConfirmButton",
+        "packingConfirmButton_s := packingConfirmButton",
+        "finishedButton_s := finishedButton",
+        "bottleSensor_RE := bottleSensor_s AND NOT bottleSensor_prev",
+        "cleaningConfirmButton_RE := cleaningConfirmButton_s AND NOT cleaningConfirmButton_prev",
+        "fillingConfirmButton_RE := fillingConfirmButton_s AND NOT fillingConfirmButton_prev",
+        "cappingConfirmButton_RE := cappingConfirmButton_s AND NOT cappingConfirmButton_prev",
+        "packingConfirmButton_RE := packingConfirmButton_s AND NOT packingConfirmButton_prev",
+        "finishedButton_RE := finishedButton_s AND NOT finishedButton_prev",
+        "update previous-input memories"
+      ]
+    },
+    {
+      "stage": 2,
+      "name": "safety_reset_priority_and_state_transitions",
+      "description": "Apply reset priority and phase-specific transitions using level-sampled inputs. Enforce at most one transition per scan and ignore confirmations outside the active phase.",
+      "actions": [
+        "next_phase := phase",
+        "if phase = 5 AND finishedButton_s then next_phase := 0 and skip all other transitions this scan",
+        "else if phase = 0 AND bottleSensor_s then next_phase := 1",
+        "else if phase = 1 AND cleaningConfirmButton_s then next_phase := 2",
+        "else if phase = 2 AND fillingConfirmButton_s then next_phase := 3",
+        "else if phase = 3 AND cappingConfirmButton_s then next_phase := 4",
+        "else if phase = 4 AND packingConfirmButton_s then next_phase := 5",
+        "else hold current phase",
+        "phase := next_phase"
+      ]
+    },
+    {
+      "stage": 3,
+      "name": "unconditional_top_level_timer_FB_calls_outside_CASE_IF",
+      "description": "No timer function blocks are required by this application. If timers are added later, all timer FBs must be called unconditionally here at top level outside CASE/IF state logic.",
+      "actions": []
+    },
+    {
+      "stage": 4,
+      "name": "unified_output_assignments",
+      "description": "Assign every physical output exactly once from the final phase after state transitions. This guarantees same-scan actuation and one-hot output behavior.",
+      "actions": [
+        "Pump_Motor := (phase = 1)",
+        "Filling_Valve := (phase = 2)",
+        "Capping_Machine := (phase = 3)",
+        "Packing_Machine := (phase = 4)",
+        "Completion_Light := (phase = 5)"
+      ]
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G(!(Pump_Motor & Filling_Valve) & !(Pump_Motor & Capping_Machine) & !(Pump_Motor & Packing_Machine) & !(Pump_Motor & Completion_Light) & !(Filling_Valve & Capping_Machine) & !(Filling_Valve & Packing_Machine) & !(Filling_Valve & Completion_Light) & !(Capping_Machine & Packing_Machine) & !(Capping_Machine & Completion_Light) & !(Packing_Machine & Completion_Light))"
+    },
+    {
+      "id": "A2",
+      "formula": "G((phase=0 & bottleSensor) -> (Pump_Motor & X(phase=1)))"
+    },
+    {
+      "id": "A3",
+      "formula": "G((phase=1 & cleaningConfirmButton) -> (Filling_Valve & X(phase=2)))"
+    },
+    {
+      "id": "A4",
+      "formula": "G((phase=2 & fillingConfirmButton) -> (Capping_Machine & X(phase=3)))"
+    },
+    {
+      "id": "A5",
+      "formula": "G((phase=3 & cappingConfirmButton) -> (Packing_Machine & X(phase=4)))"
+    },
+    {
+      "id": "A6",
+      "formula": "G((phase=4 & packingConfirmButton) -> (Completion_Light & X(phase=5)))"
+    },
+    {
+      "id": "A7",
+      "formula": "G((phase=5 & !finishedButton) -> (Completion_Light & X(phase=5)))"
+    },
+    {
+      "id": "A8",
+      "formula": "G((phase=5 & finishedButton) -> (!Completion_Light & X(phase=0)))"
+    },
+    {
+      "id": "A9",
+      "formula": "G(((phase=0 & !bottleSensor) -> (!Pump_Motor & !Filling_Valve & !Capping_Machine & !Packing_Machine & !Completion_Light & X(phase=0))) & ((phase=1 & !cleaningConfirmButton) -> (Pump_Motor & !Filling_Valve & !Capping_Machine & !Packing_Machine & !Completion_Light & X(phase=1))) & ((phase=2 & !fillingConfirmButton) -> (!Pump_Motor & Filling_Valve & !Capping_Machine & !Packing_Machine & !Completion_Light & X(phase=2))) & ((phase=3 & !cappingConfirmButton) -> (!Pump_Motor & !Filling_Valve & Capping_Machine & !Packing_Machine & !Completion_Light & X(phase=3))) & ((phase=4 & !packingConfirmButton) -> (!Pump_Motor & !Filling_Valve & !Capping_Machine & Packing_Machine & !Completion_Light & X(phase=4))) & ((phase=5 & finishedButton) -> (!Pump_Motor & !Filling_Valve & !Capping_Machine & !Packing_Machine & !Completion_Light & X(phase=0))))"
+    }
+  ]
+}

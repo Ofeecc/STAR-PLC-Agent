@@ -1,0 +1,165 @@
+Return ONLY a JSON object with declaration, implementation, supporting_objects.
+declaration is CODESYS FUNCTION_BLOCK FB_Task followed by all VAR sections; omit END_FUNCTION_BLOCK.
+implementation is the ST body alone. supporting_objects is a list of helper DUT/POU objects, each with
+name, kind (DUT/FUNCTION/FUNCTION_BLOCK), declaration, implementation; functions need return_type.
+Keep exact task interface names/types and implement all behavior. Define referenced DUTs. No Markdown.
+Do not change requirements or use reference answers. Standard library is available in the project.
+The target is CODESYS 3.5 ST. Compilation is offline; do not contact physical equipment.
+
+You are the existing coding-agent baseline. The complete task is supplied below. The owner has already authorized this noninteractive benchmark and the supplied IDE-simulation tools within the stated limits. Use the supplied compiler, simulator, and formal verification tools directly; shell commands are unnecessary for this task. Use compile_st to compile each candidate. Maximum 3 total compiler calls. Use simulate_st to simulate candidates against your test cases. Maximum 3 total simulation calls. Use verify_st to formally verify FB_Task against the LTL/INVAR specifications (returns PASS or counterexample trace). After compilation errors, counterexamples, or simulation failures, repair and retest within these limits. Stop on successful verification or infrastructure failure. Do not inspect other directories, environment variables, API credentials, reference code, or other runs. Save the exact final submitted source to candidate.json. Return a concise status; raw trusted compiler, formal verification, and simulation evidence will be used for evaluation.
+TASK
+{
+  "id": "SELF010",
+  "title": "Latched alarm with acknowledgment and reannunciation",
+  "difficulty": "medium",
+  "requirements": "# SELF010: Latching Alarm Annunciator with Acknowledge and Horn\n\n## Background\nISA-style latching alarm annunciator with acknowledgment and horn silence logic.\n\n## Functional Requirements\n1. Inputs: `Fault`, `Ack`, `Reset` (`BOOL`). Edge memory `previous_fault` initializes `FALSE` and updates on EVERY scan.\n2. If `Reset = TRUE AND Fault = FALSE`, clear `Alarm := FALSE` and `Acknowledged := FALSE`.\n3. Else if `Fault = TRUE`: set `Alarm := TRUE`; on a new `Fault` rising edge clear `Acknowledged := FALSE`, else if `Ack = TRUE` set `Acknowledged := TRUE`.\n4. Else (`Fault = FALSE` and no valid reset): retain `Alarm`, and if `Alarm = TRUE AND Ack = TRUE` set `Acknowledged := TRUE`.\n5. Set `Horn := Alarm AND NOT Acknowledged` on every scan.\n\n## Interface\n- **Inputs:** `Fault: BOOL`, `Ack: BOOL`, `Reset: BOOL`\n- **Outputs:** `Alarm: BOOL`, `Acknowledged: BOOL`, `Horn: BOOL`\n\n## Initial Values\n- `Alarm=false`, `Acknowledged=false`, `previous_fault=false`, `Horn=false`\n\n## Timing & Evaluation Conventions\nIf `Reset = TRUE` while `Fault = TRUE`, reset is ignored and the alarm remains active.",
+  "scenario": "A panel alarm retains the event after a fault clears, silences the horn after acknowledgment, and sounds again for a new fault edge.",
+  "interface": [
+    {
+      "direction": "INPUT",
+      "name": "Fault",
+      "type": "BOOL",
+      "description": "Current fault condition"
+    },
+    {
+      "direction": "INPUT",
+      "name": "Ack",
+      "type": "BOOL",
+      "description": "Acknowledge horn"
+    },
+    {
+      "direction": "INPUT",
+      "name": "Reset",
+      "type": "BOOL",
+      "description": "Clear a removed fault"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Alarm",
+      "type": "BOOL",
+      "description": "Latched visible alarm"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Acknowledged",
+      "type": "BOOL",
+      "description": "Alarm acknowledged"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "Horn",
+      "type": "BOOL",
+      "description": "Unacknowledged alarm horn"
+    }
+  ],
+  "initial_conditions": {
+    "Alarm": false,
+    "Acknowledged": false,
+    "previous_fault": false,
+    "Horn": false
+  },
+  "scan_semantics": "At scan k, sample every input once, read retained pre-state q[k], execute one transition, and observe outputs O[k] at the end of that same scan. Updated state becomes q[k+1]. Reset the instance before each test. Step 0 executes normally; initial conditions describe pre-state, not an extra delayed scan. All timing in this task is explicitly counted in invocations, not wall time.",
+  "safety_priority": [
+    "New fault edge reannunciates before Ack",
+    "Reset only clears when Fault is absent",
+    "Reset then precedes Ack"
+  ],
+  "assumptions": [
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+  ],
+  "atomic_propositions": {
+    "Fault": "I[k].Fault: sampled input (BOOL).",
+    "Ack": "I[k].Ack: sampled input (BOOL).",
+    "Reset": "I[k].Reset: sampled input (BOOL).",
+    "Alarm": "O[k].Alarm: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "Acknowledged": "O[k].Acknowledged: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "Horn": "O[k].Horn: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "first": "k=0; first invocation, not the pre-invocation observation",
+    "rise": "Fault & !qFault.",
+    "qFault": "{\"kind\": \"previous_sampled_input\", \"source\": \"I[k-1].Fault\", \"initial\": false, \"update\": \"After EVERY scan k, including invalid/reset/stop, store I[k].Fault\"}",
+    "qAlarm": "{\"kind\": \"previous_observed_output\", \"source\": \"O[k-1].Alarm\", \"initial\": false, \"update\": \"After comparing scan k, store ACTUAL O[k].Alarm; never write into reference state.\"}",
+    "qAck": "{\"kind\": \"previous_observed_output\", \"source\": \"O[k-1].Acknowledged\", \"initial\": false, \"update\": \"After comparing scan k, store ACTUAL O[k].Acknowledged; never write into reference state.\"}",
+    "init": "At the separate pre-invocation initial observation before scan k=0: O_init.Alarm=false, O_init.Acknowledged=false, O_init.Horn=false."
+  },
+  "ltl": [
+    {
+      "id": "SELF010.P_init",
+      "kind": "safety",
+      "formula": "init",
+      "description": "Before the first scan invocation, all declared OUTPUT variables and initial instance state hold their declared initial values.",
+      "explanation": "Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "INITIAL_INSTANCE"
+    },
+    {
+      "id": "SELF010.P1",
+      "formula": "G(Horn <-> (Alarm & !Acknowledged))",
+      "explanation": "Horn follows the latched acknowledgment state.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "SELF010.P2",
+      "formula": "G(Fault -> Alarm)",
+      "explanation": "A present fault cannot be reset away.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "SELF010.P3",
+      "formula": "G(rise -> (Alarm & !Acknowledged & Horn))",
+      "explanation": "Every new event annunciates despite simultaneous Ack.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "SELF010.P4",
+      "formula": "G((Reset & !Fault) -> (!Alarm & !Acknowledged & !Horn))",
+      "explanation": "Reset clears a removed fault.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "SELF010.P5",
+      "formula": "G((!Fault & !Reset & qAlarm) -> Alarm)",
+      "explanation": "Fault disappearance does not clear the visible alarm.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "SELF010.P6",
+      "formula": "G((!rise & !(Reset & !Fault) & Ack & qAlarm) -> Acknowledged)",
+      "explanation": "Acknowledgment silences a retained event.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "SELF010.P7",
+      "kind": "safety",
+      "formula": "G(!Fault & !qAlarm -> (!Alarm & !Acknowledged & !Horn))",
+      "description": "When no fault is active and no alarm was latched before the scan, Alarm, Acknowledged, and Horn stay FALSE even if Ack is pressed.",
+      "explanation": "Forbids spontaneous alarm or pre-acknowledgment on idle scans.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "SELF010.P8",
+      "kind": "safety",
+      "formula": "G((qAlarm & !(Reset & !Fault) & !rise & !Ack) -> (Acknowledged <-> qAck))",
+      "description": "When an existing alarm remains unreset without a new Fault rising edge or Ack, Acknowledged retains its prior value.",
+      "explanation": "Preserves acknowledgment retention without requiring CompleteBehavior.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    }
+  ]
+}
