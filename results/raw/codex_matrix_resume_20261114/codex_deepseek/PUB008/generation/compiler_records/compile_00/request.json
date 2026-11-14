@@ -1,0 +1,20 @@
+{
+  "request_id": "aa58283428414f37aae2aab821b30a81",
+  "source_sha256": "85838c2964a26d83d754c27b2ba35300ebd3a7bf50d121f8d0bb28dca6b98c59",
+  "task_id": "PUB008",
+  "project": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\08d28dc6defdc503\\task.project",
+  "candidate": {
+    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    count : DINT;\nEND_VAR\nVAR_IN_OUT\n    analogValues : ARRAY[*] OF INT;\n    channels : ARRAY[*] OF ST_AnalogChannel;\nEND_VAR\nVAR\n    i : DINT;\n    analogIndex : DINT;\n    channelIndex : DINT;\n    rawValue : INT;\n    rangeValue : REAL;\nEND_VAR",
+    "implementation": "analogIndex := LOWER_BOUND(analogValues, 1);\nchannelIndex := LOWER_BOUND(channels, 1);\n\nFOR i := 0 TO count - 1 DO\n    IF channels[channelIndex + i].enable THEN\n        IF (channels[channelIndex + i].measuringMode <> 0) AND\n           (channels[channelIndex + i].measuringMode <> 1) AND\n           (channels[channelIndex + i].measuringMode <> 2) THEN\n            channels[channelIndex + i].retVal := 16#8001;\n        ELSIF channels[channelIndex + i].hiLIM <= channels[channelIndex + i].loLIM THEN\n            channels[channelIndex + i].retVal := 16#8002;\n        ELSE\n            rawValue := analogValues[analogIndex + i];\n            rangeValue := channels[channelIndex + i].hiLIM - channels[channelIndex + i].loLIM;\n\n            CASE channels[channelIndex + i].measuringMode OF\n                0:\n                    IF channels[channelIndex + i].bipolar THEN\n                        channels[channelIndex + i].outputValue := channels[channelIndex + i].loLIM +\n                            ((INT_TO_REAL(rawValue) + 27648.0) / 55296.0) * rangeValue;\n                    ELSE\n                        channels[channelIndex + i].outputValue := channels[channelIndex + i].loLIM +\n                            (INT_TO_REAL(rawValue) / 27648.0) * rangeValue;\n                    END_IF\n                1:\n                    channels[channelIndex + i].outputValue := INT_TO_REAL(rawValue) / 10.0;\n                2:\n                    channels[channelIndex + i].outputValue := INT_TO_REAL(rawValue) / 100.0;\n            END_CASE\n\n            channels[channelIndex + i].retVal := 0;\n        END_IF\n    END_IF\nEND_FOR",
+    "supporting_objects": [
+      {
+        "name": "ST_AnalogChannel",
+        "kind": "DUT",
+        "declaration": "TYPE ST_AnalogChannel :\nSTRUCT\n    enable : BOOL;\n    hiLIM : REAL;\n    loLIM : REAL;\n    bipolar : BOOL;\n    measuringMode : INT;\n    retVal : WORD;\n    outputValue : REAL;\nEND_STRUCT\nEND_TYPE",
+        "implementation": ""
+      }
+    ]
+  },
+  "result_path": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\08d28dc6defdc503\\codesys_evidence.json",
+  "started_utc": "2026-11-14T13:11:26.039794+00:00"
+}

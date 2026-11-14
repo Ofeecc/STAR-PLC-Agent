@@ -1,0 +1,286 @@
+{
+  "id": "PUB020",
+  "title": "Production Control",
+  "difficulty": "hard",
+  "requirements": "# Production Control\n\n- **Difficulty:** Hard (hard)\n\n## Requirements\n\nAn automated production line consists of 5 workstations: material loading station, cleaning station, weighing station, firing station, and finished product station. The production line has a motor responsible for moving products from one workstation to the next, the sequence of the line is from the material loading station, cleaning station, weighing station, firing station, to the finished product station. Each workstation has a sensor (used to detect if the product has arrived).\nControl requirements:\n1. Mode Switching: The mode switch (Mode) is used to switch between manual and automatic modes of the production line. 0 = manual mode, 1 = automatic mode.\n2. Manual Mode: In manual mode, the forward rotation button (ForwardButton) controls the forward rotation of the motor, and the reverse rotation button (ReverseButton) controls the reverse rotation of the motor. Forward and reverse rotation operations need to be interlocked and cannot be performed simultaneously.\n3. Automatic Mode:\n   - When the material arrives at the material loading station, the SensorFeed detects the material, the motor starts forward rotation, and moves the material to the cleaning station.\n   - When the material arrives at the cleaning station, the SensorWash detects the material, the motor stops, and upon receiving the signal washComplete after cleaning is finished, the motor starts forward rotation, moving the material to the weighing station.\n   - When the material arrives at the weighing station, the SensorWeight detects the material, the motor stops, and upon receiving weightComplete after weighing is complete, the material is judged to be qualified based on the weight value. If the weight value is greater than or equal to 100 and less than or equal to 200, it is qualified, otherwise not.\n     If the material is unqualified, the rejection command kick is initiated.\n     If the material is qualified, the firing temperature is calculated based on the weight value. The calculation rule is that the weight value from 100 to 200 linearly corresponds to the temperature value from 500 to 550. The firing temperature firingTemp is output. At the same time, the motor starts forward rotation, moving the material to the firing station.\n   - When the product arrives at the firing station, the SensorFiring detects the material, the motor stops, and upon receiving the signal firingComplete after firing is finished, the motor starts forward rotation, moving the product to the finished product station.\n   - When the product arrives at the finished product station, the SensorOutput detects the product, the motor stops, and the completion light (CompletionLight) turns on, indicating that the product processing is complete. When the product is taken away, i.e., the SensorOutput does not detect the product, the completion light (CompletionLight) turns off.\n\n## Interface Definition\n\n| Direction | Variable/Field | Data Type | Description |\n| --- | --- | --- | --- |\n| Input | `Mode` | `BOOL` | Used to switch the production line between manual and automatic modes, 0 = manual mode, 1 = automatic mode |\n| Input | `ForwardButton` | `BOOL` | Forward rotation button |\n| Input | `ReverseButton` | `BOOL` | Reverse rotation button |\n| Input | `SensorFeed` | `BOOL` | Sensor at the material loading station detecting the arrival of materials |\n| Input | `SensorWash` | `BOOL` | Sensor at the cleaning station detecting the arrival of materials |\n| Input | `SensorWeight` | `BOOL` | Sensor at the weighing station detecting the arrival of materials |\n| Input | `SensorFiring` | `BOOL` | Sensor at the firing station detecting the arrival of materials |\n| Input | `SensorOutput` | `BOOL` | Sensor at the finished product station detecting the arrival of products |\n| Input | `washComplete` | `BOOL` | Signal indicating completion of cleaning |\n| Input | `weightComplete` | `BOOL` | Signal indicating completion of weighing |\n| Input | `weight` | `REAL` | Weight value |\n| Input | `firingComplete` | `BOOL` | Signal indicating completion of firing |\n| Output | `MotorForward` | `BOOL` | Output for motor forward rotation |\n| Output | `MotorReverse` | `BOOL` | Output for motor reverse rotation |\n| Output | `kick` | `BOOL` | Rejection output |\n| Output | `CompletionLight` | `BOOL` | Indicator light for product processing completion |\n| Output | `firingTemp` | `REAL` | Firing temperature |",
+  "scenario": "A five-station conveyor cleans, rejects out-of-range weights, calculates a firing setpoint and signals output completion.",
+  "interface": [
+    {
+      "direction": "INPUT",
+      "name": "Mode",
+      "type": "BOOL",
+      "description": "Used to switch the production line between manual and automatic modes, 0 = manual mode, 1 = automatic mode"
+    },
+    {
+      "direction": "INPUT",
+      "name": "ForwardButton",
+      "type": "BOOL",
+      "description": "Forward rotation button"
+    },
+    {
+      "direction": "INPUT",
+      "name": "ReverseButton",
+      "type": "BOOL",
+      "description": "Reverse rotation button"
+    },
+    {
+      "direction": "INPUT",
+      "name": "SensorFeed",
+      "type": "BOOL",
+      "description": "Sensor at the material loading station detecting the arrival of materials"
+    },
+    {
+      "direction": "INPUT",
+      "name": "SensorWash",
+      "type": "BOOL",
+      "description": "Sensor at the cleaning station detecting the arrival of materials"
+    },
+    {
+      "direction": "INPUT",
+      "name": "SensorWeight",
+      "type": "BOOL",
+      "description": "Sensor at the weighing station detecting the arrival of materials"
+    },
+    {
+      "direction": "INPUT",
+      "name": "SensorFiring",
+      "type": "BOOL",
+      "description": "Sensor at the firing station detecting the arrival of materials"
+    },
+    {
+      "direction": "INPUT",
+      "name": "SensorOutput",
+      "type": "BOOL",
+      "description": "Sensor at the finished product station detecting the arrival of products"
+    },
+    {
+      "direction": "INPUT",
+      "name": "washComplete",
+      "type": "BOOL",
+      "description": "Signal indicating completion of cleaning"
+    },
+    {
+      "direction": "INPUT",
+      "name": "weightComplete",
+      "type": "BOOL",
+      "description": "Signal indicating completion of weighing"
+    },
+    {
+      "direction": "INPUT",
+      "name": "weight",
+      "type": "REAL",
+      "description": "Weight value"
+    },
+    {
+      "direction": "INPUT",
+      "name": "firingComplete",
+      "type": "BOOL",
+      "description": "Signal indicating completion of firing"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "MotorForward",
+      "type": "BOOL",
+      "description": "Output for motor forward rotation"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "MotorReverse",
+      "type": "BOOL",
+      "description": "Output for motor reverse rotation"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "kick",
+      "type": "BOOL",
+      "description": "Rejection output"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "CompletionLight",
+      "type": "BOOL",
+      "description": "Indicator light for product processing completion"
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "firingTemp",
+      "type": "REAL",
+      "description": "Firing temperature"
+    }
+  ],
+  "initial_conditions": {
+    "MotorForward": false,
+    "MotorReverse": false,
+    "kick": false,
+    "CompletionLight": false,
+    "firingTemp": 0.0,
+    "phase": "WAIT_FEED"
+  },
+  "scan_semantics": "Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call. Retained pre-state q[k] becomes q[k+1]. Each test resets the instance. A transition affects the same observed scan. dt_ms is elapsed time since the preceding invocation; the first invocation starts IEC timers at elapsed zero. CycleTime inputs, where supplied, are attributed to the current invocation rather than inferred from dt_ms.",
+  "safety_priority": [
+    "Forward and reverse are mutually exclusive.",
+    "Destination arrival stops forward motion.",
+    "Unqualified weight never proceeds to firing.",
+    "Completion commands from an unrelated station are ignored."
+  ],
+  "assumptions": [
+    "Manual opposing requests both inhibit the motor. Entering manual clears sequence, kick and completion but retains the last firing setpoint.",
+    "Only one product is processed; the caller does not assert contradictory station sensors.",
+    "Mode changes reset the automatic route to WAIT_FEED. Confirmations are levels accepted only in their corresponding processing wait.",
+    "Arrival has priority; a confirmation already TRUE on the arrival invocation is accepted no earlier than the next invocation.",
+    "A rejected item remains at the weighing station, with kick TRUE, until SensorWeight becomes FALSE. It then returns to WAIT_FEED.",
+    "firingTemp updates only when accepted weight satisfies 100.0 <= real32(weight) <= 200.0 (binary32 rounding applied prior to range test) and retains the last accepted value otherwise. REAL firingTemp comparisons use absolute tolerance 1e-4 to exceed 1 ULP near 550.0.",
+    "At most one phase transition occurs per invocation. Output arrival sets CompletionLight immediately, removal clears it and resets the route.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "Floating-point inputs and intermediate reference arithmetic are finite. Existing fixed traces retain their declared absolute tolerance; claims do not extend to arbitrary magnitudes without a separately specified numeric error policy.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+  ],
+  "atomic_propositions": {
+    "auto": "Mode",
+    "fwd": "MotorForward",
+    "rev": "MotorReverse",
+    "mf": "ForwardButton AND NOT ReverseButton",
+    "mr": "ReverseButton AND NOT ForwardButton",
+    "feed": "pre-phase WAIT_FEED AND SensorFeed",
+    "moving": "pre-phase is a conveyor movement (MOVE_TO_WASH, MOVE_TO_WEIGHT, MOVE_TO_FIRING, or MOVE_TO_OUTPUT)",
+    "arrival": "pre-phase moving AND corresponding destination sensor TRUE",
+    "stopped": "NOT MotorForward AND NOT MotorReverse",
+    "judged": "auto AND pre-phase WAIT_WEIGHT AND SensorWeight AND weightComplete",
+    "valid": "100.0 <= real32(weight) <= 200.0",
+    "reject": "kick AND stopped",
+    "qualified": "NOT kick AND fwd AND firingTemp=real32(500.0+real32(real32(weight-100.0)*0.5))",
+    "output_arrival": "auto AND pre-phase MOVE_TO_OUTPUT AND SensorOutput",
+    "light": "CompletionLight",
+    "removed": "auto AND pre-phase OUTPUT_DONE AND NOT SensorOutput",
+    "clear": "NOT CompletionLight AND stopped",
+    "no_judgment": "NOT judged OR NOT valid",
+    "same_temp": "firingTemp=pre-firingTemp",
+    "arrival_pending": "pre-phase is a conveyor movement",
+    "processing_wait": "pre-phase is WAIT_WASH, WAIT_WEIGHT or WAIT_FIRING",
+    "matching_completion": "matching station sensor and processing completion are TRUE in the corresponding wait",
+    "order": "automatic route is FEED, WASH, WEIGHT, FIRING, OUTPUT; rejected weights cannot enter FIRING",
+    "Mode": "I[k].Mode: sampled input (BOOL).",
+    "ForwardButton": "I[k].ForwardButton: sampled input (BOOL).",
+    "ReverseButton": "I[k].ReverseButton: sampled input (BOOL).",
+    "SensorFeed": "I[k].SensorFeed: sampled input (BOOL).",
+    "SensorWash": "I[k].SensorWash: sampled input (BOOL).",
+    "SensorWeight": "I[k].SensorWeight: sampled input (BOOL).",
+    "SensorFiring": "I[k].SensorFiring: sampled input (BOOL).",
+    "SensorOutput": "I[k].SensorOutput: sampled input (BOOL).",
+    "washComplete": "I[k].washComplete: sampled input (BOOL).",
+    "weightComplete": "I[k].weightComplete: sampled input (BOOL).",
+    "weight": "I[k].weight: sampled input (REAL).",
+    "firingComplete": "I[k].firingComplete: sampled input (BOOL).",
+    "MotorForward": "O[k].MotorForward: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "MotorReverse": "O[k].MotorReverse: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "kick": "O[k].kick: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "CompletionLight": "O[k].CompletionLight: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "firingTemp": "O[k].firingTemp: independently observed post-scan candidate value (REAL); never defined as expected output.",
+    "post_wait": "post-phase is WAIT_FEED, WAIT_WASH, WAIT_WEIGHT, or WAIT_FIRING",
+    "post_move": "post-phase is MOVE_TO_WASH, MOVE_TO_WEIGHT, MOVE_TO_FIRING, or MOVE_TO_OUTPUT",
+    "init": "At the separate pre-invocation initial observation before scan k=0: Spre.phase=\"WAIT_FEED\", O_init.MotorForward=false, O_init.MotorReverse=false, O_init.kick=false, O_init.CompletionLight=false, O_init.firingTemp=0.0."
+  },
+  "ltl": [
+    {
+      "id": "PUB020.P_init",
+      "kind": "safety",
+      "formula": "init",
+      "description": "Before the first scan invocation, all declared OUTPUT variables and initial instance state hold their declared initial values.",
+      "explanation": "Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "INITIAL_INSTANCE"
+    },
+    {
+      "id": "PUB020.P1",
+      "name": "Interlock",
+      "formula": "G(!(fwd & rev))",
+      "explanation": "Motor directions cannot overlap.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB020.P2",
+      "name": "Manual",
+      "formula": "G(!auto -> ((fwd <-> mf) & (rev <-> mr)))",
+      "explanation": "Manual commands follow level inputs with neutral conflict handling.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB020.P3",
+      "name": "Automatic direction",
+      "formula": "G(auto -> !rev)",
+      "explanation": "The automatic route never reverses.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB020.P4",
+      "name": "Arrival stop",
+      "formula": "G(auto & arrival -> stopped)",
+      "explanation": "An arrived item stops before processing.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB020.P5",
+      "name": "Weight decision",
+      "formula": "G(judged -> ((valid -> qualified) & (!valid -> reject)))",
+      "explanation": "The acceptance interval is inclusive and its setpoint is linear.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB020.P6",
+      "name": "Setpoint retention",
+      "formula": "G(no_judgment -> same_temp)",
+      "explanation": "No unqualified or unrelated scan changes the last accepted setpoint.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB020.P7",
+      "name": "Completion",
+      "formula": "G((output_arrival -> light) & (removed -> clear))",
+      "explanation": "Output arrival and removal control the light.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB020.P8",
+      "name": "Route",
+      "formula": "G(order)",
+      "explanation": "Only the ordered processing route advances qualified products.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB020.P9",
+      "name": "Conditional completion",
+      "formula": "(G(auto) & G(arrival_pending -> F arrival) & G(processing_wait -> F matching_completion) & G(judged -> valid)) -> G(feed -> F light)",
+      "explanation": "With continuing automatic mode, eventual movement/processing feedback and accepted weights, each feed eventually completes.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB020.P10",
+      "kind": "safety",
+      "formula": "G((!auto -> (!kick & !CompletionLight)) & (auto & post_wait -> stopped) & (auto & post_move -> (fwd & !rev)))",
+      "description": "Manual mode forces kick and CompletionLight off; automatic waiting stops the motor; automatic transport moves forward.",
+      "explanation": "Closes independent LTL coverage of manual/waiting/transport actuator behavior.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    }
+  ]
+}

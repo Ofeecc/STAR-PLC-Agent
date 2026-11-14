@@ -1,0 +1,91 @@
+{
+  "task_id": "PUB016",
+  "source_sha256": "eb9c4ef4173c47d5bbd2c37ed98415c4d3d97646d70d10fb70c10272dff41a7e",
+  "st_path": "candidate.st",
+  "ltl_path": "spec.ltl",
+  "properties": [
+    {
+      "id": "PUB016.P_init",
+      "formula": "init",
+      "description": "Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope)."
+    },
+    {
+      "id": "PUB016.P1",
+      "formula": "G(!(left & right))",
+      "description": "Both directions can never run together."
+    },
+    {
+      "id": "PUB016.P2",
+      "formula": "G((higher -> (right & !left)) & (lower -> (left & !right)))",
+      "description": "The target/current station order determines direction."
+    },
+    {
+      "id": "PUB016.P3",
+      "formula": "G(arrive -> stop)",
+      "description": "Every destination stops movement immediately."
+    },
+    {
+      "id": "PUB016.P4",
+      "formula": "G(waiting -> stop)",
+      "description": "A processing wait does not move without completion."
+    },
+    {
+      "id": "PUB016.P5",
+      "formula": "G(out -> (done & stop))",
+      "description": "The final station completes the sequence."
+    },
+    {
+      "id": "PUB016.P6",
+      "formula": "(G(moving -> F arrive) & G(processing -> F completion)) -> G(started -> F done)",
+      "description": "Under the valid fixed-sequence input contract, eventual external feedback permits every started route to complete."
+    },
+    {
+      "id": "PUB016.P7",
+      "formula": "G(station1Start_rejected -> stop)",
+      "description": "Forbids starting automatic transport without a detected product at station 1."
+    },
+    {
+      "id": "PUB016.COMPLETE",
+      "formula": "G(CompleteBehavior)",
+      "description": "Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed."
+    }
+  ],
+  "atomic_propositions": {
+    "left": "conveyorLeft",
+    "right": "conveyorRight",
+    "higher": "post-phase MOVING AND targetStation>currentStation AND NOT sensor[targetStation]",
+    "lower": "post-phase MOVING AND targetStation<currentStation AND NOT sensor[targetStation]",
+    "arrive": "pre-phase MOVING AND sensor[targetStation]",
+    "stop": "NOT conveyorLeft AND NOT conveyorRight",
+    "waiting": "pre-phase WAIT_PROCESS AND no fresh completion edge",
+    "out": "pre-phase MOVING AND targetStation=5 AND sensor5",
+    "done": "post phase IDLE after station5 arrival",
+    "moving": "pre-phase MOVING",
+    "processing": "pre-phase WAIT_PROCESS",
+    "completion": "fresh matching processing-complete edge in the current wait",
+    "started": "station1Start rising edge accepted with sensor1 in idle",
+    "CompleteBehavior": "令(Sref[k+1], E[k])=T_PUB016(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\n活动路线长度1..8，前项为2/3/4且末项5，活动周期内固定。初始IDLE、station=1、index=0。IDLE在station1Start上升沿且sensor1时选择首目标；MOVING到目标后进入WAIT_PROCESS或目标5回IDLE；WAIT_PROCESS仅对应完成新边沿推进index，同站继续等待。输出仅转移后MOVING且未到目标时按target与station方向开启；所有边沿历史逐拍更新。",
+    "processLength": "I[k].processLength: sampled input (USINT).",
+    "sensor1": "I[k].sensor1: sampled input (BOOL).",
+    "sensor2": "I[k].sensor2: sampled input (BOOL).",
+    "sensor3": "I[k].sensor3: sampled input (BOOL).",
+    "sensor4": "I[k].sensor4: sampled input (BOOL).",
+    "sensor5": "I[k].sensor5: sampled input (BOOL).",
+    "station1Start": "I[k].station1Start: sampled input (BOOL).",
+    "station2Complete": "I[k].station2Complete: sampled input (BOOL).",
+    "station3Complete": "I[k].station3Complete: sampled input (BOOL).",
+    "station4Complete": "I[k].station4Complete: sampled input (BOOL).",
+    "processSequence": "I[k].processSequence: sampled input (ARRAY[1..8] OF USINT).",
+    "conveyorLeft": "O[k].conveyorLeft: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "conveyorRight": "O[k].conveyorRight: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "station1Start_rejected": "pre-phase IDLE AND station1Start AND NOT sensor1",
+    "init": "At the separate pre-invocation initial observation before scan k=0: Spre.phase=\"IDLE\", O_init.conveyorLeft=false, O_init.conveyorRight=false."
+  },
+  "tools_supported": [],
+  "encoding_complete": false,
+  "task_sha256": "ee6f79639c975b8565892effa5a707ec28364c4146ba59eccbf9dfe895248bde",
+  "bundle_status": "UNSUPPORTED_ST",
+  "created_utc": "2026-11-14T08:51:40.115267+00:00",
+  "verification_status": "UNSUPPORTED_ST",
+  "reason": "Candidate input processLength has no observer binding"
+}

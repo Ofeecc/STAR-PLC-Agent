@@ -1,0 +1,54 @@
+-- Formal verification specification for Task PUB010
+-- Generated: 2026-11-14T14:08:29.295339+00:00
+
+-- Property: PUB010.P_init
+-- Description: Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
+LTLSPEC NAME PUB010.P_init := init;
+
+-- Property: PUB010.P1
+-- Description: Invalid sensor data must never energize the heater.
+LTLSPEC NAME PUB010.P1 := G(sensorFault -> !HeaterOutput);
+
+-- Property: PUB010.P2
+-- Description: The heater remains off during cooldown.
+LTLSPEC NAME PUB010.P2 := G(OverheatProtection -> !HeaterOutput);
+
+-- Property: PUB010.P3
+-- Description: The status output reports actual commanded heat.
+LTLSPEC NAME PUB010.P3 := G(HeaterStatus=HeaterOutput);
+
+-- Property: PUB010.P4
+-- Description: The displays mirror sampled values.
+LTLSPEC NAME PUB010.P4 := G((CurrentTemperature=TemperatureSensorInput) & (SetTempDisplay=SetTemperature));
+
+-- Property: PUB010.P5
+-- Description: A permitted heat demand energizes the heater.
+LTLSPEC NAME PUB010.P5 := G((!sensorFault & !OverheatProtection & demand & !heatLimitReached) -> HeaterOutput);
+
+-- Property: PUB010.P6
+-- Description: The continuous-heating threshold trips protection in the same scan.
+LTLSPEC NAME PUB010.P6 := G(heatLimitReached -> (OverheatProtection & !HeaterOutput));
+
+-- Property: PUB010.P7
+-- Description: Protection cannot clear before its cooldown expires.
+LTLSPEC NAME PUB010.P7 := G((protectPrev & !cooldownDone) -> OverheatProtection);
+
+-- Property: PUB010.P8
+-- Description: With advancing time and persistent valid demand, heating resumes after finite cooldown. Explicit non-Zeno environment premise: physical elapsed time crosses infinitely many 1ms boundaries.
+LTLSPEC NAME PUB010.P8 := (G(F(TimeTick))) -> (G((OverheatProtection & G(!sensorFault & demand)) -> F(HeaterOutput)));
+
+-- Property: PUB010.P9
+-- Description: Prevents constant-ON or false heating when temperature is at or above setpoint.
+LTLSPEC NAME PUB010.P9 := G(!sensorFault & !OverheatProtection & !demand -> !HeaterOutput);
+
+-- Property: PUB010.P10
+-- Description: Prevents permanent latch-up beyond 3s cooldown.
+LTLSPEC NAME PUB010.P10 := G(protectPrev & cooldownDone -> !OverheatProtection);
+
+-- Property: PUB010.P11
+-- Description: Explicit correction of a demonstrated omission.
+LTLSPEC NAME PUB010.P11 := G((TemperatureSensorInput>SetTemperature) -> !HeaterOutput);
+
+-- Property: PUB010.COMPLETE
+-- Description: Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
+LTLSPEC NAME PUB010.COMPLETE := G(CompleteBehavior);

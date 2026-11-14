@@ -1,0 +1,12 @@
+{
+  "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    Start : BOOL;\n    Stop : BOOL;\n    Fault : BOOL;\n    Reset : BOOL;\nEND_VAR\nVAR_OUTPUT\n    Run : BOOL;\n    Locked : BOOL;\n    Attempts : USINT;\nEND_VAR\nVAR\n    mode : E_Mode := E_Mode.IDLE;\n    free_scans : USINT := 0;\nEND_VAR",
+  "implementation": "IF Reset AND NOT Fault AND NOT Start THEN\n    mode := E_Mode.IDLE;\n    Attempts := 0;\n    free_scans := 0;\nELSIF mode = E_Mode.LOCKED THEN\n    mode := E_Mode.LOCKED;\nELSIF Stop THEN\n    mode := E_Mode.IDLE;\n    free_scans := 0;\nELSE\n    CASE mode OF\n        E_Mode.RUNNING:\n            IF Fault THEN\n                IF Attempts >= 2 THEN\n                    mode := E_Mode.LOCKED;\n                    free_scans := 0;\n                ELSE\n                    mode := E_Mode.WAIT;\n                    free_scans := 0;\n                END_IF\n            END_IF\n\n        E_Mode.WAIT:\n            IF Fault THEN\n                free_scans := 0;\n            ELSE\n                IF free_scans < 2 THEN\n                    free_scans := free_scans + 1;\n                END_IF\n                IF free_scans >= 2 THEN\n                    IF Attempts < 2 THEN\n                        Attempts := Attempts + 1;\n                    END_IF\n                    free_scans := 0;\n                    mode := E_Mode.RUNNING;\n                END_IF\n            END_IF\n\n        E_Mode.IDLE:\n            IF Start AND NOT Fault THEN\n                mode := E_Mode.RUNNING;\n            END_IF\n\n        E_Mode.LOCKED:\n            mode := E_Mode.LOCKED;\n    END_CASE\nEND_IF\n\nRun := (mode = E_Mode.RUNNING);\nLocked := (mode = E_Mode.LOCKED);",
+  "supporting_objects": [
+    {
+      "name": "E_Mode",
+      "kind": "DUT",
+      "declaration": "TYPE E_Mode :\n(\n    IDLE,\n    RUNNING,\n    WAIT,\n    LOCKED\n);\nEND_TYPE",
+      "implementation": ""
+    }
+  ]
+}

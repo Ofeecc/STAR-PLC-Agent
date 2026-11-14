@@ -1,0 +1,94 @@
+Return ONLY a JSON object with declaration, implementation, supporting_objects.
+declaration is CODESYS FUNCTION_BLOCK FB_Task followed by all VAR sections; omit END_FUNCTION_BLOCK.
+implementation is the ST body alone. supporting_objects is a list of helper DUT/POU objects, each with
+name, kind (DUT/FUNCTION/FUNCTION_BLOCK), declaration, implementation; functions need return_type.
+Keep exact task interface names/types and implement all behavior. Define referenced DUTs. No Markdown.
+Do not change requirements or use reference answers. Standard library is available in the project.
+The target is CODESYS 3.5 ST. Compilation is offline; do not contact physical equipment.
+
+You are the existing coding-agent baseline. The complete task is supplied below. The owner has already authorized this noninteractive benchmark and the supplied IDE-simulation tools within the stated limits. Use the supplied compiler, simulator, and formal verification tools directly; shell commands are unnecessary for this task. Use compile_st to compile each candidate. Maximum 3 total compiler calls. Use simulate_st to simulate candidates against your test cases. Maximum 3 total simulation calls. Use verify_st to formally verify FB_Task against the LTL/INVAR specifications (returns PASS or counterexample trace). After compilation errors, counterexamples, or simulation failures, repair and retest within these limits. Stop on successful verification or infrastructure failure. Do not inspect other directories, environment variables, API credentials, reference code, or other runs. Save the exact final submitted source to candidate.json. Return a concise status; raw trusted compiler, formal verification, and simulation evidence will be used for evaluation.
+TASK
+{
+  "id": "PUB014",
+  "title": "IPv4 Parsing with Format and Range Checks",
+  "difficulty": "medium",
+  "requirements": "# IPv4 Parsing with Format and Range Checks\n\n- **Difficulty:** Medium (medium)\n\n## Requirements\n\nDesign a PLC function block in Structured Text (ST) that parses a dotted-decimal IPv4 string into a 32-bit unsigned integer.\n\n1. ipText must contain four nonempty decimal-digit segments separated by periods. Each segment must have a value from 0 through 255.\n2. Assemble the address in network byte order: the first segment occupies the most significant 8 bits and the fourth occupies the least significant 8 bits. Write the result to ipValue.\n3. Set ipValue to 0 for malformed input, a nondigit segment, an incorrect segment count or any out-of-range segment. The valid address 0.0.0.0 also produces 0.\n\n## Interface Definition\n\n| Direction | Variable/Field | Data Type | Description |\n| --- | --- | --- | --- |\n| Input | `ipText` | `STRING(254)` | IPv4 text to parse, with a capacity of 254 characters. A valid dotted-decimal address requires at most 15 characters. |\n| Output | `ipValue` | `UDINT` | 32-bit address in network byte order; zero for invalid input. |",
+  "scenario": "Strict decimal IPv4 parsing into a network-order unsigned address.",
+  "interface": [
+    {
+      "direction": "INPUT",
+      "name": "ipText",
+      "type": "STRING(254)",
+      "description": "IPv4 text to parse, with a capacity of 254 characters. A valid dotted-decimal address requires at most 15 characters."
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "ipValue",
+      "type": "UDINT",
+      "description": "32-bit address in network byte order; zero for invalid input."
+    }
+  ],
+  "initial_conditions": {
+    "ipValue": 0
+  },
+  "scan_semantics": "Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call. Retained pre-state q[k] becomes q[k+1]. Each test resets the instance. A transition affects the same observed scan. dt_ms is elapsed time since the preceding invocation; the first invocation starts IEC timers at elapsed zero. CycleTime inputs, where supplied, are attributed to the current invocation rather than inferred from dt_ms.",
+  "safety_priority": [
+    "Malformed or out-of-range data forces zero in the same invocation."
+  ],
+  "assumptions": [
+    "Leading zeros are allowed because the official text requires decimal-digit segments without prohibiting them.",
+    "Signs, whitespace, hexadecimal notation and embedded nondigits are rejected.",
+    "Input STRING capacity (<=254 UTF-8 bytes) is checked before truncating at the first NUL byte. Embedded NUL terminates the visible IPv4 text; arbitrary leading zeros are permitted within capacity, and each digit character must be ASCII '0'..'9'.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+  ],
+  "atomic_propositions": {
+    "valid": "exactly four nonempty decimal-digit segments separated by periods, each parsed value 0..255",
+    "packed": "ipValue=a*16777216+b*65536+c*256+d for the four parsed octets",
+    "zero": "ipValue=0",
+    "same_input": "k>=1 AND I[k].ipText=I[k-1].ipText",
+    "same_output": "k>=1 AND O[k].ipValue=O[k-1].ipValue",
+    "ipText": "I[k].ipText: sampled input (STRING(254)).",
+    "ipValue": "O[k].ipValue: independently observed post-scan candidate value (UDINT); never defined as expected output.",
+    "init": "At the separate pre-invocation initial observation before scan k=0: O_init.ipValue=0."
+  },
+  "ltl": [
+    {
+      "id": "PUB014.P_init",
+      "kind": "safety",
+      "formula": "init",
+      "description": "Before the first scan invocation, all declared OUTPUT variables and initial instance state hold their declared initial values.",
+      "explanation": "Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "INITIAL_INSTANCE"
+    },
+    {
+      "id": "PUB014.P1",
+      "name": "Valid assembly",
+      "formula": "G(valid -> packed)",
+      "explanation": "The first octet is the most significant byte.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB014.P2",
+      "name": "Invalid input",
+      "formula": "G(!valid -> zero)",
+      "explanation": "Invalid data never preserves an old result.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB014.P3",
+      "name": "Stateless parsing",
+      "formula": "G(same_input -> same_output)",
+      "explanation": "Repeated strings produce repeated results.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    }
+  ]
+}

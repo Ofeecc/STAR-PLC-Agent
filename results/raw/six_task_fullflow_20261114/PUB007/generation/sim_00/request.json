@@ -1,0 +1,1528 @@
+{
+  "request_id": "841d6c37d8654f7c9fe350c08a1d5f7b",
+  "mode": "IDE_SIMULATION_ONLY",
+  "no_physical_connection": true,
+  "workspace": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\605777a724e92bc0",
+  "project": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\605777a724e92bc0\\simulation.project",
+  "template": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\605777a724e92bc0\\benchmark.project",
+  "task_id": "PUB007",
+  "task_sha256": "d0f40346e357e7143720f09d20f09167e10b08595d06efb7a15ecf21ef62f6e7",
+  "source_sha256": "68f4bb8642ca997f54cf671f25e5f64b58a23af371b2ad646bcb06c6e295a8da",
+  "candidate": {
+    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    mode : BOOL;\n    start : BOOL;\n    stop : BOOL;\nEND_VAR\nVAR_IN_OUT\n    pumpGroup : ARRAY[1..5] OF ST_Pump;\nEND_VAR\nVAR\n    sampledMode : BOOL;\n    sampledStart : BOOL;\n    sampledStop : BOOL;\n    autoRequest : BOOL;\n    runNext : ARRAY[1..5] OF BOOL;\n    topThree : ARRAY[1..5] OF BOOL;\n    i : INT;\n    j : INT;\n    rank : INT;\nEND_VAR",
+    "implementation": "// Stage 1: sample inputs once for the scan\nsampledMode := mode;\nsampledStart := start;\nsampledStop := stop;\n\n// Stage 2: select operating request; stop has priority over start\nautoRequest := FALSE;\nIF (NOT sampledStop) AND sampledStart AND sampledMode THEN\n    autoRequest := TRUE;\nEND_IF;\n\n// Stage 3: no timer FBs are required in this design\n\n// Stage 4: unified output assignment\nIF autoRequest THEN\n    FOR i := 1 TO 5 DO\n        topThree[i] := FALSE;\n    END_FOR;\n\n    FOR i := 1 TO 5 DO\n        rank := 0;\n        FOR j := 1 TO 5 DO\n            IF (pumpGroup[j].priority > pumpGroup[i].priority)\n               OR ((pumpGroup[j].priority = pumpGroup[i].priority) AND (j < i)) THEN\n                rank := rank + 1;\n            END_IF;\n        END_FOR;\n\n        IF rank < 3 THEN\n            topThree[i] := TRUE;\n        END_IF;\n    END_FOR;\nEND_IF;\n\nFOR i := 1 TO 5 DO\n    IF sampledStop THEN\n        runNext[i] := FALSE;\n    ELSIF sampledStart THEN\n        IF sampledMode THEN\n            runNext[i] := topThree[i];\n        ELSE\n            runNext[i] := pumpGroup[i].selection;\n        END_IF;\n    ELSE\n        runNext[i] := pumpGroup[i].RunComd;\n    END_IF;\nEND_FOR;\n\nFOR i := 1 TO 5 DO\n    pumpGroup[i].RunComd := runNext[i];\nEND_FOR;",
+    "supporting_objects": [
+      {
+        "name": "ST_Pump",
+        "kind": "DUT",
+        "declaration": "TYPE ST_Pump :\nSTRUCT\n    priority : INT;\n    selection : BOOL;\n    RunComd : BOOL;\nEND_STRUCT\nEND_TYPE",
+        "implementation": ""
+      }
+    ]
+  },
+  "program": {
+    "declaration": "PROGRAM PLC_PRG\nVAR\n BenchStep : UDINT := 0;\n BenchCalls : UDINT := 0;\n BenchDone : BOOL := FALSE;\n BenchUut0 : FB_Task;\n BenchUut1 : FB_Task;\n Binding_0_pumpGroup : ARRAY[1..5] OF ST_Pump;\n Binding_1_pumpGroup : ARRAY[1..5] OF ST_Pump;\n TraceIn_mode : ARRAY[0..7] OF BOOL;\n TraceIn_start : ARRAY[0..7] OF BOOL;\n TraceIn_stop : ARRAY[0..7] OF BOOL;\n TraceOut_pumpGroup_1_priority : ARRAY[0..7] OF INT;\n TraceOut_pumpGroup_1_selection : ARRAY[0..7] OF BOOL;\n TraceOut_pumpGroup_1_RunComd : ARRAY[0..7] OF BOOL;\n TraceOut_pumpGroup_2_priority : ARRAY[0..7] OF INT;\n TraceOut_pumpGroup_2_selection : ARRAY[0..7] OF BOOL;\n TraceOut_pumpGroup_2_RunComd : ARRAY[0..7] OF BOOL;\n TraceOut_pumpGroup_3_priority : ARRAY[0..7] OF INT;\n TraceOut_pumpGroup_3_selection : ARRAY[0..7] OF BOOL;\n TraceOut_pumpGroup_3_RunComd : ARRAY[0..7] OF BOOL;\n TraceOut_pumpGroup_4_priority : ARRAY[0..7] OF INT;\n TraceOut_pumpGroup_4_selection : ARRAY[0..7] OF BOOL;\n TraceOut_pumpGroup_4_RunComd : ARRAY[0..7] OF BOOL;\n TraceOut_pumpGroup_5_priority : ARRAY[0..7] OF INT;\n TraceOut_pumpGroup_5_selection : ARRAY[0..7] OF BOOL;\n TraceOut_pumpGroup_5_RunComd : ARRAY[0..7] OF BOOL;\nEND_VAR",
+    "implementation": "IF NOT BenchDone THEN\n CASE BenchStep OF\n 0:\n   Binding_0_pumpGroup[1].priority := INT#1;\n   Binding_0_pumpGroup[1].selection := TRUE;\n   Binding_0_pumpGroup[1].RunComd := FALSE;\n   Binding_0_pumpGroup[2].priority := INT#2;\n   Binding_0_pumpGroup[2].selection := FALSE;\n   Binding_0_pumpGroup[2].RunComd := FALSE;\n   Binding_0_pumpGroup[3].priority := INT#3;\n   Binding_0_pumpGroup[3].selection := TRUE;\n   Binding_0_pumpGroup[3].RunComd := FALSE;\n   Binding_0_pumpGroup[4].priority := INT#4;\n   Binding_0_pumpGroup[4].selection := FALSE;\n   Binding_0_pumpGroup[4].RunComd := FALSE;\n   Binding_0_pumpGroup[5].priority := INT#5;\n   Binding_0_pumpGroup[5].selection := FALSE;\n   Binding_0_pumpGroup[5].RunComd := FALSE;\n   BenchUut0.mode := FALSE;\n   BenchUut0.start := TRUE;\n   BenchUut0.stop := FALSE;\n   TraceIn_mode[0] := BenchUut0.mode;\n   TraceIn_start[0] := BenchUut0.start;\n   TraceIn_stop[0] := BenchUut0.stop;\n   BenchUut0(pumpGroup := Binding_0_pumpGroup);\n   TraceOut_pumpGroup_1_priority[0] := Binding_0_pumpGroup[1].priority;\n   TraceOut_pumpGroup_1_selection[0] := Binding_0_pumpGroup[1].selection;\n   TraceOut_pumpGroup_1_RunComd[0] := Binding_0_pumpGroup[1].RunComd;\n   TraceOut_pumpGroup_2_priority[0] := Binding_0_pumpGroup[2].priority;\n   TraceOut_pumpGroup_2_selection[0] := Binding_0_pumpGroup[2].selection;\n   TraceOut_pumpGroup_2_RunComd[0] := Binding_0_pumpGroup[2].RunComd;\n   TraceOut_pumpGroup_3_priority[0] := Binding_0_pumpGroup[3].priority;\n   TraceOut_pumpGroup_3_selection[0] := Binding_0_pumpGroup[3].selection;\n   TraceOut_pumpGroup_3_RunComd[0] := Binding_0_pumpGroup[3].RunComd;\n   TraceOut_pumpGroup_4_priority[0] := Binding_0_pumpGroup[4].priority;\n   TraceOut_pumpGroup_4_selection[0] := Binding_0_pumpGroup[4].selection;\n   TraceOut_pumpGroup_4_RunComd[0] := Binding_0_pumpGroup[4].RunComd;\n   TraceOut_pumpGroup_5_priority[0] := Binding_0_pumpGroup[5].priority;\n   TraceOut_pumpGroup_5_selection[0] := Binding_0_pumpGroup[5].selection;\n   TraceOut_pumpGroup_5_RunComd[0] := Binding_0_pumpGroup[5].RunComd;\n   BenchCalls := BenchCalls + 1;\n 1:\n   Binding_0_pumpGroup[1].priority := INT#1;\n   Binding_0_pumpGroup[1].selection := FALSE;\n   Binding_0_pumpGroup[1].RunComd := TRUE;\n   Binding_0_pumpGroup[2].priority := INT#2;\n   Binding_0_pumpGroup[2].selection := TRUE;\n   Binding_0_pumpGroup[2].RunComd := FALSE;\n   Binding_0_pumpGroup[3].priority := INT#3;\n   Binding_0_pumpGroup[3].selection := FALSE;\n   Binding_0_pumpGroup[3].RunComd := TRUE;\n   Binding_0_pumpGroup[4].priority := INT#4;\n   Binding_0_pumpGroup[4].selection := FALSE;\n   Binding_0_pumpGroup[4].RunComd := FALSE;\n   Binding_0_pumpGroup[5].priority := INT#5;\n   Binding_0_pumpGroup[5].selection := FALSE;\n   Binding_0_pumpGroup[5].RunComd := FALSE;\n   BenchUut0.mode := FALSE;\n   BenchUut0.start := FALSE;\n   BenchUut0.stop := FALSE;\n   TraceIn_mode[1] := BenchUut0.mode;\n   TraceIn_start[1] := BenchUut0.start;\n   TraceIn_stop[1] := BenchUut0.stop;\n   BenchUut0(pumpGroup := Binding_0_pumpGroup);\n   TraceOut_pumpGroup_1_priority[1] := Binding_0_pumpGroup[1].priority;\n   TraceOut_pumpGroup_1_selection[1] := Binding_0_pumpGroup[1].selection;\n   TraceOut_pumpGroup_1_RunComd[1] := Binding_0_pumpGroup[1].RunComd;\n   TraceOut_pumpGroup_2_priority[1] := Binding_0_pumpGroup[2].priority;\n   TraceOut_pumpGroup_2_selection[1] := Binding_0_pumpGroup[2].selection;\n   TraceOut_pumpGroup_2_RunComd[1] := Binding_0_pumpGroup[2].RunComd;\n   TraceOut_pumpGroup_3_priority[1] := Binding_0_pumpGroup[3].priority;\n   TraceOut_pumpGroup_3_selection[1] := Binding_0_pumpGroup[3].selection;\n   TraceOut_pumpGroup_3_RunComd[1] := Binding_0_pumpGroup[3].RunComd;\n   TraceOut_pumpGroup_4_priority[1] := Binding_0_pumpGroup[4].priority;\n   TraceOut_pumpGroup_4_selection[1] := Binding_0_pumpGroup[4].selection;\n   TraceOut_pumpGroup_4_RunComd[1] := Binding_0_pumpGroup[4].RunComd;\n   TraceOut_pumpGroup_5_priority[1] := Binding_0_pumpGroup[5].priority;\n   TraceOut_pumpGroup_5_selection[1] := Binding_0_pumpGroup[5].selection;\n   TraceOut_pumpGroup_5_RunComd[1] := Binding_0_pumpGroup[5].RunComd;\n   BenchCalls := BenchCalls + 1;\n 2:\n   Binding_0_pumpGroup[1].priority := INT#1;\n   Binding_0_pumpGroup[1].selection := FALSE;\n   Binding_0_pumpGroup[1].RunComd := TRUE;\n   Binding_0_pumpGroup[2].priority := INT#2;\n   Binding_0_pumpGroup[2].selection := TRUE;\n   Binding_0_pumpGroup[2].RunComd := FALSE;\n   Binding_0_pumpGroup[3].priority := INT#3;\n   Binding_0_pumpGroup[3].selection := FALSE;\n   Binding_0_pumpGroup[3].RunComd := TRUE;\n   Binding_0_pumpGroup[4].priority := INT#4;\n   Binding_0_pumpGroup[4].selection := TRUE;\n   Binding_0_pumpGroup[4].RunComd := FALSE;\n   Binding_0_pumpGroup[5].priority := INT#5;\n   Binding_0_pumpGroup[5].selection := FALSE;\n   Binding_0_pumpGroup[5].RunComd := FALSE;\n   BenchUut0.mode := FALSE;\n   BenchUut0.start := TRUE;\n   BenchUut0.stop := TRUE;\n   TraceIn_mode[2] := BenchUut0.mode;\n   TraceIn_start[2] := BenchUut0.start;\n   TraceIn_stop[2] := BenchUut0.stop;\n   BenchUut0(pumpGroup := Binding_0_pumpGroup);\n   TraceOut_pumpGroup_1_priority[2] := Binding_0_pumpGroup[1].priority;\n   TraceOut_pumpGroup_1_selection[2] := Binding_0_pumpGroup[1].selection;\n   TraceOut_pumpGroup_1_RunComd[2] := Binding_0_pumpGroup[1].RunComd;\n   TraceOut_pumpGroup_2_priority[2] := Binding_0_pumpGroup[2].priority;\n   TraceOut_pumpGroup_2_selection[2] := Binding_0_pumpGroup[2].selection;\n   TraceOut_pumpGroup_2_RunComd[2] := Binding_0_pumpGroup[2].RunComd;\n   TraceOut_pumpGroup_3_priority[2] := Binding_0_pumpGroup[3].priority;\n   TraceOut_pumpGroup_3_selection[2] := Binding_0_pumpGroup[3].selection;\n   TraceOut_pumpGroup_3_RunComd[2] := Binding_0_pumpGroup[3].RunComd;\n   TraceOut_pumpGroup_4_priority[2] := Binding_0_pumpGroup[4].priority;\n   TraceOut_pumpGroup_4_selection[2] := Binding_0_pumpGroup[4].selection;\n   TraceOut_pumpGroup_4_RunComd[2] := Binding_0_pumpGroup[4].RunComd;\n   TraceOut_pumpGroup_5_priority[2] := Binding_0_pumpGroup[5].priority;\n   TraceOut_pumpGroup_5_selection[2] := Binding_0_pumpGroup[5].selection;\n   TraceOut_pumpGroup_5_RunComd[2] := Binding_0_pumpGroup[5].RunComd;\n   BenchCalls := BenchCalls + 1;\n 3:\n   Binding_0_pumpGroup[1].priority := INT#1;\n   Binding_0_pumpGroup[1].selection := FALSE;\n   Binding_0_pumpGroup[1].RunComd := FALSE;\n   Binding_0_pumpGroup[2].priority := INT#2;\n   Binding_0_pumpGroup[2].selection := FALSE;\n   Binding_0_pumpGroup[2].RunComd := FALSE;\n   Binding_0_pumpGroup[3].priority := INT#3;\n   Binding_0_pumpGroup[3].selection := FALSE;\n   Binding_0_pumpGroup[3].RunComd := FALSE;\n   Binding_0_pumpGroup[4].priority := INT#4;\n   Binding_0_pumpGroup[4].selection := FALSE;\n   Binding_0_pumpGroup[4].RunComd := FALSE;\n   Binding_0_pumpGroup[5].priority := INT#5;\n   Binding_0_pumpGroup[5].selection := TRUE;\n   Binding_0_pumpGroup[5].RunComd := FALSE;\n   BenchUut0.mode := FALSE;\n   BenchUut0.start := TRUE;\n   BenchUut0.stop := FALSE;\n   TraceIn_mode[3] := BenchUut0.mode;\n   TraceIn_start[3] := BenchUut0.start;\n   TraceIn_stop[3] := BenchUut0.stop;\n   BenchUut0(pumpGroup := Binding_0_pumpGroup);\n   TraceOut_pumpGroup_1_priority[3] := Binding_0_pumpGroup[1].priority;\n   TraceOut_pumpGroup_1_selection[3] := Binding_0_pumpGroup[1].selection;\n   TraceOut_pumpGroup_1_RunComd[3] := Binding_0_pumpGroup[1].RunComd;\n   TraceOut_pumpGroup_2_priority[3] := Binding_0_pumpGroup[2].priority;\n   TraceOut_pumpGroup_2_selection[3] := Binding_0_pumpGroup[2].selection;\n   TraceOut_pumpGroup_2_RunComd[3] := Binding_0_pumpGroup[2].RunComd;\n   TraceOut_pumpGroup_3_priority[3] := Binding_0_pumpGroup[3].priority;\n   TraceOut_pumpGroup_3_selection[3] := Binding_0_pumpGroup[3].selection;\n   TraceOut_pumpGroup_3_RunComd[3] := Binding_0_pumpGroup[3].RunComd;\n   TraceOut_pumpGroup_4_priority[3] := Binding_0_pumpGroup[4].priority;\n   TraceOut_pumpGroup_4_selection[3] := Binding_0_pumpGroup[4].selection;\n   TraceOut_pumpGroup_4_RunComd[3] := Binding_0_pumpGroup[4].RunComd;\n   TraceOut_pumpGroup_5_priority[3] := Binding_0_pumpGroup[5].priority;\n   TraceOut_pumpGroup_5_selection[3] := Binding_0_pumpGroup[5].selection;\n   TraceOut_pumpGroup_5_RunComd[3] := Binding_0_pumpGroup[5].RunComd;\n   BenchCalls := BenchCalls + 1;\n 4:\n   Binding_1_pumpGroup[1].priority := INT#10;\n   Binding_1_pumpGroup[1].selection := TRUE;\n   Binding_1_pumpGroup[1].RunComd := FALSE;\n   Binding_1_pumpGroup[2].priority := INT#20;\n   Binding_1_pumpGroup[2].selection := FALSE;\n   Binding_1_pumpGroup[2].RunComd := FALSE;\n   Binding_1_pumpGroup[3].priority := INT#20;\n   Binding_1_pumpGroup[3].selection := FALSE;\n   Binding_1_pumpGroup[3].RunComd := FALSE;\n   Binding_1_pumpGroup[4].priority := INT#20;\n   Binding_1_pumpGroup[4].selection := TRUE;\n   Binding_1_pumpGroup[4].RunComd := FALSE;\n   Binding_1_pumpGroup[5].priority := INT#30;\n   Binding_1_pumpGroup[5].selection := FALSE;\n   Binding_1_pumpGroup[5].RunComd := FALSE;\n   BenchUut1.mode := TRUE;\n   BenchUut1.start := TRUE;\n   BenchUut1.stop := FALSE;\n   TraceIn_mode[4] := BenchUut1.mode;\n   TraceIn_start[4] := BenchUut1.start;\n   TraceIn_stop[4] := BenchUut1.stop;\n   BenchUut1(pumpGroup := Binding_1_pumpGroup);\n   TraceOut_pumpGroup_1_priority[4] := Binding_1_pumpGroup[1].priority;\n   TraceOut_pumpGroup_1_selection[4] := Binding_1_pumpGroup[1].selection;\n   TraceOut_pumpGroup_1_RunComd[4] := Binding_1_pumpGroup[1].RunComd;\n   TraceOut_pumpGroup_2_priority[4] := Binding_1_pumpGroup[2].priority;\n   TraceOut_pumpGroup_2_selection[4] := Binding_1_pumpGroup[2].selection;\n   TraceOut_pumpGroup_2_RunComd[4] := Binding_1_pumpGroup[2].RunComd;\n   TraceOut_pumpGroup_3_priority[4] := Binding_1_pumpGroup[3].priority;\n   TraceOut_pumpGroup_3_selection[4] := Binding_1_pumpGroup[3].selection;\n   TraceOut_pumpGroup_3_RunComd[4] := Binding_1_pumpGroup[3].RunComd;\n   TraceOut_pumpGroup_4_priority[4] := Binding_1_pumpGroup[4].priority;\n   TraceOut_pumpGroup_4_selection[4] := Binding_1_pumpGroup[4].selection;\n   TraceOut_pumpGroup_4_RunComd[4] := Binding_1_pumpGroup[4].RunComd;\n   TraceOut_pumpGroup_5_priority[4] := Binding_1_pumpGroup[5].priority;\n   TraceOut_pumpGroup_5_selection[4] := Binding_1_pumpGroup[5].selection;\n   TraceOut_pumpGroup_5_RunComd[4] := Binding_1_pumpGroup[5].RunComd;\n   BenchCalls := BenchCalls + 1;\n 5:\n   Binding_1_pumpGroup[1].priority := INT#50;\n   Binding_1_pumpGroup[1].selection := FALSE;\n   Binding_1_pumpGroup[1].RunComd := FALSE;\n   Binding_1_pumpGroup[2].priority := INT#1;\n   Binding_1_pumpGroup[2].selection := TRUE;\n   Binding_1_pumpGroup[2].RunComd := TRUE;\n   Binding_1_pumpGroup[3].priority := INT#1;\n   Binding_1_pumpGroup[3].selection := FALSE;\n   Binding_1_pumpGroup[3].RunComd := TRUE;\n   Binding_1_pumpGroup[4].priority := INT#1;\n   Binding_1_pumpGroup[4].selection := FALSE;\n   Binding_1_pumpGroup[4].RunComd := FALSE;\n   Binding_1_pumpGroup[5].priority := INT#1;\n   Binding_1_pumpGroup[5].selection := FALSE;\n   Binding_1_pumpGroup[5].RunComd := TRUE;\n   BenchUut1.mode := TRUE;\n   BenchUut1.start := FALSE;\n   BenchUut1.stop := FALSE;\n   TraceIn_mode[5] := BenchUut1.mode;\n   TraceIn_start[5] := BenchUut1.start;\n   TraceIn_stop[5] := BenchUut1.stop;\n   BenchUut1(pumpGroup := Binding_1_pumpGroup);\n   TraceOut_pumpGroup_1_priority[5] := Binding_1_pumpGroup[1].priority;\n   TraceOut_pumpGroup_1_selection[5] := Binding_1_pumpGroup[1].selection;\n   TraceOut_pumpGroup_1_RunComd[5] := Binding_1_pumpGroup[1].RunComd;\n   TraceOut_pumpGroup_2_priority[5] := Binding_1_pumpGroup[2].priority;\n   TraceOut_pumpGroup_2_selection[5] := Binding_1_pumpGroup[2].selection;\n   TraceOut_pumpGroup_2_RunComd[5] := Binding_1_pumpGroup[2].RunComd;\n   TraceOut_pumpGroup_3_priority[5] := Binding_1_pumpGroup[3].priority;\n   TraceOut_pumpGroup_3_selection[5] := Binding_1_pumpGroup[3].selection;\n   TraceOut_pumpGroup_3_RunComd[5] := Binding_1_pumpGroup[3].RunComd;\n   TraceOut_pumpGroup_4_priority[5] := Binding_1_pumpGroup[4].priority;\n   TraceOut_pumpGroup_4_selection[5] := Binding_1_pumpGroup[4].selection;\n   TraceOut_pumpGroup_4_RunComd[5] := Binding_1_pumpGroup[4].RunComd;\n   TraceOut_pumpGroup_5_priority[5] := Binding_1_pumpGroup[5].priority;\n   TraceOut_pumpGroup_5_selection[5] := Binding_1_pumpGroup[5].selection;\n   TraceOut_pumpGroup_5_RunComd[5] := Binding_1_pumpGroup[5].RunComd;\n   BenchCalls := BenchCalls + 1;\n 6:\n   Binding_1_pumpGroup[1].priority := INT#50;\n   Binding_1_pumpGroup[1].selection := FALSE;\n   Binding_1_pumpGroup[1].RunComd := FALSE;\n   Binding_1_pumpGroup[2].priority := INT#1;\n   Binding_1_pumpGroup[2].selection := TRUE;\n   Binding_1_pumpGroup[2].RunComd := TRUE;\n   Binding_1_pumpGroup[3].priority := INT#1;\n   Binding_1_pumpGroup[3].selection := FALSE;\n   Binding_1_pumpGroup[3].RunComd := TRUE;\n   Binding_1_pumpGroup[4].priority := INT#1;\n   Binding_1_pumpGroup[4].selection := FALSE;\n   Binding_1_pumpGroup[4].RunComd := FALSE;\n   Binding_1_pumpGroup[5].priority := INT#1;\n   Binding_1_pumpGroup[5].selection := FALSE;\n   Binding_1_pumpGroup[5].RunComd := TRUE;\n   BenchUut1.mode := TRUE;\n   BenchUut1.start := TRUE;\n   BenchUut1.stop := FALSE;\n   TraceIn_mode[6] := BenchUut1.mode;\n   TraceIn_start[6] := BenchUut1.start;\n   TraceIn_stop[6] := BenchUut1.stop;\n   BenchUut1(pumpGroup := Binding_1_pumpGroup);\n   TraceOut_pumpGroup_1_priority[6] := Binding_1_pumpGroup[1].priority;\n   TraceOut_pumpGroup_1_selection[6] := Binding_1_pumpGroup[1].selection;\n   TraceOut_pumpGroup_1_RunComd[6] := Binding_1_pumpGroup[1].RunComd;\n   TraceOut_pumpGroup_2_priority[6] := Binding_1_pumpGroup[2].priority;\n   TraceOut_pumpGroup_2_selection[6] := Binding_1_pumpGroup[2].selection;\n   TraceOut_pumpGroup_2_RunComd[6] := Binding_1_pumpGroup[2].RunComd;\n   TraceOut_pumpGroup_3_priority[6] := Binding_1_pumpGroup[3].priority;\n   TraceOut_pumpGroup_3_selection[6] := Binding_1_pumpGroup[3].selection;\n   TraceOut_pumpGroup_3_RunComd[6] := Binding_1_pumpGroup[3].RunComd;\n   TraceOut_pumpGroup_4_priority[6] := Binding_1_pumpGroup[4].priority;\n   TraceOut_pumpGroup_4_selection[6] := Binding_1_pumpGroup[4].selection;\n   TraceOut_pumpGroup_4_RunComd[6] := Binding_1_pumpGroup[4].RunComd;\n   TraceOut_pumpGroup_5_priority[6] := Binding_1_pumpGroup[5].priority;\n   TraceOut_pumpGroup_5_selection[6] := Binding_1_pumpGroup[5].selection;\n   TraceOut_pumpGroup_5_RunComd[6] := Binding_1_pumpGroup[5].RunComd;\n   BenchCalls := BenchCalls + 1;\n 7:\n   Binding_1_pumpGroup[1].priority := INT#50;\n   Binding_1_pumpGroup[1].selection := FALSE;\n   Binding_1_pumpGroup[1].RunComd := TRUE;\n   Binding_1_pumpGroup[2].priority := INT#1;\n   Binding_1_pumpGroup[2].selection := TRUE;\n   Binding_1_pumpGroup[2].RunComd := TRUE;\n   Binding_1_pumpGroup[3].priority := INT#1;\n   Binding_1_pumpGroup[3].selection := FALSE;\n   Binding_1_pumpGroup[3].RunComd := TRUE;\n   Binding_1_pumpGroup[4].priority := INT#1;\n   Binding_1_pumpGroup[4].selection := FALSE;\n   Binding_1_pumpGroup[4].RunComd := FALSE;\n   Binding_1_pumpGroup[5].priority := INT#1;\n   Binding_1_pumpGroup[5].selection := FALSE;\n   Binding_1_pumpGroup[5].RunComd := FALSE;\n   BenchUut1.mode := TRUE;\n   BenchUut1.start := TRUE;\n   BenchUut1.stop := TRUE;\n   TraceIn_mode[7] := BenchUut1.mode;\n   TraceIn_start[7] := BenchUut1.start;\n   TraceIn_stop[7] := BenchUut1.stop;\n   BenchUut1(pumpGroup := Binding_1_pumpGroup);\n   TraceOut_pumpGroup_1_priority[7] := Binding_1_pumpGroup[1].priority;\n   TraceOut_pumpGroup_1_selection[7] := Binding_1_pumpGroup[1].selection;\n   TraceOut_pumpGroup_1_RunComd[7] := Binding_1_pumpGroup[1].RunComd;\n   TraceOut_pumpGroup_2_priority[7] := Binding_1_pumpGroup[2].priority;\n   TraceOut_pumpGroup_2_selection[7] := Binding_1_pumpGroup[2].selection;\n   TraceOut_pumpGroup_2_RunComd[7] := Binding_1_pumpGroup[2].RunComd;\n   TraceOut_pumpGroup_3_priority[7] := Binding_1_pumpGroup[3].priority;\n   TraceOut_pumpGroup_3_selection[7] := Binding_1_pumpGroup[3].selection;\n   TraceOut_pumpGroup_3_RunComd[7] := Binding_1_pumpGroup[3].RunComd;\n   TraceOut_pumpGroup_4_priority[7] := Binding_1_pumpGroup[4].priority;\n   TraceOut_pumpGroup_4_selection[7] := Binding_1_pumpGroup[4].selection;\n   TraceOut_pumpGroup_4_RunComd[7] := Binding_1_pumpGroup[4].RunComd;\n   TraceOut_pumpGroup_5_priority[7] := Binding_1_pumpGroup[5].priority;\n   TraceOut_pumpGroup_5_selection[7] := Binding_1_pumpGroup[5].selection;\n   TraceOut_pumpGroup_5_RunComd[7] := Binding_1_pumpGroup[5].RunComd;\n   BenchCalls := BenchCalls + 1;\n END_CASE;\n BenchStep := BenchStep + 1;\n IF BenchStep >= 8 THEN BenchDone := TRUE; END_IF;\nEND_IF;",
+    "step_count": 8,
+    "steps": [
+      {
+        "index": 0,
+        "case_id": "case_1_manual_normal_stop",
+        "case_step": 0,
+        "dt_ms": 0
+      },
+      {
+        "index": 1,
+        "case_id": "case_1_manual_normal_stop",
+        "case_step": 1,
+        "dt_ms": 0
+      },
+      {
+        "index": 2,
+        "case_id": "case_1_manual_normal_stop",
+        "case_step": 2,
+        "dt_ms": 0
+      },
+      {
+        "index": 3,
+        "case_id": "case_1_manual_normal_stop",
+        "case_step": 3,
+        "dt_ms": 0
+      },
+      {
+        "index": 4,
+        "case_id": "case_2_auto_priority_tie_stop",
+        "case_step": 0,
+        "dt_ms": 0
+      },
+      {
+        "index": 5,
+        "case_id": "case_2_auto_priority_tie_stop",
+        "case_step": 1,
+        "dt_ms": 0
+      },
+      {
+        "index": 6,
+        "case_id": "case_2_auto_priority_tie_stop",
+        "case_step": 2,
+        "dt_ms": 0
+      },
+      {
+        "index": 7,
+        "case_id": "case_2_auto_priority_tie_stop",
+        "case_step": 3,
+        "dt_ms": 0
+      }
+    ],
+    "inputs": [
+      {
+        "direction": "INPUT",
+        "name": "mode",
+        "type": "BOOL",
+        "description": "FALSE: Manual mode<br>TRUE: Automatic mode"
+      },
+      {
+        "direction": "INPUT",
+        "name": "start",
+        "type": "BOOL",
+        "description": "Start button, used to start the manually selected or automatically selected pump"
+      },
+      {
+        "direction": "INPUT",
+        "name": "stop",
+        "type": "BOOL",
+        "description": "Stop button, used to stop all pumps"
+      }
+    ],
+    "outputs": [],
+    "trace_expressions": [
+      "PLC_PRG.TraceIn_mode[0]",
+      "PLC_PRG.TraceIn_start[0]",
+      "PLC_PRG.TraceIn_stop[0]",
+      "PLC_PRG.TraceOut_pumpGroup_1_priority[0]",
+      "PLC_PRG.TraceOut_pumpGroup_1_selection[0]",
+      "PLC_PRG.TraceOut_pumpGroup_1_RunComd[0]",
+      "PLC_PRG.TraceOut_pumpGroup_2_priority[0]",
+      "PLC_PRG.TraceOut_pumpGroup_2_selection[0]",
+      "PLC_PRG.TraceOut_pumpGroup_2_RunComd[0]",
+      "PLC_PRG.TraceOut_pumpGroup_3_priority[0]",
+      "PLC_PRG.TraceOut_pumpGroup_3_selection[0]",
+      "PLC_PRG.TraceOut_pumpGroup_3_RunComd[0]",
+      "PLC_PRG.TraceOut_pumpGroup_4_priority[0]",
+      "PLC_PRG.TraceOut_pumpGroup_4_selection[0]",
+      "PLC_PRG.TraceOut_pumpGroup_4_RunComd[0]",
+      "PLC_PRG.TraceOut_pumpGroup_5_priority[0]",
+      "PLC_PRG.TraceOut_pumpGroup_5_selection[0]",
+      "PLC_PRG.TraceOut_pumpGroup_5_RunComd[0]",
+      "PLC_PRG.TraceIn_mode[1]",
+      "PLC_PRG.TraceIn_start[1]",
+      "PLC_PRG.TraceIn_stop[1]",
+      "PLC_PRG.TraceOut_pumpGroup_1_priority[1]",
+      "PLC_PRG.TraceOut_pumpGroup_1_selection[1]",
+      "PLC_PRG.TraceOut_pumpGroup_1_RunComd[1]",
+      "PLC_PRG.TraceOut_pumpGroup_2_priority[1]",
+      "PLC_PRG.TraceOut_pumpGroup_2_selection[1]",
+      "PLC_PRG.TraceOut_pumpGroup_2_RunComd[1]",
+      "PLC_PRG.TraceOut_pumpGroup_3_priority[1]",
+      "PLC_PRG.TraceOut_pumpGroup_3_selection[1]",
+      "PLC_PRG.TraceOut_pumpGroup_3_RunComd[1]",
+      "PLC_PRG.TraceOut_pumpGroup_4_priority[1]",
+      "PLC_PRG.TraceOut_pumpGroup_4_selection[1]",
+      "PLC_PRG.TraceOut_pumpGroup_4_RunComd[1]",
+      "PLC_PRG.TraceOut_pumpGroup_5_priority[1]",
+      "PLC_PRG.TraceOut_pumpGroup_5_selection[1]",
+      "PLC_PRG.TraceOut_pumpGroup_5_RunComd[1]",
+      "PLC_PRG.TraceIn_mode[2]",
+      "PLC_PRG.TraceIn_start[2]",
+      "PLC_PRG.TraceIn_stop[2]",
+      "PLC_PRG.TraceOut_pumpGroup_1_priority[2]",
+      "PLC_PRG.TraceOut_pumpGroup_1_selection[2]",
+      "PLC_PRG.TraceOut_pumpGroup_1_RunComd[2]",
+      "PLC_PRG.TraceOut_pumpGroup_2_priority[2]",
+      "PLC_PRG.TraceOut_pumpGroup_2_selection[2]",
+      "PLC_PRG.TraceOut_pumpGroup_2_RunComd[2]",
+      "PLC_PRG.TraceOut_pumpGroup_3_priority[2]",
+      "PLC_PRG.TraceOut_pumpGroup_3_selection[2]",
+      "PLC_PRG.TraceOut_pumpGroup_3_RunComd[2]",
+      "PLC_PRG.TraceOut_pumpGroup_4_priority[2]",
+      "PLC_PRG.TraceOut_pumpGroup_4_selection[2]",
+      "PLC_PRG.TraceOut_pumpGroup_4_RunComd[2]",
+      "PLC_PRG.TraceOut_pumpGroup_5_priority[2]",
+      "PLC_PRG.TraceOut_pumpGroup_5_selection[2]",
+      "PLC_PRG.TraceOut_pumpGroup_5_RunComd[2]",
+      "PLC_PRG.TraceIn_mode[3]",
+      "PLC_PRG.TraceIn_start[3]",
+      "PLC_PRG.TraceIn_stop[3]",
+      "PLC_PRG.TraceOut_pumpGroup_1_priority[3]",
+      "PLC_PRG.TraceOut_pumpGroup_1_selection[3]",
+      "PLC_PRG.TraceOut_pumpGroup_1_RunComd[3]",
+      "PLC_PRG.TraceOut_pumpGroup_2_priority[3]",
+      "PLC_PRG.TraceOut_pumpGroup_2_selection[3]",
+      "PLC_PRG.TraceOut_pumpGroup_2_RunComd[3]",
+      "PLC_PRG.TraceOut_pumpGroup_3_priority[3]",
+      "PLC_PRG.TraceOut_pumpGroup_3_selection[3]",
+      "PLC_PRG.TraceOut_pumpGroup_3_RunComd[3]",
+      "PLC_PRG.TraceOut_pumpGroup_4_priority[3]",
+      "PLC_PRG.TraceOut_pumpGroup_4_selection[3]",
+      "PLC_PRG.TraceOut_pumpGroup_4_RunComd[3]",
+      "PLC_PRG.TraceOut_pumpGroup_5_priority[3]",
+      "PLC_PRG.TraceOut_pumpGroup_5_selection[3]",
+      "PLC_PRG.TraceOut_pumpGroup_5_RunComd[3]",
+      "PLC_PRG.TraceIn_mode[4]",
+      "PLC_PRG.TraceIn_start[4]",
+      "PLC_PRG.TraceIn_stop[4]",
+      "PLC_PRG.TraceOut_pumpGroup_1_priority[4]",
+      "PLC_PRG.TraceOut_pumpGroup_1_selection[4]",
+      "PLC_PRG.TraceOut_pumpGroup_1_RunComd[4]",
+      "PLC_PRG.TraceOut_pumpGroup_2_priority[4]",
+      "PLC_PRG.TraceOut_pumpGroup_2_selection[4]",
+      "PLC_PRG.TraceOut_pumpGroup_2_RunComd[4]",
+      "PLC_PRG.TraceOut_pumpGroup_3_priority[4]",
+      "PLC_PRG.TraceOut_pumpGroup_3_selection[4]",
+      "PLC_PRG.TraceOut_pumpGroup_3_RunComd[4]",
+      "PLC_PRG.TraceOut_pumpGroup_4_priority[4]",
+      "PLC_PRG.TraceOut_pumpGroup_4_selection[4]",
+      "PLC_PRG.TraceOut_pumpGroup_4_RunComd[4]",
+      "PLC_PRG.TraceOut_pumpGroup_5_priority[4]",
+      "PLC_PRG.TraceOut_pumpGroup_5_selection[4]",
+      "PLC_PRG.TraceOut_pumpGroup_5_RunComd[4]",
+      "PLC_PRG.TraceIn_mode[5]",
+      "PLC_PRG.TraceIn_start[5]",
+      "PLC_PRG.TraceIn_stop[5]",
+      "PLC_PRG.TraceOut_pumpGroup_1_priority[5]",
+      "PLC_PRG.TraceOut_pumpGroup_1_selection[5]",
+      "PLC_PRG.TraceOut_pumpGroup_1_RunComd[5]",
+      "PLC_PRG.TraceOut_pumpGroup_2_priority[5]",
+      "PLC_PRG.TraceOut_pumpGroup_2_selection[5]",
+      "PLC_PRG.TraceOut_pumpGroup_2_RunComd[5]",
+      "PLC_PRG.TraceOut_pumpGroup_3_priority[5]",
+      "PLC_PRG.TraceOut_pumpGroup_3_selection[5]",
+      "PLC_PRG.TraceOut_pumpGroup_3_RunComd[5]",
+      "PLC_PRG.TraceOut_pumpGroup_4_priority[5]",
+      "PLC_PRG.TraceOut_pumpGroup_4_selection[5]",
+      "PLC_PRG.TraceOut_pumpGroup_4_RunComd[5]",
+      "PLC_PRG.TraceOut_pumpGroup_5_priority[5]",
+      "PLC_PRG.TraceOut_pumpGroup_5_selection[5]",
+      "PLC_PRG.TraceOut_pumpGroup_5_RunComd[5]",
+      "PLC_PRG.TraceIn_mode[6]",
+      "PLC_PRG.TraceIn_start[6]",
+      "PLC_PRG.TraceIn_stop[6]",
+      "PLC_PRG.TraceOut_pumpGroup_1_priority[6]",
+      "PLC_PRG.TraceOut_pumpGroup_1_selection[6]",
+      "PLC_PRG.TraceOut_pumpGroup_1_RunComd[6]",
+      "PLC_PRG.TraceOut_pumpGroup_2_priority[6]",
+      "PLC_PRG.TraceOut_pumpGroup_2_selection[6]",
+      "PLC_PRG.TraceOut_pumpGroup_2_RunComd[6]",
+      "PLC_PRG.TraceOut_pumpGroup_3_priority[6]",
+      "PLC_PRG.TraceOut_pumpGroup_3_selection[6]",
+      "PLC_PRG.TraceOut_pumpGroup_3_RunComd[6]",
+      "PLC_PRG.TraceOut_pumpGroup_4_priority[6]",
+      "PLC_PRG.TraceOut_pumpGroup_4_selection[6]",
+      "PLC_PRG.TraceOut_pumpGroup_4_RunComd[6]",
+      "PLC_PRG.TraceOut_pumpGroup_5_priority[6]",
+      "PLC_PRG.TraceOut_pumpGroup_5_selection[6]",
+      "PLC_PRG.TraceOut_pumpGroup_5_RunComd[6]",
+      "PLC_PRG.TraceIn_mode[7]",
+      "PLC_PRG.TraceIn_start[7]",
+      "PLC_PRG.TraceIn_stop[7]",
+      "PLC_PRG.TraceOut_pumpGroup_1_priority[7]",
+      "PLC_PRG.TraceOut_pumpGroup_1_selection[7]",
+      "PLC_PRG.TraceOut_pumpGroup_1_RunComd[7]",
+      "PLC_PRG.TraceOut_pumpGroup_2_priority[7]",
+      "PLC_PRG.TraceOut_pumpGroup_2_selection[7]",
+      "PLC_PRG.TraceOut_pumpGroup_2_RunComd[7]",
+      "PLC_PRG.TraceOut_pumpGroup_3_priority[7]",
+      "PLC_PRG.TraceOut_pumpGroup_3_selection[7]",
+      "PLC_PRG.TraceOut_pumpGroup_3_RunComd[7]",
+      "PLC_PRG.TraceOut_pumpGroup_4_priority[7]",
+      "PLC_PRG.TraceOut_pumpGroup_4_selection[7]",
+      "PLC_PRG.TraceOut_pumpGroup_4_RunComd[7]",
+      "PLC_PRG.TraceOut_pumpGroup_5_priority[7]",
+      "PLC_PRG.TraceOut_pumpGroup_5_selection[7]",
+      "PLC_PRG.TraceOut_pumpGroup_5_RunComd[7]"
+    ],
+    "trace_mapping": [
+      {
+        "step_index": 0,
+        "case_id": "case_1_manual_normal_stop",
+        "case_step": 0,
+        "dt_expr": null,
+        "inputs": {
+          "mode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_mode[0]",
+            "type": "BOOL"
+          },
+          "start": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_start[0]",
+            "type": "BOOL"
+          },
+          "stop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_stop[0]",
+            "type": "BOOL"
+          },
+          "pumpGroup": {
+            "kind": "raw",
+            "value": [
+              {
+                "priority": 1,
+                "selection": true,
+                "RunComd": false
+              },
+              {
+                "priority": 2,
+                "selection": false,
+                "RunComd": false
+              },
+              {
+                "priority": 3,
+                "selection": true,
+                "RunComd": false
+              },
+              {
+                "priority": 4,
+                "selection": false,
+                "RunComd": false
+              },
+              {
+                "priority": 5,
+                "selection": false,
+                "RunComd": false
+              }
+            ]
+          }
+        },
+        "outputs": {
+          "pumpGroup": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "struct",
+                "fields": {
+                  "priority": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_1_priority[0]",
+                    "type": "INT"
+                  },
+                  "selection": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_1_selection[0]",
+                    "type": "BOOL"
+                  },
+                  "RunComd": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_1_RunComd[0]",
+                    "type": "BOOL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "priority": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_2_priority[0]",
+                    "type": "INT"
+                  },
+                  "selection": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_2_selection[0]",
+                    "type": "BOOL"
+                  },
+                  "RunComd": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_2_RunComd[0]",
+                    "type": "BOOL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "priority": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_3_priority[0]",
+                    "type": "INT"
+                  },
+                  "selection": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_3_selection[0]",
+                    "type": "BOOL"
+                  },
+                  "RunComd": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_3_RunComd[0]",
+                    "type": "BOOL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "priority": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_4_priority[0]",
+                    "type": "INT"
+                  },
+                  "selection": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_4_selection[0]",
+                    "type": "BOOL"
+                  },
+                  "RunComd": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_4_RunComd[0]",
+                    "type": "BOOL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "priority": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_5_priority[0]",
+                    "type": "INT"
+                  },
+                  "selection": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_5_selection[0]",
+                    "type": "BOOL"
+                  },
+                  "RunComd": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_5_RunComd[0]",
+                    "type": "BOOL"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "step_index": 1,
+        "case_id": "case_1_manual_normal_stop",
+        "case_step": 1,
+        "dt_expr": null,
+        "inputs": {
+          "mode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_mode[1]",
+            "type": "BOOL"
+          },
+          "start": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_start[1]",
+            "type": "BOOL"
+          },
+          "stop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_stop[1]",
+            "type": "BOOL"
+          },
+          "pumpGroup": {
+            "kind": "raw",
+            "value": [
+              {
+                "priority": 1,
+                "selection": false,
+                "RunComd": true
+              },
+              {
+                "priority": 2,
+                "selection": true,
+                "RunComd": false
+              },
+              {
+                "priority": 3,
+                "selection": false,
+                "RunComd": true
+              },
+              {
+                "priority": 4,
+                "selection": false,
+                "RunComd": false
+              },
+              {
+                "priority": 5,
+                "selection": false,
+                "RunComd": false
+              }
+            ]
+          }
+        },
+        "outputs": {
+          "pumpGroup": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "struct",
+                "fields": {
+                  "priority": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_1_priority[1]",
+                    "type": "INT"
+                  },
+                  "selection": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_1_selection[1]",
+                    "type": "BOOL"
+                  },
+                  "RunComd": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_1_RunComd[1]",
+                    "type": "BOOL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "priority": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_2_priority[1]",
+                    "type": "INT"
+                  },
+                  "selection": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_2_selection[1]",
+                    "type": "BOOL"
+                  },
+                  "RunComd": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_2_RunComd[1]",
+                    "type": "BOOL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "priority": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_3_priority[1]",
+                    "type": "INT"
+                  },
+                  "selection": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_3_selection[1]",
+                    "type": "BOOL"
+                  },
+                  "RunComd": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_3_RunComd[1]",
+                    "type": "BOOL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "priority": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_4_priority[1]",
+                    "type": "INT"
+                  },
+                  "selection": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_4_selection[1]",
+                    "type": "BOOL"
+                  },
+                  "RunComd": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_4_RunComd[1]",
+                    "type": "BOOL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "priority": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_5_priority[1]",
+                    "type": "INT"
+                  },
+                  "selection": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_5_selection[1]",
+                    "type": "BOOL"
+                  },
+                  "RunComd": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_5_RunComd[1]",
+                    "type": "BOOL"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "step_index": 2,
+        "case_id": "case_1_manual_normal_stop",
+        "case_step": 2,
+        "dt_expr": null,
+        "inputs": {
+          "mode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_mode[2]",
+            "type": "BOOL"
+          },
+          "start": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_start[2]",
+            "type": "BOOL"
+          },
+          "stop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_stop[2]",
+            "type": "BOOL"
+          },
+          "pumpGroup": {
+            "kind": "raw",
+            "value": [
+              {
+                "priority": 1,
+                "selection": false,
+                "RunComd": true
+              },
+              {
+                "priority": 2,
+                "selection": true,
+                "RunComd": false
+              },
+              {
+                "priority": 3,
+                "selection": false,
+                "RunComd": true
+              },
+              {
+                "priority": 4,
+                "selection": true,
+                "RunComd": false
+              },
+              {
+                "priority": 5,
+                "selection": false,
+                "RunComd": false
+              }
+            ]
+          }
+        },
+        "outputs": {
+          "pumpGroup": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "struct",
+                "fields": {
+                  "priority": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_1_priority[2]",
+                    "type": "INT"
+                  },
+                  "selection": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_1_selection[2]",
+                    "type": "BOOL"
+                  },
+                  "RunComd": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_1_RunComd[2]",
+                    "type": "BOOL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "priority": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_2_priority[2]",
+                    "type": "INT"
+                  },
+                  "selection": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_2_selection[2]",
+                    "type": "BOOL"
+                  },
+                  "RunComd": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_2_RunComd[2]",
+                    "type": "BOOL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "priority": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_3_priority[2]",
+                    "type": "INT"
+                  },
+                  "selection": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_3_selection[2]",
+                    "type": "BOOL"
+                  },
+                  "RunComd": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_3_RunComd[2]",
+                    "type": "BOOL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "priority": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_4_priority[2]",
+                    "type": "INT"
+                  },
+                  "selection": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_4_selection[2]",
+                    "type": "BOOL"
+                  },
+                  "RunComd": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_4_RunComd[2]",
+                    "type": "BOOL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "priority": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_5_priority[2]",
+                    "type": "INT"
+                  },
+                  "selection": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_5_selection[2]",
+                    "type": "BOOL"
+                  },
+                  "RunComd": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_5_RunComd[2]",
+                    "type": "BOOL"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "step_index": 3,
+        "case_id": "case_1_manual_normal_stop",
+        "case_step": 3,
+        "dt_expr": null,
+        "inputs": {
+          "mode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_mode[3]",
+            "type": "BOOL"
+          },
+          "start": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_start[3]",
+            "type": "BOOL"
+          },
+          "stop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_stop[3]",
+            "type": "BOOL"
+          },
+          "pumpGroup": {
+            "kind": "raw",
+            "value": [
+              {
+                "priority": 1,
+                "selection": false,
+                "RunComd": false
+              },
+              {
+                "priority": 2,
+                "selection": false,
+                "RunComd": false
+              },
+              {
+                "priority": 3,
+                "selection": false,
+                "RunComd": false
+              },
+              {
+                "priority": 4,
+                "selection": false,
+                "RunComd": false
+              },
+              {
+                "priority": 5,
+                "selection": true,
+                "RunComd": false
+              }
+            ]
+          }
+        },
+        "outputs": {
+          "pumpGroup": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "struct",
+                "fields": {
+                  "priority": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_1_priority[3]",
+                    "type": "INT"
+                  },
+                  "selection": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_1_selection[3]",
+                    "type": "BOOL"
+                  },
+                  "RunComd": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_1_RunComd[3]",
+                    "type": "BOOL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "priority": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_2_priority[3]",
+                    "type": "INT"
+                  },
+                  "selection": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_2_selection[3]",
+                    "type": "BOOL"
+                  },
+                  "RunComd": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_2_RunComd[3]",
+                    "type": "BOOL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "priority": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_3_priority[3]",
+                    "type": "INT"
+                  },
+                  "selection": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_3_selection[3]",
+                    "type": "BOOL"
+                  },
+                  "RunComd": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_3_RunComd[3]",
+                    "type": "BOOL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "priority": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_4_priority[3]",
+                    "type": "INT"
+                  },
+                  "selection": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_4_selection[3]",
+                    "type": "BOOL"
+                  },
+                  "RunComd": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_4_RunComd[3]",
+                    "type": "BOOL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "priority": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_5_priority[3]",
+                    "type": "INT"
+                  },
+                  "selection": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_5_selection[3]",
+                    "type": "BOOL"
+                  },
+                  "RunComd": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_5_RunComd[3]",
+                    "type": "BOOL"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "step_index": 4,
+        "case_id": "case_2_auto_priority_tie_stop",
+        "case_step": 0,
+        "dt_expr": null,
+        "inputs": {
+          "mode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_mode[4]",
+            "type": "BOOL"
+          },
+          "start": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_start[4]",
+            "type": "BOOL"
+          },
+          "stop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_stop[4]",
+            "type": "BOOL"
+          },
+          "pumpGroup": {
+            "kind": "raw",
+            "value": [
+              {
+                "priority": 10,
+                "selection": true,
+                "RunComd": false
+              },
+              {
+                "priority": 20,
+                "selection": false,
+                "RunComd": false
+              },
+              {
+                "priority": 20,
+                "selection": false,
+                "RunComd": false
+              },
+              {
+                "priority": 20,
+                "selection": true,
+                "RunComd": false
+              },
+              {
+                "priority": 30,
+                "selection": false,
+                "RunComd": false
+              }
+            ]
+          }
+        },
+        "outputs": {
+          "pumpGroup": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "struct",
+                "fields": {
+                  "priority": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_1_priority[4]",
+                    "type": "INT"
+                  },
+                  "selection": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_1_selection[4]",
+                    "type": "BOOL"
+                  },
+                  "RunComd": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_1_RunComd[4]",
+                    "type": "BOOL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "priority": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_2_priority[4]",
+                    "type": "INT"
+                  },
+                  "selection": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_2_selection[4]",
+                    "type": "BOOL"
+                  },
+                  "RunComd": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_2_RunComd[4]",
+                    "type": "BOOL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "priority": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_3_priority[4]",
+                    "type": "INT"
+                  },
+                  "selection": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_3_selection[4]",
+                    "type": "BOOL"
+                  },
+                  "RunComd": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_3_RunComd[4]",
+                    "type": "BOOL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "priority": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_4_priority[4]",
+                    "type": "INT"
+                  },
+                  "selection": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_4_selection[4]",
+                    "type": "BOOL"
+                  },
+                  "RunComd": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_4_RunComd[4]",
+                    "type": "BOOL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "priority": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_5_priority[4]",
+                    "type": "INT"
+                  },
+                  "selection": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_5_selection[4]",
+                    "type": "BOOL"
+                  },
+                  "RunComd": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_5_RunComd[4]",
+                    "type": "BOOL"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "step_index": 5,
+        "case_id": "case_2_auto_priority_tie_stop",
+        "case_step": 1,
+        "dt_expr": null,
+        "inputs": {
+          "mode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_mode[5]",
+            "type": "BOOL"
+          },
+          "start": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_start[5]",
+            "type": "BOOL"
+          },
+          "stop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_stop[5]",
+            "type": "BOOL"
+          },
+          "pumpGroup": {
+            "kind": "raw",
+            "value": [
+              {
+                "priority": 50,
+                "selection": false,
+                "RunComd": false
+              },
+              {
+                "priority": 1,
+                "selection": true,
+                "RunComd": true
+              },
+              {
+                "priority": 1,
+                "selection": false,
+                "RunComd": true
+              },
+              {
+                "priority": 1,
+                "selection": false,
+                "RunComd": false
+              },
+              {
+                "priority": 1,
+                "selection": false,
+                "RunComd": true
+              }
+            ]
+          }
+        },
+        "outputs": {
+          "pumpGroup": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "struct",
+                "fields": {
+                  "priority": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_1_priority[5]",
+                    "type": "INT"
+                  },
+                  "selection": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_1_selection[5]",
+                    "type": "BOOL"
+                  },
+                  "RunComd": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_1_RunComd[5]",
+                    "type": "BOOL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "priority": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_2_priority[5]",
+                    "type": "INT"
+                  },
+                  "selection": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_2_selection[5]",
+                    "type": "BOOL"
+                  },
+                  "RunComd": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_2_RunComd[5]",
+                    "type": "BOOL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "priority": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_3_priority[5]",
+                    "type": "INT"
+                  },
+                  "selection": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_3_selection[5]",
+                    "type": "BOOL"
+                  },
+                  "RunComd": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_3_RunComd[5]",
+                    "type": "BOOL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "priority": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_4_priority[5]",
+                    "type": "INT"
+                  },
+                  "selection": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_4_selection[5]",
+                    "type": "BOOL"
+                  },
+                  "RunComd": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_4_RunComd[5]",
+                    "type": "BOOL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "priority": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_5_priority[5]",
+                    "type": "INT"
+                  },
+                  "selection": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_5_selection[5]",
+                    "type": "BOOL"
+                  },
+                  "RunComd": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_5_RunComd[5]",
+                    "type": "BOOL"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "step_index": 6,
+        "case_id": "case_2_auto_priority_tie_stop",
+        "case_step": 2,
+        "dt_expr": null,
+        "inputs": {
+          "mode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_mode[6]",
+            "type": "BOOL"
+          },
+          "start": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_start[6]",
+            "type": "BOOL"
+          },
+          "stop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_stop[6]",
+            "type": "BOOL"
+          },
+          "pumpGroup": {
+            "kind": "raw",
+            "value": [
+              {
+                "priority": 50,
+                "selection": false,
+                "RunComd": false
+              },
+              {
+                "priority": 1,
+                "selection": true,
+                "RunComd": true
+              },
+              {
+                "priority": 1,
+                "selection": false,
+                "RunComd": true
+              },
+              {
+                "priority": 1,
+                "selection": false,
+                "RunComd": false
+              },
+              {
+                "priority": 1,
+                "selection": false,
+                "RunComd": true
+              }
+            ]
+          }
+        },
+        "outputs": {
+          "pumpGroup": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "struct",
+                "fields": {
+                  "priority": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_1_priority[6]",
+                    "type": "INT"
+                  },
+                  "selection": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_1_selection[6]",
+                    "type": "BOOL"
+                  },
+                  "RunComd": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_1_RunComd[6]",
+                    "type": "BOOL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "priority": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_2_priority[6]",
+                    "type": "INT"
+                  },
+                  "selection": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_2_selection[6]",
+                    "type": "BOOL"
+                  },
+                  "RunComd": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_2_RunComd[6]",
+                    "type": "BOOL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "priority": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_3_priority[6]",
+                    "type": "INT"
+                  },
+                  "selection": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_3_selection[6]",
+                    "type": "BOOL"
+                  },
+                  "RunComd": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_3_RunComd[6]",
+                    "type": "BOOL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "priority": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_4_priority[6]",
+                    "type": "INT"
+                  },
+                  "selection": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_4_selection[6]",
+                    "type": "BOOL"
+                  },
+                  "RunComd": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_4_RunComd[6]",
+                    "type": "BOOL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "priority": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_5_priority[6]",
+                    "type": "INT"
+                  },
+                  "selection": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_5_selection[6]",
+                    "type": "BOOL"
+                  },
+                  "RunComd": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_5_RunComd[6]",
+                    "type": "BOOL"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "step_index": 7,
+        "case_id": "case_2_auto_priority_tie_stop",
+        "case_step": 3,
+        "dt_expr": null,
+        "inputs": {
+          "mode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_mode[7]",
+            "type": "BOOL"
+          },
+          "start": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_start[7]",
+            "type": "BOOL"
+          },
+          "stop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_stop[7]",
+            "type": "BOOL"
+          },
+          "pumpGroup": {
+            "kind": "raw",
+            "value": [
+              {
+                "priority": 50,
+                "selection": false,
+                "RunComd": true
+              },
+              {
+                "priority": 1,
+                "selection": true,
+                "RunComd": true
+              },
+              {
+                "priority": 1,
+                "selection": false,
+                "RunComd": true
+              },
+              {
+                "priority": 1,
+                "selection": false,
+                "RunComd": false
+              },
+              {
+                "priority": 1,
+                "selection": false,
+                "RunComd": false
+              }
+            ]
+          }
+        },
+        "outputs": {
+          "pumpGroup": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "struct",
+                "fields": {
+                  "priority": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_1_priority[7]",
+                    "type": "INT"
+                  },
+                  "selection": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_1_selection[7]",
+                    "type": "BOOL"
+                  },
+                  "RunComd": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_1_RunComd[7]",
+                    "type": "BOOL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "priority": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_2_priority[7]",
+                    "type": "INT"
+                  },
+                  "selection": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_2_selection[7]",
+                    "type": "BOOL"
+                  },
+                  "RunComd": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_2_RunComd[7]",
+                    "type": "BOOL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "priority": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_3_priority[7]",
+                    "type": "INT"
+                  },
+                  "selection": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_3_selection[7]",
+                    "type": "BOOL"
+                  },
+                  "RunComd": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_3_RunComd[7]",
+                    "type": "BOOL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "priority": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_4_priority[7]",
+                    "type": "INT"
+                  },
+                  "selection": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_4_selection[7]",
+                    "type": "BOOL"
+                  },
+                  "RunComd": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_4_RunComd[7]",
+                    "type": "BOOL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "priority": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_5_priority[7]",
+                    "type": "INT"
+                  },
+                  "selection": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_5_selection[7]",
+                    "type": "BOOL"
+                  },
+                  "RunComd": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_pumpGroup_5_RunComd[7]",
+                    "type": "BOOL"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "result_path": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\605777a724e92bc0\\simulation_evidence.json"
+}

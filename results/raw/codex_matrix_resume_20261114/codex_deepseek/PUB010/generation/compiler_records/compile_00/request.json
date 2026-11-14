@@ -1,0 +1,13 @@
+{
+  "request_id": "de83237627944a899fb5c538351bb695",
+  "source_sha256": "7b62c1a6eaef2b647281690f3ef77119606fb15420c4e28676a1e7e8c4bff7ed",
+  "task_id": "PUB010",
+  "project": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\010f9171bef5dd8a\\task.project",
+  "candidate": {
+    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    TemperatureSensorInput : REAL;\n    SetTemperature : REAL;\nEND_VAR\nVAR_OUTPUT\n    CurrentTemperature : REAL;\n    SetTempDisplay : REAL;\n    HeaterStatus : BOOL;\n    OverheatProtection : BOOL;\n    HeaterOutput : BOOL;\nEND_VAR\nVAR\n    sensorFault : BOOL;\n    demand : BOOL;\n    heatLimitReached : BOOL;\n    wasHeating : BOOL;\n    wasProtected : BOOL;\n    heatTimer : TON;\n    cooldownTimer : TON;\nEND_VAR",
+    "implementation": "CurrentTemperature := TemperatureSensorInput;\nSetTempDisplay := SetTemperature;\nsensorFault := (TemperatureSensorInput < 0.0) OR (TemperatureSensorInput > 100.0);\n\nIF NOT sensorFault THEN\n    IF TemperatureSensorInput < SetTemperature THEN\n        demand := TRUE;\n    ELSIF TemperatureSensorInput > SetTemperature THEN\n        demand := FALSE;\n    END_IF;\nEND_IF;\n\nwasHeating := HeaterOutput;\nwasProtected := OverheatProtection;\n\nheatTimer(IN := wasHeating AND NOT sensorFault, PT := T#5S);\nheatLimitReached := heatTimer.Q AND NOT sensorFault;\n\nIF wasProtected THEN\n    cooldownTimer(IN := TRUE, PT := T#3S);\n    IF cooldownTimer.Q THEN\n        OverheatProtection := FALSE;\n    END_IF;\nELSE\n    cooldownTimer(IN := FALSE, PT := T#3S);\nEND_IF;\n\nIF NOT OverheatProtection AND heatLimitReached THEN\n    OverheatProtection := TRUE;\nEND_IF;\n\nIF sensorFault OR OverheatProtection THEN\n    HeaterOutput := FALSE;\nELSIF demand THEN\n    HeaterOutput := TRUE;\nELSE\n    HeaterOutput := FALSE;\nEND_IF;\nHeaterStatus := HeaterOutput;\n\nIF HeaterOutput AND NOT wasHeating THEN\n    heatTimer(IN := TRUE, PT := T#5S);\nELSIF (NOT HeaterOutput) AND wasHeating THEN\n    heatTimer(IN := FALSE, PT := T#5S);\nEND_IF;\n\nIF OverheatProtection AND NOT wasProtected THEN\n    cooldownTimer(IN := TRUE, PT := T#3S);\nELSIF (NOT OverheatProtection) AND wasProtected THEN\n    cooldownTimer(IN := FALSE, PT := T#3S);\nEND_IF;",
+    "supporting_objects": []
+  },
+  "result_path": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\010f9171bef5dd8a\\codesys_evidence.json",
+  "started_utc": "2026-11-14T13:15:37.599223+00:00"
+}

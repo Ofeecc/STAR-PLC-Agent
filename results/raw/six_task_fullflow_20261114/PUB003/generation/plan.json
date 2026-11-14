@@ -1,0 +1,180 @@
+{
+  "state_machine": [
+    {
+      "state": "S_INIT",
+      "description": "Fresh FB instance before first scan; outputs and retained alarm history are at declared initial values.",
+      "transitions": [
+        {
+          "when": "loLevel >= hiLevel",
+          "to": "S_ERR_RANGE",
+          "actions": "error=true; status=16#8001; hold hiAlarm/loAlarm at initial values"
+        },
+        {
+          "when": "!(loLevel >= hiLevel) & hystWindow >= (hiLevel - loLevel)",
+          "to": "S_ERR_WINDOW",
+          "actions": "error=true; status=16#8002; hold hiAlarm/loAlarm at initial values"
+        },
+        {
+          "when": "valid configuration",
+          "to": "S_RUN",
+          "actions": "error=false; status=0; evaluate hysteresis alarms"
+        }
+      ]
+    },
+    {
+      "state": "S_RUN",
+      "description": "Valid configuration; hysteresis alarm evaluation is enabled each scan.",
+      "transitions": [
+        {
+          "when": "loLevel >= hiLevel",
+          "to": "S_ERR_RANGE",
+          "actions": "error=true; status=16#8001; preserve previous hiAlarm/loAlarm"
+        },
+        {
+          "when": "!(loLevel >= hiLevel) & hystWindow >= (hiLevel - loLevel)",
+          "to": "S_ERR_WINDOW",
+          "actions": "error=true; status=16#8002; preserve previous hiAlarm/loAlarm"
+        },
+        {
+          "when": "valid configuration",
+          "to": "S_RUN",
+          "actions": "error=false; status=0; update hiAlarm/loAlarm using strict thresholds and retained history"
+        }
+      ]
+    },
+    {
+      "state": "S_ERR_RANGE",
+      "description": "Invalid range state: loLevel >= hiLevel has highest priority.",
+      "transitions": [
+        {
+          "when": "loLevel >= hiLevel",
+          "to": "S_ERR_RANGE",
+          "actions": "error=true; status=16#8001; preserve previous hiAlarm/loAlarm"
+        },
+        {
+          "when": "!(loLevel >= hiLevel) & hystWindow >= (hiLevel - loLevel)",
+          "to": "S_ERR_WINDOW",
+          "actions": "error=true; status=16#8002; preserve previous hiAlarm/loAlarm"
+        },
+        {
+          "when": "valid configuration",
+          "to": "S_RUN",
+          "actions": "error=false; status=0; resume hysteresis alarm evaluation"
+        }
+      ]
+    },
+    {
+      "state": "S_ERR_WINDOW",
+      "description": "Invalid hysteresis-window state: hystWindow >= (hiLevel - loLevel), only when range is valid.",
+      "transitions": [
+        {
+          "when": "loLevel >= hiLevel",
+          "to": "S_ERR_RANGE",
+          "actions": "error=true; status=16#8001; preserve previous hiAlarm/loAlarm"
+        },
+        {
+          "when": "!(loLevel >= hiLevel) & hystWindow >= (hiLevel - loLevel)",
+          "to": "S_ERR_WINDOW",
+          "actions": "error=true; status=16#8002; preserve previous hiAlarm/loAlarm"
+        },
+        {
+          "when": "valid configuration",
+          "to": "S_RUN",
+          "actions": "error=false; status=0; resume hysteresis alarm evaluation"
+        }
+      ]
+    }
+  ],
+  "timer_plan": {
+    "timers": [],
+    "pt_durations": "N/A - no timer function blocks are required",
+    "reset_conditions": "N/A - no timer instances exist; fresh FB reset restores initial outputs and retained alarm history"
+  },
+  "priorities": [
+    "Safety priority 1: diagnose loLevel >= hiLevel before any hysteresis-window check; if true, force error=true and status=16#8001.",
+    "Safety priority 2: diagnose hystWindow >= (hiLevel - loLevel) only when loLevel < hiLevel; if true, force error=true and status=16#8002.",
+    "Safety priority 3: during any invalid-configuration scan, do not update hiAlarm or loAlarm; preserve their previous observed values.",
+    "Safety priority 4: error and status are recalculated every scan; a valid configuration clears them to error=false and status=0.",
+    "Operational priority 1: when valid, evaluate high alarm with strict trigger Value > hiLevel and strict release Value < (hiLevel - hystWindow); equality retains previous hiAlarm.",
+    "Operational priority 2: when valid, evaluate low alarm with strict trigger Value < loLevel and strict release Value > (loLevel + hystWindow); equality retains previous loAlarm.",
+    "Numerical priority: REAL inputs and release/span arithmetic use IEEE-754 binary32 rounding; declared finite-domain assumptions apply.",
+    "Domain note: hystWindow is assumed nonnegative; negative hystWindow is outside the specified input domain."
+  ],
+  "initial_values": {
+    "hiAlarm": false,
+    "loAlarm": false,
+    "error": false,
+    "status": 0,
+    "state": "S_INIT",
+    "hiAlarmPrev": false,
+    "loAlarmPrev": false
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "edge sampling",
+      "actions": "Sample Value, hiLevel, loLevel, and hystWindow once at scan start. Capture previous observed alarm outputs hiAlarmPrev and loAlarmPrev. Do not write outputs in this stage."
+    },
+    {
+      "stage": 2,
+      "name": "safety/reset priority and state transitions",
+      "actions": "Evaluate badRange first: loLevel >= hiLevel. Only if badRange is false, evaluate badWindow: hystWindow >= (hiLevel - loLevel). Determine next state and set an alarm-update-enable flag. For badRange, set error=true, status=16#8001, and disable alarm updates. For badWindow without badRange, set error=true, status=16#8002, and disable alarm updates. For valid configuration, set error=false, status=0, and enable alarm updates. Do not modify alarms in this stage."
+    },
+    {
+      "stage": 3,
+      "name": "unconditional top-level timer FB calls outside CASE/IF",
+      "actions": "No timer FBs are required by this specification. This stage is explicitly a no-op; if future timers are added, their FB calls must remain unconditional and outside CASE/IF."
+    },
+    {
+      "stage": 4,
+      "name": "unified output assignments",
+      "actions": "Write hiAlarm, loAlarm, error, and status exactly once. If alarm updates are enabled, use strict comparisons and retained history: set hiAlarm true when Value > hiLevel; clear hiAlarm when Value < (hiLevel - hystWindow); otherwise hold hiAlarmPrev. Set loAlarm true when Value < loLevel; clear loAlarm when Value > (loLevel + hystWindow); otherwise hold loAlarmPrev. If alarm updates are disabled, assign hiAlarm=hiAlarmPrev and loAlarm=loAlarmPrev. Finally update hiAlarmPrev and loAlarmPrev from the actual assigned outputs for the next scan."
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G((loLevel >= hiLevel) -> (error & status = 16#8001))"
+    },
+    {
+      "id": "A2",
+      "formula": "G((!(loLevel >= hiLevel) & (hystWindow >= (hiLevel - loLevel))) -> (error & status = 16#8002))"
+    },
+    {
+      "id": "A3",
+      "formula": "G((!(loLevel >= hiLevel) & !(hystWindow >= (hiLevel - loLevel)) & (hystWindow >= 0)) -> (!error & status = 0))"
+    },
+    {
+      "id": "A4",
+      "formula": "G((!(loLevel >= hiLevel) & !(hystWindow >= (hiLevel - loLevel)) & (hystWindow >= 0) & (Value > hiLevel)) -> hiAlarm)"
+    },
+    {
+      "id": "A5",
+      "formula": "G((!(loLevel >= hiLevel) & !(hystWindow >= (hiLevel - loLevel)) & (hystWindow >= 0) & (Value < (hiLevel - hystWindow))) -> !hiAlarm)"
+    },
+    {
+      "id": "A6",
+      "formula": "G((!(loLevel >= hiLevel) & !(hystWindow >= (hiLevel - loLevel)) & (hystWindow >= 0) & (Value < loLevel)) -> loAlarm)"
+    },
+    {
+      "id": "A7",
+      "formula": "G((!(loLevel >= hiLevel) & !(hystWindow >= (hiLevel - loLevel)) & (hystWindow >= 0) & (Value > (loLevel + hystWindow))) -> !loAlarm)"
+    },
+    {
+      "id": "A8",
+      "formula": "G((loLevel >= hiLevel) -> ((hiAlarm <-> Y hiAlarm) & (loAlarm <-> Y loAlarm)))"
+    },
+    {
+      "id": "A9",
+      "formula": "G((!(loLevel >= hiLevel) & (hystWindow >= (hiLevel - loLevel))) -> ((hiAlarm <-> Y hiAlarm) & (loAlarm <-> Y loAlarm)))"
+    },
+    {
+      "id": "A10",
+      "formula": "G((!(loLevel >= hiLevel) & !(hystWindow >= (hiLevel - loLevel)) & (hystWindow >= 0) & ((hiLevel - hystWindow) <= Value) & (Value <= hiLevel)) -> (hiAlarm <-> Y hiAlarm))"
+    },
+    {
+      "id": "A11",
+      "formula": "G((!(loLevel >= hiLevel) & !(hystWindow >= (hiLevel - loLevel)) & (hystWindow >= 0) & (loLevel <= Value) & (Value <= (loLevel + hystWindow))) -> (loAlarm <-> Y loAlarm))"
+    }
+  ]
+}

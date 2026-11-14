@@ -1,0 +1,128 @@
+{
+  "state_machine": {
+    "states": [
+      {
+        "name": "INIT",
+        "initial": true,
+        "description": "Fresh instance before first scan. previousValue=0 and all outputs hold declared initial values."
+      },
+      {
+        "name": "RUN",
+        "description": "Operational scan state. Each invocation samples value, computes edge masks/counts/flags, and updates previousValue after output calculation."
+      }
+    ],
+    "transitions": [
+      {
+        "from": "INIT",
+        "to": "RUN",
+        "condition": "first FB invocation / scan k=0",
+        "actions": [
+          "sample value once",
+          "compute risingBits and fallingBits using previousValue=0",
+          "compute counts and flags",
+          "assign outputs",
+          "set previousValue := sampled value"
+        ]
+      },
+      {
+        "from": "RUN",
+        "to": "RUN",
+        "condition": "every subsequent scan",
+        "actions": [
+          "sample value once",
+          "compute risingBits and fallingBits using previousValue from prior scan",
+          "compute counts and flags",
+          "assign outputs",
+          "set previousValue := sampled value"
+        ]
+      }
+    ]
+  },
+  "timer_plan": {
+    "timers": [],
+    "pt_durations": {},
+    "reset_conditions": [],
+    "notes": "No timers are required. All behavior is per-scan combinational with one retained previousValue state."
+  },
+  "priorities": [
+    "1. Compute risingBits and fallingBits before updating previousValue; previousValue must be updated only after both edge masks are calculated.",
+    "2. Sample input value exactly once per scan and use that sampled value for all masks, counts, and flags.",
+    "3. Initialize previousValue to DWORD#0 so nonzero input bits on the first scan are reported as rising edges.",
+    "4. Derive noOfRisingBits and noOfFallingBits from the final risingBits and fallingBits masks using a 32-bit population count.",
+    "5. Derive hasRisingEdges, hasFallingEdges, and hasChanged from the current scan masks/value comparison, not from stale flags.",
+    "6. Keep all bitwise operations within unsigned 32-bit DWORD semantics.",
+    "7. No explicit reset is exposed by the interface; reset occurs only at instance initialization/first scan state."
+  ],
+  "initial_values": {
+    "previousValue": 0,
+    "hasChanged": false,
+    "hasRisingEdges": false,
+    "risingBits": 0,
+    "noOfRisingBits": 0,
+    "hasFallingEdges": false,
+    "fallingBits": 0,
+    "noOfFallingBits": 0
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "edge sampling",
+      "actions": [
+        "Sample input value once into an internal sampledValue variable.",
+        "Do not modify previousValue in this stage."
+      ]
+    },
+    {
+      "stage": 2,
+      "name": "safety/reset priority and state transitions",
+      "actions": [
+        "Apply instance-initialization behavior only before the first scan: previousValue remains 0 and outputs remain at initial values.",
+        "Transition INIT -> RUN on first invocation; RUN -> RUN on every later scan.",
+        "Preserve safety priority: previousValue must not be updated until both edge masks have been computed."
+      ]
+    },
+    {
+      "stage": 3,
+      "name": "unconditional top-level timer FB calls outside CASE/IF",
+      "actions": [
+        "No timer function blocks are used, so there are no timer calls to execute in this stage."
+      ]
+    },
+    {
+      "stage": 4,
+      "name": "unified output assignments",
+      "actions": [
+        "risingBits := sampledValue AND (NOT previousValue);",
+        "fallingBits := previousValue AND (NOT sampledValue);",
+        "noOfRisingBits := popcount(risingBits);",
+        "noOfFallingBits := popcount(fallingBits);",
+        "hasRisingEdges := (risingBits <> 0);",
+        "hasFallingEdges := (fallingBits <> 0);",
+        "hasChanged := (sampledValue <> previousValue);",
+        "previousValue := sampledValue;"
+      ]
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G((risingBits AND fallingBits) = 0)"
+    },
+    {
+      "id": "A2",
+      "formula": "G((hasRisingEdges <-> risingBits <> 0) & (hasFallingEdges <-> fallingBits <> 0))"
+    },
+    {
+      "id": "A3",
+      "formula": "G(hasChanged <-> ((risingBits OR fallingBits) <> 0))"
+    },
+    {
+      "id": "A4",
+      "formula": "G((noOfRisingBits = popcount(risingBits)) & (noOfFallingBits = popcount(fallingBits)))"
+    },
+    {
+      "id": "A5",
+      "formula": "G((noOfRisingBits <= 32) & (noOfFallingBits <= 32))"
+    }
+  ]
+}

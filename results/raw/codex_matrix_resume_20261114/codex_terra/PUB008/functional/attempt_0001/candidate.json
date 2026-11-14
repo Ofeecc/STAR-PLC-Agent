@@ -1,0 +1,12 @@
+{
+  "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    count : DINT;\nEND_VAR\nVAR_IN_OUT\n    analogValues : ARRAY[*] OF INT;\n    channels : ARRAY[*] OF ST_AnalogChannel;\nEND_VAR\nVAR\n    offset : DINT;\n    analogBase : DINT;\n    channelBase : DINT;\n    rawValue : LREAL;\n    lowLimit : LREAL;\n    highLimit : LREAL;\nEND_VAR",
+  "implementation": "analogBase := LOWER_BOUND(analogValues, 1);\nchannelBase := LOWER_BOUND(channels, 1);\nFOR offset := 0 TO count - 1 DO\n    IF channels[channelBase + offset].enable THEN\n        IF (channels[channelBase + offset].measuringMode < 0) OR (channels[channelBase + offset].measuringMode > 2) THEN\n            channels[channelBase + offset].retVal := 16#8001;\n        ELSIF channels[channelBase + offset].hiLIM <= channels[channelBase + offset].loLIM THEN\n            channels[channelBase + offset].retVal := 16#8002;\n        ELSE\n            rawValue := INT_TO_LREAL(analogValues[analogBase + offset]);\n            CASE channels[channelBase + offset].measuringMode OF\n                0:\n                    lowLimit := REAL_TO_LREAL(channels[channelBase + offset].loLIM);\n                    highLimit := REAL_TO_LREAL(channels[channelBase + offset].hiLIM);\n                    IF channels[channelBase + offset].bipolar THEN\n                        channels[channelBase + offset].outputValue := LREAL_TO_REAL(lowLimit + ((rawValue + 27648.0) / 55296.0) * (highLimit - lowLimit));\n                    ELSE\n                        channels[channelBase + offset].outputValue := LREAL_TO_REAL(lowLimit + (rawValue / 27648.0) * (highLimit - lowLimit));\n                    END_IF;\n                1:\n                    channels[channelBase + offset].outputValue := LREAL_TO_REAL(rawValue / 10.0);\n                2:\n                    channels[channelBase + offset].outputValue := LREAL_TO_REAL(rawValue / 100.0);\n            END_CASE;\n            channels[channelBase + offset].retVal := 0;\n        END_IF;\n    END_IF;\nEND_FOR;",
+  "supporting_objects": [
+    {
+      "name": "ST_AnalogChannel",
+      "kind": "DUT",
+      "declaration": "TYPE ST_AnalogChannel :\nSTRUCT\n    enable : BOOL;\n    hiLIM : REAL;\n    loLIM : REAL;\n    bipolar : BOOL;\n    measuringMode : INT;\n    retVal : WORD;\n    outputValue : REAL;\nEND_STRUCT\nEND_TYPE",
+      "implementation": ""
+    }
+  ]
+}

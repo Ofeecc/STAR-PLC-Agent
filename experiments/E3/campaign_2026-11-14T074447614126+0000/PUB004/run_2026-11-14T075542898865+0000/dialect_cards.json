@@ -1,0 +1,17 @@
+[
+  {
+    "id": "ltime_ops",
+    "title": "LTIME and TIME Literals and Operations",
+    "body": "// TIME (T#... 32-bit) and LTIME (LTIME#... 64-bit nanosecond) literals & ops\nVAR\n    tCycle : TIME := T#100ms;\n    ltAcc : LTIME := LTIME#0ms;\n    ltLimit : LTIME := LTIME#10s;\nEND_VAR\nltAcc := ltAcc + LTIME#100ms;\nIF ltAcc >= ltLimit THEN\n    ltAcc := LTIME#0ms;\nEND_IF;"
+  },
+  {
+    "id": "ton_timer",
+    "title": "Standard IEC TON Timer Block Invocation",
+    "body": "// Standard IEC TON timer: MUST invoke unconditionally OUTSIDE CASE/IF every scan!\nVAR\n    timer : TON;\n    runTimer : BOOL;\nEND_VAR\n// Control via boolean IN flag (never put timer(...) only inside an IF/CASE arm):\nrunTimer := (state = 1) AND NOT resetCmd;\ntimer(IN := runTimer, PT := T#2s);\nIF timer.Q THEN\n    // Timer expired; timer.ET holds elapsed time\nEND_IF;"
+  },
+  {
+    "id": "case_state_machine",
+    "title": "Explicit CASE State Machine Transitions",
+    "body": "// 4-Stage Scan Order: 1) Edge sample 2) Reset/priority & CASE state transition\n// 3) Unconditional top-level TON/R_TRIG calls 4) Unified output assignments\nVAR\n    state : INT := 0; // 0=IDLE, 1=RUN, 2=FAULT\nEND_VAR\nIF emergencyStop THEN state := 2; END_IF;\nCASE state OF\n    0: IF startCmd AND NOT fault THEN state := 1; END_IF;\n    1: IF faultCmd THEN state := 2; ELSIF stopCmd THEN state := 0; END_IF;\n    2: IF resetCmd THEN state := 0; END_IF;\n    ELSE state := 0;\nEND_CASE;\noutActive := (state = 1); // Assign outputs unconditionally from current state"
+  }
+]

@@ -1,0 +1,273 @@
+{
+  "state_machine": [
+    {
+      "state": "START",
+      "description": "Fresh instance before first scan; outputs at declared initial values.",
+      "transitions": [
+        {
+          "condition": "loLevel >= hiLevel",
+          "target": "ERROR_BAD_RANGE",
+          "actions": [
+            "error := TRUE",
+            "status := 16#8001",
+            "preserveAlarms := TRUE"
+          ]
+        },
+        {
+          "condition": "loLevel < hiLevel AND hystWindow >= real32(hiLevel - loLevel)",
+          "target": "ERROR_BAD_WINDOW",
+          "actions": [
+            "error := TRUE",
+            "status := 16#8002",
+            "preserveAlarms := TRUE"
+          ]
+        },
+        {
+          "condition": "valid configuration",
+          "target": "RUN_VALID",
+          "actions": [
+            "error := FALSE",
+            "status := 0"
+          ]
+        }
+      ]
+    },
+    {
+      "state": "RUN_VALID",
+      "description": "Configuration is valid; high and low hysteresis alarm logic is active.",
+      "transitions": [
+        {
+          "condition": "loLevel >= hiLevel",
+          "target": "ERROR_BAD_RANGE",
+          "actions": [
+            "error := TRUE",
+            "status := 16#8001",
+            "preserveAlarms := TRUE"
+          ]
+        },
+        {
+          "condition": "loLevel < hiLevel AND hystWindow >= real32(hiLevel - loLevel)",
+          "target": "ERROR_BAD_WINDOW",
+          "actions": [
+            "error := TRUE",
+            "status := 16#8002",
+            "preserveAlarms := TRUE"
+          ]
+        },
+        {
+          "condition": "valid configuration AND Value > hiLevel",
+          "target": "RUN_VALID",
+          "actions": [
+            "hiAlarmState := TRUE"
+          ]
+        },
+        {
+          "condition": "valid configuration AND Value < real32(hiLevel - hystWindow)",
+          "target": "RUN_VALID",
+          "actions": [
+            "hiAlarmState := FALSE"
+          ]
+        },
+        {
+          "condition": "valid configuration AND real32(hiLevel - hystWindow) <= Value AND Value <= hiLevel",
+          "target": "RUN_VALID",
+          "actions": [
+            "hiAlarmState := hiAlarmState"
+          ]
+        },
+        {
+          "condition": "valid configuration AND Value < loLevel",
+          "target": "RUN_VALID",
+          "actions": [
+            "loAlarmState := TRUE"
+          ]
+        },
+        {
+          "condition": "valid configuration AND Value > real32(loLevel + hystWindow)",
+          "target": "RUN_VALID",
+          "actions": [
+            "loAlarmState := FALSE"
+          ]
+        },
+        {
+          "condition": "valid configuration AND loLevel <= Value AND Value <= real32(loLevel + hystWindow)",
+          "target": "RUN_VALID",
+          "actions": [
+            "loAlarmState := loAlarmState"
+          ]
+        },
+        {
+          "condition": "valid configuration",
+          "target": "RUN_VALID",
+          "actions": [
+            "error := FALSE",
+            "status := 0"
+          ]
+        }
+      ]
+    },
+    {
+      "state": "ERROR_BAD_RANGE",
+      "description": "Invalid range loLevel >= hiLevel; highest priority; alarm updates are suppressed and alarm outputs are preserved.",
+      "transitions": [
+        {
+          "condition": "loLevel >= hiLevel",
+          "target": "ERROR_BAD_RANGE",
+          "actions": [
+            "error := TRUE",
+            "status := 16#8001",
+            "preserveAlarms := TRUE"
+          ]
+        },
+        {
+          "condition": "loLevel < hiLevel AND hystWindow >= real32(hiLevel - loLevel)",
+          "target": "ERROR_BAD_WINDOW",
+          "actions": [
+            "error := TRUE",
+            "status := 16#8002",
+            "preserveAlarms := TRUE"
+          ]
+        },
+        {
+          "condition": "valid configuration",
+          "target": "RUN_VALID",
+          "actions": [
+            "error := FALSE",
+            "status := 0"
+          ]
+        }
+      ]
+    },
+    {
+      "state": "ERROR_BAD_WINDOW",
+      "description": "Invalid hysteresis window; alarm updates are suppressed and alarm outputs are preserved.",
+      "transitions": [
+        {
+          "condition": "loLevel >= hiLevel",
+          "target": "ERROR_BAD_RANGE",
+          "actions": [
+            "error := TRUE",
+            "status := 16#8001",
+            "preserveAlarms := TRUE"
+          ]
+        },
+        {
+          "condition": "loLevel < hiLevel AND hystWindow >= real32(hiLevel - loLevel)",
+          "target": "ERROR_BAD_WINDOW",
+          "actions": [
+            "error := TRUE",
+            "status := 16#8002",
+            "preserveAlarms := TRUE"
+          ]
+        },
+        {
+          "condition": "valid configuration",
+          "target": "RUN_VALID",
+          "actions": [
+            "error := FALSE",
+            "status := 0"
+          ]
+        }
+      ]
+    }
+  ],
+  "timer_plan": {
+    "required": false,
+    "timers": [],
+    "pt_durations": {},
+    "reset_conditions": [],
+    "notes": "No timer or edge-timing function blocks are required for this alarm handling FB."
+  },
+  "priorities": [
+    "Safety/configuration priority 1: diagnose loLevel >= hiLevel first; set error=TRUE and status=16#8001; suppress alarm updates; preserve hiAlarm and loAlarm.",
+    "Safety/configuration priority 2: if range is valid, diagnose hystWindow >= real32(hiLevel - loLevel); set error=TRUE and status=16#8002; suppress alarm updates; preserve hiAlarm and loAlarm.",
+    "Safety/configuration priority 3: on valid configuration, clear error=FALSE and status=0 before applying normal alarm hysteresis logic.",
+    "Operational priority 1: high alarm sets when Value > hiLevel using strict comparison.",
+    "Operational priority 2: high alarm clears when Value < real32(hiLevel - hystWindow) using strict comparison.",
+    "Operational priority 3: high alarm retains previous state inside the inclusive hysteresis band real32(hiLevel - hystWindow) <= Value <= hiLevel.",
+    "Operational priority 4: low alarm sets when Value < loLevel using strict comparison.",
+    "Operational priority 5: low alarm clears when Value > real32(loLevel + hystWindow) using strict comparison.",
+    "Operational priority 6: low alarm retains previous state inside the inclusive hysteresis band loLevel <= Value <= real32(loLevel + hystWindow).",
+    "Numeric priority: compute thresholds with IEEE-754 binary32 REAL arithmetic for real32(hiLevel - hystWindow), real32(loLevel + hystWindow), and real32(hiLevel - loLevel).",
+    "Output priority: assign all outputs once per scan from the final selected state and internal alarm state values."
+  ],
+  "initial_values": {
+    "hiAlarm": false,
+    "loAlarm": false,
+    "error": false,
+    "status": 0,
+    "hiAlarmState": false,
+    "loAlarmState": false,
+    "previousHiAlarm": false,
+    "previousLoAlarm": false,
+    "state": "START",
+    "Value": 0.0,
+    "hiLevel": 0.0,
+    "loLevel": 0.0,
+    "hystWindow": 0.0
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "edge_sampling",
+      "description": "Sample all inputs once at scan start. Capture previous observed outputs for hysteresis: previousHiAlarm := hiAlarm from the prior scan and previousLoAlarm := loAlarm from the prior scan. Do not use later scan-time values for this scan."
+    },
+    {
+      "stage": 2,
+      "name": "safety_reset_priority_and_state_transitions",
+      "description": "Evaluate configuration safety in priority order: first loLevel >= hiLevel -> ERROR_BAD_RANGE with error=TRUE and status=16#8001; else hystWindow >= real32(hiLevel - loLevel) -> ERROR_BAD_WINDOW with error=TRUE and status=16#8002; else valid -> RUN_VALID with error=FALSE and status=0. In ERROR_BAD_RANGE and ERROR_BAD_WINDOW, skip all alarm hysteresis updates so hiAlarmState and loAlarmState remain unchanged. In RUN_VALID, apply strict trigger/release comparisons and inclusive retention bands to update hiAlarmState and loAlarmState."
+    },
+    {
+      "stage": 3,
+      "name": "unconditional_timer_fb_calls_outside_case_if",
+      "description": "No timer function blocks are required. For this FB there are no top-level timer FB calls. Future timer FBs, if added, must be called unconditionally outside CASE/IF constructs."
+    },
+    {
+      "stage": 4,
+      "name": "unified_output_assignments",
+      "description": "Assign declared outputs exactly once from final scan state: hiAlarm := hiAlarmState; loAlarm := loAlarmState; error := selected error value; status := selected status code. Invalid-configuration scans preserve the previous alarm output states while updating error/status; valid-configuration scans output the newly computed hysteresis alarm states."
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A_init",
+      "formula": "init"
+    },
+    {
+      "id": "A1_badRangePriority",
+      "formula": "G((loLevel >= hiLevel) -> (error & status = 16#8001 & hiAlarm = Y(hiAlarm) & loAlarm = Y(loAlarm)))"
+    },
+    {
+      "id": "A2_badWindow",
+      "formula": "G(((loLevel < hiLevel) & (hystWindow >= real32(hiLevel - loLevel))) -> (error & status = 16#8002 & hiAlarm = Y(hiAlarm) & loAlarm = Y(loAlarm)))"
+    },
+    {
+      "id": "A3_validClearsError",
+      "formula": "G(((loLevel < hiLevel) & (hystWindow < real32(hiLevel - loLevel)) & (hystWindow >= 0.0)) -> (!error & status = 0))"
+    },
+    {
+      "id": "A4_highTrigger",
+      "formula": "G(((loLevel < hiLevel) & (hystWindow < real32(hiLevel - loLevel)) & (hystWindow >= 0.0) & (Value > hiLevel)) -> hiAlarm)"
+    },
+    {
+      "id": "A5_highRelease",
+      "formula": "G(((loLevel < hiLevel) & (hystWindow < real32(hiLevel - loLevel)) & (hystWindow >= 0.0) & (Value < real32(hiLevel - hystWindow))) -> !hiAlarm)"
+    },
+    {
+      "id": "A6_highHysteresisRetain",
+      "formula": "G(((loLevel < hiLevel) & (hystWindow < real32(hiLevel - loLevel)) & (hystWindow >= 0.0) & (real32(hiLevel - hystWindow) <= Value) & (Value <= hiLevel)) -> (hiAlarm = Y(hiAlarm)))"
+    },
+    {
+      "id": "A7_lowTrigger",
+      "formula": "G(((loLevel < hiLevel) & (hystWindow < real32(hiLevel - loLevel)) & (hystWindow >= 0.0) & (Value < loLevel)) -> loAlarm)"
+    },
+    {
+      "id": "A8_lowRelease",
+      "formula": "G(((loLevel < hiLevel) & (hystWindow < real32(hiLevel - loLevel)) & (hystWindow >= 0.0) & (Value > real32(loLevel + hystWindow))) -> !loAlarm)"
+    },
+    {
+      "id": "A9_lowHysteresisRetain",
+      "formula": "G(((loLevel < hiLevel) & (hystWindow < real32(hiLevel - loLevel)) & (hystWindow >= 0.0) & (loLevel <= Value) & (Value <= real32(loLevel + hystWindow))) -> (loAlarm = Y(loAlarm)))"
+    }
+  ]
+}

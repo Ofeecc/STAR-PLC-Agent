@@ -1,0 +1,13 @@
+{
+  "request_id": "8eef83dd446b41f69e6974b57f8d9f2f",
+  "source_sha256": "0b368587723b79985249cbffcccf529ee562a11ba935ce0cb10f5a9695ff4ba8",
+  "task_id": "PUB014",
+  "project": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\f9e0778d0c3d6dbb\\task.project",
+  "candidate": {
+    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    ipText : STRING(254);\nEND_VAR\nVAR_OUTPUT\n    ipValue : UDINT := 0;\nEND_VAR\nVAR\n    textLength : INT;\n    position : INT;\n    character : BYTE;\n    octet : UDINT;\n    accumulated : UDINT;\n    separatorCount : INT;\n    hasDigit : BOOL;\n    valid : BOOL;\nEND_VAR",
+    "implementation": "ipValue := 0;\ntextLength := LEN(ipText);\noctet := 0;\naccumulated := 0;\nseparatorCount := 0;\nhasDigit := FALSE;\nvalid := TRUE;\n\nFOR position := 0 TO textLength - 1 DO\n    character := ipText[position];\n    IF (character >= 48) AND (character <= 57) THEN\n        hasDigit := TRUE;\n        IF (octet > 25) OR ((octet = 25) AND (character > 53)) THEN\n            valid := FALSE;\n            EXIT;\n        END_IF;\n        octet := octet * 10 + BYTE_TO_UDINT(character - 48);\n    ELSIF character = 46 THEN\n        IF (NOT hasDigit) OR (separatorCount >= 3) THEN\n            valid := FALSE;\n            EXIT;\n        END_IF;\n        accumulated := SHL(accumulated, 8) OR octet;\n        octet := 0;\n        hasDigit := FALSE;\n        separatorCount := separatorCount + 1;\n    ELSE\n        valid := FALSE;\n        EXIT;\n    END_IF;\nEND_FOR;\n\nIF valid AND hasDigit AND (separatorCount = 3) THEN\n    ipValue := SHL(accumulated, 8) OR octet;\nEND_IF;",
+    "supporting_objects": []
+  },
+  "result_path": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\f9e0778d0c3d6dbb\\codesys_evidence.json",
+  "started_utc": "2026-11-14T14:10:15.244945+00:00"
+}

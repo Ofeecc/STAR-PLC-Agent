@@ -1,0 +1,20 @@
+{
+  "request_id": "c5881a7b68894600aa4245f63babd296",
+  "source_sha256": "8f9a4d27beee693cb67a92923eab170be741375bc1f0edbbcb25bc8c74fd84b9",
+  "task_id": "PUB007",
+  "project": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\1f61680b261617f7\\task.project",
+  "candidate": {
+    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    mode : BOOL;\n    start : BOOL;\n    stop : BOOL;\nEND_VAR\nVAR_IN_OUT\n    pumpGroup : ARRAY[1..5] OF ST_Pump;\nEND_VAR\nVAR\n    runCmd : ARRAY[1..5] OF BOOL;\n    modeSampled : BOOL;\n    startSampled : BOOL;\n    stopSampled : BOOL;\n    prioritySampled : ARRAY[1..5] OF INT;\n    selectionSampled : ARRAY[1..5] OF BOOL;\n    sortIndex : ARRAY[1..5] OF INT;\n    i : INT;\n    j : INT;\n    tmpIndex : INT;\nEND_VAR",
+    "implementation": "// 1. Sample all inputs once at scan start\nmodeSampled := mode;\nstartSampled := start;\nstopSampled := stop;\nFOR i := 1 TO 5 DO\n    prioritySampled[i] := pumpGroup[i].priority;\n    selectionSampled[i] := pumpGroup[i].selection;\n    sortIndex[i] := i;\nEND_FOR;\n\n// Prepare automatic priority order: descending priority, ties by lower array index\nFOR i := 1 TO 4 DO\n    FOR j := 1 TO (5 - i) DO\n        IF (prioritySampled[sortIndex[j]] < prioritySampled[sortIndex[j + 1]]) OR\n           ((prioritySampled[sortIndex[j]] = prioritySampled[sortIndex[j + 1]]) AND (sortIndex[j] > sortIndex[j + 1])) THEN\n            tmpIndex := sortIndex[j];\n            sortIndex[j] := sortIndex[j + 1];\n            sortIndex[j + 1] := tmpIndex;\n        END_IF;\n    END_FOR;\nEND_FOR;\n\n// 2. Safety/priority and state transition. Stop wins over simultaneous start.\nIF stopSampled THEN\n    FOR i := 1 TO 5 DO\n        runCmd[i] := FALSE;\n    END_FOR;\nELSIF startSampled THEN\n    IF NOT modeSampled THEN\n        // Manual mode: latch the selected pumps\n        FOR i := 1 TO 5 DO\n            runCmd[i] := selectionSampled[i];\n        END_FOR;\n    ELSE\n        // Automatic mode: latch exactly the highest-priority three pumps\n        FOR i := 1 TO 5 DO\n            runCmd[i] := FALSE;\n        END_FOR;\n        FOR i := 1 TO 3 DO\n            runCmd[sortIndex[i]] := TRUE;\n        END_FOR;\n    END_IF;\nEND_IF;\n// Else: neither stop nor start is TRUE; hold runCmd unchanged.\n\n// 3. No timer operations are required by this specification.\n\n// 4. Unified output assignment: write only RunComd, never priority or selection\nFOR i := 1 TO 5 DO\n    pumpGroup[i].RunComd := runCmd[i];\nEND_FOR;",
+    "supporting_objects": [
+      {
+        "name": "ST_Pump",
+        "kind": "DUT",
+        "declaration": "TYPE ST_Pump :\nSTRUCT\n    priority : INT;\n    selection : BOOL;\n    RunComd : BOOL;\nEND_STRUCT\nEND_TYPE",
+        "implementation": ""
+      }
+    ]
+  },
+  "result_path": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\1f61680b261617f7\\codesys_evidence.json",
+  "started_utc": "2026-11-14T08:03:52.547813+00:00"
+}

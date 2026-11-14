@@ -1,0 +1,13 @@
+{
+  "request_id": "de0eed332dc34a20bba53c5aa389e4cd",
+  "source_sha256": "bf278494e603e1ecef23cb62391aa71746c7e2821ac16ac3b0c79cbe828436eb",
+  "task_id": "PUB006",
+  "project": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\e833e4cd4e59d353\\task.project",
+  "candidate": {
+    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    DO_LOW : BOOL;\n    AERATION_E_STOP_NC : BOOL;\nEND_VAR\nVAR_OUTPUT\n    BLOWER_RUN : BOOL := FALSE;\n    AERATION_BLOWER_CYCLE_COUNT : UINT := 0;\nEND_VAR\nVAR\n    StartDelayTON : TON;\n    state : INT := 0;\n    permit : BOOL := FALSE;\n    runPrev : BOOL := FALSE;\n    runCmd : BOOL := FALSE;\n    cycleCount : UINT := 0;\nEND_VAR",
+    "implementation": "// Stage 1: sample inputs and previous observed output\nrunPrev := BLOWER_RUN;\npermit := DO_LOW AND AERATION_E_STOP_NC;\n\n// Stage 2: safety/reset priority and state transitions\nIF NOT permit THEN\n    state := 0;\n    runCmd := FALSE;\nELSE\n    CASE state OF\n        0: // IDLE -> DELAY\n            state := 1;\n        1: // DELAY -> RUN when delay is already elapsed\n            IF StartDelayTON.Q THEN\n                state := 2;\n            END_IF;\n        2: // RUN hold\n            state := 2;\n        ELSE\n            state := 0;\n    END_CASE;\nEND_IF;\n\n// Stage 3: unconditional top-level timer call\nStartDelayTON(IN := permit, PT := T#5s);\n\n// Stage 4: unified output assignments\nIF NOT permit THEN\n    runCmd := FALSE;\nELSE\n    runCmd := (state = 2) OR ((state = 1) AND StartDelayTON.Q);\nEND_IF;\n\nIF runCmd AND NOT runPrev THEN\n    cycleCount := cycleCount + UINT#1;\nEND_IF;\n\nBLOWER_RUN := runCmd;\nAERATION_BLOWER_CYCLE_COUNT := cycleCount;",
+    "supporting_objects": []
+  },
+  "result_path": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\e833e4cd4e59d353\\codesys_evidence.json",
+  "started_utc": "2026-11-14T08:02:13.845137+00:00"
+}

@@ -1,0 +1,20 @@
+{
+  "request_id": "cdb5b9d86e694de89abf6c610d901e8c",
+  "source_sha256": "7db02a229e267bc2549f6dffd8f4bdd09e93d634aee49f371c0e7f10bd35aba9",
+  "task_id": "PUB008",
+  "project": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\5a992a959d0273a3\\task.project",
+  "candidate": {
+    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    count : DINT;\nEND_VAR\nVAR_IN_OUT\n    analogValues : ARRAY[*] OF INT;\n    channels : ARRAY[*] OF ST_AnalogChannel;\nEND_VAR\nVAR\n    j : DINT;\n    aIdx : DINT;\n    cIdx : DINT;\n    raw : INT;\n    mode : INT;\n    lo : REAL;\n    hi : REAL;\n    scaledValue : REAL;\nEND_VAR",
+    "implementation": "j := 0;\nWHILE j < count DO\n    cIdx := LOWER_BOUND(channels, 1) + j;\n    IF channels[cIdx].enable THEN\n        mode := channels[cIdx].measuringMode;\n        IF (mode <> 0) AND (mode <> 1) AND (mode <> 2) THEN\n            channels[cIdx].retVal := 16#8001;\n        ELSIF channels[cIdx].hiLIM <= channels[cIdx].loLIM THEN\n            channels[cIdx].retVal := 16#8002;\n        ELSE\n            aIdx := LOWER_BOUND(analogValues, 1) + j;\n            raw := analogValues[aIdx];\n            IF mode = 0 THEN\n                lo := channels[cIdx].loLIM;\n                hi := channels[cIdx].hiLIM;\n                IF channels[cIdx].bipolar THEN\n                    scaledValue := lo + ((INT_TO_REAL(raw) + 27648.0) / 55296.0) * (hi - lo);\n                ELSE\n                    scaledValue := lo + (INT_TO_REAL(raw) / 27648.0) * (hi - lo);\n                END_IF;\n            ELSIF mode = 1 THEN\n                scaledValue := INT_TO_REAL(raw) / 10.0;\n            ELSE\n                scaledValue := INT_TO_REAL(raw) / 100.0;\n            END_IF;\n            channels[cIdx].retVal := 16#0000;\n            channels[cIdx].outputValue := scaledValue;\n        END_IF;\n    END_IF;\n    j := j + 1;\nEND_WHILE;",
+    "supporting_objects": [
+      {
+        "name": "ST_AnalogChannel",
+        "kind": "DUT",
+        "declaration": "TYPE ST_AnalogChannel :\nSTRUCT\n    enable : BOOL;\n    hiLIM : REAL;\n    loLIM : REAL;\n    bipolar : BOOL;\n    measuringMode : INT;\n    retVal : WORD;\n    outputValue : REAL;\nEND_STRUCT\nEND_TYPE",
+        "implementation": ""
+      }
+    ]
+  },
+  "result_path": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\5a992a959d0273a3\\codesys_evidence.json",
+  "started_utc": "2026-11-14T08:05:08.176729+00:00"
+}

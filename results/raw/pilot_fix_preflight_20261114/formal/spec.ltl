@@ -1,0 +1,50 @@
+-- Formal verification specification for Task PUB001
+-- Generated: 2026-11-14T08:26:38.270292+00:00
+
+-- Property: PUB001.P_init
+-- Description: A fresh instance is idle with outputs off before first execution.
+LTLSPEC NAME PUB001.P_init := init;
+
+-- Property: PUB001.P1
+-- Description: No two processing stages are energized together.
+LTLSPEC NAME PUB001.P1 := G(oneHotOutputs);
+
+-- Property: PUB001.P2
+-- Description: Bottle detection starts cleaning in the same scan.
+LTLSPEC NAME PUB001.P2 := G((phase=0 & bottleSensor) -> (Pump_Motor & X(phase=1)));
+
+-- Property: PUB001.P3
+-- Description: A phase-specific confirmation advances exactly one stage.
+LTLSPEC NAME PUB001.P3 := G((phase=1 & cleaningConfirmButton) -> (Filling_Valve & X(phase=2)));
+
+-- Property: PUB001.P4
+-- Description: A phase-specific confirmation advances exactly one stage.
+LTLSPEC NAME PUB001.P4 := G((phase=2 & fillingConfirmButton) -> (Capping_Machine & X(phase=3)));
+
+-- Property: PUB001.P5
+-- Description: A phase-specific confirmation advances exactly one stage.
+LTLSPEC NAME PUB001.P5 := G((phase=3 & cappingConfirmButton) -> (Packing_Machine & X(phase=4)));
+
+-- Property: PUB001.P6
+-- Description: A phase-specific confirmation advances exactly one stage.
+LTLSPEC NAME PUB001.P6 := G((phase=4 & packingConfirmButton) -> (Completion_Light & X(phase=5)));
+
+-- Property: PUB001.P7
+-- Description: Completion persists until pickup is confirmed.
+LTLSPEC NAME PUB001.P7 := G((phase=5 & !finishedButton) -> (Completion_Light & X(phase=5)));
+
+-- Property: PUB001.P8
+-- Description: On finishedButton during completion, clear Completion_Light and return to IDLE.
+LTLSPEC NAME PUB001.P8 := G((phase=5 & finishedButton) -> (!Completion_Light & X(phase=0)));
+
+-- Property: PUB001.P9
+-- Description: Conditional progress: from cleaning, if every active phase eventually receives its matching confirmation, completion eventually occurs.
+LTLSPEC NAME PUB001.P9 := G((phase=1 & G((phase=1) -> F(cleaningConfirmButton)) & G((phase=2) -> F(fillingConfirmButton)) & G((phase=3) -> F(cappingConfirmButton)) & G((phase=4) -> F(packingConfirmButton))) -> F(Completion_Light));
+
+-- Property: PUB001.P10
+-- Description: Closes the unconfirmed phase-hold and finish-clearing obligations left implicit by P3..P9.
+LTLSPEC NAME PUB001.P10 := G(((phase=0 & !bottleSensor) -> (!Pump_Motor & !Filling_Valve & !Capping_Machine & !Packing_Machine & !Completion_Light & X(phase=0))) & ((phase=1 & !cleaningConfirmButton) -> (Pump_Motor & !Filling_Valve & !Capping_Machine & !Packing_Machine & !Completion_Light & X(phase=1))) & ((phase=2 & !fillingConfirmButton) -> (!Pump_Motor & Filling_Valve & !Capping_Machine & !Packing_Machine & !Completion_Light & X(phase=2))) & ((phase=3 & !cappingConfirmButton) -> (!Pump_Motor & !Filling_Valve & Capping_Machine & !Packing_Machine & !Completion_Light & X(phase=3))) & ((phase=4 & !packingConfirmButton) -> (!Pump_Motor & !Filling_Valve & !Capping_Machine & Packing_Machine & !Completion_Light & X(phase=4))) & ((phase=5 & finishedButton) -> (!Pump_Motor & !Filling_Valve & !Capping_Machine & !Packing_Machine & !Completion_Light & X(phase=0))));
+
+-- Property: PUB001.COMPLETE
+-- Description: Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
+LTLSPEC NAME PUB001.COMPLETE := G(CompleteBehavior);

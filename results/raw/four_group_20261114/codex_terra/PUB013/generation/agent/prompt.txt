@@ -1,0 +1,159 @@
+Return ONLY a JSON object with declaration, implementation, supporting_objects.
+declaration is CODESYS FUNCTION_BLOCK FB_Task followed by all VAR sections; omit END_FUNCTION_BLOCK.
+implementation is the ST body alone. supporting_objects is a list of helper DUT/POU objects, each with
+name, kind (DUT/FUNCTION/FUNCTION_BLOCK), declaration, implementation; functions need return_type.
+Keep exact task interface names/types and implement all behavior. Define referenced DUTs. No Markdown.
+Do not change requirements or use reference answers. Standard library is available in the project.
+The target is CODESYS 3.5 ST. Compilation is offline; do not contact physical equipment.
+
+You are the existing coding-agent baseline. The complete task is supplied below. The owner has already authorized this noninteractive benchmark and the supplied IDE-simulation tools within the stated limits. Use the supplied compiler, simulator, and formal verification tools directly; shell commands are unnecessary for this task. Use compile_st to compile each candidate. Maximum 3 total compiler calls. Use simulate_st to simulate candidates against your test cases. Maximum 3 total simulation calls. Use verify_st to formally verify FB_Task against the LTL/INVAR specifications (returns PASS or counterexample trace). After compilation errors, counterexamples, or simulation failures, repair and retest within these limits. Stop on successful verification or infrastructure failure. Do not inspect other directories, environment variables, API credentials, reference code, or other runs. Save the exact final submitted source to candidate.json. Return a concise status; raw trusted compiler, formal verification, and simulation evidence will be used for evaluation.
+TASK
+{
+  "id": "PUB013",
+  "title": "Office HVAC Multi-mode Energy-Saving Control",
+  "difficulty": "medium",
+  "requirements": "# Office HVAC Multi-mode Energy-Saving Control\n\n- **Difficulty:** Medium (medium)\n\n## Requirements\n\nControl an office-building supply fan and generate a temperature-setpoint adjustment from occupancy, operating mode and the energy-saving selection.\n\n1. Valid HVAC_MODE_SELECTOR values are 0 (Auto), 1 (Comfort), 2 (Economy) and 3 (Night).\n2. Start a 30-second delay only when occupancy is detected and Night mode is not selected. SUPPLY_FAN_RUN becomes TRUE only after these conditions remain satisfied for 30 seconds. Immediately stop the fan and reset timing if occupancy is lost or Night mode is selected. Wait the full 30 seconds again when the conditions recover.\n3. Auto mode: use a 0°C adjustment when occupied. When unoccupied, use +3°C in energy-saving mode or +2°C in standard mode.\n4. Comfort mode: use 0°C when occupied or +1°C when unoccupied. Economy mode: use 0°C when occupied or +4°C when unoccupied.\n5. Night mode: use +4°C regardless of occupancy. The energy-saving selection affects only Auto mode.\n6. Keep TEMP_SETPOINT_ADJUST within ±4°C. Initialize outputs to OFF and zero at power-up; update them from current inputs when normal calculation begins.\n7. The start delay controls only the BOOL fan enable; no continuous speed ramp is required.\n\n## Interface Definition\n\n| Direction | Variable/Field | Data Type | Description |\n| --- | --- | --- | --- |\n| Input | `OCCUPANCY_DETECTED` | `BOOL` | Occupancy-detection result derived from the CO₂ sensor. |\n| Input | `ENERGY_SAVING_MODE` | `BOOL` | TRUE selects energy saving; FALSE selects standard operation; affects Auto mode only. |\n| Input | `HVAC_MODE_SELECTOR` | `INT` | 0 Auto, 1 Comfort, 2 Economy, 3 Night; callers supply a valid value. |\n| Output | `SUPPLY_FAN_RUN` | `BOOL` | Supply-fan run enable. |\n| Output | `TEMP_SETPOINT_ADJUST` | `INT` | Temperature-setpoint adjustment in °C. |",
+  "scenario": "An office fan uses a restartable occupancy delay and mode-dependent temperature setback.",
+  "interface": [
+    {
+      "direction": "INPUT",
+      "name": "OCCUPANCY_DETECTED",
+      "type": "BOOL",
+      "description": "Occupancy-detection result derived from the CO₂ sensor."
+    },
+    {
+      "direction": "INPUT",
+      "name": "ENERGY_SAVING_MODE",
+      "type": "BOOL",
+      "description": "TRUE selects energy saving; FALSE selects standard operation; affects Auto mode only."
+    },
+    {
+      "direction": "INPUT",
+      "name": "HVAC_MODE_SELECTOR",
+      "type": "INT",
+      "description": "0 Auto, 1 Comfort, 2 Economy, 3 Night; callers supply a valid value."
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "SUPPLY_FAN_RUN",
+      "type": "BOOL",
+      "description": "Supply-fan run enable."
+    },
+    {
+      "direction": "OUTPUT",
+      "name": "TEMP_SETPOINT_ADJUST",
+      "type": "INT",
+      "description": "Temperature-setpoint adjustment in °C."
+    }
+  ],
+  "initial_conditions": {
+    "SUPPLY_FAN_RUN": false,
+    "TEMP_SETPOINT_ADJUST": 0
+  },
+  "scan_semantics": "Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call. Retained pre-state q[k] becomes q[k+1]. Each test resets the instance. A transition affects the same observed scan. dt_ms is elapsed time since the preceding invocation; the first invocation starts IEC timers at elapsed zero. CycleTime inputs, where supplied, are attributed to the current invocation rather than inferred from dt_ms.",
+  "safety_priority": [
+    "Occupancy loss or Night immediately stops fan and resets delay.",
+    "Energy saving affects only Auto setback."
+  ],
+  "assumptions": [
+    "Selector values are always 0..3 as required by the official input contract.",
+    "Outputs are initialized before the first call, which calculates adjustment immediately.",
+    "The timer starts at elapsed zero on the first non-Night occupied call. Fan starts at the first observation at or after 30s.",
+    "dt_ms is actual elapsed time since the preceding call; real runtime timer tests must preserve this timing.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+  ],
+  "atomic_propositions": {
+    "permit": "OCCUPANCY_DETECTED AND HVAC_MODE_SELECTOR<>3",
+    "mature": "continuous permit elapsed>=30s",
+    "fan": "SUPPLY_FAN_RUN",
+    "bounded": "-4<=TEMP_SETPOINT_ADJUST<=4",
+    "occupied": "OCCUPANCY_DETECTED AND mode<>3",
+    "zero": "TEMP_SETPOINT_ADJUST=0",
+    "night": "mode=3",
+    "four": "adjust=4",
+    "auto_save": "mode=0 AND NOT occupancy AND ENERGY_SAVING_MODE",
+    "three": "adjust=3",
+    "auto_standard": "mode=0 AND NOT occupancy AND NOT ENERGY_SAVING_MODE",
+    "two": "adjust=2",
+    "comfort": "mode=1 AND NOT occupancy",
+    "one": "adjust=1",
+    "economy": "mode=2 AND NOT occupancy",
+    "TimeTick": "Boolean: floor(t[k]/1ms)>floor(t[k-1]/1ms), with t[0]=0, TimeTick[0]=FALSE, t[k]=sum(dt_ms[1..k]). G(F(TimeTick)) states unbounded physical time progress; merely positive dt is insufficient.",
+    "OCCUPANCY_DETECTED": "I[k].OCCUPANCY_DETECTED: sampled input (BOOL).",
+    "ENERGY_SAVING_MODE": "I[k].ENERGY_SAVING_MODE: sampled input (BOOL).",
+    "HVAC_MODE_SELECTOR": "I[k].HVAC_MODE_SELECTOR: sampled input (INT).",
+    "SUPPLY_FAN_RUN": "O[k].SUPPLY_FAN_RUN: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "TEMP_SETPOINT_ADJUST": "O[k].TEMP_SETPOINT_ADJUST: independently observed post-scan candidate value (INT); never defined as expected output.",
+    "mode": "I[k].HVAC_MODE_SELECTOR",
+    "occupancy": "I[k].OCCUPANCY_DETECTED",
+    "adjust": "O[k].TEMP_SETPOINT_ADJUST",
+    "init": "At the separate pre-invocation initial observation before scan k=0: O_init.SUPPLY_FAN_RUN=false, O_init.TEMP_SETPOINT_ADJUST=0."
+  },
+  "ltl": [
+    {
+      "id": "PUB013.P_init",
+      "kind": "safety",
+      "formula": "init",
+      "description": "Before the first scan invocation, all declared OUTPUT variables and initial instance state hold their declared initial values.",
+      "explanation": "Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "INITIAL_INSTANCE"
+    },
+    {
+      "id": "PUB013.P1",
+      "name": "Fan delay",
+      "formula": "G(fan <-> (permit & mature))",
+      "explanation": "Fan follows the complete uninterrupted delay.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB013.P2",
+      "name": "Bounds",
+      "formula": "G(bounded)",
+      "explanation": "Legal outputs satisfy the required range.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB013.P3",
+      "name": "Occupied and Night",
+      "formula": "G((occupied -> zero) & (night -> four))",
+      "explanation": "Night overrides occupied setback.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB013.P4",
+      "name": "Auto",
+      "formula": "G((auto_save -> three) & (auto_standard -> two))",
+      "explanation": "Auto unoccupied setback follows energy saving.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB013.P5",
+      "name": "Fixed modes",
+      "formula": "G((comfort -> one) & (economy -> four))",
+      "explanation": "Comfort and Economy ignore energy saving.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    },
+    {
+      "id": "PUB013.P6",
+      "name": "Liveness",
+      "formula": "(G(F(TimeTick))) -> (G((G permit) -> F fan))",
+      "explanation": "If permit stays TRUE from any scan onward, the fan eventually runs, assuming continued calls and diverging physical time. Explicit non-Zeno environment premise: physical elapsed time crosses infinitely many 1ms boundaries.",
+      "language": "LTL_OVER_TYPED_SCAN_PREDICATES",
+      "encoding_status": "NOT_LOWERED_TO_MODEL_CHECKER",
+      "scope": "SCAN_SEQUENCE"
+    }
+  ]
+}

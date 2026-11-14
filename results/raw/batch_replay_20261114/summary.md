@@ -1,0 +1,16 @@
+# 批量测试进度
+
+完成 6/6 题；本次进程用时 7.2 秒。
+
+| 题号 | 编译 | 固定用例 通过/执行/计划 | 形式检查 | 总状态 |
+|---|---|---|---|---|
+| PUB001 | PASS | 7/7/7 | PASS | PARTIAL |
+| PUB003 | PASS | 8/8/8 | PASS | PARTIAL |
+| PUB007 | PASS | 7/7/7 | PASS | PARTIAL |
+| PUB009 | PASS | 7/7/7 | UNSUPPORTED_ST | PARTIAL |
+| PUB015 | PASS | 13/13/13 | PASS | PARTIAL |
+| PUB016 | PASS | 8/8/8 | UNSUPPORTED_ST | PARTIAL |
+
+PARTIAL/UNSUPPORTED_ST 不等同于程序错误；形式检查 PASS 也须核对完整规约覆盖与建模语义。
+compile.json / functional.json / formal.json 标注 cached、mode、输入指纹和证据；轨迹回放不算本次重新仿真。
+模型调用统计为本输出目录中新生成记录的累计值；断点续跑不会把旧调用当成本次新调用。

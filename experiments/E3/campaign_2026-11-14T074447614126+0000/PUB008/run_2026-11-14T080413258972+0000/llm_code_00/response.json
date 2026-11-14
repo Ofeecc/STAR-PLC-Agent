@@ -1,0 +1,54 @@
+{
+  "caching": {
+    "type": "disabled"
+  },
+  "created_at": 1794643498,
+  "id": "resp_0217946434976952ed1cec50adc32004fbc5d33f3666760cb9746",
+  "max_output_tokens": 24576,
+  "model": "deepseek-v4.1-flash-1017",
+  "object": "response",
+  "output": [
+    {
+      "id": "rs_02179464349853200000000000000000000ffffac15f1cd5dec05",
+      "type": "reasoning",
+      "summary": [
+        {
+          "type": "summary_text",
+          "text": "We need produce JSON with declaration, implementation, supporting_objects. Need implement FB_Task. Need understand CODESYS ST, variable-length arrays in VAR_IN_OUT. Need define ST_AnalogChannel DUT. Implementation must process only count, pairing lower bounds. Read-only inputs preserved automatically if we don't write. Need write only enabled processed channels retVal/outputValue. For disabled/out-of-count leave unchanged.\n\nNeed be careful CODESYS syntax for LOWER_BOUND on multi-dimensional? ARRAY[*] OF INT. LOWER_BOUND(analogValues,1). Since one dimensional. Can use LOWER_BOUND(analogValues, 1). Similarly channels.\n\nNeed interface exact:\nFUNCTION_BLOCK FB_Task\nVAR_INPUT\n    count : DINT;\nEND_VAR\nVAR_IN_OUT\n    analogValues : ARRAY[*] OF INT;\n    channels : ARRAY[*] OF ST_AnalogChannel;\nEND_VAR\nVAR\n   j : DINT;\n   aIdx : DINT;\n   cIdx : DINT;\n   raw : INT;\n   mode : INT;\n   lo, hi, outVal : REAL;\nEND_VAR\n\nImplementation:\nj := 0;\nWHILE j < count DO\n    cIdx := LOWER_BOUND(channels,1) + j;\n    // Need ensure j within channel array? Caller provides count <= smaller length. Could optionally check UPPER_BOUND? But no need. However if count negative, while not run.\n    IF channels[cIdx].enable THEN\n        mode := channels[cIdx].measuringMode; // read\n        IF (mode <> 0) AND (mode <> 1) AND (mode <> 2) THEN\n            channels[cIdx].retVal := 16#8001;\n            // preserve outputValue: do not write\n        ELSIF channels[cIdx].hiLIM <= channels[cIdx].loLIM THEN\n            channels[cIdx].retVal := 16#8002;\n        ELSE\n            // valid\n            aIdx := LOWER_BOUND(analogValues,1) + j;\n            raw := analogValues[aIdx];\n            IF mode = 0 THEN\n                lo := channels[cIdx].loLIM;\n                hi := channels[cIdx].hiLIM;\n                IF channels[cIdx].bipolar THEN\n                    outVal := lo + ((INT_TO_REAL(raw) + 27648.0) / 55296.0) * (hi - lo);\n                ELSE\n                    outVal := lo + (INT_TO_REAL(raw) / 27648.0) * (hi - lo);\n                END_IF;\n            ELSIF mode = 1 THEN\n                outVal := INT_TO_REAL(raw) / 10.0;\n            ELSE // mode = 2\n                outVal := INT_TO_REAL(raw) / 100.0;\n            END_IF;\n            channels[cIdx].retVal := 16#0000;\n            channels[cIdx].outputValue := outVal;\n        END_IF;\n    END_IF;\n    j := j + 1;\nEND_WHILE;\n\nNeed ensure mode invalid priority over limits. Yes.\n\nPotential issue: CODESYS syntax `16#8001` is WORD literal? Assign WORD from 16#8001 maybe okay. Could use `WORD#16#8001`? In ST, 16#8001 is integer literal. Assign to WORD likely okay. Use `channels[cIdx].retVal := 16#8001;`.\n\nNeed consider CODESYS `INT_TO_REAL` available. Yes.\n\nNeed support variable length array lower bound while reading. `LOWER_BOUND(analogValues, 1)` returns DINT? Usually DINT. Adding j DINT. Good.\n\nPotential issue: channels[cIdx].hiLIM <= channels[cIdx].loLIM with REAL. Fine.\n\nPotential issue: We compute aIdx only after validity; if mode invalid and raw not accessed, good. P2 says disabled/out count preserved. P3 outputValue preserved. Yes.\n\nNeed define ST_AnalogChannel struct. Supporting object:\nname \"ST_AnalogChannel\", kind \"DUT\", declaration:\nTYPE ST_AnalogChannel :\nSTRUCT\n    enable : BOOL;\n    hiLIM : REAL;\n    loLIM : REAL;\n    bipolar : BOOL;\n    measuringMode : INT;\n    retVal : WORD;\n    outputValue : REAL;\nEND_STRUCT\nEND_TYPE\nimplementation maybe \"\".\n\nNeed output JSON only. `declaration` should be CODESYS FUNCTION_BLOCK FB_Task followed by all VAR sections; omit END_FUNCTION_BLOCK. Implementation body alone. Need include variable names exactly. Interface names count, analogValues, channels. Could include no extra public variables? Internal vars okay in declaration? Yes declaration includes all VAR sections.\n\nNeed consider if FB needs no state. The requirement says function block processes. Could use WHILE.\n\nNeed inspect if CODESYS supports `LOWER_BOUND(channels, 1)` for array of struct. Yes.\n\nPotential issue with `channels[cIdx].hiLIM <= channels[cIdx].loLIM` when hiLIM/loLIM are read-only? We only read.\n\nPotential issue: \"Do not modify configuration fields\" we don't.\n\nPotential issue: arrays may have different lower bounds. We pair at each own lower bound + j. Good.\n\nPotential issue: count zero through smaller lengths. We process j < count. If count > length? caller satisfies. Could guard with upper bounds to avoid runtime. But task says caller must provide count from zero through smaller. Could also cap to min to be safe, but if count larger not tested. Adding cap would potentially violate? If count out of bounds not specified. But requirement states caller must provide valid. We can ignore.\n\nPotential issue: If count is negative, while j < count false because j=0, count negative. Good.\n\nPotential issue: `channels[cIdx].retVal := 16#8001;` - in CODESYS, 16#8001 is INT? Actually WORD literal? Assigning to WORD okay. For retVal success use `16#0000`.\n\nPotential issue: for mode invalid priority, if hiLIM invalid too we set 8001. Yes.\n\nPotential issue: \"Limit validation applies to enabled channels in every mode\" For mode invalid, requirements say if mode invalid set 8001 and skip. But assumptions state invalid measuringMode has priority over invalid hiLIM/loLIM. Limit validation applies to enabled channels in every mode. Hmm \"in every mode\" could mean mode 0,1,2 valid modes. Invalid mode skip before limits. Our code does that. Good.\n\nNeed maybe include `END_VAR` in declaration after each section. The declaration should omit END_FUNCTION_BLOCK. It can include `FUNCTION_BLOCK FB_Task` then VAR_INPUT ... END_VAR VAR_IN_OUT ... END_VAR VAR ... END_VAR. That's fine.\n\nNeed output only JSON. No markdown.\n\nLet's craft JSON. Ensure no trailing commas. `supporting_objects` list with one DUT. Implementation string can contain newlines. Need escape? JSON can contain \\n literal? We'll produce valid JSON with string containing newline escapes or actual newlines? The response can include JSON with escaped newlines. Usually produce a JSON object with strings containing \\n. Need ensure valid JSON. Use quotes.\n\nCould include implementation with line breaks escaped `\\n`. We'll write as one line string with \\n escapes to be safe.\n\nNeed no comments? fine.\n\nLet's produce."
+        }
+      ],
+      "status": "completed"
+    },
+    {
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "output_text",
+          "text": "{\"declaration\":\"FUNCTION_BLOCK FB_Task\\nVAR_INPUT\\n    count : DINT;\\nEND_VAR\\nVAR_IN_OUT\\n    analogValues : ARRAY[*] OF INT;\\n    channels : ARRAY[*] OF ST_AnalogChannel;\\nEND_VAR\\nVAR\\n    j : DINT;\\n    aIdx : DINT;\\n    cIdx : DINT;\\n    raw : INT;\\n    mode : INT;\\n    lo : REAL;\\n    hi : REAL;\\n    scaledValue : REAL;\\nEND_VAR\",\"implementation\":\"j := 0;\\nWHILE j < count DO\\n    cIdx := LOWER_BOUND(channels, 1) + j;\\n    IF channels[cIdx].enable THEN\\n        mode := channels[cIdx].measuringMode;\\n        IF (mode <> 0) AND (mode <> 1) AND (mode <> 2) THEN\\n            channels[cIdx].retVal := 16#8001;\\n        ELSIF channels[cIdx].hiLIM <= channels[cIdx].loLIM THEN\\n            channels[cIdx].retVal := 16#8002;\\n        ELSE\\n            aIdx := LOWER_BOUND(analogValues, 1) + j;\\n            raw := analogValues[aIdx];\\n            IF mode = 0 THEN\\n                lo := channels[cIdx].loLIM;\\n                hi := channels[cIdx].hiLIM;\\n                IF channels[cIdx].bipolar THEN\\n                    scaledValue := lo + ((INT_TO_REAL(raw) + 27648.0) / 55296.0) * (hi - lo);\\n                ELSE\\n                    scaledValue := lo + (INT_TO_REAL(raw) / 27648.0) * (hi - lo);\\n                END_IF;\\n            ELSIF mode = 1 THEN\\n                scaledValue := INT_TO_REAL(raw) / 10.0;\\n            ELSE\\n                scaledValue := INT_TO_REAL(raw) / 100.0;\\n            END_IF;\\n            channels[cIdx].retVal := 16#0000;\\n            channels[cIdx].outputValue := scaledValue;\\n        END_IF;\\n    END_IF;\\n    j := j + 1;\\nEND_WHILE;\",\"supporting_objects\":[{\"name\":\"ST_AnalogChannel\",\"kind\":\"DUT\",\"declaration\":\"TYPE ST_AnalogChannel :\\nSTRUCT\\n    enable : BOOL;\\n    hiLIM : REAL;\\n    loLIM : REAL;\\n    bipolar : BOOL;\\n    measuringMode : INT;\\n    retVal : WORD;\\n    outputValue : REAL;\\nEND_STRUCT\\nEND_TYPE\",\"implementation\":\"\"}]}"
+        }
+      ],
+      "status": "completed",
+      "id": "msg_02179464350722700000000000000000000ffffac15f1cd791da5",
+      "phase": "final_answer"
+    }
+  ],
+  "reasoning": {
+    "effort": "high"
+  },
+  "service_tier": "default",
+  "status": "completed",
+  "store": false,
+  "usage": {
+    "input_tokens": 7568,
+    "output_tokens": 2188,
+    "total_tokens": 9756,
+    "input_tokens_details": {
+      "cached_tokens": 0
+    },
+    "output_tokens_details": {
+      "reasoning_tokens": 1592
+    },
+    "cost": "¥0.012892"
+  }
+}

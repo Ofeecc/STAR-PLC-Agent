@@ -1,0 +1,30 @@
+-- Formal verification specification for Task PUB005
+-- Generated: 2026-11-14T13:11:11.312168+00:00
+
+-- Property: PUB005.P_init
+-- Description: Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
+LTLSPEC NAME PUB005.P_init := init;
+
+-- Property: PUB005.P1
+-- Description: Soft-start output means only the startup monitoring inhibition interval.
+LTLSPEC NAME PUB005.P1 := G(Weld_Soft_Start_Active <-> startup);
+
+-- Property: PUB005.P2
+-- Description: Startup, E-stop or no gap forces the alarm off.
+LTLSPEC NAME PUB005.P2 := G((startup | !Weld_E_Stop_NC | !Gap_Exceeded) -> !Operator_Alert);
+
+-- Property: PUB005.P3
+-- Description: Alarm requires post-startup continuous qualified gap.
+LTLSPEC NAME PUB005.P3 := G(Operator_Alert <-> (!startup & Weld_E_Stop_NC & Gap_Exceeded & gapQualified));
+
+-- Property: PUB005.P4
+-- Description: Each suppressing condition clears or blocks gap qualification.
+LTLSPEC NAME PUB005.P4 := G((startup | !Weld_E_Stop_NC | !Gap_Exceeded) -> X(!gapQualified));
+
+-- Property: PUB005.P5
+-- Description: Persistent gap eventually alarms after startup and debounce, assuming advancing time. Explicit non-Zeno environment premise: physical elapsed time crosses infinitely many 1ms boundaries.
+LTLSPEC NAME PUB005.P5 := (G(F(TimeTick))) -> (G((G(Weld_E_Stop_NC & Gap_Exceeded)) -> F(Operator_Alert)));
+
+-- Property: PUB005.COMPLETE
+-- Description: Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
+LTLSPEC NAME PUB005.COMPLETE := G(CompleteBehavior);

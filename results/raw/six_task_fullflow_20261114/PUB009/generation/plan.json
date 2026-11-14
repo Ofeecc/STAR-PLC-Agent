@@ -1,0 +1,206 @@
+{
+  "state_machine": {
+    "states": [
+      {
+        "name": "S_INIT",
+        "description": "Fresh pre-scan instance. Outputs hold declared initial values."
+      },
+      {
+        "name": "S_INVALID",
+        "description": "windowSize < 1 or windowSize > 100. error=TRUE, status=16#8200. No sample accepted. History and internal mean/reached are preserved."
+      },
+      {
+        "name": "S_RESET_CLEAR",
+        "description": "Valid window and reset=TRUE. History is cleared, average=0.0, windowSizeReached=FALSE. No sample accepted."
+      },
+      {
+        "name": "S_EMPTY",
+        "description": "Valid window, no error, historyCount=0."
+      },
+      {
+        "name": "S_WARMUP",
+        "description": "Valid window, no error, 0 < historyCount < windowSize."
+      },
+      {
+        "name": "S_FULL",
+        "description": "Valid window, no error, historyCount=windowSize. windowSizeReached=TRUE."
+      }
+    ],
+    "transitions": [
+      {
+        "from": "S_INIT",
+        "to": "S_INVALID",
+        "guard": "windowSize < 1 OR windowSize > 100",
+        "action": "Set invalid/error state. Preserve internalAverage, internalWindowSizeReached, and history. Do not accept sample."
+      },
+      {
+        "from": "S_INIT",
+        "to": "S_RESET_CLEAR",
+        "guard": "validWindow AND reset",
+        "action": "Clear history and historySum. internalAverage:=0.0; internalWindowSizeReached:=FALSE; lastValidWindowSize:=windowSize. Do not accept sample."
+      },
+      {
+        "from": "S_INIT",
+        "to": "[S_EMPTY if count=0; S_WARMUP if 0<count<windowSize; S_FULL if count=windowSize]",
+        "guard": "validWindow AND NOT reset",
+        "action": "If windowChanged, clear history before any sample. If cyclicExecution OR triggerRise, accept exactly one sample and update ring buffer/sum/count. Set state from historyCount."
+      },
+      {
+        "from": "S_INVALID",
+        "to": "S_INVALID",
+        "guard": "windowSize < 1 OR windowSize > 100",
+        "action": "Keep error/status set. Preserve internalAverage, internalWindowSizeReached, and history. Do not accept sample."
+      },
+      {
+        "from": "S_INVALID",
+        "to": "S_RESET_CLEAR",
+        "guard": "validWindow AND reset",
+        "action": "Return to valid configuration, clear error/status, clear history, set average=0.0 and reached=FALSE. Update lastValidWindowSize."
+      },
+      {
+        "from": "S_INVALID",
+        "to": "[S_EMPTY if count=0 after optional clear; S_WARMUP if 0<count<windowSize; S_FULL if count=windowSize]",
+        "guard": "validWindow AND NOT reset",
+        "action": "Clear error/status. If windowChanged, clear history before same-scan sample. Accept at most one sample if cyclicExecution OR triggerRise."
+      },
+      {
+        "from": "S_RESET_CLEAR",
+        "to": "S_INVALID",
+        "guard": "windowSize < 1 OR windowSize > 100",
+        "action": "Invalid window takes priority. Set error/status and preserve current mean/history."
+      },
+      {
+        "from": "S_RESET_CLEAR",
+        "to": "S_RESET_CLEAR",
+        "guard": "validWindow AND reset",
+        "action": "Continue clearing history and forcing average=0.0, reached=FALSE. No sample accepted."
+      },
+      {
+        "from": "S_RESET_CLEAR",
+        "to": "[S_EMPTY if no accept; S_WARMUP or S_FULL if accept]",
+        "guard": "validWindow AND NOT reset",
+        "action": "If cyclicExecution OR triggerRise, accept one sample; otherwise remain empty. State selected by resulting historyCount."
+      },
+      {
+        "from": "S_EMPTY",
+        "to": "S_INVALID",
+        "guard": "windowSize < 1 OR windowSize > 100",
+        "action": "Set error/status. Preserve mean/history."
+      },
+      {
+        "from": "S_EMPTY",
+        "to": "S_RESET_CLEAR",
+        "guard": "validWindow AND reset",
+        "action": "Clear history and force average=0.0, reached=FALSE."
+      },
+      {
+        "from": "S_EMPTY",
+        "to": "S_EMPTY / S_WARMUP / S_FULL",
+        "guard": "validWindow AND NOT reset",
+        "action": "If windowChanged, clear history. Accept one sample only if cyclicExecution OR triggerRise. Next state by count."
+      },
+      {
+        "from": "S_WARMUP",
+        "to": "S_INVALID",
+        "guard": "windowSize < 1 OR windowSize > 100",
+        "action": "Set error/status. Preserve internal mean/history."
+      },
+      {
+        "from": "S_WARMUP",
+        "to": "S_RESET_CLEAR",
+        "guard": "validWindow AND reset",
+        "action": "Clear history and force average=0.0, reached=FALSE."
+      },
+      {
+        "from": "S_WARMUP",
+        "to": "S_WARMUP / S_FULL / S_EMPTY",
+        "guard": "validWindow AND NOT reset",
+        "action": "If windowChanged, clear history first. If cyclicExecution OR triggerRise, accept one sample. Next state by count; no event holds WARMUP."
+      },
+      {
+        "from": "S_FULL",
+        "to": "S_INVALID",
+        "guard": "windowSize < 1 OR windowSize > 100",
+        "action": "Set error/status. Preserve internal mean/history/reached."
+      },
+      {
+        "from": "S_FULL",
+        "to": "S_RESET_CLEAR",
+        "guard": "validWindow AND reset",
+        "action": "Clear history and force average=0.0, reached=FALSE."
+      },
+      {
+        "from": "S_FULL",
+        "to": "S_FULL / S_WARMUP / S_EMPTY",
+        "guard": "validWindow AND NOT reset",
+        "action": "If windowChanged, clear history first. If cyclicExecution OR triggerRise, replace oldest and keep count=windowSize. No event holds FULL."
+      }
+    ]
+  },
+  "timer_plan": {
+    "required": false,
+    "timers": [],
+    "pt_durations": "N/A - no timer required",
+    "reset_conditions": "N/A - no timer instance",
+    "implementation_note": "Stage 3 remains present but contains no TON/TOF/TP calls. No timer FB is conditionally embedded inside CASE/IF."
+  },
+  "priorities": [
+    "Invalid window configuration is highest priority: windowSize outside 1..100 sets error=TRUE, status=16#8200, and does not accept a sample.",
+    "Invalid-window scans preserve average, windowSizeReached, and active history; only error/status are forced.",
+    "For a valid window, reset overrides sample acceptance: clear history, average=0.0, windowSizeReached=FALSE, and accept no sample in that scan.",
+    "For a valid window, returning from invalid clears error/status.",
+    "A valid window-size change clears history before any same-scan accepted sample.",
+    "Accept exactly one sample per scan when validWindow AND NOT reset AND (cyclicExecution OR triggerRise).",
+    "cyclicExecution and triggerRise are ORed; they must never cause double insertion.",
+    "triggerRise is computed from pre-scan previousTrigger; previousTrigger is updated unconditionally on every scan, including invalid, reset, hold, and no-event scans.",
+    "Ring-buffer access is bounded to 0..99; windowSize is validated before any indexing based on it.",
+    "Outputs are assigned once in the final unified output stage from internal state, not from multiple code paths."
+  ],
+  "initial_values": {
+    "average": 0.0,
+    "windowSizeReached": false,
+    "error": false,
+    "status": 0,
+    "status_comment": "16#0000",
+    "previousTrigger": false,
+    "lastValidWindowSize": 0,
+    "historyBuffer": "ARRAY[0..99] OF LREAL initialized to 0.0",
+    "historyCount": 0,
+    "historyHead": 0,
+    "historySum": 0.0,
+    "internalAverage": 0.0,
+    "internalWindowSizeReached": false,
+    "invalidWindow": false,
+    "triggerRise": false,
+    "windowChanged": false,
+    "state": "S_INIT"
+  },
+  "scan_execution_order": [
+    "Stage 1 - Edge sampling: sample all inputs once. triggerRise := trigger AND NOT previousTrigger using the retained pre-scan previousTrigger. Then update previousTrigger := trigger unconditionally for this scan, including invalid/reset/no-event scans.",
+    "Stage 2 - Safety/reset priority and state transitions: evaluate window validity first. Invalid: set invalid flag/error/status and preserve history/internal mean/windowSizeReached; accept no sample. Valid: clear error/status; if reset, clear history and force internal average=0.0 and reached=FALSE; else if valid window size changed, clear history before same-scan sampling; then accept exactly one sample only if cyclicExecution OR triggerRise. Update ring buffer, historySum, historyCount, internalAverage, and internalWindowSizeReached. Select next state.",
+    "Stage 3 - Unconditional top-level timer FB calls outside CASE/IF: no timer FBs are used in this FB. If a timer is added later, call it unconditionally at top level before final output assignment, never inside CASE/IF or state transition branches.",
+    "Stage 4 - Unified output assignments: average := internalAverage; windowSizeReached := internalWindowSizeReached; error := invalidWindow; status := IF invalidWindow THEN 16#8200 ELSE 16#0000. No output is written outside this stage."
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G(((windowSize < 1) | (windowSize > 100)) -> (error & (status = 16#8200)))"
+    },
+    {
+      "id": "A2",
+      "formula": "G((((windowSize >= 1) & (windowSize <= 100))) -> (!error & (status = 16#0000)))"
+    },
+    {
+      "id": "A3",
+      "formula": "G((((windowSize >= 1) & (windowSize <= 100)) & reset) -> ((average = 0.0) & !windowSizeReached))"
+    },
+    {
+      "id": "A4",
+      "formula": "G((status = 16#8200) <-> ((windowSize < 1) | (windowSize > 100)))"
+    },
+    {
+      "id": "A5",
+      "formula": "G((status = 16#0000) <-> (((windowSize >= 1) & (windowSize <= 100))))"
+    }
+  ]
+}

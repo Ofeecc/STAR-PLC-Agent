@@ -1,0 +1,78 @@
+{
+  "task_id": "PUB009",
+  "source_sha256": "717bdfec673e3a66e466d2a5cd287c5a0a8aa2754092ff9f7758b4ee94759c7b",
+  "st_path": "candidate.st",
+  "ltl_path": "spec.ltl",
+  "properties": [
+    {
+      "id": "PUB009.P_init",
+      "formula": "init",
+      "description": "Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope)."
+    },
+    {
+      "id": "PUB009.P1",
+      "formula": "G(!valid -> (error & status=16#8200 & unchangedMean))",
+      "description": "Window bounds are checked without silently accepting data."
+    },
+    {
+      "id": "PUB009.P2",
+      "formula": "G(valid -> (!error & status=0))",
+      "description": "A valid window clears configuration error."
+    },
+    {
+      "id": "PUB009.P3",
+      "formula": "G((valid & reset) -> (average=0 & !windowSizeReached))",
+      "description": "Reset produces an empty history."
+    },
+    {
+      "id": "PUB009.P4",
+      "formula": "G((valid & !reset) -> average=meanOrZero(historyAfter))",
+      "description": "The result is the arithmetic mean of the active window or zero when empty."
+    },
+    {
+      "id": "PUB009.P5",
+      "formula": "G(valid -> (windowSizeReached <-> length(historyAfter)=windowSize))",
+      "description": "Full-window indication follows history population."
+    },
+    {
+      "id": "PUB009.P6",
+      "formula": "G(trigger <-> X(previousTrigger))",
+      "description": "Both operands are Boolean propositions. previousTrigger[0]=FALSE; previousTrigger[k+1]=I[k].trigger on every invocation, including invalid/reset."
+    },
+    {
+      "id": "PUB009.P7",
+      "formula": "G((valid & !reset & !cyclicExecution & !triggerRise & !windowChanged) -> unchangedMean)",
+      "description": "No event means no sample update."
+    }
+  ],
+  "atomic_propositions": {
+    "valid": "1<=windowSize<=100",
+    "triggerRise": "trigger & !previousTrigger",
+    "accept": "valid & !reset & (cyclicExecution | triggerRise)",
+    "history": "Ghost ordered list of at most windowSize accepted samples, newest last.",
+    "historyAfter": "history after clearing on reset/window change and adding one accepted sample, discarding oldest if full.",
+    "unchangedMean": "average and windowSizeReached equal their pre-scan values.",
+    "interface names": "Identically named sampled input or observed output.",
+    "meanOrZero": "Arithmetic mean for a nonempty list, otherwise zero.",
+    "length": "Number of samples in the history list.",
+    "windowChanged": "Current valid windowSize differs from the last valid configured size.",
+    "previousTrigger": "{\"kind\": \"previous_sampled_input\", \"source\": \"I[k-1].trigger\", \"initial\": false, \"update\": \"After EVERY scan k, including invalid/reset/stop, store I[k].trigger\"}",
+    "cyclicExecution": "I[k].cyclicExecution: sampled input (BOOL).",
+    "trigger": "I[k].trigger: sampled input (BOOL).",
+    "value": "I[k].value: sampled input (LREAL).",
+    "windowSize": "I[k].windowSize: sampled input (INT).",
+    "reset": "I[k].reset: sampled input (BOOL).",
+    "average": "O[k].average: independently observed post-scan candidate value (LREAL); never defined as expected output.",
+    "windowSizeReached": "O[k].windowSizeReached: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "error": "O[k].error: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "status": "O[k].status: independently observed post-scan candidate value (WORD); never defined as expected output.",
+    "init": "At the separate pre-invocation initial observation before scan k=0: O_init.average=0.0, O_init.windowSizeReached=false, O_init.error=false, O_init.status=0."
+  },
+  "tools_supported": [],
+  "encoding_complete": false,
+  "task_sha256": "d98c939e33d4e440318dec9785007f31d3ebb7afbd38e00bb5559d8d3e5502a4",
+  "bundle_status": "UNSUPPORTED_ST",
+  "created_utc": "2026-11-14T13:04:40.506449+00:00",
+  "verification_status": "UNSUPPORTED_ST",
+  "reason": "Unsupported built-in function call INT_TO_LREAL(...)"
+}

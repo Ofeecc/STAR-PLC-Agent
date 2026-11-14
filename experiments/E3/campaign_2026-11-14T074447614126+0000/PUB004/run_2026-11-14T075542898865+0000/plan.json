@@ -1,0 +1,232 @@
+{
+  "state_machine": [
+    {
+      "state": "POWER_UP",
+      "description": "Fresh instance before first scan invocation; outputs and debounce state initialized.",
+      "entry_actions": [
+        "VFD_RUN := FALSE",
+        "PUMP_RUNTIME_ACC := LTIME#0ns",
+        "PUMP_MAINT_DUE := FALSE",
+        "DebounceTimer.IN := FALSE",
+        "DebounceTimer.Q := FALSE",
+        "DebounceTimer.ET := TIME#0ms",
+        "qualified := FALSE",
+        "permit := FALSE"
+      ],
+      "transitions": [
+        {
+          "to": "STOPPED",
+          "condition": "first scan initialization is applied"
+        }
+      ]
+    },
+    {
+      "state": "STOPPED",
+      "description": "Pump run command is OFF; no valid debounce qualification or safety permissive is false.",
+      "transitions": [
+        {
+          "to": "STOPPED",
+          "condition": "permit = FALSE; keep VFD_RUN FALSE and reset DebounceTimer"
+        },
+        {
+          "to": "DEBOUNCING",
+          "condition": "permit = TRUE and qualified = FALSE"
+        }
+      ]
+    },
+    {
+      "state": "DEBOUNCING",
+      "description": "Permissive is TRUE but VISCOSITY_OK has not yet remained continuously valid for DebounceTime.",
+      "transitions": [
+        {
+          "to": "STOPPED",
+          "condition": "permit = FALSE; immediately reset DebounceTimer, clear qualified, force VFD_RUN FALSE"
+        },
+        {
+          "to": "DEBOUNCING",
+          "condition": "permit = TRUE and DebounceTimer.Q = FALSE"
+        },
+        {
+          "to": "RUNNING",
+          "condition": "permit = TRUE and DebounceTimer.Q = TRUE; output stage uses current DebounceTimer.Q"
+        }
+      ]
+    },
+    {
+      "state": "RUNNING",
+      "description": "Viscosity debounce is qualified and safety permissive is TRUE; VFD_RUN may be TRUE.",
+      "transitions": [
+        {
+          "to": "STOPPED",
+          "condition": "permit = FALSE; immediately reset DebounceTimer, clear qualified, force VFD_RUN FALSE"
+        },
+        {
+          "to": "RUNNING",
+          "condition": "permit = TRUE and DebounceTimer.Q = TRUE"
+        }
+      ]
+    },
+    {
+      "state": "MAINTENANCE_DUE_INDICATION",
+      "parallel_to": "RUN_STATE_MACHINE",
+      "description": "Orthogonal informational indication only; never affects VFD_RUN or the safety permissive.",
+      "entry_actions": [
+        "PUMP_MAINT_DUE := (PUMP_RUNTIME_ACC >= LTIME#500h)"
+      ],
+      "transitions": [
+        {
+          "to": "MAINTENANCE_DUE_INDICATION",
+          "condition": "PUMP_RUNTIME_ACC >= LTIME#500h; PUMP_MAINT_DUE := TRUE"
+        },
+        {
+          "to": "MAINTENANCE_DUE_INDICATION",
+          "condition": "PUMP_RUNTIME_ACC < LTIME#500h; PUMP_MAINT_DUE := FALSE"
+        }
+      ]
+    }
+  ],
+  "timer_plan": {
+    "timers": [
+      {
+        "name": "DebounceTimer",
+        "type": "TON",
+        "PT": "DebounceTime",
+        "IN": "VISCOSITY_OK AND PASTE_E_STOP_NC",
+        "Q": "qualified",
+        "ET": "debounceElapsed",
+        "call_rule": "Unconditional top-level TON FB call exactly once per scan outside CASE/IF, after safety/reset/state-transition logic and before unified output assignments.",
+        "reset_conditions": [
+          "Power-up initialization",
+          "PASTE_E_STOP_NC = FALSE",
+          "VISCOSITY_OK = FALSE",
+          "permit = FALSE",
+          "Any immediate safety reset"
+        ],
+        "timing_semantics": "Elapsed time is zero on the first eligible TRUE invocation; Q becomes TRUE only when continuous IN TRUE duration is >= DebounceTime.",
+        "constraints": [
+          "DebounceTime must be strictly positive.",
+          "No unobserved past input stability is assumed."
+        ]
+      }
+    ],
+    "accumulators": [
+      {
+        "name": "PUMP_RUNTIME_ACC",
+        "type": "LTIME",
+        "update": "IF final VFD_RUN = TRUE THEN PUMP_RUNTIME_ACC := PUMP_RUNTIME_ACC + TIME_TO_LTIME(CycleTime); ELSE preserve previous value.",
+        "reset_conditions": [
+          "Power-up initialization only"
+        ],
+        "constraints": [
+          "Use 64-bit LTIME for the 500-hour accumulator, not TIME.",
+          "CycleTime must be strictly positive.",
+          "Accumulation uses the end-of-scan VFD_RUN value."
+        ]
+      }
+    ],
+    "thresholds": [
+      {
+        "name": "PUMP_MAINT_DUE",
+        "condition": "PUMP_RUNTIME_ACC >= LTIME#500h",
+        "reset_conditions": [
+          "No operational reset input; initialized FALSE at power-up and is a level comparison on accumulated runtime."
+        ],
+        "effect": "Informational only; does not modify VFD_RUN, permit, or safety logic."
+      }
+    ]
+  },
+  "priorities": [
+    "Emergency stop has highest priority: PASTE_E_STOP_NC = FALSE immediately forces VFD_RUN = FALSE, resets DebounceTimer, and clears qualified.",
+    "Raw viscosity loss has immediate stop priority: VISCOSITY_OK = FALSE immediately forces VFD_RUN = FALSE, resets DebounceTimer, and clears qualified.",
+    "Debounce qualification requires VISCOSITY_OK and PASTE_E_STOP_NC to remain TRUE continuously for DebounceTime.",
+    "VFD_RUN may be TRUE only when permit = (VISCOSITY_OK AND PASTE_E_STOP_NC) is TRUE and qualified = TRUE.",
+    "PUMP_RUNTIME_ACC accumulates CycleTime only when final VFD_RUN is TRUE; stopping preserves the accumulated value.",
+    "PUMP_MAINT_DUE is set by PUMP_RUNTIME_ACC >= LTIME#500h and is informational only; it must never override or alter the safety permissive or pump run command.",
+    "Power-up initialization must set VFD_RUN = FALSE, PUMP_RUNTIME_ACC = LTIME#0ns, PUMP_MAINT_DUE = FALSE, and reset debounce state."
+  ],
+  "initial_values": {
+    "VFD_RUN": false,
+    "PUMP_RUNTIME_ACC": "LTIME#0ns",
+    "PUMP_MAINT_DUE": false,
+    "DebounceTimer.Q": false,
+    "DebounceTimer.ET": "TIME#0ms",
+    "debounceElapsed_ms": 0,
+    "qualified": false,
+    "permit": false,
+    "state": "POWER_UP"
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "edge_sampling",
+      "actions": [
+        "Sample VISCOSITY_OK, PASTE_E_STOP_NC, DebounceTime, and CycleTime exactly once for this scan.",
+        "Compute edge flags for VISCOSITY_OK and PASTE_E_STOP_NC.",
+        "Compute permit = VISCOSITY_OK AND PASTE_E_STOP_NC.",
+        "Capture any immediate reset demand from PASTE_E_STOP_NC = FALSE or VISCOSITY_OK = FALSE."
+      ]
+    },
+    {
+      "stage": 2,
+      "name": "safety_reset_priority_and_state_transitions",
+      "actions": [
+        "Apply safety priority first: if PASTE_E_STOP_NC = FALSE or VISCOSITY_OK = FALSE, set qualified = FALSE and request DebounceTimer reset.",
+        "Evaluate the run-state machine using permit and prior timer state; STOPPED, DEBOUNCING, RUNNING transitions are handled here.",
+        "Ensure maintenance indication never participates in run-state transitions or safety permissive decisions."
+      ]
+    },
+    {
+      "stage": 3,
+      "name": "unconditional_top_level_timer_fb_calls",
+      "actions": [
+        "Call DebounceTimer(IN := VISCOSITY_OK AND PASTE_E_STOP_NC, PT := DebounceTime) exactly once every scan outside any CASE or IF block.",
+        "When IN is FALSE, the TON resets ET and Q, clearing incomplete debounce timing.",
+        "Do not synthesize debounce elapsed time from CycleTime; use the FB timing behavior."
+      ]
+    },
+    {
+      "stage": 4,
+      "name": "unified_output_assignments",
+      "actions": [
+        "Compute final VFD_RUN := permit AND DebounceTimer.Q AND NOT immediateSafetyReset.",
+        "If final VFD_RUN = TRUE, update PUMP_RUNTIME_ACC := PUMP_RUNTIME_ACC + TIME_TO_LTIME(CycleTime); otherwise preserve PUMP_RUNTIME_ACC.",
+        "Compute PUMP_MAINT_DUE := (PUMP_RUNTIME_ACC >= LTIME#500h).",
+        "Assign VFD_RUN, PUMP_RUNTIME_ACC, and PUMP_MAINT_DUE only in this unified output stage."
+      ]
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "PUB004.P_init",
+      "formula": "init"
+    },
+    {
+      "id": "PUB004.P1",
+      "formula": "G(VFD_RUN <-> (permit & qualified))"
+    },
+    {
+      "id": "PUB004.P2",
+      "formula": "G(!permit -> !VFD_RUN)"
+    },
+    {
+      "id": "PUB004.P3",
+      "formula": "G((!permit) -> X(!qualified))"
+    },
+    {
+      "id": "PUB004.P4",
+      "formula": "G(VFD_RUN -> accNext=accPrev+TIME_TO_LTIME(CycleTime))"
+    },
+    {
+      "id": "PUB004.P5",
+      "formula": "G(!VFD_RUN -> accNext=accPrev)"
+    },
+    {
+      "id": "PUB004.P6",
+      "formula": "G(PUMP_MAINT_DUE <-> accNext>=LTIME#500h)"
+    },
+    {
+      "id": "PUB004.P7",
+      "formula": "(G(F(TimeTick))) -> (G((G(permit) & DebounceTime>TIME#0ms) -> F(VFD_RUN)))"
+    }
+  ]
+}
