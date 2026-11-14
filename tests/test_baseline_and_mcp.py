@@ -9,6 +9,7 @@ from pathlib import Path
 
 from plc_agent.backend import FakeBackend
 from plc_agent.baseline import run_baseline
+from plc_agent.compiler import CompileResult
 from plc_agent.config import Settings
 from plc_agent.mcp_server import dispatch
 
@@ -306,6 +307,20 @@ class BaselineAndMCPTests(unittest.TestCase):
             self.assertEqual(result["status"], "UNVERIFIED")
             self.assertEqual(len(result["usage"]), 3)
             self.assertTrue((workspace / "final_candidate.json").exists())
+
+    def test_baseline_retains_observed_first_compile_after_later_tool_error(self):
+        def reply(index):
+            return {"output": [{"type": "function_call", "name": "compile_st",
+                                "arguments": json.dumps({"source": SAMPLE_CANDIDATE}), "call_id": str(index)}]}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            outcomes = iter([CompileResult("COMPILE_FAIL"), CompileResult("TOOL_ERROR", infrastructure_error="unit")])
+            backend = FakeBackend(compile_fn=lambda *args: next(outcomes))
+            result = run_baseline(SAMPLE_TASK, "unit", Path(tmp) / "run", Settings(), driver="deepseek_harness",
+                                  client=FakeToolClient([reply(1), reply(2)]), backend=backend)
+            self.assertEqual(result["status"], "TOOL_ERROR")
+            self.assertIs(result["first_pass_compiled"], False)
+            self.assertIsNone(result["final_compiled"])
 
     def test_deepseek_harness_zero_test_leakage(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -5,6 +5,8 @@ import random
 from collections import Counter
 from statistics import mean
 
+from .compiler import final_compile_attempt
+
 BASELINE_MAP = {
     "E3": "E1",
     "E4": "E2",
@@ -212,10 +214,14 @@ def audit_records(records):
         if row["first_pass_compiled"] is not None and (not attempts or attempts[0]["status"] not in ("PASS", "COMPILE_FAIL")
                                                       or attempts[0]["success"] != row["first_pass_compiled"]):
             errors.append(f"{row['condition']}/{row['task_id']}: first-pass mismatch")
-        if row["final_compiled"] is True and not any(a["success"] for a in valid):
-            errors.append(f"{row['condition']}/{row['task_id']}: no successful compiler evidence")
-        if row["final_compiled"] is True and attempts and (attempts[-1]["status"] != "PASS" or not attempts[-1]["success"]):
-            errors.append(f"{row['condition']}/{row['task_id']}: final candidate does not match last compiler outcome")
+        if row["final_compiled"] is True:
+            if not any(a["success"] for a in valid):
+                errors.append(f"{row['condition']}/{row['task_id']}: no successful compiler evidence")
+            else:
+                try:
+                    final_compile_attempt(row)
+                except ValueError as exc:
+                    errors.append(f"{row['condition']}/{row['task_id']}: {exc}")
         f = row["functional"]
         if not 0 <= f["passed_cases"] <= f["evaluated_cases"] <= f["planned_cases"]:
             errors.append(f"{row['condition']}/{row['task_id']}: invalid test counts")

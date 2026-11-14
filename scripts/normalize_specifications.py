@@ -1,16 +1,16 @@
 """Normalize all task contracts, preserving original requirements and test data."""
-from copy import deepcopy
-from decimal import Decimal
 import hashlib
 import json
-from pathlib import Path
 import sys
+from copy import deepcopy
+from decimal import Decimal
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'src'))
 from plc_agent.common import digest, read_json, write_json
 from plc_agent.dataset import load_tasks, validate
-from plc_agent.normalized_spec import CONTRACT_FILES, NormalizedScanMonitor, reference_step, canonical_source_bytes
+from plc_agent.normalized_spec import CONTRACT_FILES, NormalizedScanMonitor, canonical_source_bytes, reference_step
 from plc_agent.scan_contract import ScanContract
 
 VERSION = '2.2-normalized-20261112'

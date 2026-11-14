@@ -178,6 +178,7 @@ def handle_api_request(
     settings: Settings,
     backend: Backend | None = None,
     smv_status_path: Path | None = None,
+    evidence_root: Path | None = None,
 ) -> tuple[int, dict]:
     """Dispatch API request to internal handlers and return (status_code, json_dict)."""
     method = method.upper()
@@ -279,7 +280,8 @@ def handle_api_request(
             else:
                 return 503, {"error": "CODESYS is not configured; candidate execution was not performed", "status": "UNVERIFIED"}
 
-        with contextlib.nullcontext(ROOT / ".local" / "webui_evidence" / uuid.uuid4().hex) as tmpdir:
+        resolved_evidence_root = evidence_root or (ROOT / ".local" / "webui_evidence")
+        with contextlib.nullcontext(resolved_evidence_root / uuid.uuid4().hex) as tmpdir:
             workspace = Path(tmpdir)
             compile_res = backend.compile(task, candidate, workspace / "compile")
 
@@ -289,7 +291,7 @@ def handle_api_request(
 
             if not compile_res.success:
                 sim_res = SimResult(
-                    status="COMPILE_FAIL",
+                    status=compile_res.status,
                     passed_cases=0,
                     evaluated_cases=0,
                     failures=[],

@@ -5,7 +5,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from plc_agent.common import digest, redact
 from plc_agent.compiler import compile_st, normalize_candidate, verify_evidence
@@ -102,6 +102,41 @@ class CoreTests(unittest.TestCase):
             self.assertEqual(result["status"], "UNVERIFIED")
             self.assertTrue(result["final_compiled"])
             self.assertEqual(result["functional"]["evaluated_cases"], 0)
+
+    def test_harness_does_not_score_an_unavailable_compiler_as_a_rejection(self):
+        from plc_agent.backend import FakeBackend
+        from plc_agent.compiler import CompileResult
+
+        candidate = {"declaration": "FUNCTION_BLOCK FB_Task", "implementation": ""}
+        task = load_tasks()[0]
+        with tempfile.TemporaryDirectory() as tmp:
+            for status in ("TOOL_ERROR", "TIMEOUT", "UNVERIFIED"):
+                with self.subTest(status=status):
+                    client = Mock()
+                    client.respond.return_value = {"text": json.dumps(candidate)}
+                    backend = FakeBackend(compile_fn=lambda *args: CompileResult(status, infrastructure_error="unit"))
+                    result = run_harness(task, "unit", Path(tmp) / status, client, Settings(), backend=backend, ablation="no_planner")
+                    self.assertEqual(result["status"], status)
+                    self.assertIsNone(result["first_pass_compiled"])
+                    self.assertIsNone(result["final_compiled"])
+                    self.assertEqual(aggregate([result], 1)[2]["actual_first_compilations"], 0)
+                    self.assertEqual(audit_records([result]), [])
+                    self.assertEqual(client.respond.call_count, 1)
+
+    def test_harness_keeps_first_rejection_if_repair_compile_is_unavailable(self):
+        from plc_agent.backend import FakeBackend
+        from plc_agent.compiler import CompileResult
+
+        candidate = {"declaration": "FUNCTION_BLOCK FB_Task", "implementation": ""}
+        with tempfile.TemporaryDirectory() as tmp:
+            client = Mock()
+            client.respond.return_value = {"text": json.dumps(candidate)}
+            outcomes = iter([CompileResult("COMPILE_FAIL"), CompileResult("TOOL_ERROR", infrastructure_error="unit")])
+            backend = FakeBackend(compile_fn=lambda *args: next(outcomes))
+            result = run_harness(load_tasks()[0], "unit", Path(tmp) / "run", client, Settings(), backend=backend, ablation="no_planner")
+            self.assertEqual(result["status"], "TOOL_ERROR")
+            self.assertIs(result["first_pass_compiled"], False)
+            self.assertIsNone(result["final_compiled"])
 
 if __name__ == "__main__":
     unittest.main()

@@ -47,6 +47,22 @@ def normalize_candidate(source):
         raise ValueError("supporting_objects must be a list")
     return result
 
+def final_compile_attempt(row, candidate=None):
+    """Find the successful compile of the selected candidate in a result row."""
+    attempts = row["compilation_attempts"]
+    if candidate is None:
+        candidate = row.get("final_candidate")
+    if candidate is None:
+        # Older records without the candidate used the last attempt.
+        if attempts and attempts[-1]["status"] == "PASS" and attempts[-1]["success"] is True:
+            return attempts[-1]
+    else:
+        source_hash = digest(normalize_candidate(candidate))
+        for attempt in reversed(attempts):
+            if attempt["status"] == "PASS" and attempt["success"] is True and attempt.get("source_sha256") == source_hash:
+                return attempt
+    raise ValueError("final candidate has no matching successful compiler evidence")
+
 def _kill_tree(process):
     if os.name == "nt":
         subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"], capture_output=True, timeout=15)

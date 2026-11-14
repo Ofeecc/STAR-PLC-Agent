@@ -1,14 +1,12 @@
 # PLC Structured Text Coding Agent (STAR v2)
 
-This project implements **STAR v2** (Specification-Targeted Agentic Refinement) and an auditable baseline for generating, compiling, repairing, and preparing formal-verification materials for IEC 61131-3 Structured Text (ST) for industrial PLC environments (CODESYS). The dataset contains all 20 supplied public questions and 12 independently constructed questions (32 tasks total). Every task includes normative specification contracts, scan semantics, formal LTL temporal properties, and fixed expected functional traces.
+This project implements **STAR v2** (Specification-Targeted Agentic Refinement) and an auditable baseline harness for generating, compiling, repairing, and preparing formal-verification materials for IEC 61131-3 Structured Text (ST) in industrial PLC environments (CODESYS). The frozen dataset contains all 20 instructor-supplied public tasks and 12 independently constructed self-built tasks (**32 tasks**, **294 LTL properties**, **276 fixed test cases**, **2,994 scan steps**; `dataset_sha256: 7bc7244455bfc41481a8a9246be52cde8e6a1acee7ae7fcb767d02fa5c326dd4`). Every task includes normative specification contracts, discrete scan semantics, formal LTL temporal properties, and fixed expected functional traces.
 
 The implementation strictly separates generated-code compilation, compiler infrastructure failures, and functional/formal verification. Compilation success is accepted only from matching CODESYS rebuild evidence, never a process exit code alone. Independent Python scan contracts (`ScanContract`) validate expected sequences across all 32 tasks; they are distinct from real PLC execution.
 
-The local review UI now covers all 32 tasks with Chinese review notes, 244 property explanations and a persistent Chinese/English switch. Use [Chinese review](http://127.0.0.1:8765/?scope=all&lang=zh) or [English presentation](http://127.0.0.1:8765/?scope=all&lang=en) after starting the web server. See [双语审核界面说明](docs/全题库双语审核界面_20261111.md) and [模板库检查与角色token配置](docs/模板库与Token配置建议_20261111.md). Review translations do not modify benchmark inputs or constitute human approval.
+The local review WebUI covers all 32 tasks with Chinese review notes, bilingual property explanations, waveform comparison, and a persistent Chinese/English toggle. Use [Chinese review](http://127.0.0.1:8765/?scope=all&lang=zh) or [English presentation](http://127.0.0.1:8765/?scope=all&lang=en) after starting `uv run plc-agent web`. See [docs/README.md](docs/README.md) for active guides, design specs, and archived milestone logs (including [双语审核界面说明](docs/archive/全题库双语审核界面_20261111.md), [模板库与Token配置建议](docs/archive/模板库与Token配置建议_20261111.md), [2026-11-11 更新记录](docs/archive/更新记录_20261111.md), [规约规范化与逐题定义](docs/archive/规约规范化_20261111.md), and [2026-11-12 全量审计汇总](docs/archive/规约与模型全量审计汇总_20261112.md)). Review translations do not modify benchmark inputs or constitute human approval.
 
-Changes and their validation scope: [2026-11-11 更新记录](docs/更新记录_20261111.md). The latest specification revision passed 170 sandbox unit/business tests and 1 separate Windows loopback HTTP integration test (171 total); browser checks covered all 32 tasks and 244 material entries in both languages.
-
-Specification revision 2.1: all 32 composite scan predicates now have pinned executable transition definitions, separate input/observed/reference namespaces and explicit comparison policies. Numeric-next and array-quantifier notation has been normalized; timed liveness has an explicit non-Zeno premise. The 244 entries are specification materials, **not 244 completed native-LTL proofs**. See [规约规范化与逐题定义](docs/规约规范化_20261111.md). Human review remains pending; the candidate ST-to-model chain remains UNVERIFIED. Historical pilot results keep their original task hashes.
+All 32 composite scan predicates use normalized executable transition definitions, segregated input/observed/reference namespaces, explicit comparison policies, and explicit non-Zeno timing premises (`results/summary/specification_normalization_20261112.json`). The 294 LTL properties and `models/*.smv` reference models (`configs/smv_verification_status.json`) are specification and explicit reference-model artifacts — **not completed formal proofs of agent-generated ST**. Human review of Chinese audit notes remains pending, candidate ST-to-SMV translation remains `UNVERIFIED`, and historical pilot runs retain their original task hashes.
 
 ## STAR v2 Architecture
 
@@ -44,7 +42,7 @@ uv run --no-sync python -m unittest discover -s tests -v
 
 ## Windows + CODESYS Field Testing Guide
 
-Local validation on 2026-11-10: 141 Python tests passed; real compiler smoke passed; SELF001 reference passed 2 cases / 10 steps; a deliberately wrong SELF001 implementation compiled but failed real simulation. See [本机验证与修复记录](docs/本机验证与修复_20261110.md). Real CODESYS runs must execute outside the coding agent's restricted sandbox to avoid APInstaller event-log access errors and Gateway connection failures observed on this machine.
+Local validation on 2026-11-10: 141 Python tests passed; real compiler smoke passed; SELF001 reference passed 2 cases / 10 steps; a deliberately wrong SELF001 implementation compiled but failed real simulation. See [本机验证与修复记录](docs/archive/本机验证与修复_20261110.md). Real CODESYS runs must execute outside the coding agent's restricted sandbox to avoid APInstaller event-log access errors and Gateway connection failures observed on this machine.
 
 For teammates conducting physical machine tests on Windows with CODESYS installed:
 - 📖 **Comprehensive Step-by-Step Guide**: [docs/windows_field_test_guide.md](docs/windows_field_test_guide.md)
@@ -108,22 +106,21 @@ All operational tasks are unified under the `plc-agent` CLI:
 
 ## Current execution status
 
-STAR v2 is under local validation. The latest two-task STAR pilot used `deepseek-v4.1-flash-1017` with high reasoning: PUB001 passed real CODESYS compilation and all 2 fixed cases / 16 steps; PUB003 ended with TOOL_ERROR after an SA0027 interface-name collision and an incomplete repair response, with functional testing NOT_RUN. The batch used 6 requests / 49,908 tokens including the failed response. See [raw pilot evidence](results/raw/pilot_pair_2026-11-10T143217961073+0000/) and [updated evidence audit](results/raw/pilot_pair_2026-11-10T143217961073+0000/usage_and_evidence_audit.json). These are two pilot tasks, not a full-dataset campaign or a baseline comparison.
-
-A variable-level SA0027 exception compiled a retained PUB003 candidate in a separate probe while another static-analysis rule remained active. This exception is not yet integrated into the agent path. New role-specific output limits and cumulative token accounting have local tests but have not been tried against the paid API. All 32 Chinese review records remain pending human review.
-
-Historical README figures are retained in `docs/historical_readme_results.md` and require original hash-bound logs before reuse.
-The current baseline implementation is a custom tool loop, not smolagents. An established external-agent comparison remains pending.
-Verification export provides draft ST/property materials, not executable models or a completed formal proof.
-The local NuSMV entry point checks supplied SMV models; the included hand-written PUB001 reference is separate from generated ST. Automatic candidate ST-to-SMV translation remains pending, so candidate formal verification remains UNVERIFIED.
-`random-test` generates oracle-labelled inputs; it does not execute candidate ST.
-CODESYS development/runtime integration requires Windows and local compiler/simulator acceptance.
+- **Campaign Status**: `PENDING_REAL_EXECUTION` in [configs/experiments.json](configs/experiments.json). Offline dataset replay, harness fixes, and unit tests are current on Linux; end-to-end Windows + CODESYS paired comparison runs are pending team execution (see [docs/windows_field_test_guide.md](docs/windows_field_test_guide.md)).
+- **Experiment Fix Merge (2026-11-14)**: Merged the 2026-11-13 harness and test-engine fixes ([archived handoff note](docs/archive/交接与实测方案_20261113.md)): `final_compile_attempt()` binds `test`, `import-trace`, and metrics to the selected candidate hash on STAR rollbacks; `harness.py` and `baseline.py` isolate infrastructure failures (`TOOL_ERROR`/`TIMEOUT`) cleanly; `/api/evaluate` preserves infrastructure/unverified outcomes without collapsing them to `COMPILE_FAIL`.
+- **Historical Two-Task Pilot (2026-11-10)**: Ran under `deepseek-v4.1-flash-1017` on an earlier dataset revision (`PUB001` passed compilation and 2/2 cases, 16 steps; `PUB003` hit `TOOL_ERROR` after SA0027 collision and truncated repair output; 6 requests / 49,908 tokens total). See [raw pilot evidence](results/raw/pilot_pair_2026-11-10T143217961073+0000/) and [updated evidence audit](results/raw/pilot_pair_2026-11-10T143217961073+0000/usage_and_evidence_audit.json). These pilot runs are not a full-dataset campaign or a baseline comparison.
+- **Explicit Reference SMV Models**: `models/` contains 66 explicit `.smv` models checked locally with NuSMV/nuXmv (`configs/smv_verification_status.json`). Because automatic candidate ST-to-SMV translation is not implemented, candidate formal verification remains `UNVERIFIED`.
+- **Additional Controls & Safeguards**:
+  - Historical README figures remain isolated in [docs/historical_readme_results.md](docs/historical_readme_results.md) and require original hash-bound logs before reuse.
+  - Current baseline conditions (`E1`/`E2`) default to `custom_tool_loop` (`deepseek_harness`), not `smolagents`; external baseline drivers (`codex_cli`, `claude_code`) require compliant tool-use approvals.
+  - `export-verify` produces draft verification bundles, and `random-test` produces oracle-labelled inputs without executing candidate ST.
+  - Full CODESYS development/runtime acceptance requires running outside restricted agent sandboxes on Windows (`AGENTS.md`).
 
 ## Configuration
 
 ### API Credentials
 
-API configuration can be supplied via environment variables or a private settings file:
+API configuration can be supplied via environment variables, `.env`, or a private settings file (`APIKEY相关.txt` / `PLC_API_CONFIG`):
 
 ```bash
 export PLC_API_CONFIG="/path/to/private/relay-settings.txt"
@@ -132,15 +129,15 @@ export PLC_API_BASE_URL="https://your-relay.example/v1"
 export PLC_LLM_API_KEY="your-api-key"
 ```
 
-Verify connection:
+Verify connection (requires explicit API budget approval first):
 
 ```bash
-uv run plc-agent probe-models --tool-smoke
+uv run plc-agent --allow-model-api probe-models --tool-smoke
 ```
 
 ### CODESYS Compiler Integration
 
-Configure compiler paths in `configs/runtime.json` or via environment variables:
+Configure machine-specific paths via `uv run plc-agent configure` (writes gitignored `configs/runtime.local.json`) or environment variables — keep tracked `configs/runtime.json` clean of local machine secrets or edits:
 
 ```bash
 export PLC_CODESYS_EXE="/path/to/CODESYS/Common/CODESYS.exe"
@@ -156,17 +153,20 @@ uv run plc-agent compiler-smoke
 
 ## Directory Structure
 
-本机新增六题规约中文说明与括号高亮，以及本地 NuSMV SMV 检查入口。手动设置 Static Analysis Light 和检查器覆盖范围见 [静态分析与模型检查使用指南](docs/静态分析与模型检查使用指南.md)，逐条审核材料见 [六题规约中文审核](docs/六题规约中文审核.md)。参考模型的检查结果不代表 Agent 生成 ST 已通过形式验证。
+See [docs/README.md](docs/README.md) for the complete documentation index, [docs/静态分析与模型检查使用指南.md](docs/静态分析与模型检查使用指南.md) for Static Analysis Light / NuSMV/nuXmv workflows, [docs/archive/六题规约中文审核.md](docs/archive/六题规约中文审核.md) for six-task Chinese review notes, and `docs/archive/` for historical milestone records. Reference model checks never establish candidate ST formal verification.
 
 | Directory | Content |
 | --- | --- |
 | `src/plc_agent/` | STAR v2 core: Planner, Dialect, Coder, Tester, Ratchet, WebUI, CLI, and verification |
-| `dataset/public/`, `dataset/self_built/` | 32 frozen structured task definitions with normative contracts |
+| `dataset/public/`, `dataset/self_built/` | 32 frozen structured task definitions (20 public + 12 self-built) with normative contracts |
 | `dataset/specifications/catalog.md` | Complete task specifications, interfaces, provenance, and LTL properties |
 | `codesys/scripts/`, `codesys/templates/` | CODESYS automation scripting and immutable template project |
-| `codesys/examples/` | 16 hand-authored reference ST examples (12 self-built + 4 public tasks covering timed & IN_OUT composite contracts), never model benchmark outputs |
-| `configs/` | Nonsecret runtime configuration and experimental condition definitions |
-| `experiments/E1` through `E4` | Isolated task/run workspaces, model outputs, compiler logs, and diagnostics |
-| `results/raw/`, `results/summary/` | Protocol records, raw logs, reproducible metric summaries, and audits |
-| `report/`, `presentation/`, `video/` | 12-page report, presentation deck, speaker notes, and video materials |
-| `submission/` | Audited submission package and manifests |
+| `codesys/examples/` | 16 hand-authored reference ST examples (12 self-built + 4 public tasks), never model benchmark outputs |
+| `models/` | 66 explicit `.smv` models and reference/mutant verification files (`EXPLICIT_SMV_MODEL_ONLY`) |
+| `configs/` | Nonsecret runtime defaults (`runtime.json`), condition matrix (`experiments.json`), SMV check status |
+| `docs/` | Active setup/protocol guides ([docs/README.md](docs/README.md)), design specs (`superpowers/`), archived logs (`archive/`), and frozen per-task review records (`规约逐题审查_20261106/`) |
+| `scripts/` | Dataset normalization, validation, Windows preflight (`windows_verify.ps1`), and analysis/packaging helpers |
+| `results/raw/`, `results/summary/` | Protocol records, pilot raw logs, dataset/spec validation outputs, and reproducible audits |
+| `experiments/` | Runtime-created per-condition workspaces (`E1`–`E4`, `A1`–`A3`, `S1`–`S2`) populated when `plc-agent run` executes |
+| `report/`, `presentation/`, `video/` | Final deliverable templates and static assets (experiment results pending full campaign) |
+| `submission/` | Audited submission packaging templates and manifests |

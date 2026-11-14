@@ -39,6 +39,7 @@ class ModelCheckerTests(unittest.TestCase):
         import tempfile
         from pathlib import Path
         from unittest.mock import patch
+
         import plc_agent.model_checker as mc
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -64,6 +65,7 @@ class ModelCheckerTests(unittest.TestCase):
     def test_check_model_runs_real_nusmv_when_installed(self):
         import tempfile
         from pathlib import Path
+
         import plc_agent.model_checker as mc
 
         try:

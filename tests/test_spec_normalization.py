@@ -1,13 +1,19 @@
-from copy import deepcopy
 import json
-from pathlib import Path
 import re
 import tempfile
 import unittest
+from copy import deepcopy
+from pathlib import Path
 
 from plc_agent.common import ROOT, read_json
 from plc_agent.dataset import load_tasks
-from plc_agent.normalized_spec import NormalizedScanMonitor, exact_shape_equal, instantiate_finite_conjunction, reference_step, canonical_source_bytes
+from plc_agent.normalized_spec import (
+    NormalizedScanMonitor,
+    canonical_source_bytes,
+    exact_shape_equal,
+    instantiate_finite_conjunction,
+    reference_step,
+)
 from plc_agent.scan_contract import ScanContract
 from plc_agent.task_view import agent_view
 

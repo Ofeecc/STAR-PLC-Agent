@@ -1,7 +1,9 @@
 import json
+import tempfile
 import threading
 import time
 import unittest
+from pathlib import Path
 from urllib.request import urlopen
 
 from plc_agent.backend import CompileResult, FakeBackend
@@ -12,6 +14,9 @@ from plc_agent.webui import handle_api_request, render_index_html, serve_webui
 class WebUITests(unittest.TestCase):
     def setUp(self):
         self.settings = Settings()
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.evidence_root = Path(self.temp.name) / "webui_evidence"
 
     def test_every_task_has_current_chinese_review_interface_tests_and_properties(self):
         from plc_agent.common import digest
@@ -82,7 +87,6 @@ class WebUITests(unittest.TestCase):
         self.assertEqual(count,64)
 
     def test_model_checker_api_keeps_reference_scope_and_rejects_other_tasks(self):
-        import shutil
         import tempfile
         from pathlib import Path
         from unittest.mock import patch
@@ -135,7 +139,6 @@ class WebUITests(unittest.TestCase):
             self.assertRegex(smv['badge_text_zh'], r'[\u4e00-\u9fff]')
 
     def test_missing_checker_handling_preserves_baseline_and_records_unverified_missing(self):
-        import re
         import shutil
         import tempfile
         from pathlib import Path
@@ -437,7 +440,7 @@ const check = [
             "candidate": "Invalid ST candidate",
             "include_random": False,
         }
-        status, data = handle_api_request("POST", "/api/evaluate", {}, body, self.settings, backend=backend)
+        status, data = handle_api_request("POST", "/api/evaluate", {}, body, self.settings, backend=backend, evidence_root=self.evidence_root)
         self.assertEqual(status, 200)
         self.assertIn("compile", data)
         self.assertFalse(data["compile"]["success"])
@@ -458,7 +461,7 @@ const check = [
             },
             "include_random": True,
         }
-        status, data = handle_api_request("POST", "/api/evaluate", {}, body, self.settings, backend=backend)
+        status, data = handle_api_request("POST", "/api/evaluate", {}, body, self.settings, backend=backend, evidence_root=self.evidence_root)
         self.assertEqual(status, 200)
         self.assertIn("compile", data)
         self.assertTrue(data["compile"]["success"])
@@ -473,6 +476,24 @@ const check = [
         matches = [s["match"] for s in first_wave["steps"] if s["match"] is not None]
         self.assertIn(False, matches)
 
+    def test_evaluate_preserves_compiler_infrastructure_status(self):
+        body = {"task_id": "SELF001", "candidate": "Test candidate"}
+        for compile_status in ("TOOL_ERROR", "TIMEOUT", "UNVERIFIED"):
+            with self.subTest(compile_status=compile_status):
+                backend = FakeBackend(
+                    compile_fn=lambda task, candidate, workspace: CompileResult(
+                        status=compile_status,
+                        infrastructure_error="Compiler did not produce usable evidence",
+                    )
+                )
+                status, data = handle_api_request("POST", "/api/evaluate", {}, body, self.settings, backend=backend, evidence_root=self.evidence_root)
+                self.assertEqual(status, 200)
+                self.assertEqual(data["compile"]["status"], compile_status)
+                self.assertEqual(data["simulation"]["status"], compile_status)
+                self.assertEqual(data["simulation"]["evaluated_cases"], 0)
+                self.assertEqual(data["simulation"]["infrastructure_error"], "Compiler did not produce usable evidence")
+                self.assertEqual(data["waveform"], [])
+
     def test_handle_api_request_evaluate_with_default_fake_backend_passes(self):
         # When step_fn is None, FakeBackend executes ScanContract directly, which passes valid tests
         backend = FakeBackend()
@@ -484,7 +505,7 @@ const check = [
             },
             "include_random": False,
         }
-        status, data = handle_api_request("POST", "/api/evaluate", {}, body, self.settings, backend=backend)
+        status, data = handle_api_request("POST", "/api/evaluate", {}, body, self.settings, backend=backend, evidence_root=self.evidence_root)
         self.assertEqual(status, 200)
         self.assertTrue(data["compile"]["success"])
         self.assertEqual(data["simulation"]["status"], "PASS")

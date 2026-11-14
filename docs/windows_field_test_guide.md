@@ -75,68 +75,99 @@ PLC_API_BASE_URL=https://api.deepseek.com/v1
 
 ## 四、 离线与仿真验证 (无需消耗模型 API)
 
-在进行耗费 token 的大模型测试前，建议先验证题库参考代码在本地 CODESYS 下的表现：
+在进行耗费 token 的大模型测试前，先在普通 Windows PowerShell（非受限沙盒）验证环境、编译器冒烟与参考 ST 在本地 CODESYS 下的表现，并为每次验收建立独立输出目录以保留原始诊断、`simulation_evidence.json` 和 `trace.json`：
 
 ```powershell
-# 1. 验证简单任务 (SELF001: 安全门双按键启停)
-uv run plc-agent test-reference --task SELF001
+git rev-parse HEAD
+uv sync
+uv run plc-agent validate-dataset
+uv run plc-agent compiler-smoke   # 预期按顺序返回 PASS -> COMPILE_FAIL -> PASS
 
-# 2. 验证时序控制任务 (SELF005: 交通灯定时步进控制)
-uv run plc-agent test-reference --task SELF005
+$run = "results/raw/reference-$(Get-Date -Format yyyyMMdd-HHmmss)"
+# 1. 验证基本联锁与编译/采样/评分全链路 (SELF001: 7 组用例, 39 拍)
+uv run plc-agent test-reference --task-id SELF001 --backend codesys --out-dir "$run/SELF001"
 
-# 3. 验证复杂数据结构任务 (PUB017: 配方 CRUD 管理器)
-uv run plc-agent test-reference --task PUB017
+# 2. 验证连续扫描计数与动态预置 (SELF008: 7 组用例, 45 拍)
+uv run plc-agent test-reference --task-id SELF008 --backend codesys --out-dir "$run/SELF008"
+
+# 3. 复杂数据结构参考校验 (可选，如 PUB017 配方 CRUD 管理器)
+uv run plc-agent test-reference --task-id PUB017 --backend codesys --out-dir "$run/PUB017"
 ```
+
+> [!NOTE]
+> - 建议先回收 `SELF001` 与 `SELF008` 的完整证据，再按需选择性复跑 `PUB006`（`BenchElapsed` 已从包装器移除，需结合实际周期评估毫秒定时用例的采样覆盖）。
+> - **关于 `PUB018`**：当前 `codesys/examples/PUB018.json` 已包含头尾索引与回绕计算，但 `buffer` 写入与 `item` 出队赋值尚未补全，且泛型绑定与目标 CODESYS 版本的兼容性待验证；首轮实测与对比请优先选用可稳定完成采样的任务。
 
 ---
 
 ## 五、 真实 Agent 对比实验流程 (Benchmark Experiments)
 
-当环境准备就绪后，即可执行完整的基准测评与消融实验。
+> [!CAUTION]
+> 教师中继 API 额度有限。**每次执行消耗真实模型 API 的命令（`probe-models`、`run`）前，必须先获得团队/用户明确批准**；`--allow-model-api` 仅用于记录已获批准，不能替代事先确认。
 
-### 1. 单任务端到端试跑 (Smoke Run)
-推荐先选择 1 个任务验证 Agent 生成 -> CODESYS 编译 -> 失败反馈 -> 自测修正全链路：
+当 CODESYS 与 API 环境均就绪后，按以下步骤进行预检、成对试跑与全量实验。
+
+### 1. 运行前预检与预算对齐
+1. **核对 `campaign.json` 与 `model_capabilities.json`**：
+   - 当前冻结题库哈希为 `7bc7244455bfc41481a8a9246be52cde8e6a1acee7ae7fcb767d02fa5c326dd4`。若本机 `results/summary/campaign.json` 为旧题库残留，先归档旧批次再执行 `uv run plc-agent prepare`。
+   - `plc-agent run` 会读取本地 `results/summary/model_capabilities.json`（未随主线提交）。若缺失且本机无已有记录，在获 API 授权后先执行探针（将对已配置模型发起工具冒烟请求）：
+     ```powershell
+     uv run plc-agent --allow-model-api probe-models --tool-smoke
+     ```
+2. **明确生效预算口径（成对对比前固定并记录）**：
+   - `configs/experiments.json` 中记录了条件元数据 `compiler: 3`、`timeout: 900`、`max_llm_calls: 30`；
+   - `plc-agent run` 实际使用共享 `Settings`（`configs/runtime.json` 及代码默认值）：`max_repairs: 2`（即首编 + 最多 2 次修复，共 3 次编译）、`compiler_timeout: 180`、`llm_timeout: 420`、`task_timeout: 2400`、`reasoning_effort: "medium"`、角色输出上限（`planner=16384`、`coder=24576`、`repair=32768`、`tester=24576`）、`context_window_tokens=131072`、`max_total_tokens=300000`，以及 `Settings` 默认 `max_llm_calls=9`。
+   - 成对运行前请确认并在实验记录中注明实际生效上限；若使用外部 CLI（如 `codex_cli`、`claude_code`），需额外说明其无法统一强制相同的单响应 token 上限。
+
+### 2. 先做两题同模型成对预检（推荐全量前执行）
+推荐优先选用 **`SELF001`**（基本联锁，先校准编译器与采样后端）和 **`PUB002`**（32 位输入历史/最高位/掩码，7 组 39 拍，无物理计时抖动依赖）。先运行内部同模型对照（STAR v2 `E3` vs `E1/deepseek_harness`），验证生成、编译、`test` 固定用例评测与 token 审计全链路：
+
 ```powershell
+uv run plc-agent prepare
+
+# 第一题：SELF001（共 4 条命令，两条 run 各自消耗 API 额度）
 uv run plc-agent --allow-model-api run --condition E3 --task-id SELF001
+uv run plc-agent test --condition E3 --task-id SELF001
+uv run plc-agent --allow-model-api run --condition E1 --driver deepseek_harness --task-id SELF001
+uv run plc-agent test --condition E1 --task-id SELF001
+
+# 第二题：将 --task-id SELF001 替换为 --task-id PUB002 重复上述四步
 ```
 
-### 2. 核心对比实验条件说明
-在 `configs/experiments.json` 中已预置所有标准实验矩阵：
+- 课程说明要求选用**已有 Agent 框架**作为外部基线。若本机已合法配置 `codex` 或 `claude` 且工具调用审批策略可用（禁止绕过策略限制），可通过 `--driver codex_cli` 或 `--driver claude_code` 运行同题外部基线对比；若外部模型与 STAR 不同，需在结果表中分别注明各自模型。
+- 统计请求次数与 token 时，请以工作区 `model_calls.jsonl` 中的 `request_started` 与响应返回 `usage` 为准（包含失败或截断响应已报告的用量；未返回则标为缺失）。
 
-| 条件代号 | 实验名称 | 架构配置说明 |
-| :--- | :--- | :--- |
-| **`E3`** | **STAR v2 (自研完整方案)** | **Planner + CODESYS 方言卡片 + 自测反馈单调棘轮 (推荐主力测试)** |
-| `E1` | DeepSeek-V3 Zero-Shot | 零样本直接生成，不含反馈修复循环 (基线) |
-| `E2` | Few-Shot Static Prompt | 增加静态示例，无动态自测反馈 |
-| `E4` | Claude-3.5-Sonnet / Codex | 高性能通用代码大模型基线 (需对应 API 权限) |
-| `A1` | 消融实验：无 Planner | 去除状态机与变量规划，直接由 Coder 编写 ST |
-| `A2` | 消融实验：无方言卡片 | 去除 CODESYS 专用语法与定时器规范提示 |
-| `A3` | 消融实验：无自测反馈 | 去除测试用例反例引导，仅依赖编译器错误反馈 |
+### 3. 标准实验条件矩阵 (`configs/experiments.json`)
+`configs/experiments.json` 当前预置了以下 9 个条件（`selection_status` 当前为 `PENDING_REAL_EXECUTION`）：
 
-### 3. 批量运行与断点续跑
+| 条件代号 | 框架 (`framework` / `driver`) | 模型 (`model`) | 核心差异 / 用途 |
+| :--- | :--- | :--- | :--- |
+| `E1` | `custom_tool_loop` (`deepseek_harness`) | `deepseek-v4.1-flash-1017` | DeepSeek 路由对照组（可加 `--driver codex_cli`/`claude_code` 接外部基线） |
+| `E2` | `custom_tool_loop` (`deepseek_harness`) | `kimi-k3.1-pro` | Kimi 路由对照组（`spec_visible: true`） |
+| **`E3`** | **`self_harness` (STAR v2 完整方案)** | **`deepseek-v4.1-flash-1017`** | **Planner + CODESYS 方言 + 自测反馈单调棘轮（主力实验）** |
+| **`E4`** | **`self_harness` (STAR v2 完整方案)** | **`kimi-k3.1-pro`** | **STAR v2 跨模型验证组（Kimi 路由）** |
+| `A1` | `self_harness` (`ablation: no_planner`) | `deepseek-v4.1-flash-1017` | 消融实验：关闭 Planner 结构化规范阶段 |
+| `A2` | `self_harness` (`ablation: no_dialect`) | `deepseek-v4.1-flash-1017` | 消融实验：关闭 CODESYS 方言适配器提示 |
+| `A3` | `self_harness` (`ablation: no_selftest`) | `deepseek-v4.1-flash-1017` | 消融实验：关闭 ScanContract 微分自测反馈 |
+| `S1` | `self_harness` (`spec_visible: false`) | `deepseek-v4.1-flash-1017` | 规约可见性对照：隐藏规范化规约（STAR v2） |
+| `S2` | `custom_tool_loop` (`deepseek_harness`, `spec_visible: false`) | `deepseek-v4.1-flash-1017` | 规约可见性对照：隐藏规范化规约（对照组） |
+
+### 4. 批量运行、断点续跑与评测结算
 ```powershell
-# 运行完整 E3 方案评测集
+# 1. 运行指定条件（已完成的非 NOT_RUN 任务默认跳过；强制重跑加 --rerun）
 uv run plc-agent --allow-model-api run --condition E3
-
-# 运行基线 E1
 uv run plc-agent --allow-model-api run --condition E1
 
-# 若中途异常退出，再次执行同一命令即可自动从断点续跑（无需 --rerun 参数）
-```
-
-### 4. 评测结算与报表生成
-实验运行完毕后，执行以下命令进行自动化功能评测并导出科研统计报表：
-```powershell
-# 1. 运行所有生成候选代码的真实 CODESYS 仿真测试
+# 2. 对已生成候选执行真实 CODESYS 固定用例仿真测试
 uv run plc-agent test --condition E3
+uv run plc-agent test --condition E1
 
-# 2. 聚合生成总表与审计记录
+# 3. 聚合生成汇总与审计记录 (results/summary/)
 uv run plc-agent aggregate
 
-# 3. 运行配对 McNemar 检验与 Bootstrap 置信区间统计，生成论文级 LaTeX 表格
-python scripts/analyze_results.py
+# 4. 可选：运行配对 McNemar 检验与 Bootstrap 置信区间统计脚本
+uv run python scripts/analyze_results.py
 ```
-统计报表将输出至 `results/summary/` 与 `report/` 目录下。
 
 ---
 

@@ -102,6 +102,21 @@ class MetricReviewTests(unittest.TestCase):
         row["compilation_attempts"] = [{"status": "PASS", "success": True}, {"status": "COMPILE_FAIL", "success": False}]
         self.assertTrue(any("final candidate" in error for error in audit_records([row])))
 
+    def test_audit_checks_selected_candidate_against_successful_compile(self):
+        selected = {"declaration": "FUNCTION_BLOCK FB_Task", "implementation": "", "supporting_objects": []}
+        later = {**selected, "implementation": "Run := FALSE;"}
+        row = self.record()
+        row.update(first_pass_compiled=True, final_compiled=True, final_candidate=selected)
+        row["compilation_attempts"] = [
+            {"status": "PASS", "success": True, "source_sha256": digest(selected)},
+            {"status": "COMPILE_FAIL", "success": False, "source_sha256": digest(later)},
+        ]
+        self.assertEqual(audit_records([row]), [])
+
+        row["compilation_attempts"][1].update(status="PASS", success=True)
+        row["final_candidate"] = {**selected, "implementation": "Run := TRUE;"}
+        self.assertTrue(any("final candidate" in error for error in audit_records([row])))
+
     def test_partial_functional_result_cannot_claim_task_pass(self):
         row = self.record()
         row["functional"].update(status="PASS", planned_cases=2, evaluated_cases=1, passed_cases=1,

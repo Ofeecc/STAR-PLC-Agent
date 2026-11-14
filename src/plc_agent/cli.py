@@ -14,12 +14,24 @@ from dataclasses import asdict
 from pathlib import Path
 
 from .common import ROOT, artifact_path, digest, now, read_json, write_json
-from .compiler import compile_st, verify_evidence
+from .compiler import compile_st, final_compile_attempt, verify_evidence
 from .config import Settings
 from .dataset import load_tasks, public_coverage, validate
 from .harness import empty_result, run_harness
 from .llm import ProviderError, ResponsesClient
 from .metrics import aggregate, audit_records
+
+
+def _selected_candidate_and_hash(row: dict, record_path: Path):
+    """Load the final selected candidate and its verified compiler source hash."""
+    candidate_file = record_path.with_name("final_candidate.json")
+    candidate = read_json(candidate_file) if candidate_file.is_file() else row.get("final_candidate")
+    if candidate is None:
+        raise ValueError("Missing final candidate for compiled record")
+    source_hash = final_compile_attempt(row, candidate).get("source_sha256")
+    if not source_hash:
+        raise ValueError("Missing final compiler source hash")
+    return candidate, source_hash
 
 
 def doctor(cfg):
@@ -262,7 +274,7 @@ def main():
             row = read_json(path)
             if not row["final_compiled"]:
                 raise ValueError("A verified compiled candidate is required")
-            source_hash = row["compilation_attempts"][-1]["source_sha256"]
+            _, source_hash = _selected_candidate_and_hash(row, path)
             trace = read_json(args.trace)
             original_root = Path(args.trace).resolve().parent
             checked = evaluate_trace(task, source_hash, trace, evidence_root=original_root)
@@ -296,8 +308,8 @@ def main():
                     if not row["final_compiled"] or (row["functional"]["evaluated_cases"] > 0 and not args.rerun):
                         continue
                     work = path.parent / ("functional_" + now().replace(":", "").replace(".", ""))
-                    candidate = read_json(path.parent / "final_candidate.json")
-                    outcome = run_functional(task, candidate, row["compilation_attempts"][-1]["source_sha256"], work, cfg)
+                    candidate, source_hash = _selected_candidate_and_hash(row, path)
+                    outcome = run_functional(task, candidate, source_hash, work, cfg)
                     if outcome.get("functional"):
                         row["functional"] = outcome["functional"]
                         if row["status"] in ("UNVERIFIED", "PASS", "TEST_FAIL"):

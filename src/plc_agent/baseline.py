@@ -421,9 +421,9 @@ def run_baseline(
     sim_attempts = [read_json(p) for p in sorted(trusted.glob("sim_*/simulation_result.json"))]
     result["simulation_call_count"] = len(sim_attempts)
 
+    if attempts and attempts[0].get("status") in ("PASS", "COMPILE_FAIL"):
+        result["first_pass_compiled"] = attempts[0].get("success", False)
     if attempts and result['status'] not in ('TOOL_ERROR','TIMEOUT'):
-        if attempts[0].get("status") in ("PASS", "COMPILE_FAIL"):
-            result["first_pass_compiled"] = attempts[0].get("success", False)
         last = attempts[-1]
         if last.get("success"):
             result["final_compiled"] = True

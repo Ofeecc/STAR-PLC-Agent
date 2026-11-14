@@ -420,6 +420,9 @@ def run_harness(
         result["tool_call_count"] += 1
         result["compiler_call_count"] += 1
         result["compilation_attempts"].append(asdict(compiled))
+        if compiled.status not in ("PASS", "COMPILE_FAIL"):
+            result["status"], result["reason"] = compiled.status, compiled.infrastructure_error
+            return result
         result["first_pass_compiled"] = compiled.success
 
         try:
@@ -428,10 +431,6 @@ def run_harness(
             prev_cand_hash = digest(str(candidate))
         previous_hashes = [prev_cand_hash]
         stagnation_detected = False
-
-        if compiled.status in ("TOOL_ERROR", "TIMEOUT"):
-            result["status"], result["reason"] = compiled.status, compiled.infrastructure_error
-            return result
 
         attempt = 0
         while not compiled.success and attempt < settings.max_repairs:
@@ -503,12 +502,12 @@ def run_harness(
             result["compiler_call_count"] += 1
             result["compilation_attempts"].append(asdict(compiled))
 
-            if compiled.status in ("TOOL_ERROR", "TIMEOUT"):
+            if compiled.status not in ("PASS", "COMPILE_FAIL"):
                 result["status"], result["reason"] = (
                     compiled.status,
                     compiled.infrastructure_error,
                 )
-                break
+                return result
 
         result["final_compiled"] = compiled.success
         result["final_candidate"] = candidate
@@ -715,7 +714,7 @@ def run_harness(
                 result["compiler_call_count"] += 1
                 result["compilation_attempts"].append(asdict(comp_res))
 
-                if comp_res.status in ("TOOL_ERROR", "TIMEOUT"):
+                if comp_res.status not in ("PASS", "COMPILE_FAIL"):
                     result["status"], result["reason"] = comp_res.status, comp_res.infrastructure_error
                     break
                 if not comp_res.success:
