@@ -20,8 +20,14 @@ let gCurrentTab = 'explorer';
 let gBootstrapped = false;
 let gSmvBusy = null;
 let gSmvLastFeedback = {};
+let gRunSourceFilter = 'main';
+let gBenchGroupId = '';
+let gBenchFilterDiff = 'all';
+let gBenchFilterStatus = 'all';
+let gBenchFilterFormal = 'all';
+let gBenchSearch = '';
+let gUserPinnedStage = false;
 
-const PILOT_IDS = new Set(['PUB001', 'PUB003', 'PUB009', 'PUB010', 'PUB015', 'PUB016']);
 const BRACKET_COLORS = ['#09090b', '#047857', '#b45309', '#991b1b', '#52525b'];
 const RESERVED_TOKENS = new Set(['TRUE', 'FALSE', 'AND', 'OR', 'NOT']);
 const LTL_OPERATORS = new Set(['G', 'F', 'X', 'U', 'R', 'V', 'W']);
@@ -113,7 +119,8 @@ const I18N = {
     'doc.title': 'STAR-PLC | Agent Workflow, Benchmark & Waveform Inspector',
     'app.brandTitle': 'CODESYS STAR',
     'nav.explorer': 'Dataset & Specs',
-    'nav.trace': 'Workflow & Benchmark',
+    'nav.trace': 'Agent Workflow',
+    'nav.benchmark': 'Benchmark Results',
     'nav.sandbox': 'Sandbox & Waveform Lab',
     'explorer.title': 'Benchmark Tasks & Specifications',
     'explorer.interfaceTitle': 'Interface Contract',
@@ -131,16 +138,23 @@ const I18N = {
     'filter.search': 'Search ID / Title',
     'filter.searchPlaceholder': 'PUB001, timer, pump...',
     'filter.taskSelect': 'Active Task',
-    'filter.pilotOnly': 'Pilot 6 tasks only',
-    'trace.title': 'Agent Workflow & Execution Replay',
+    'trace.title': 'Agent Workflow & Live Execution Replay',
+    'trace.followActive': 'Follow active stage',
     'trace.autoPoll': 'Auto-refresh (2s)',
     'trace.refresh': 'Refresh',
+    'trace.sourceFilter': 'Run Scope',
+    'trace.scopeMain': 'All Main Runs (Hide Pilots)',
+    'trace.scopeLive': 'Live Demo / experiments/',
+    'trace.scopeFullflow': 'Benchmark Traces (fullflow)',
+    'trace.scopeAll': 'All incl. Early Pilots',
     'trace.selectRun': 'Run Record',
     'trace.sendToSandbox': 'Open Candidate in Sandbox Lab',
     'trace.versionsTitle': 'Candidate Versions & ST Diff',
     'trace.timelineTitle': 'Execution Event Timeline',
     'trace.waveformTitle': 'Recorded Execution Waveform',
-    'bench.title': 'Benchmark Condition Matrix',
+    'bench.mainTitle': 'Benchmark Evaluation Results & Cohort Comparison',
+    'bench.showPilots': 'Show archived early pilots',
+    'bench.title': 'Benchmark Condition Matrix (configs/experiments.json)',
     'sandbox.title': 'Compile, Simulation & Waveform Lab',
     'sandbox.loadSkeleton': 'Load Interface Skeleton',
     'sandbox.loadReference': 'Load Reference ST',
@@ -157,7 +171,8 @@ const I18N = {
     'doc.title': 'STAR-PLC | Agent 动态工作流、评测与波形平台',
     'app.brandTitle': 'CODESYS STAR',
     'nav.explorer': '数据集与规约',
-    'nav.trace': '工作流与基准评测',
+    'nav.trace': 'Agent 工作流',
+    'nav.benchmark': '基准评测结果',
     'nav.sandbox': '仿真与波形实验台',
     'explorer.title': '基准任务集与规约',
     'explorer.interfaceTitle': '接口契约',
@@ -175,16 +190,23 @@ const I18N = {
     'filter.search': '搜索题号 / 名称',
     'filter.searchPlaceholder': '输入 PUB001、timer、pump...',
     'filter.taskSelect': '当前任务',
-    'filter.pilotOnly': '仅显示核心试跑 6 题',
-    'trace.title': 'Agent 动态工作流与轨迹回放',
+    'trace.title': 'Agent 动态工作流与实时执行回放',
+    'trace.followActive': '自动跟随活跃阶段',
     'trace.autoPoll': '实时刷新（2s）',
     'trace.refresh': '刷新',
+    'trace.sourceFilter': '轨迹来源',
+    'trace.scopeMain': '全部主流（隐藏早期试跑）',
+    'trace.scopeLive': '实时演示（experiments/）',
+    'trace.scopeFullflow': '全流程评测轨迹（fullflow）',
+    'trace.scopeAll': '全部记录（含早期试跑）',
     'trace.selectRun': '运行记录',
     'trace.sendToSandbox': '载入候选代码到实验台',
     'trace.versionsTitle': '候选版本演进与 ST 高亮 / Diff',
     'trace.timelineTitle': '模型调用与编译仿真时间线',
     'trace.waveformTitle': '执行记录波形对比',
-    'bench.title': '基准实验条件矩阵',
+    'bench.mainTitle': '基准评测结果与多组实验可视化对比',
+    'bench.showPilots': '显示前期试跑归档',
+    'bench.title': '实验条件矩阵配置（configs/experiments.json）',
     'sandbox.title': 'ST 编译、仿真与波形实验台',
     'sandbox.loadSkeleton': '载入接口骨架',
     'sandbox.loadReference': '加载参考 ST',
@@ -358,8 +380,8 @@ function switchTab(tabName) {
       window.history.replaceState({}, '', u.toString());
     }
   } catch (e) {}
-  if (normalized === 'trace') {
-    refreshWorkflowData(true);
+  if (normalized === 'trace' || normalized === 'benchmark') {
+    refreshWorkflowData(normalized === 'trace' && !gCurrentRunTrace);
   }
   if (normalized === 'sandbox') {
     syncEditorHighlight();
@@ -373,7 +395,7 @@ function renderSystemStatus() {
   const activeRuns = (gRuns || []).filter(r => r.state === 'running');
   if (activeRuns.length > 0) {
     parts.push(
-      `<span class="pill pill--live"><span class="pulse-dot"></span>${escapeHtml(String(activeRuns.length))} LIVE</span>`
+      `<button type="button" class="pill pill--live" style="cursor:pointer;" onclick="openTraceRun('${escapeHtml(activeRuns[0].run_id)}')"><span class="pulse-dot"></span>${escapeHtml(String(activeRuns.length))} LIVE</button>`
     );
   }
   if (gCheckerAvail) {
@@ -426,7 +448,6 @@ function renderTaskList(autoSelect) {
   const searchVal = ((document.getElementById('task-search') || {}).value || '')
     .trim()
     .toLowerCase();
-  const pilotOnly = !!(document.getElementById('pilot-only') || {}).checked;
 
   const reviewById = {};
   for (let i = 0; i < (gReviews || []).length; i += 1) {
@@ -436,7 +457,6 @@ function renderTaskList(autoSelect) {
   const filtered = (gTasks || []).filter(item => {
     if (kindFilter !== 'all' && item.kind !== kindFilter) return false;
     if (diffFilter !== 'all' && item.difficulty !== diffFilter) return false;
-    if (pilotOnly && !PILOT_IDS.has(item.id)) return false;
     if (searchVal) {
       const rev = reviewById[item.id] || {};
       const hay = `${item.id} ${item.title || ''} ${rev.title_zh || ''}`.toLowerCase();
@@ -1198,7 +1218,55 @@ function renderWaveformPanel(waveforms, selectEl, displayEl, emptyMessage) {
   displayEl.innerHTML = divBanner + buildWaveTableHtml(steps);
 }
 
-/* ================= Tab 2: Workflow & Benchmark ================= */
+/* ================= Tab 2: Agent Workflow & Demo Replay ================= */
+function getFilteredRuns() {
+  const runs = gRuns || [];
+  if (!runs.length) return [];
+  if (gRunSourceFilter === 'all') return runs;
+  if (gRunSourceFilter === 'experiments') return runs.filter(r => r.source === 'experiments');
+  if (gRunSourceFilter === 'fullflow') return runs.filter(r => r.source === 'fullflow');
+  const mainRuns = runs.filter(r => !r.is_archived_pilot && r.source !== 'pilot');
+  return mainRuns.length > 0 ? mainRuns : runs;
+}
+
+async function openTraceRun(runId) {
+  if (!runId) return;
+  const target = (gRuns || []).find(r => r.run_id === runId);
+  if (target) {
+    if (target.is_archived_pilot || target.source === 'pilot') gRunSourceFilter = 'all';
+    else if (gRunSourceFilter !== 'main' && gRunSourceFilter !== target.source) gRunSourceFilter = 'main';
+    const srcSel = document.getElementById('run-source-filter');
+    if (srcSel) srcSel.value = gRunSourceFilter;
+  }
+  renderRunSelect();
+  const sel = document.getElementById('run-select');
+  if (sel) sel.value = runId;
+  gUserPinnedStage = false;
+  switchTab('trace');
+  await loadRunTrace(runId);
+}
+
+async function openTaskExplorer(taskId) {
+  if (!taskId) return;
+  await selectTask(taskId);
+  switchTab('explorer');
+}
+
+function setRunSourceFilter(val) {
+  gRunSourceFilter = val || 'main';
+  renderRunSelect();
+  const sel = document.getElementById('run-select');
+  const filtered = getFilteredRuns();
+  const chosen = (sel && sel.value) || (filtered[0] && filtered[0].run_id);
+  if (chosen) {
+    gUserPinnedStage = false;
+    loadRunTrace(chosen);
+  } else {
+    gCurrentRunTrace = null;
+    renderRunTrace(null);
+  }
+}
+
 async function refreshWorkflowData(forceTraceReload) {
   try {
     const [runsResp, expResp] = await Promise.all([fetch('/api/runs'), fetch('/api/experiments')]);
@@ -1213,7 +1281,8 @@ async function refreshWorkflowData(forceTraceReload) {
       renderBenchmarkPanel();
     }
     const sel = document.getElementById('run-select');
-    const selectedRun = (sel && sel.value) || (gRuns[0] && gRuns[0].run_id);
+    const filtered = getFilteredRuns();
+    const selectedRun = (sel && sel.value) || (filtered[0] && filtered[0].run_id) || (gRuns[0] && gRuns[0].run_id);
     if (
       selectedRun &&
       (forceTraceReload ||
@@ -1266,23 +1335,92 @@ function ensureLivePolling() {
   }, 2000);
 }
 
-function renderRunSelect() {
-  const sel = document.getElementById('run-select');
-  if (!sel) return;
-  const prev = sel.value || (gCurrentRunTrace && gCurrentRunTrace.run_id) || '';
-  if (!gRuns.length) {
-    sel.innerHTML = `<option value="">${escapeHtml(t('No runs found', '暂无运行记录'))}</option>`;
+function renderDemoChips() {
+  const box = document.getElementById('live-demo-chips');
+  if (!box) return;
+  const runs = gRuns || [];
+  const activeRunId = (gCurrentRunTrace && gCurrentRunTrace.run_id) || '';
+  const liveRuns = runs.filter(r => r.state === 'running');
+  const expRuns = runs.filter(r => r.state !== 'running' && r.source === 'experiments').slice(0, 4);
+  const picks = [];
+  const seen = new Set();
+  for (const list of [liveRuns, expRuns]) {
+    for (const r of list) {
+      if (!seen.has(r.run_id)) {
+        seen.add(r.run_id);
+        picks.push(r);
+      }
+    }
+  }
+  if (!picks.length && runs.length) {
+    const fallbackIds = ['PUB001', 'PUB011', 'PUB005'];
+    for (const tid of fallbackIds) {
+      const found = runs.find(r => r.task_id === tid && !r.is_archived_pilot);
+      if (found && !seen.has(found.run_id)) {
+        seen.add(found.run_id);
+        picks.push(found);
+      }
+    }
+    for (const r of getFilteredRuns().slice(0, 3)) {
+      if (!seen.has(r.run_id) && picks.length < 4) {
+        seen.add(r.run_id);
+        picks.push(r);
+      }
+    }
+  }
+  if (!picks.length) {
+    box.innerHTML = '';
     return;
   }
-  sel.innerHTML = gRuns
+  const leadLabel =
+    liveRuns.length > 0
+      ? `<span class="muted" style="font-size:12px;font-weight:600;">${escapeHtml(t('Live Demo Focus:', '实时演示快捷切换:'))}</span>`
+      : `<span class="muted" style="font-size:12px;font-weight:600;">${escapeHtml(t('Quick Demo Runs:', '演示样例快速切换:'))}</span>`;
+  const chips = picks
+    .map(r => {
+      const active = r.run_id === activeRunId ? ' active' : '';
+      const dot = r.state === 'running' ? '<span class="pulse-dot"></span>' : '';
+      const grp = r.group ? ` · ${r.group}` : r.condition ? ` · ${r.condition}` : '';
+      const stg = r.current_stage ? ` (${r.current_stage})` : '';
+      const st = r.display_status || r.status;
+      return `<button type="button" class="demo-chip${active}" onclick="openTraceRun('${escapeHtml(r.run_id)}')">${dot}<span>${escapeHtml(r.task_id + grp)}</span><span class="muted" style="font-weight:500;">${escapeHtml(st + stg)}</span></button>`;
+    })
+    .join('');
+  box.innerHTML = leadLabel + chips;
+}
+
+function renderRunSelect() {
+  const sel = document.getElementById('run-select');
+  if (!sel) {
+    renderDemoChips();
+    return;
+  }
+  const filtered = getFilteredRuns();
+  const prev = sel.value || (gCurrentRunTrace && gCurrentRunTrace.run_id) || '';
+  if (!filtered.length) {
+    sel.innerHTML = `<option value="">${escapeHtml(t('No runs matching filter', '当前筛选下暂无记录'))}</option>`;
+    renderDemoChips();
+    return;
+  }
+  sel.innerHTML = filtered
     .map((r, idx) => {
-      const tag = r.state === 'running' ? '[LIVE]' : r.source === 'pilot' ? '[PILOT]' : '[EXP]';
-      const cond = r.condition ? `${r.condition} · ` : '';
-      const label = `${tag} ${r.task_id} · ${cond}${r.framework} · ${r.status}${r.campaign ? ' (' + r.campaign + ')' : ''}`;
+      const tag =
+        r.state === 'running'
+          ? '[LIVE]'
+          : r.source === 'experiments'
+            ? '[EXP]'
+            : r.source === 'fullflow'
+              ? '[BENCH]'
+              : '[PILOT]';
+      const grp = r.group ? `${r.group} · ` : r.condition ? `${r.condition} · ` : '';
+      const formalStr = r.formal_status ? ` · SMV:${r.formal_status}` : '';
+      const st = r.display_status || r.status;
+      const label = `${tag} ${r.task_id} · ${grp}${r.model || r.framework} · ${st}${formalStr}`;
       const isSelected = prev ? prev === r.run_id : idx === 0;
       return `<option value="${escapeHtml(r.run_id)}"${isSelected ? ' selected' : ''}>${escapeHtml(label)}</option>`;
     })
     .join('');
+  renderDemoChips();
 }
 
 async function loadRunTrace(runId) {
@@ -1291,13 +1429,21 @@ async function loadRunTrace(runId) {
     const resp = await fetch(`/api/run-trace?run=${encodeURIComponent(runId)}`);
     if (!resp.ok) return;
     const trace = await resp.json();
+    const isNewRun = !gCurrentRunTrace || gCurrentRunTrace.run_id !== trace.run_id;
+    if (isNewRun) gUserPinnedStage = false;
     gCurrentRunTrace = trace;
     gSelectedVersionIdx = Math.max(0, (trace.versions || []).length - 1);
-    if (!gSelectedStageId || !(trace.stages || []).some(s => s.id === gSelectedStageId)) {
-      const running = (trace.stages || []).find(s => s.status === 'RUNNING');
-      gSelectedStageId =
-        (running && running.id) || (trace.stages && trace.stages[0] && trace.stages[0].id) || null;
+    const followActive = !!(document.getElementById('trace-follow-active') || {}).checked;
+    const stages = trace.stages || [];
+    if (followActive && !gUserPinnedStage && trace.state === 'running') {
+      const running = stages.find(s => s.status === 'RUNNING');
+      const done = stages.filter(s => ['DONE', 'PASS', 'FAIL', 'COUNTEREXAMPLE', 'UNSUPPORTED_ST'].includes(s.status));
+      gSelectedStageId = (running && running.id) || (done.length && done[done.length - 1].id) || (stages[0] && stages[0].id) || null;
+    } else if (!gSelectedStageId || !stages.some(s => s.id === gSelectedStageId)) {
+      const running = stages.find(s => s.status === 'RUNNING');
+      gSelectedStageId = (running && running.id) || (stages[0] && stages[0].id) || null;
     }
+    renderRunSelect();
     renderRunTrace(trace);
   } catch (e) {
     console.error('Failed to inspect run trace:', e);
@@ -1305,18 +1451,254 @@ async function loadRunTrace(runId) {
 }
 
 function statusPillClass(status) {
-  if (status === 'PASS' || status === 'DONE') return 'pill--pass';
+  if (status === 'PASS' || status === 'DONE' || status === 'REUSED') return 'pill--pass';
   if (
     status === 'FAIL' ||
     status === 'TEST_FAIL' ||
     status === 'COMPILE_FAIL' ||
     status === 'TOOL_ERROR' ||
-    status === 'TIMEOUT'
+    status === 'TIMEOUT' ||
+    status === 'COUNTEREXAMPLE'
   )
     return 'pill--fail';
   if (status === 'RUNNING') return 'pill--live';
-  if (status === 'UNVERIFIED' || status === 'STALE') return 'pill--warn';
+  if (status === 'UNVERIFIED' || status === 'STALE' || status === 'UNSUPPORTED_ST' || status === 'PARTIAL')
+    return 'pill--warn';
   return '';
+}
+
+function renderStageDetailHtml(stage, trace) {
+  if (!stage) return '';
+  const detail = stage.detail || {};
+  const metrics = stage.metrics || {};
+  let body = '';
+
+  if (stage.id === 'planner') {
+    const rawSm = detail.state_machine;
+    const states = Array.isArray(rawSm) ? rawSm : rawSm && Array.isArray(rawSm.states) ? rawSm.states : [];
+    const statesHtml = states.length
+      ? `<div class="fsm-node-list">${states
+          .map(s => {
+            const trs = (s.transitions || [])
+              .map(tr => `<div class="mono" style="font-size:11px;color:var(--text-secondary);">${escapeHtml(tr.condition || '')} -> S${escapeHtml(String(tr.next_phase ?? tr.next ?? ''))}</div>`)
+              .join('');
+            return (
+              `<div class="fsm-node">` +
+              `<div><strong>${escapeHtml(String(s.name || 'S' + (s.phase ?? '')))}</strong> <span class="muted">(#${escapeHtml(String(s.phase ?? ''))})</span></div>` +
+              (s.output ? `<div class="mono" style="font-size:11px;margin:3px 0;">${escapeHtml(String(s.output))}</div>` : '') +
+              trs +
+              `</div>`
+            );
+          })
+          .join('')}</div>`
+      : `<div class="muted" style="font-size:12px;">${escapeHtml(t('Waiting for state machine plan...', '等待状态机规划生成...'))}</div>`;
+
+    const scanOrder = Array.isArray(detail.scan_execution_order) ? detail.scan_execution_order : [];
+    const scanHtml = scanOrder.length
+      ? `<div class="stage-subcard"><div class="stage-subcard-title">${escapeHtml(t('4-Stage Scan Order', '四段式扫描顺序'))}</div>${scanOrder
+          .map(
+            step =>
+              `<div style="font-size:12px;margin-bottom:5px;"><strong>${escapeHtml(String(step.stage || ''))}. ${escapeHtml(step.name || '')}:</strong> <span class="muted">${escapeHtml(step.action || '')}</span></div>`
+          )
+          .join('')}</div>`
+      : '';
+
+    const assertions = Array.isArray(detail.formal_assertions) ? detail.formal_assertions : [];
+    const assertHtml = assertions.length
+      ? `<div class="stage-subcard"><div class="stage-subcard-title">${escapeHtml(t('Planned Safety Invariants', '规划安全断言 (LTL)'))}</div>${assertions
+          .map(
+            a =>
+              `<div style="margin-bottom:4px;"><span class="pill">${escapeHtml(a.id || 'A')}</span> <span class="mono" style="font-size:11.5px;">${escapeHtml(a.formula || '')}</span></div>`
+          )
+          .join('')}</div>`
+      : '';
+
+    const priorities = Array.isArray(detail.priorities) ? detail.priorities : [];
+    const timerPlan = detail.timer_plan || {};
+    const prioHtml =
+      priorities.length || timerPlan.PT_durations
+        ? `<div class="stage-subcard"><div class="stage-subcard-title">${escapeHtml(t('Timer & Priority Constraints', '定时器与优先级约束'))}</div>` +
+          (timerPlan.PT_durations
+            ? `<div style="font-size:12px;margin-bottom:4px;"><strong>Timers:</strong> ${escapeHtml(String(timerPlan.PT_durations))}</div>`
+            : '') +
+          priorities.map(p => `<div style="font-size:12px;color:var(--text-secondary);">• ${escapeHtml(String(p))}</div>`).join('') +
+          `</div>`
+        : '';
+
+    body =
+      `<div style="margin-top:6px;">${statesHtml}</div>` +
+      (scanHtml || assertHtml || prioHtml ? `<div class="stage-rich-grid">${scanHtml}${assertHtml}${prioHtml}</div>` : '');
+  } else if (stage.id === 'dialect') {
+    const cards = Array.isArray(detail.cards) ? detail.cards : [];
+    body = cards.length
+      ? `<div class="stage-rich-grid">${cards
+          .map(
+            c =>
+              `<div class="stage-subcard">` +
+              `<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:4px;">` +
+              `<strong>${escapeHtml(c.title || c.id || '')}</strong><span class="pill mono">${escapeHtml(c.id || '')}</span>` +
+              `</div>` +
+              (c.body
+                ? `<pre class="mono" style="margin:0;font-size:11px;white-space:pre-wrap;color:var(--text-secondary);max-height:130px;overflow:auto;">${highlightST(c.body)}</pre>`
+                : '') +
+              `</div>`
+          )
+          .join('')}</div>`
+      : `<div class="muted" style="font-size:12px;">${escapeHtml(t('No dialect cards recorded.', '暂无注入的方言卡记录。'))}</div>`;
+  } else if (stage.id === 'coder') {
+    const attempts = Array.isArray(detail.compilation_attempts) ? detail.compilation_attempts : [];
+    body = attempts.length
+      ? `<div class="stage-rich-grid">${attempts
+          .map((a, idx) => {
+            const diags = (a.diagnostics || [])
+              .filter(d => {
+                const txt = String(d.text || d.message || '');
+                const sev = String(d.severity || '').toLowerCase();
+                return (
+                  sev.includes('error') ||
+                  sev.includes('warn') ||
+                  txt.includes('Build complete') ||
+                  txt.includes('errors') ||
+                  (a.diagnostics || []).length <= 4
+                );
+              })
+              .slice(0, 6);
+            const diagStr = diags.map(d => `[${d.severity || 'Msg'}] ${d.text || d.message || ''}`).join('\n');
+            return (
+              `<div class="stage-subcard">` +
+              `<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:4px;">` +
+              `<strong>${escapeHtml(t(`Compile #${idx + 1}`, `第 ${idx + 1} 次编译`))}</strong>` +
+              `<span class="pill ${statusPillClass(a.status)}">${escapeHtml(a.status || '')}</span>` +
+              `</div>` +
+              `<div class="muted mono" style="font-size:11.5px;margin-bottom:4px;">` +
+              `${escapeHtml(a.backend || 'CODESYS')}` +
+              (a.elapsed_seconds != null ? ` · ${Number(a.elapsed_seconds).toFixed(1)}s` : '') +
+              (a.source_sha256 ? ` · SHA ${escapeHtml(String(a.source_sha256).slice(0, 10))}` : '') +
+              `</div>` +
+              (diagStr ? `<pre class="mono" style="margin:0;font-size:11px;white-space:pre-wrap;color:var(--text-secondary);">${escapeHtml(diagStr)}</pre>` : '') +
+              `</div>`
+            );
+          })
+          .join('')}</div>`
+      : `<div class="muted" style="font-size:12px;">${escapeHtml(t('Awaiting compilation attempt...', '等待 CODESYS 编译...'))}</div>`;
+  } else if (stage.id === 'verify') {
+    const verBlocks = [];
+    const renderVerBlock = (label, v) => {
+      if (!v) return '';
+      const cov = (v.specification_coverage || {}).status || '—';
+      const props = (v.property_results || []).slice(0, 14);
+      const ces = v.counterexamples || [];
+      const warns = (v.warnings || []).slice(0, 6);
+      return (
+        `<div class="stage-subcard">` +
+        `<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px;">` +
+        `<strong>${escapeHtml(label)}</strong>` +
+        `<div style="display:flex;gap:5px;flex-wrap:wrap;">` +
+        `<span class="pill ${statusPillClass(v.status)}">${escapeHtml(v.status || '')}</span>` +
+        (v.tool ? `<span class="pill mono">${escapeHtml(v.tool)}${v.engine ? ' / ' + escapeHtml(v.engine) : ''}</span>` : '') +
+        (v.total_properties != null ? `<span class="pill">${escapeHtml(`${v.passed_properties || 0}/${v.total_properties} props`)}</span>` : '') +
+        `<span class="pill">${escapeHtml(cov)}</span>` +
+        `</div></div>` +
+        (v.reason ? `<div class="muted" style="font-size:12px;margin-bottom:6px;">${escapeHtml(v.reason)}</div>` : '') +
+        (props.length
+          ? `<div style="max-height:160px;overflow:auto;margin-bottom:6px;"><table class="clean-table"><thead><tr><th>ID</th><th>${escapeHtml(t('Status', '状态'))}</th><th>Expression</th></tr></thead><tbody>` +
+            props
+              .map(
+                p =>
+                  `<tr><td class="mono">${escapeHtml(p.id || '')}</td><td><span class="pill ${statusPillClass(p.status)}">${escapeHtml(p.status || '')}</span></td><td class="mono" style="font-size:11px;">${escapeHtml(p.expression || '')}</td></tr>`
+              )
+              .join('') +
+            `</tbody></table></div>`
+          : '') +
+        (ces.length
+          ? `<div style="margin-top:6px;"><div class="stage-subcard-title">${escapeHtml(t('Counterexample Witness', '反例轨迹'))}: ${escapeHtml(ces[0].property || '')}</div>` +
+            `<div style="max-height:160px;overflow:auto;"><table class="clean-table"><thead><tr><th>Step</th><th>Inputs</th><th>Observed</th><th>Internal State</th></tr></thead><tbody>` +
+            (ces[0].trace || [])
+              .slice(0, 8)
+              .map(
+                st =>
+                  `<tr><td class="mono">${escapeHtml(String(st.step ?? ''))}</td><td class="mono" style="font-size:11px;">${escapeHtml(JSON.stringify(st.inputs || {}))}</td><td class="mono" style="font-size:11px;">${escapeHtml(JSON.stringify(st.observed || {}))}</td><td class="mono" style="font-size:11px;">${escapeHtml(JSON.stringify(st.internal_state || {}))}</td></tr>`
+              )
+              .join('') +
+            `</tbody></table></div></div>`
+          : '') +
+        (warns.length
+          ? `<div class="muted" style="font-size:11.5px;margin-top:4px;">${warns.map(w => `• ${escapeHtml(w)}`).join('<br>')}</div>`
+          : '') +
+        `</div>`
+      );
+    };
+    if (detail.fullflow_formal) verBlocks.push(renderVerBlock(t('Full-Flow Formal Verification (Coupled Observer)', '全流程形式验证（耦合规约模型）'), detail.fullflow_formal));
+    if (detail.in_harness) verBlocks.push(renderVerBlock(t('In-Harness Verification (CEGAR Gate)', '生成期形式验证（CEGAR 门禁）'), detail.in_harness));
+    body = verBlocks.length
+      ? `<div class="stage-rich-grid">${verBlocks.join('')}</div>`
+      : `<div class="muted" style="font-size:12px;">${escapeHtml(t('Formal ST->SMV verification not run for this record.', '该记录未执行 ST->SMV 形式验证。'))}</div>`;
+  } else if (stage.id === 'tester') {
+    const cases = Array.isArray(detail.cases) ? detail.cases : [];
+    const rejected = Array.isArray(detail.rejected) ? detail.rejected : [];
+    const casesHtml = cases.length
+      ? `<div class="stage-rich-grid">${cases
+          .slice(0, 6)
+          .map(c => {
+            const nSteps = Array.isArray(c.steps) ? c.steps.length : 0;
+            const s0 = nSteps > 0 ? c.steps[0] : {};
+            return (
+              `<div class="stage-subcard">` +
+              `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">` +
+              `<strong class="mono">${escapeHtml(c.id || '')}</strong><span class="pill">${escapeHtml(`${nSteps} ${t('steps', '步')}`)}</span>` +
+              `</div>` +
+              `<div class="mono muted" style="font-size:11px;">step0 in: ${escapeHtml(JSON.stringify(s0.inputs || {}))}</div>` +
+              `<div class="mono muted" style="font-size:11px;">step0 exp: ${escapeHtml(JSON.stringify(s0.expected || {}))}</div>` +
+              `</div>`
+            );
+          })
+          .join('')}</div>`
+      : `<div class="muted" style="font-size:12px;">${escapeHtml(t('No synthesized self-tests recorded.', '暂无合成自测序列。'))}</div>`;
+    const rejHtml = rejected.length
+      ? `<div class="stage-subcard" style="margin-top:8px;"><div class="stage-subcard-title">${escapeHtml(t('Filtered / Rejected Self-Tests', '已剔除的不合理自测用例'))}</div>${rejected
+          .slice(0, 5)
+          .map(r => `<div style="font-size:12px;">• <span class="mono">${escapeHtml(r.id || r.case_id || '')}</span>: ${escapeHtml(r.reason || JSON.stringify(r))}</div>`)
+          .join('')}</div>`
+      : '';
+    body = casesHtml + rejHtml;
+  } else if (stage.id === 'ratchet') {
+    const stEval = detail.selftest_evaluation;
+    const fn = detail.functional;
+    const cards = [];
+    if (stEval) {
+      cards.push(
+        `<div class="stage-subcard"><div class="stage-subcard-title">${escapeHtml(t('Agent Self-Test Gate', 'Agent 自测回放'))}</div>` +
+          `<div><span class="pill ${statusPillClass(stEval.status)}">${escapeHtml(stEval.status || '')}</span> ` +
+          `<strong class="mono">${escapeHtml(`${stEval.passed_cases ?? 0}/${stEval.evaluated_cases ?? 0}`)}</strong></div></div>`
+      );
+    }
+    if (fn && (fn.evaluated_cases || fn.status)) {
+      const detList = Array.isArray(fn.details) ? fn.details : [];
+      cards.push(
+        `<div class="stage-subcard"><div class="stage-subcard-title">${escapeHtml(t('Held-Out Fixed Evaluation', '冻结固定测试集仿真'))}</div>` +
+          `<div style="margin-bottom:6px;"><span class="pill ${statusPillClass(fn.status)}">${escapeHtml(fn.status || '')}</span> ` +
+          `<strong class="mono">${escapeHtml(`${fn.passed_cases ?? 0}/${fn.evaluated_cases ?? 0}`)}</strong> ` +
+          `<span class="muted" style="font-size:12px;">(${escapeHtml(t(`plan ${fn.planned_cases ?? '—'} · ${metrics.rollback_count || 0} rollback(s)`, `计划 ${fn.planned_cases ?? '—'} · 棘轮回滚 ${metrics.rollback_count || 0} 次`))})</span></div>` +
+          (detList.length
+            ? `<div style="display:flex;gap:4px;flex-wrap:wrap;">${detList
+                .slice(0, 12)
+                .map(d => `<span class="pill ${statusPillClass(d.status)} mono">${escapeHtml(d.case_id || '')}: ${escapeHtml(d.status || '')}</span>`)
+                .join('')}</div>`
+            : '') +
+          `</div>`
+      );
+    }
+    body = cards.length ? `<div class="stage-rich-grid">${cards.join('')}</div>` : '';
+  }
+
+  const rawJson = JSON.stringify(detail && Object.keys(detail).length ? detail : metrics, null, 2);
+  return (
+    body +
+    `<details class="details-accordion" style="margin-top:8px;">` +
+    `<summary>${escapeHtml(t('Inspect Raw Stage JSON', '展开阶段原始 JSON 数据'))}</summary>` +
+    `<pre class="mono" style="margin:6px 0 0;font-size:11.5px;max-height:220px;overflow:auto;white-space:pre-wrap;">${escapeHtml(rawJson)}</pre>` +
+    `</details>`
+  );
 }
 
 function renderRunTrace(trace) {
@@ -1338,31 +1720,41 @@ function renderRunTrace(trace) {
   }
 
   const tok = trace.token_summary || {};
+  const stages = trace.stages || [];
   if (sumEl) {
     const fwLabel =
       trace.framework_kind === 'star' || trace.framework_kind === 'star_v2'
-        ? 'STAR (5-Stage)'
-        : `Baseline (${trace.framework})`;
+        ? `STAR (${stages.length}-Stage)`
+        : trace.framework_kind === 'fullflow'
+          ? 'Fullflow Eval'
+          : `Baseline (${trace.framework})`;
     const tokStr =
       tok.usage_available && tok.total_tokens != null
-        ? `${tok.total_tokens} (in:${tok.input_tokens ?? '—'} out:${tok.output_tokens ?? '—'})`
-        : '—';
+        ? `${tok.total_tokens} (in:${tok.input_tokens ?? '—'} out:${tok.output_tokens ?? '—'}${tok.reasoning_tokens != null ? ' rsn:' + tok.reasoning_tokens : ''})`
+        : tok.request_completed_count
+          ? `${tok.request_completed_count} ${t('calls', '次请求')}`
+          : '—';
     const elapsedStr =
       trace.elapsed_seconds != null
         ? `${Number(trace.elapsed_seconds).toFixed(1)}s`
         : trace.state === 'running'
           ? t('Running', '运行中')
           : '—';
+    const groupBadge = trace.group || trace.condition ? ` · ${trace.group || trace.condition}` : '';
+    const formalBadge =
+      trace.formal_verification && trace.formal_verification.status
+        ? ` <span class="pill ${statusPillClass(trace.formal_verification.status)}">SMV: ${escapeHtml(trace.formal_verification.status)}</span>`
+        : '';
+    const dispOutcome = trace.display_status || trace.fullflow_status || trace.status;
     sumEl.innerHTML =
-      `<div class="metric-box"><div class="metric-label">${escapeHtml(t('Task / Condition', '任务 / 条件'))}</div><div class="metric-val">${escapeHtml(trace.task_id)}${trace.condition ? ' · ' + escapeHtml(trace.condition) : ''}</div></div>` +
-      `<div class="metric-box"><div class="metric-label">${escapeHtml(t('Architecture', 'Agent 架构'))}</div><div class="metric-val">${escapeHtml(fwLabel)}</div></div>` +
-      `<div class="metric-box"><div class="metric-label">${escapeHtml(t('Status', '状态'))}</div><div class="metric-val"><span class="pill ${statusPillClass(trace.status)}">${trace.state === 'running' ? '<span class="pulse-dot"></span>' : ''}${escapeHtml(trace.status)}</span></div></div>` +
-      `<div class="metric-box"><div class="metric-label">Tokens</div><div class="metric-val" style="font-size:13px;">${escapeHtml(tokStr)}</div></div>` +
-      `<div class="metric-box"><div class="metric-label">${escapeHtml(t('Elapsed', '耗时'))}</div><div class="metric-val">${escapeHtml(elapsedStr)}</div></div>`;
+      `<div class="metric-box"><div class="metric-label">${escapeHtml(t('Task / Cohort', '任务 / 组别'))}</div><div class="metric-val">${escapeHtml(trace.task_id + groupBadge)}</div></div>` +
+      `<div class="metric-box"><div class="metric-label">${escapeHtml(t('Architecture & Model', '架构与模型'))}</div><div class="metric-val" style="font-size:13px;">${escapeHtml(fwLabel)}${trace.model ? ' · ' + escapeHtml(trace.model) : ''}</div></div>` +
+      `<div class="metric-box"><div class="metric-label">${escapeHtml(t('Outcome / Formal', '执行状态 / 形式验证'))}</div><div class="metric-val"><span class="pill ${statusPillClass(dispOutcome)}">${trace.state === 'running' ? '<span class="pulse-dot"></span>' : ''}${escapeHtml(dispOutcome)}</span>${formalBadge}</div></div>` +
+      `<div class="metric-box"><div class="metric-label">${escapeHtml(t('Calls / Tokens', '调用 / Token 统计'))}</div><div class="metric-val" style="font-size:12.5px;">${escapeHtml(tokStr)}</div></div>` +
+      `<div class="metric-box"><div class="metric-label">${escapeHtml(t('Elapsed', '总耗时'))}</div><div class="metric-val">${escapeHtml(elapsedStr)}</div></div>`;
   }
 
   if (pbEl) {
-    const stages = trace.stages || [];
     const nodesHtml = stages
       .map(st => {
         const label = gLang === 'zh' ? st.label_zh || st.label_en : st.label_en;
@@ -1372,6 +1764,10 @@ function renderRunTrace(trace) {
           st.metrics && st.metrics.rollback_count > 0
             ? `<span class="pill pill--warn">${escapeHtml(t(`${st.metrics.rollback_count} rollback`, `回滚 ${st.metrics.rollback_count} 次`))}</span>`
             : '';
+        const cegarPill =
+          st.id === 'verify' && st.metrics && st.metrics.cegar_repairs > 0
+            ? `<span class="pill pill--pass">${escapeHtml(t(`CEGAR ×${st.metrics.cegar_repairs}`, `CEGAR 修复 ×${st.metrics.cegar_repairs}`))}</span>`
+            : '';
         return (
           `<button type="button" class="stage-node status-${escapeHtml(st.status)}${selCls}" onclick="selectTraceStage('${escapeHtml(st.id)}')">` +
           `<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">` +
@@ -1379,7 +1775,7 @@ function renderRunTrace(trace) {
           `<span class="pill ${statusPillClass(st.status)}">${st.status === 'RUNNING' ? '<span class="pulse-dot"></span>' : ''}${escapeHtml(st.status)}</span>` +
           `</div>` +
           `<div class="muted" style="font-size:12px;">${escapeHtml(summary || '')}</div>` +
-          (rollbackPill ? `<div>${rollbackPill}</div>` : '') +
+          (rollbackPill || cegarPill ? `<div style="display:flex;gap:4px;flex-wrap:wrap;">${rollbackPill}${cegarPill}</div>` : '') +
           `</button>`
         );
       })
@@ -1392,7 +1788,7 @@ function renderRunTrace(trace) {
         `<strong>${escapeHtml(gLang === 'zh' ? activeStage.label_zh : activeStage.label_en)}</strong>` +
         `<span class="pill ${statusPillClass(activeStage.status)}">${escapeHtml(activeStage.status)}</span>` +
         `</div>` +
-        `<pre class="mono" style="margin:0;font-size:11.5px;max-height:220px;overflow:auto;white-space:pre-wrap;">${escapeHtml(JSON.stringify(activeStage.detail || activeStage.metrics || {}, null, 2))}</pre>` +
+        renderStageDetailHtml(activeStage, trace) +
         `</div>`
       : '';
 
@@ -1502,6 +1898,7 @@ function renderRunTrace(trace) {
 }
 
 function selectTraceStage(stageId) {
+  gUserPinnedStage = true;
   gSelectedStageId = stageId;
   if (gCurrentRunTrace) renderRunTrace(gCurrentRunTrace);
 }
@@ -1535,46 +1932,309 @@ function loadRunCandidateIntoSandbox() {
   switchTab('sandbox');
 }
 
+/* ================= Tab 3: Benchmark Results & Visualizations ================= */
+function selectBenchmarkGroup(groupId) {
+  gBenchGroupId = groupId || '';
+  renderBenchmarkPanel();
+}
+
+function setBenchFilters(field, val) {
+  if (field === 'diff') gBenchFilterDiff = val || 'all';
+  if (field === 'status') gBenchFilterStatus = val || 'all';
+  if (field === 'formal') gBenchFilterFormal = val || 'all';
+  if (field === 'search') gBenchSearch = (val || '').trim().toLowerCase();
+  renderBenchmarkPanel();
+}
+
+function renderStackedBarHtml(segments) {
+  const total = segments.reduce((acc, s) => acc + (s.count || 0), 0);
+  if (!total) return `<div class="stacked-bar"></div>`;
+  const segs = segments
+    .filter(s => s.count > 0)
+    .map(s => {
+      const pct = ((s.count / total) * 100).toFixed(2);
+      return `<div class="${escapeHtml(s.cls)}" style="width:${pct}%;" title="${escapeHtml(`${s.label}: ${s.count}/${total} (${pct}%)`)}"></div>`;
+    })
+    .join('');
+  return `<div class="stacked-bar">${segs}</div>`;
+}
+
 function renderBenchmarkPanel() {
+  const vizBox = document.getElementById('benchmark-overview-viz');
   const box = document.getElementById('benchmark-summary-panel');
+  const condBox = document.getElementById('benchmark-conditions-panel');
   const statusBadge = document.getElementById('benchmark-status-badge');
-  if (!box) return;
+  const showPilots = !!(document.getElementById('bench-show-pilots') || {}).checked;
   const exp = gExperiments || {};
+  const allGroups = Array.isArray(exp.benchmark_groups) ? exp.benchmark_groups : [];
+  const visibleGroups = allGroups.filter(g => showPilots || !g.archived);
   const conditions = exp.conditions || [];
   const metrics = exp.metrics || null;
   const metricConds = (metrics && metrics.conditions) || {};
 
   if (statusBadge) {
-    statusBadge.className = metrics ? 'pill pill--pass' : 'pill';
-    statusBadge.textContent = metrics
-      ? t('Campaign Aggregate Ready', '汇总数据已就绪')
-      : t('Pending Full Campaign', '待全量实测汇总');
+    const primaryCount = visibleGroups.filter(g => g.tier === 'primary').length;
+    statusBadge.className = visibleGroups.length ? 'pill pill--pass' : 'pill';
+    statusBadge.textContent = visibleGroups.length
+      ? t(
+          `${visibleGroups.length} Cohorts (${primaryCount} Full Matrix)`,
+          `${visibleGroups.length} 组评测（${primaryCount} 组全题库）`
+        )
+      : t('Pending Benchmark Data', '待加载评测汇总');
   }
 
-  const rows = conditions
-    .map(c => {
-      const m = metricConds[c.id] || {};
-      const runsForCond = (gRuns || []).filter(r => r.condition === c.id);
-      const passStr = m.evaluated
-        ? `${m.passed || 0}/${m.evaluated}`
-        : runsForCond.length
-          ? `${runsForCond.filter(r => r.status === 'PASS').length}/${runsForCond.length} (${t('local', '本地')})`
-          : '—';
-      return (
-        `<tr>` +
-        `<td class="mono"><strong>${escapeHtml(c.id)}</strong></td>` +
-        `<td class="mono">${escapeHtml(c.framework || '')}</td>` +
-        `<td class="mono">${escapeHtml(c.model || '')}</td>` +
-        `<td>${c.ablation ? `<span class="pill pill--warn">${escapeHtml(c.ablation)}</span>` : c.spec_visible === false ? `<span class="pill">No LTL Spec</span>` : `<span class="pill pill--pass">Full Spec</span>`}</td>` +
-        `<td class="mono">${escapeHtml(passStr)}</td>` +
-        `</tr>`
-      );
-    })
-    .join('');
+  if (vizBox) {
+    if (!visibleGroups.length) {
+      vizBox.innerHTML = '';
+    } else {
+      const interpHtml = exp.interpretation
+        ? `<div class="card-subtle" style="margin-bottom:12px;font-size:12.5px;"><strong>${escapeHtml(t('Metric Scope:', '口径说明:'))}</strong> ${escapeHtml(exp.interpretation)}</div>`
+        : '';
 
-  box.innerHTML = rows
-    ? `<div style="overflow-x:auto;"><table class="clean-table"><thead><tr><th>ID</th><th>${escapeHtml(t('Framework', '框架'))}</th><th>${escapeHtml(t('Model', '模型'))}</th><th>${escapeHtml(t('Config / Ablation', '条件 / 消融'))}</th><th>PASS</th></tr></thead><tbody>${rows}</tbody></table></div>`
-    : `<div class="muted">${escapeHtml(t('No experiment configuration found.', '未找到实验配置文件。'))}</div>`;
+      const rateRows = visibleGroups
+        .map(g => {
+          const title = gLang === 'zh' ? g.title_zh || g.title_en : g.title_en || g.group_id;
+          const compN = g.compiled_tasks || 0;
+          const planN = g.planned_tasks || g.completed_tasks || 0;
+          const compPct = planN ? ((compN / planN) * 100).toFixed(1) : '0.0';
+          const fc = g.fixed_cases || {};
+          const fPass = fc.passed || 0;
+          const fEval = fc.evaluated || 0;
+          const fPlan = fc.planned || 0;
+          const fEvalPct = fEval ? ((fPass / fEval) * 100).toFixed(1) : '—';
+          const fPlanPct = fPlan ? ((fPass / fPlan) * 100).toFixed(1) : '0.0';
+
+          const out = g.outcome_counts || {};
+          const fm = g.formal_status_counts || {};
+
+          return (
+            `<div class="stage-subcard">` +
+            `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;">` +
+            `<strong>${escapeHtml(title)}</strong>` +
+            `<span class="pill mono">${escapeHtml(`${g.completed_tasks}/${planN} ${t('tasks', '题')}`)}</span>` +
+            `</div>` +
+            `<div style="font-size:12px;margin-bottom:4px;display:flex;justify-content:space-between;">` +
+            `<span>${escapeHtml(t('Compile Rate', '编译通过率'))}</span>` +
+            `<strong class="mono">${escapeHtml(`${compN}/${planN} (${compPct}%)`)}</strong></div>` +
+            renderStackedBarHtml([
+              { cls: 'seg-pass', count: compN, label: t('Compiled', '已编译') },
+              { cls: 'seg-fail', count: Math.max(0, planN - compN), label: t('Not Compiled', '未编译') },
+            ]) +
+            `<div style="font-size:12px;margin:8px 0 4px;display:flex;justify-content:space-between;">` +
+            `<span>${escapeHtml(t('Fixed Cases (Pass / Eval / Plan)', '固定测试用例（通过/实测/计划）'))}</span>` +
+            `<strong class="mono">${fEval ? escapeHtml(`${fPass}/${fEval} (${fEvalPct}% · plan ${fPlan} [${fPlanPct}%])`) : '—'}</strong></div>` +
+            renderStackedBarHtml([
+              { cls: 'seg-pass', count: fPass, label: t('Passed', '通过') },
+              { cls: 'seg-fail', count: Math.max(0, fEval - fPass), label: t('Failed', '失败') },
+              { cls: 'seg-muted', count: Math.max(0, fPlan - fEval), label: t('Not Executed', '未执行') },
+            ]) +
+            `<div style="font-size:12px;margin:8px 0 4px;display:flex;justify-content:space-between;">` +
+            `<span>${escapeHtml(t('Overall Outcomes', '总评状态分布'))}</span>` +
+            `<span class="mono muted">${escapeHtml(Object.entries(out).map(([k, v]) => `${k}:${v}`).join(' · ') || '—')}</span></div>` +
+            renderStackedBarHtml([
+              { cls: 'seg-pass', count: out.PASS || 0, label: 'PASS' },
+              { cls: 'seg-partial', count: out.PARTIAL || 0, label: 'PARTIAL' },
+              { cls: 'seg-fail', count: out.FAIL || 0, label: 'FAIL' },
+              { cls: 'seg-warn', count: out.TIMEOUT || 0, label: 'TIMEOUT' },
+              { cls: 'seg-muted', count: (out.TOOL_ERROR || 0) + (out.UNVERIFIED || 0), label: 'TOOL_ERROR/UNVERIFIED' },
+            ]) +
+            `<div style="font-size:12px;margin:8px 0 4px;display:flex;justify-content:space-between;">` +
+            `<span>${escapeHtml(t('Formal Verification', '形式验证结果'))}</span>` +
+            `<span class="mono muted">${escapeHtml(Object.entries(fm).map(([k, v]) => `${k}:${v}`).join(' · ') || '—')}</span></div>` +
+            renderStackedBarHtml([
+              { cls: 'seg-pass', count: fm.PASS || 0, label: 'PASS' },
+              { cls: 'seg-fail', count: fm.COUNTEREXAMPLE || 0, label: 'COUNTEREXAMPLE' },
+              { cls: 'seg-warn', count: fm.UNSUPPORTED_ST || 0, label: 'UNSUPPORTED_ST' },
+              { cls: 'seg-muted', count: (fm.NOT_RUN || 0) + (fm.TIMEOUT || 0) + (fm.TOOL_ERROR || 0) + (fm.UNVERIFIED || 0), label: 'NOT_RUN/INFRA' },
+            ]) +
+            `</div>`
+          );
+        })
+        .join('');
+
+      const legendHtml =
+        `<div class="legend-row" style="margin-bottom:10px;">` +
+        `<span><span class="legend-dot seg-pass"></span>PASS</span>` +
+        `<span><span class="legend-dot seg-partial"></span>PARTIAL (${escapeHtml(t('UNSUPPORTED_ST / incomplete fixed exec', '语法超界 / 固定测试未全跑完'))})</span>` +
+        `<span><span class="legend-dot seg-warn"></span>UNSUPPORTED_ST / TIMEOUT</span>` +
+        `<span><span class="legend-dot seg-fail"></span>FAIL / COUNTEREXAMPLE</span>` +
+        `<span><span class="legend-dot seg-muted"></span>TOOL_ERROR / NOT_RUN</span>` +
+        `</div>`;
+
+      vizBox.innerHTML =
+        interpHtml + legendHtml + `<div class="stage-rich-grid" style="margin-bottom:14px;">${rateRows}</div>`;
+    }
+  }
+
+  if (box) {
+    if (!visibleGroups.length) {
+      box.innerHTML = `<div class="muted">${escapeHtml(t('No benchmark cohorts loaded yet.', '暂未加载基准分组汇总。'))}</div>`;
+    } else {
+      const selectedGroup =
+        visibleGroups.find(g => g.group_id === gBenchGroupId) || visibleGroups[0];
+      gBenchGroupId = selectedGroup.group_id;
+
+      const groupCardsHtml = visibleGroups
+        .map(g => {
+          const isAct = g.group_id === selectedGroup.group_id ? ' active' : '';
+          const title = gLang === 'zh' ? g.title_zh || g.title_en : g.title_en || g.group_id;
+          const fc = g.fixed_cases || {};
+          const fm = g.formal_status_counts || {};
+          const tierLabel =
+            g.tier === 'primary'
+              ? t('32-Task Full Matrix', '32 题全量实测')
+              : g.tier === 'archived_pilot'
+                ? t('Archived Pilot', '早期试跑归档')
+                : t('Subset / Verification', '子集验证');
+          return (
+            `<button type="button" class="bench-group-card${isAct}" onclick="selectBenchmarkGroup('${escapeHtml(g.group_id)}')">` +
+            `<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap;">` +
+            `<span class="pill ${g.tier === 'primary' ? 'pill--pass' : g.archived ? 'pill--warn' : ''}">${escapeHtml(tierLabel)}</span>` +
+            `<span class="mono muted" style="font-size:11px;">${escapeHtml(g.date || '')}</span>` +
+            `</div>` +
+            `<strong style="font-size:14px;">${escapeHtml(title)}</strong>` +
+            `<div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;">` +
+            `<span>${escapeHtml(t('Compiled', '编译'))}: <strong class="mono">${escapeHtml(`${g.compiled_tasks}/${g.planned_tasks}`)}</strong></span>` +
+            `<span>${escapeHtml(t('Fixed', '固定测试'))}: <strong class="mono">${fc.evaluated ? escapeHtml(`${fc.passed}/${fc.evaluated}`) : '—'}</strong></span>` +
+            `<span>SMV PASS: <strong class="mono">${escapeHtml(String(fm.PASS || 0))}</strong></span>` +
+            `</div>` +
+            `</button>`
+          );
+        })
+        .join('');
+
+      const diffBk = selectedGroup.difficulty_breakdown || {};
+      const diffRows = ['easy', 'medium', 'hard']
+        .filter(d => diffBk[d])
+        .map(d => {
+          const b = diffBk[d];
+          return (
+            `<tr>` +
+            `<td class="mono"><strong>${escapeHtml(d)}</strong></td>` +
+            `<td class="mono">${escapeHtml(String(b.tasks))}</td>` +
+            `<td class="mono">${escapeHtml(`${b.compiled}/${b.tasks}`)}</td>` +
+            `<td class="mono">${b.fixed_evaluated ? escapeHtml(`${b.fixed_passed}/${b.fixed_evaluated} (plan ${b.fixed_planned})`) : '—'}</td>` +
+            `<td class="mono">${escapeHtml(String(b.formal_pass))}</td>` +
+            `<td class="mono">${escapeHtml(`PASS:${b.pass || 0} · PARTIAL:${b.partial || 0} · FAIL:${b.fail || 0} · INFRA:${(b.tool_error || 0) + (b.timeout || 0)}`)}</td>` +
+            `</tr>`
+          );
+        })
+        .join('');
+
+      const filteredTasks = (selectedGroup.tasks || []).filter(row => {
+        if (gBenchFilterDiff !== 'all' && row.difficulty !== gBenchFilterDiff) return false;
+        if (gBenchFilterStatus !== 'all' && row.status !== gBenchFilterStatus) return false;
+        const fmSt = (row.formal && row.formal.status) || 'NONE';
+        if (gBenchFilterFormal !== 'all' && fmSt !== gBenchFilterFormal) return false;
+        if (gBenchSearch && !`${row.task_id} ${row.difficulty || ''}`.toLowerCase().includes(gBenchSearch))
+          return false;
+        return true;
+      });
+
+      const taskRowsHtml = filteredTasks
+        .map(row => {
+          const ft = row.fixed_tests || {};
+          const fm = row.formal || {};
+          const fixedStr =
+            ft.evaluated != null ? `${ft.passed ?? 0} / ${ft.evaluated} / ${ft.planned ?? '—'}` : '—';
+          const fmSt = fm.status || '—';
+          let noteText = '—';
+          if (row.partial_reason === 'reason2_unsupported_st') {
+            noteText = 'UNSUPPORTED_ST';
+          } else if (row.partial_reason === 'reason2_incomplete_fixed') {
+            noteText = t(`Fixed ${ft.evaluated ?? 0}/${ft.planned ?? '—'}`, `固定用例仅跑 ${ft.evaluated ?? 0}/${ft.planned ?? '—'}`);
+          } else if (row.status === 'PASS') {
+            noteText = t('Checks verified', '编译/测试/性质全过');
+          } else if (fmSt === 'COUNTEREXAMPLE' || ft.status === 'TEST_FAIL' || !row.compiled) {
+            noteText = !row.compiled ? 'COMPILE_FAIL' : [ft.status === 'TEST_FAIL' ? 'TEST_FAIL' : '', fmSt === 'COUNTEREXAMPLE' ? 'COUNTEREXAMPLE' : ''].filter(Boolean).join(' + ') || fmSt;
+          } else if (row.status === 'TOOL_ERROR' || row.status === 'TIMEOUT') {
+            noteText = row.status;
+          }
+          const traceBtn = row.trace_run_id
+            ? `<button type="button" class="btn btn-sm" onclick="openTraceRun('${escapeHtml(row.trace_run_id)}')">${escapeHtml(t('Workflow', '工作流轨迹'))}</button>`
+            : '';
+          const specBtn = `<button type="button" class="btn btn-sm" onclick="openTaskExplorer('${escapeHtml(row.task_id)}')">${escapeHtml(t('Spec', '规约'))}</button>`;
+          return (
+            `<tr>` +
+            `<td class="mono"><strong>${escapeHtml(row.task_id || '')}</strong></td>` +
+            `<td class="mono">${escapeHtml(row.difficulty || '')}</td>` +
+            `<td><span class="pill ${row.compiled ? 'pill--pass' : 'pill--fail'}">${row.compiled ? 'PASS' : 'FAIL'}</span></td>` +
+            `<td class="mono">${escapeHtml(fixedStr)}</td>` +
+            `<td><span class="pill ${statusPillClass(fmSt)}">${escapeHtml(fmSt)}</span></td>` +
+            `<td><span class="pill ${statusPillClass(row.status)}">${escapeHtml(row.status || '')}</span></td>` +
+            `<td class="muted" style="font-size:12px;">${escapeHtml(noteText)}</td>` +
+            `<td class="mono">${row.llm_calls != null ? escapeHtml(String(row.llm_calls)) : '—'}</td>` +
+            `<td><div style="display:flex;gap:6px;flex-wrap:wrap;">${traceBtn}${specBtn}</div></td>` +
+            `</tr>`
+          );
+        })
+        .join('');
+
+      const selTitle = gLang === 'zh' ? selectedGroup.title_zh || selectedGroup.title_en : selectedGroup.title_en;
+      box.innerHTML =
+        `<div class="bench-group-grid">${groupCardsHtml}</div>` +
+        `<div class="card-subtle">` +
+        `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;">` +
+        `<div><strong>${escapeHtml(selTitle)}</strong> <span class="mono muted" style="font-size:12px;">(${escapeHtml(selectedGroup.source_file || '')})</span></div>` +
+        `<span class="pill">${escapeHtml(`${filteredTasks.length}/${(selectedGroup.tasks || []).length} ${t('shown', '条记录')}`)}</span>` +
+        `</div>` +
+        (selectedGroup.note ? `<div class="muted" style="font-size:12px;margin-bottom:8px;">${escapeHtml(selectedGroup.note)}</div>` : '') +
+        (diffRows
+          ? `<div style="overflow-x:auto;margin-bottom:12px;"><table class="clean-table"><thead><tr><th>${escapeHtml(t('Difficulty', '难度'))}</th><th>${escapeHtml(t('Tasks', '题数'))}</th><th>${escapeHtml(t('Compiled', '编译通过'))}</th><th>${escapeHtml(t('Fixed Cases', '固定用例'))}</th><th>SMV PASS</th><th>${escapeHtml(t('Outcomes', '结果分布'))}</th></tr></thead><tbody>${diffRows}</tbody></table></div>`
+          : '') +
+        `<div class="toolbar" style="margin-bottom:10px;">` +
+        `<label class="field-label"><span>${escapeHtml(t('Difficulty', '难度'))}</span><select onchange="setBenchFilters('diff', this.value)">` +
+        `<option value="all"${gBenchFilterDiff === 'all' ? ' selected' : ''}>${escapeHtml(t('All', '全部'))}</option>` +
+        `<option value="easy"${gBenchFilterDiff === 'easy' ? ' selected' : ''}>easy</option>` +
+        `<option value="medium"${gBenchFilterDiff === 'medium' ? ' selected' : ''}>medium</option>` +
+        `<option value="hard"${gBenchFilterDiff === 'hard' ? ' selected' : ''}>hard</option></select></label>` +
+        `<label class="field-label"><span>${escapeHtml(t('Outcome', '总评状态'))}</span><select onchange="setBenchFilters('status', this.value)">` +
+        `<option value="all"${gBenchFilterStatus === 'all' ? ' selected' : ''}>${escapeHtml(t('All', '全部'))}</option>` +
+        `<option value="PASS"${gBenchFilterStatus === 'PASS' ? ' selected' : ''}>PASS</option>` +
+        `<option value="PARTIAL"${gBenchFilterStatus === 'PARTIAL' ? ' selected' : ''}>PARTIAL</option>` +
+        `<option value="FAIL"${gBenchFilterStatus === 'FAIL' ? ' selected' : ''}>FAIL</option>` +
+        `<option value="TOOL_ERROR"${gBenchFilterStatus === 'TOOL_ERROR' ? ' selected' : ''}>TOOL_ERROR</option>` +
+        `<option value="TIMEOUT"${gBenchFilterStatus === 'TIMEOUT' ? ' selected' : ''}>TIMEOUT</option></select></label>` +
+        `<label class="field-label"><span>${escapeHtml(t('Formal Status', '形式验证'))}</span><select onchange="setBenchFilters('formal', this.value)">` +
+        `<option value="all"${gBenchFilterFormal === 'all' ? ' selected' : ''}>${escapeHtml(t('All', '全部'))}</option>` +
+        `<option value="PASS"${gBenchFilterFormal === 'PASS' ? ' selected' : ''}>PASS</option>` +
+        `<option value="UNSUPPORTED_ST"${gBenchFilterFormal === 'UNSUPPORTED_ST' ? ' selected' : ''}>UNSUPPORTED_ST</option>` +
+        `<option value="COUNTEREXAMPLE"${gBenchFilterFormal === 'COUNTEREXAMPLE' ? ' selected' : ''}>COUNTEREXAMPLE</option>` +
+        `<option value="NOT_RUN"${gBenchFilterFormal === 'NOT_RUN' ? ' selected' : ''}>NOT_RUN</option></select></label>` +
+        `<label class="field-label"><span>${escapeHtml(t('Search Task', '搜索题号'))}</span><input type="search" value="${escapeHtml(gBenchSearch)}" placeholder="PUB001..." oninput="setBenchFilters('search', this.value)" /></label>` +
+        `</div>` +
+        `<div style="overflow-x:auto;max-height:480px;overflow-y:auto;"><table class="clean-table"><thead><tr>` +
+        `<th>Task</th><th>${escapeHtml(t('Diff', '难度'))}</th><th>${escapeHtml(t('Compile', '编译'))}</th><th>${escapeHtml(t('Fixed (P/E/Pl)', '固定用例'))}</th><th>${escapeHtml(t('Formal', '形式验证'))}</th><th>${escapeHtml(t('Outcome', '状态'))}</th><th>${escapeHtml(t('Note', '说明'))}</th><th>LLM</th><th>${escapeHtml(t('Inspect', '查看'))}</th>` +
+        `</tr></thead><tbody>${taskRowsHtml || `<tr><td colspan="9" class="muted">${escapeHtml(t('No matching tasks.', '无匹配题目。'))}</td></tr>`}</tbody></table></div>` +
+        `</div>`;
+    }
+  }
+
+  if (condBox) {
+    const condRows = conditions
+      .map(c => {
+        const m = metricConds[c.id] || {};
+        const runsForCond = (gRuns || []).filter(r => r.condition === c.id);
+        const passStr = m.evaluated
+          ? `${m.passed || 0}/${m.evaluated}`
+          : runsForCond.length
+            ? `${runsForCond.filter(r => r.status === 'PASS').length}/${runsForCond.length} (${t('local', '本地')})`
+            : '—';
+        return (
+          `<tr>` +
+          `<td class="mono"><strong>${escapeHtml(c.id)}</strong></td>` +
+          `<td class="mono">${escapeHtml(c.framework || '')}</td>` +
+          `<td class="mono">${escapeHtml(c.model || '')}</td>` +
+          `<td>${c.ablation ? `<span class="pill pill--warn">${escapeHtml(c.ablation)}</span>` : c.spec_visible === false ? `<span class="pill">No LTL Spec</span>` : `<span class="pill pill--pass">Full Spec</span>`}</td>` +
+          `<td class="mono">${escapeHtml(passStr)}</td>` +
+          `</tr>`
+        );
+      })
+      .join('');
+    condBox.innerHTML = condRows
+      ? `<div style="overflow-x:auto;"><table class="clean-table"><thead><tr><th>ID</th><th>${escapeHtml(t('Framework', '框架'))}</th><th>${escapeHtml(t('Model', '模型'))}</th><th>${escapeHtml(t('Config / Ablation', '条件 / 消融'))}</th><th>PASS</th></tr></thead><tbody>${condRows}</tbody></table></div>`
+      : `<div class="muted">${escapeHtml(t('No experiment configuration found.', '未找到实验配置文件。'))}</div>`;
+  }
 }
 
 /* ================= Tab 3: Sandbox & Waveform Lab ================= */
@@ -1769,7 +2429,6 @@ async function bootstrapWebUI() {
   wire('kind-filter', 'change', () => renderTaskList(true));
   wire('difficulty-filter', 'change', () => renderTaskList(true));
   wire('task-search', 'input', () => renderTaskList(false));
-  wire('pilot-only', 'change', () => renderTaskList(true));
   wire('task-select', 'change', ev => selectTask(ev.target.value));
   wire('st-source-code', 'input', syncEditorHighlight);
   wire('st-source-code', 'scroll', syncEditorScroll);
@@ -1787,8 +2446,14 @@ async function bootstrapWebUI() {
       document.getElementById('trace-waveform-display')
     );
   });
-  wire('run-select', 'change', ev => loadRunTrace(ev.target.value));
+  wire('run-source-filter', 'change', ev => setRunSourceFilter(ev.target.value));
+  wire('run-select', 'change', ev => {
+    gUserPinnedStage = false;
+    loadRunTrace(ev.target.value);
+  });
   wire('refresh-runs-btn', 'click', () => refreshWorkflowData(true));
+  wire('refresh-bench-btn', 'click', () => refreshWorkflowData(false));
+  wire('bench-show-pilots', 'change', () => renderBenchmarkPanel());
   wire('live-poll-toggle', 'change', () => updatePollBadge());
   wire('btn-load-skeleton', 'click', () => gCurrentTask && populateSandboxTemplate(gCurrentTask));
   wire('btn-load-reference', 'click', () => loadReferenceSt());
@@ -1831,11 +2496,21 @@ async function bootstrapWebUI() {
     const u = new URL(window.location.href);
     const reqTab = u.searchParams.get('tab');
     const reqTask = u.searchParams.get('task');
+    const reqRun = u.searchParams.get('run');
     if (reqTask) await selectTask(reqTask);
-    if (reqTab) switchTab(reqTab);
+    if (reqRun) await openTraceRun(reqRun);
+    else if (reqTab) switchTab(reqTab);
   } catch (e) {}
 
   ensureLivePolling();
+  try {
+    const runsResp = await fetch('/api/runs');
+    if (runsResp.ok) {
+      const runsData = await runsResp.json();
+      gRuns = runsData.runs || [];
+      renderSystemStatus();
+    }
+  } catch (e) {}
 }
 
 if (typeof document !== 'undefined' && document.addEventListener) {

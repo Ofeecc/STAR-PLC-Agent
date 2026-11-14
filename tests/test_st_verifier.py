@@ -1153,6 +1153,41 @@ class STVerifierTests(unittest.TestCase):
         self.assertEqual(fb_res["status"], "PASS")
         self.assertTrue(any("Dropped planner formal_assertions" in w for w in fb_res.get("warnings", [])))
 
+    def test_coupled_observer_mode_maps_task_ltl_ids_and_retains_honest_gaps(self):
+        from plc_agent.st_verifier import _parse_observer_smv, discover_observer_smv, extract_observer_spec_id_map
+
+        # PUB001_complete.smv uses shifted P1_init..P11 + SPEC_outputs_iff; formula+tag mapping aligns all 12 specs
+        pub1_smv = discover_observer_smv("PUB001")
+        self.assertIsNotNone(pub1_smv)
+        obs_pub1 = _parse_observer_smv(pub1_smv.read_text(encoding="utf-8"))
+        pub1_map = extract_observer_spec_id_map(obs_pub1.spec_stmts, self.tasks["PUB001"])
+        self.assertEqual(pub1_map[0], "PUB001.P_init")
+        self.assertEqual(pub1_map[1], "PUB001.P1")
+        self.assertIn("PUB001.COMPLETE", pub1_map)
+
+        # PUB004_reference.smv lacks COMPLETE; PUB004.COMPLETE must stay unmapped cleanly
+        obs_pub4 = _parse_observer_smv(discover_observer_smv("PUB004").read_text(encoding="utf-8"))
+        pub4_map = extract_observer_spec_id_map(obs_pub4.spec_stmts, self.tasks["PUB004"])
+        self.assertIn("PUB004.P1", pub4_map)
+        self.assertNotIn("PUB004.COMPLETE", pub4_map)
+
+        # End-to-end coupled observer compilation & verification on SELF001 reference ST achieves COMPLETE coverage
+        self._require_checkers()
+        ref_self001 = read_json(ROOT / "codesys/examples/SELF001.json")
+        compiled = compile_st_to_smv(ref_self001, self.tasks["SELF001"], use_observer_smv=True)
+        self.assertIn("spec_id_map", compiled)
+        self.assertIn("SELF001.COMPLETE", compiled["spec_id_map"])
+        ver = verify_candidate_st(
+            task=self.tasks["SELF001"],
+            candidate=ref_self001,
+            out_dir=self.work_dir / "self001_coupled_mapped",
+            use_observer_smv=True,
+        )
+        self.assertEqual(ver["status"], "PASS", ver)
+        self.assertEqual(ver["specification_coverage"]["status"], "COMPLETE")
+        self.assertEqual(ver["specification_coverage"]["unproven_or_unmapped_ids"], [])
+        self.assertTrue(ver["full_specification_verified"])
+
 
 if __name__ == "__main__":
     unittest.main()

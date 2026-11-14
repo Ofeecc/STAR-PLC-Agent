@@ -281,14 +281,23 @@ class WebUITests(unittest.TestCase):
         self.assertIn('<html lang="en">', html)
         self.assertIn("STAR-PLC | Agent Workflow, Benchmark &amp; Waveform Inspector", html)
         self.assertIn("Dataset &amp; Specs", html)
-        self.assertIn("Workflow &amp; Benchmark", html)
+        self.assertIn("Agent Workflow", html)
+        self.assertIn("Benchmark Results", html)
         self.assertIn("Sandbox &amp; Waveform Lab", html)
+        self.assertIn('data-tab="benchmark"', html)
+        self.assertIn('id="tab-benchmark"', html)
+        self.assertIn('id="live-demo-chips"', html)
+        # Removed "pilot 6 tasks only" filter and merged "Workflow & Benchmark" tab
+        self.assertNotIn("pilot-only", html)
+        self.assertNotIn("仅显示核心试跑", html)
+        self.assertNotIn("Workflow &amp; Benchmark", html)
         # Ensure clean white-on-black theme without blue/purple styling tokens
         for forbidden_color in ("#38bdf8", "#3b82f6", "#6366f1", "#a855f7", "#8b5cf6", "#c4b5fd", "#93c5fd"):
             self.assertNotIn(forbidden_color, html)
-        # Fixed header tracks keep EN/ZH toggle zero-shift
+        # Fixed header tracks keep EN/ZH toggle zero-shift while tabs expand cleanly without ellipsis
         self.assertIn("grid-template-columns: 1fr auto 1fr", html)
-        self.assertIn("grid-template-columns: repeat(3, 190px)", html)
+        self.assertNotIn("grid-template-columns: repeat(3, 190px)", html)
+        self.assertNotIn("width: 190px;", html)
         # Concise UI without defensive boilerplate
         self.assertNotIn("brand-subtitle", html)
         self.assertNotIn("Candidate SMV: UNVERIFIED", html)
@@ -432,11 +441,25 @@ const check = [
   'gRuns = globalThis.RUNS_DATA.runs;',
   'gExperiments = globalThis.EXP_DATA;',
   'gCurrentRunTrace = globalThis.TRACE_DATA;',
+  'globalThis.elements["run-source-filter"].value = "primary";',
   'renderRunSelect();',
+  'if (globalThis.elements["run-select"].innerHTML.includes("[PILOT]")) throw new Error("Archived pilot should be hidden in primary scope");',
   'renderRunTrace(globalThis.TRACE_DATA);',
   'renderBenchmarkPanel();',
+  'switchTab("benchmark");',
+  'switchTab("trace");',
   'if (!globalThis.elements["trace-playback"].innerHTML.includes("1. Planner")) throw new Error("Missing Planner stage");',
+  'if (!globalThis.elements["trace-playback"].innerHTML.includes("4. Formal Verify")) throw new Error("Missing Verify stage");',
+  'if (!globalThis.elements["trace-playback"].innerHTML.includes("6. Sim &amp; Monotonic Ratchet")) throw new Error("Missing Ratchet stage");',
+  'if (!globalThis.elements["live-demo-chips"].innerHTML.includes("demo-chip")) throw new Error("Missing live demo chips");',
   'if (!globalThis.elements["trace-waveform-display"].innerHTML.includes("Pump_Motor")) throw new Error("Missing trace waveform signal");',
+  'if (!globalThis.elements["benchmark-overview-viz"].innerHTML.includes("stacked-bar")) throw new Error("Missing benchmark visualization");',
+  'if (!globalThis.elements["benchmark-summary-panel"].innerHTML.includes("PUB001")) throw new Error("Missing benchmark task rows");',
+  'if (!globalThis.elements["benchmark-summary-panel"].innerHTML.includes("Checks verified")) throw new Error("Missing Reason-1 Checks verified note");',
+  'if (globalThis.elements["benchmark-summary-panel"].innerHTML.includes("Full Spec") || globalThis.elements["benchmark-summary-panel"].innerHTML.includes(">Partial<")) throw new Error("Reason-1 Partial column should be omitted");',
+  'if (/[\\u4e00-\\u9fff]/.test(globalThis.elements["trace-playback"].innerHTML)) throw new Error("Chinese text leaked in EN trace playback");',
+  'if (/[\\u4e00-\\u9fff]/.test(globalThis.elements["benchmark-overview-viz"].innerHTML)) throw new Error("Chinese text leaked in EN benchmark overview");',
+  'if (/[\\u4e00-\\u9fff]/.test(globalThis.elements["benchmark-summary-panel"].innerHTML)) throw new Error("Chinese text leaked in EN benchmark summary");',
   'hideSpecPopover(true);',
   'const cards = (globalThis.elements["pilot-grid"].innerHTML.match(/data-task-id="/g)||[]).length;',
   'const activeCards = (globalThis.elements["pilot-grid"].innerHTML.match(/class="pilot-card active"/g)||[]).length;',
@@ -621,6 +644,48 @@ const check = [
         self.assertEqual(status, 200)
         self.assertIn("summaries", data)
         self.assertIn("conditions", data)
+        groups = data.get("benchmark_groups", [])
+        self.assertGreaterEqual(len(groups), 4)
+        by_id = {g["group_id"]: g for g in groups}
+        self.assertIn("star_deepseek", by_id)
+        self.assertIn("star_terra", by_id)
+        self.assertIn("six_task_fullflow", by_id)
+        self.assertIn("early_pilot_pair", by_id)
+        self.assertEqual(by_id["star_deepseek"]["tier"], "primary")
+        self.assertEqual(by_id["star_deepseek"]["planned_tasks"], 32)
+        self.assertEqual(by_id["star_deepseek"]["completed_tasks"], 32)
+        self.assertFalse(by_id["star_deepseek"]["archived"])
+        self.assertEqual(by_id["star_terra"]["tier"], "primary")
+        self.assertEqual(by_id["star_terra"]["planned_tasks"], 32)
+        self.assertEqual(by_id["six_task_fullflow"]["tier"], "subset")
+        self.assertEqual(by_id["six_task_fullflow"]["planned_tasks"], 6)
+        self.assertEqual(by_id["six_task_fullflow"]["tasks"][0]["task_id"], "PUB001")
+        self.assertTrue(all(t.get("trace_run_id") for t in by_id["six_task_fullflow"]["tasks"]))
+        self.assertEqual(by_id["early_pilot_pair"]["tier"], "archived_pilot")
+        self.assertTrue(by_id["early_pilot_pair"]["archived"])
+        # Reason-1 PARTIAL (compiled + fixed PASS + formal PASS) displays as PASS; Reason-2 PARTIAL stays PARTIAL
+        self.assertEqual(by_id["star_deepseek"]["outcome_counts"]["PASS"], 16)
+        self.assertEqual(by_id["star_deepseek"]["outcome_counts"]["PARTIAL"], 10)
+        self.assertEqual(by_id["star_terra"]["outcome_counts"]["PASS"], 18)
+        self.assertEqual(by_id["star_terra"]["outcome_counts"]["PARTIAL"], 6)
+        self.assertEqual(by_id["six_task_fullflow"]["outcome_counts"]["PASS"], 4)
+        self.assertEqual(by_id["six_task_fullflow"]["outcome_counts"]["PARTIAL"], 2)
+        ds_by_tid = {t["task_id"]: t for t in by_id["star_deepseek"]["tasks"]}
+        self.assertEqual(ds_by_tid["PUB001"]["status"], "PASS")
+        self.assertEqual(ds_by_tid["PUB001"]["raw_status"], "PARTIAL")
+        self.assertEqual(ds_by_tid["PUB006"]["status"], "PARTIAL")
+        self.assertEqual(ds_by_tid["PUB006"]["partial_reason"], "reason2_incomplete_fixed")
+        self.assertEqual(ds_by_tid["PUB009"]["status"], "PARTIAL")
+        self.assertEqual(ds_by_tid["PUB009"]["partial_reason"], "reason2_unsupported_st")
+        linked = ds_by_tid["PUB001"]["trace_run_id"]
+        self.assertIsNotNone(linked)
+        st, linked_trace = handle_api_request("GET", "/api/run-trace", {"run": linked}, None, self.settings)
+        self.assertEqual(st, 200)
+        self.assertEqual(linked_trace["task_id"], "PUB001")
+        self.assertEqual(linked_trace["display_status"], "PASS")
+        prop_ids = [p["id"] for p in linked_trace["formal_verification"]["property_results"]]
+        self.assertIn("PUB001.P1", prop_ids)
+        self.assertFalse(any(pid.startswith("SMV_") for pid in prop_ids))
 
     def test_handle_api_request_invalid_route(self):
         status, data = handle_api_request("GET", "/api/unknown_route", {}, None, self.settings)
@@ -637,14 +702,15 @@ const check = [
             None,
         )
         self.assertIsNotNone(pub1_pass)
+        self.assertTrue(pub1_pass.get("is_archived_pilot"))
 
         st, trace = handle_api_request("GET", "/api/run-trace", {"run": pub1_pass["run_id"]}, None, self.settings)
         self.assertEqual(st, 200)
         self.assertEqual(trace["task_id"], "PUB001")
         self.assertEqual(trace["framework_kind"], "star")
-        self.assertEqual([s["id"] for s in trace["stages"]], ["planner", "dialect", "coder", "tester", "ratchet"])
+        self.assertEqual([s["id"] for s in trace["stages"]], ["planner", "dialect", "coder", "verify", "tester", "ratchet"])
         self.assertEqual(trace["stages"][0]["status"], "DONE")
-        self.assertEqual(trace["stages"][4]["status"], "PASS")
+        self.assertEqual(trace["stages"][5]["status"], "PASS")
         self.assertGreaterEqual(len(trace["versions"]), 1)
         self.assertGreaterEqual(len(trace["timeline"]), 6)
         self.assertGreater(trace["token_summary"]["total_tokens"], 0)
@@ -652,6 +718,17 @@ const check = [
         self.assertEqual(trace["waveform_source"]["kind"], "fixed_evaluation")
         self.assertEqual(len(trace["waveforms"]), 2)
         self.assertTrue(all(step["match"] for wf in trace["waveforms"] for step in wf["steps"]))
+
+        ff_pub1 = next(
+            (r for r in runs if r["task_id"] == "PUB001" and r["source"] == "fullflow"),
+            None,
+        )
+        self.assertIsNotNone(ff_pub1)
+        self.assertFalse(ff_pub1.get("is_archived_pilot"))
+        st_ff, ff_trace = handle_api_request("GET", "/api/run-trace", {"run": ff_pub1["run_id"]}, None, self.settings)
+        self.assertEqual(st_ff, 200)
+        self.assertEqual([s["id"] for s in ff_trace["stages"]], ["planner", "dialect", "coder", "verify", "tester", "ratchet"])
+        self.assertGreaterEqual(len(ff_trace["waveforms"]), 1)
 
     def test_handle_api_request_runs_supports_live_experiments_and_ratchet_rollback(self):
         root = Path(self.temp.name) / "ws"
@@ -802,6 +879,128 @@ const check = [
         self.assertEqual(st, 200)
         self.assertEqual(base_trace["framework_kind"], "baseline")
         self.assertEqual([s["id"] for s in base_trace["stages"]], ["context", "tool_loop", "compile_sim", "final"])
+
+    def test_cegar_verify_stage_and_parent_fullflow_context(self):
+        root = Path(self.temp.name) / "ws_cegar"
+        parent = root / "results" / "raw" / "four_group_20261114" / "star_deepseek" / "PUB011"
+        gen = parent / "generation"
+        (gen / "verify_00").mkdir(parents=True)
+        (parent / "functional" / "attempt_0001").mkdir(parents=True)
+        (parent / "fullflow_result.json").write_text(
+            json.dumps(
+                {
+                    "task_id": "PUB011",
+                    "status": "FAIL",
+                    "compile_passed": True,
+                    "functional_status": "PASS",
+                    "formal_status": "FAIL",
+                    "formal_detail": "coupled property failed",
+                }
+            ),
+            encoding="utf-8",
+        )
+        (parent / "formal.json").write_text(
+            json.dumps(
+                {
+                    "stage": "formal",
+                    "result": {
+                        "status": "COUNTEREXAMPLE",
+                        "tool": "NuSMV",
+                        "total_properties": 1,
+                        "passed_properties": 0,
+                        "failed_properties": 1,
+                        "property_results": [
+                            {
+                                "id": "P1",
+                                "expression": "G(a -> X b)",
+                                "holds": False,
+                                "counterexample": [{"step": 0, "variables": {"a": "TRUE", "b": "FALSE"}}],
+                            }
+                        ],
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+        (parent / "functional.json").write_text(
+            json.dumps({"stage": "functional", "result": {"status": "PASS", "functional": {"status": "PASS", "passed_cases": 1, "evaluated_cases": 1}}}),
+            encoding="utf-8",
+        )
+        (parent / "functional" / "attempt_0001" / "trace.json").write_text(
+            json.dumps(
+                {
+                    "task_id": "PUB011",
+                    "backend": "CODESYS_SIMULATION",
+                    "cases": {
+                        "PUB011.T1": [
+                            {"inputs": {"Mode": False}, "outputs": {"MotorForward": False, "MotorReverse": False}}
+                        ]
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+        (gen / "version_00.json").write_text(
+            json.dumps({"declaration": "FUNCTION_BLOCK FB_Task\nEND_FUNCTION_BLOCK", "implementation": "b := FALSE;"}),
+            encoding="utf-8",
+        )
+        (gen / "version_cegar_01.json").write_text(
+            json.dumps({"declaration": "FUNCTION_BLOCK FB_Task\nEND_FUNCTION_BLOCK", "implementation": "b := a;"}),
+            encoding="utf-8",
+        )
+        (gen / "verify_00" / "verification_result.json").write_text(
+            json.dumps(
+                {
+                    "status": "COUNTEREXAMPLE",
+                    "tool": "NuSMV",
+                    "total_properties": 1,
+                    "passed_properties": 0,
+                    "failed_properties": 1,
+                    "property_results": [
+                        {
+                            "id": "S1",
+                            "expression": "G(a -> b)",
+                            "holds": False,
+                            "counterexample": [{"step": 0, "variables": {"a": "TRUE", "b": "FALSE"}}],
+                        }
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+        (gen / "result.json").write_text(
+            json.dumps(
+                {
+                    "task_id": "PUB011",
+                    "framework": "self_harness",
+                    "model": "deepseek-v3",
+                    "status": "PASS",
+                    "cegar_repairs": 1,
+                    "verification_call_count": 1,
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        st, listed = handle_api_request("GET", "/api/runs", {}, None, self.settings, workspace_root=root)
+        self.assertEqual(st, 200)
+        self.assertEqual(len(listed["runs"]), 1)
+        run = listed["runs"][0]
+        self.assertEqual(run["source"], "fullflow")
+        self.assertEqual(run["status"], "FAIL")
+
+        st, trace = handle_api_request(
+            "GET", "/api/run-trace", {"run": run["run_id"]}, None, self.settings, workspace_root=root
+        )
+        self.assertEqual(st, 200)
+        verify_stage = next(s for s in trace["stages"] if s["id"] == "verify")
+        self.assertEqual(verify_stage["status"], "COUNTEREXAMPLE")
+        self.assertEqual(verify_stage["metrics"]["cegar_repairs"], 1)
+        self.assertEqual(verify_stage["metrics"]["verification_calls"], 1)
+        self.assertEqual(len(verify_stage["detail"]["attempts"]), 1)
+        self.assertEqual(verify_stage["detail"]["fullflow_formal"]["status"], "COUNTEREXAMPLE")
+        self.assertTrue(any(v["id"] == "version_cegar_01" for v in trace["versions"]))
+        self.assertEqual(len(trace["waveforms"]), 1)
 
     def test_handle_api_request_run_trace_rejects_traversal_and_missing(self):
         for bad in ("../configs", "/etc/passwd", "experiments/../../configs", "src/plc_agent"):

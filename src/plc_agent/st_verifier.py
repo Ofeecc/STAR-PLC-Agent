@@ -3740,6 +3740,107 @@ def _compile_st_to_smv_standalone(
     }
 
 
+def _norm_spec_variants(expr: str) -> set[str]:
+    """Generate whitespace/outer-G normalized variants for comparing task LTL vs SMV specs."""
+    base = re.sub(r"\s+", "", str(expr or "").rstrip(";"))
+    out = {base}
+
+    def _strip_parens(s: str) -> str:
+        while s.startswith("(") and s.endswith(")"):
+            depth = 0
+            balanced = True
+            for i, ch in enumerate(s):
+                if ch == "(":
+                    depth += 1
+                elif ch == ")":
+                    depth -= 1
+                    if depth == 0 and i < len(s) - 1:
+                        balanced = False
+                        break
+            if balanced and depth == 0:
+                s = s[1:-1]
+            else:
+                break
+        return s
+
+    cur = _strip_parens(base)
+    out.add(cur)
+    if cur.startswith("G") and len(cur) > 1 and cur[1] == "(":
+        inner = _strip_parens(cur[1:])
+        out.add(inner)
+        out.add(f"G({inner})")
+    elif cur:
+        out.add(f"G({cur})")
+    return {v for v in out if v}
+
+
+def extract_observer_spec_id_map(spec_stmts: list[str], task: dict[str, Any] | None) -> list[str]:
+    """Map coupled observer LTLSPEC/INVARSPEC statements back to task['ltl'] IDs where unambiguous."""
+    ltl_items = [p for p in ((task or {}).get("ltl") or []) if isinstance(p, dict) and p.get("id")]
+    task_id = str((task or {}).get("id") or "")
+    ltl_by_id = {str(p["id"]): p for p in ltl_items}
+    short_to_id = {str(p["id"]).split(".")[-1]: str(p["id"]) for p in ltl_items}
+
+    ltl_norms: dict[str, set[str]] = {
+        str(p["id"]): _norm_spec_variants(str(p.get("formula") or "")) for p in ltl_items
+    }
+
+    parsed: list[tuple[str, str]] = []
+    for idx, st in enumerate(spec_stmts):
+        m = re.match(
+            r"^\s*(?:LTLSPEC|INVARSPEC)\s+(?:NAME\s+([A-Za-z_][A-Za-z0-9_.]*)\s*:=\s*)?(.+?);?\s*$",
+            str(st),
+            re.S,
+        )
+        raw_name = m.group(1) if (m and m.group(1)) else f"SMV_{idx + 1}"
+        body = m.group(2) if m else str(st)
+        parsed.append((raw_name, body))
+
+    resolved: list[str | None] = [None] * len(parsed)
+    claimed_ltl: set[str] = set()
+
+    # Pass 1: exact normalized formula equivalence (prevents off-by-one renumbering like PUB001_complete.smv)
+    for idx, (_raw_name, body) in enumerate(parsed):
+        body_norms = _norm_spec_variants(body)
+        candidates = [
+            lid for lid, fnorms in ltl_norms.items() if lid not in claimed_ltl and (body_norms & fnorms)
+        ]
+        if len(candidates) == 1:
+            resolved[idx] = candidates[0]
+            claimed_ltl.add(candidates[0])
+
+    # Pass 2: explicit observer NAME labels and standard semantic tags (P_init / COMPLETE)
+    for idx, (raw_name, _body) in enumerate(parsed):
+        if resolved[idx] is not None:
+            continue
+        target: str | None = None
+        if raw_name in ltl_by_id and raw_name not in claimed_ltl:
+            target = raw_name
+        elif raw_name in short_to_id and short_to_id[raw_name] not in claimed_ltl:
+            target = short_to_id[raw_name]
+        else:
+            m_pref = re.match(r"^(P\d+)_[A-Za-z0-9_]+$", raw_name)
+            if raw_name in ("P1_init", "SPEC_init") or raw_name.lower() == "spec_init":
+                cand = short_to_id.get("P_init")
+                if cand and cand not in claimed_ltl:
+                    target = cand
+            elif raw_name in ("SPEC_complete", "SPEC_outputs_iff"):
+                cand = short_to_id.get("COMPLETE")
+                if cand and cand not in claimed_ltl:
+                    target = cand
+            elif m_pref:
+                cand = short_to_id.get(m_pref.group(1))
+                if cand and cand not in claimed_ltl:
+                    target = cand
+        if target is not None:
+            resolved[idx] = target
+            claimed_ltl.add(target)
+        else:
+            resolved[idx] = f"{task_id}.{raw_name}" if (task_id and raw_name in short_to_id) else raw_name
+
+    return [r or f"SMV_{idx + 1}" for idx, r in enumerate(resolved)]
+
+
 def compile_st_to_smv(
     candidate: dict[str, Any] | str,
     task: dict[str, Any],
@@ -3899,6 +4000,7 @@ def compile_st_to_smv(
             cand_out_expr = observer_output_code(cand_suffix)
             lines.append(f"  {obs_out} := {cand_out_expr};")
 
+    spec_id_map = extract_observer_spec_id_map(obs.spec_stmts, task)
     lines.append("")
     lines.extend(obs.spec_stmts)
 
@@ -3916,6 +4018,7 @@ def compile_st_to_smv(
         "output_names": sorted(expected_outputs),
         "candidate_state_names": _extract_internal_var_smv_names(program, compiled["var_decls"]),
         "expected_spec_count": len(obs.spec_stmts),
+        "spec_id_map": spec_id_map,
         "uses_smt": bool(cand_needs_int_smt or compiled["uses_smt"]),
         "program": program,
     }
@@ -4291,15 +4394,16 @@ def _map_ltl_ids(
         expr = str(pr.get("expression", ""))
         raw_holds = pr.get("holds")
         holds = True if raw_holds is True else (False if raw_holds is False else None)
-        matched_id = spec_id_map[idx] if (spec_id_map and idx < len(spec_id_map)) else f"SMV_{idx + 1}"
-        # Check NAME P1_... / PUB001.P1 / SELF001.COMPLETE / legacy V2_* prefix match
-        m_ltl_id = re.search(r"\b((?:(?:PUB|SELF)\d+\.)?(?:P\d+|P_init|COMPLETE)|V2_[A-Za-z0-9_]+)\b", expr)
-        if m_ltl_id:
-            cand_id = m_ltl_id.group(1)
-            if cand_id in ltl_by_id:
-                matched_id = cand_id
-            elif task_id and f"{task_id}.{cand_id}" in ltl_by_id:
-                matched_id = f"{task_id}.{cand_id}"
+        matched_id = spec_id_map[idx] if (spec_id_map and idx < len(spec_id_map) and spec_id_map[idx]) else f"SMV_{idx + 1}"
+        if not (spec_id_map and idx < len(spec_id_map) and spec_id_map[idx]):
+            # Check NAME P1_... / PUB001.P1 / SELF001.COMPLETE / legacy V2_* prefix match only when unmapped
+            m_ltl_id = re.search(r"\b((?:(?:PUB|SELF)\d+\.)?(?:P\d+|P_init|COMPLETE)|V2_[A-Za-z0-9_]+)\b", expr)
+            if m_ltl_id:
+                cand_id = m_ltl_id.group(1)
+                if cand_id in ltl_by_id:
+                    matched_id = cand_id
+                elif task_id and f"{task_id}.{cand_id}" in ltl_by_id:
+                    matched_id = f"{task_id}.{cand_id}"
         item = {
             "id": matched_id,
             "expression": expr,
@@ -4492,6 +4596,7 @@ def verify_candidate_st(
         state_names=compiled["candidate_state_names"],
         include_expected_observer=include_expected_observer,
     )
+    p_init_id = f"{task_id}.P_init" if task_id else "P_init"
     for init_err in init_failures:
         counterexamples.insert(
             0,
@@ -4501,7 +4606,7 @@ def verify_candidate_st(
                 "trace": [{"step": -1, "inputs": {}, "observed": {}, "note": init_err}],
             },
         )
-        prop_results.insert(0, {"id": "P_init", "expression": init_err, "holds": False, "status": "FAIL"})
+        prop_results.insert(0, {"id": p_init_id, "expression": init_err, "holds": False, "status": "FAIL"})
 
     mc_status = mc.get("status", "TOOL_ERROR")
     if mc_status == "COUNTEREXAMPLE" or init_failures or failed_props > 0:
@@ -4552,6 +4657,11 @@ def verify_candidate_st(
 
     requested_ids = {str(p["id"]) for p in task.get("ltl", []) if isinstance(p, dict) and p.get("id")}
     checked_ids = {str(p["id"]) for p in prop_results if p.get("id") in requested_ids}
+    # check_st_initial_instance runs unconditionally on candidate FB initial declarations (formula=="init")
+    if status in ("PASS", "COUNTEREXAMPLE") and not init_failures:
+        for p in task.get("ltl", []):
+            if isinstance(p, dict) and p.get("id") in requested_ids and str(p.get("formula") or "").strip().lower() == "init":
+                checked_ids.add(str(p["id"]))
     unproven_ids = sorted(requested_ids - checked_ids)
     real_abstraction = any(d.st_type.kind == "REAL" for d in compiled["program"].decls)
     result = {

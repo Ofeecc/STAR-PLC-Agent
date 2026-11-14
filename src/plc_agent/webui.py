@@ -8,6 +8,7 @@ and testing/verifying ST programs.
 from __future__ import annotations
 
 import contextlib
+import csv
 import dataclasses
 import http.server
 import json
@@ -26,7 +27,14 @@ from .dataset import load_tasks
 from .formal_verify import export_verification_bundle, verify_candidate
 from .functional import outputs_equal
 from .random_testing import generate_random_cases
-from .run_trace import inspect_run_trace, list_runs, load_reference_st, resolve_safe_run_dir
+from .run_trace import (
+    _is_run_workspace,
+    inspect_run_trace,
+    list_runs,
+    load_reference_st,
+    resolve_safe_run_dir,
+    resolve_showcase_outcome,
+)
 from .smv_status import (
     build_all_smv_statuses,
     build_task_smv_status,
@@ -184,6 +192,329 @@ def _build_step_waveforms(
         )
 
     return waveforms
+
+
+def _resolve_trace_run_id(active_root: Path, evidence_rel: str | None) -> str | None:
+    if not evidence_rel or not isinstance(evidence_rel, str):
+        return None
+    cleaned = evidence_rel.strip().replace("\\", "/")
+    target = (active_root / cleaned).resolve()
+    raw_root = (active_root / "results" / "raw").resolve()
+    exp_root = (active_root / "experiments").resolve()
+    task_dir = target.parent if target.is_file() else target
+    if not (task_dir.is_relative_to(raw_root) or task_dir.is_relative_to(exp_root)):
+        return None
+    gen_dir = task_dir / "generation"
+    if gen_dir.is_dir() and _is_run_workspace(gen_dir):
+        return gen_dir.relative_to(active_root).as_posix()
+    if task_dir.is_dir() and _is_run_workspace(task_dir):
+        return task_dir.relative_to(active_root).as_posix()
+    return None
+
+
+def _apply_showcase_task_outcome(row: dict[str, Any]) -> dict[str, Any]:
+    raw_st = str(row.get("status") or "UNKNOWN")
+    ft = row.get("fixed_tests") or {}
+    fm = row.get("formal") or {}
+    disp_st, reason_tag = resolve_showcase_outcome(
+        raw_st,
+        compiled=row.get("compiled"),
+        fixed_status=ft.get("status"),
+        formal_status=fm.get("status"),
+        fixed_evaluated=ft.get("evaluated"),
+        fixed_planned=ft.get("planned"),
+    )
+    out = dict(row)
+    out["raw_status"] = raw_st
+    out["status"] = disp_st
+    out["partial_reason"] = reason_tag
+    return out
+
+
+def _count_outcomes(tasks: list[dict[str, Any]], key: str = "status") -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for row in tasks:
+        st = str(row.get(key) or "UNKNOWN")
+        counts[st] = counts.get(st, 0) + 1
+    return counts
+
+
+def _compute_difficulty_breakdown(tasks: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    buckets: dict[str, dict[str, Any]] = {}
+    for row in tasks:
+        diff = str(row.get("difficulty") or "unknown")
+        b = buckets.setdefault(
+            diff,
+            {
+                "tasks": 0,
+                "compiled": 0,
+                "fixed_passed": 0,
+                "fixed_evaluated": 0,
+                "fixed_planned": 0,
+                "formal_pass": 0,
+                "pass": 0,
+                "partial": 0,
+                "fail": 0,
+                "tool_error": 0,
+                "timeout": 0,
+            },
+        )
+        b["tasks"] += 1
+        if row.get("compiled"):
+            b["compiled"] += 1
+        ft = row.get("fixed_tests") or {}
+        b["fixed_passed"] += int(ft.get("passed") or 0)
+        b["fixed_evaluated"] += int(ft.get("evaluated") or 0)
+        b["fixed_planned"] += int(ft.get("planned") or 0)
+        fm = row.get("formal") or {}
+        if fm.get("status") == "PASS":
+            b["formal_pass"] += 1
+        st = str(row.get("status") or "")
+        if st == "PASS":
+            b["pass"] += 1
+        elif st == "PARTIAL":
+            b["partial"] += 1
+        elif st == "FAIL":
+            b["fail"] += 1
+        elif st == "TOOL_ERROR":
+            b["tool_error"] += 1
+        elif st == "TIMEOUT":
+            b["timeout"] += 1
+    return buckets
+
+
+def _build_benchmark_groups(active_root: Path, summaries: dict[str, Any]) -> dict[str, Any]:
+    groups: list[dict[str, Any]] = []
+    interpretations: list[str] = []
+
+    for stem, payload in sorted(summaries.items()):
+        if not isinstance(payload, dict) or not isinstance(payload.get("groups"), list):
+            continue
+        if payload.get("interpretation"):
+            interpretations.append(str(payload["interpretation"]))
+        for raw_g in payload["groups"]:
+            if not isinstance(raw_g, dict):
+                continue
+            tasks_out = []
+            for t_row in raw_g.get("tasks") or []:
+                if not isinstance(t_row, dict):
+                    continue
+                enriched = _apply_showcase_task_outcome(t_row)
+                enriched["trace_run_id"] = _resolve_trace_run_id(active_root, t_row.get("evidence"))
+                tasks_out.append(enriched)
+            gid = str(raw_g.get("group_id") or stem)
+            driver = str(raw_g.get("driver") or "")
+            model = str(raw_g.get("model") or "")
+            cond = str(raw_g.get("condition") or "")
+            groups.append(
+                {
+                    "group_id": gid,
+                    "source_file": f"results/summary/{stem}.json",
+                    "date": str(payload.get("date") or ""),
+                    "tier": "primary",
+                    "archived": False,
+                    "title_en": f"{driver.upper() or 'Run'} · {model}" + (f" ({cond})" if cond else ""),
+                    "title_zh": f"{driver.upper() or '评测'} · {model}" + (f" ({cond})" if cond else ""),
+                    "driver": driver,
+                    "model": model,
+                    "condition": cond,
+                    "completed_tasks": int(raw_g.get("completed_tasks") or len(tasks_out)),
+                    "planned_tasks": int(raw_g.get("planned_tasks") or len(tasks_out)),
+                    "compiled_tasks": int(raw_g.get("compiled_tasks") or 0),
+                    "fixed_cases": raw_g.get("fixed_cases") or {},
+                    "formal_status_counts": raw_g.get("formal_status_counts") or {},
+                    "outcome_counts": _count_outcomes(tasks_out, "status"),
+                    "raw_outcome_counts": raw_g.get("outcome_counts") or _count_outcomes(tasks_out, "raw_status"),
+                    "difficulty_breakdown": _compute_difficulty_breakdown(tasks_out),
+                    "tasks": tasks_out,
+                }
+            )
+
+    six_csv = active_root / "results" / "summary" / "six_task_fullflow_20261114.csv"
+    if six_csv.is_file():
+        try:
+            with six_csv.open("r", encoding="utf-8-sig", newline="") as f:
+                csv_rows = list(csv.DictReader(f))
+            if csv_rows:
+                tasks_out = []
+                formal_counts: dict[str, int] = {}
+                compiled_n = passed_c = eval_c = plan_c = 0
+                for row in csv_rows:
+                    tid = row.get("task", "")
+                    comp = str(row.get("compiled", "")).lower() == "true"
+                    p_n = int(row.get("passed_cases") or 0)
+                    e_n = int(row.get("evaluated_cases") or 0)
+                    pl_n = int(row.get("planned_cases") or 0)
+                    f_st = row.get("formal_status") or "UNKNOWN"
+                    ff_st = row.get("fullflow_status") or "UNKNOWN"
+                    if comp:
+                        compiled_n += 1
+                    passed_c += p_n
+                    eval_c += e_n
+                    plan_c += pl_n
+                    formal_counts[f_st] = formal_counts.get(f_st, 0) + 1
+                    ev_rel = f"results/raw/batch_fresh_20261114/{tid}/fullflow_result.json"
+                    tasks_out.append(
+                        _apply_showcase_task_outcome(
+                            {
+                                "task_id": tid,
+                                "difficulty": row.get("difficulty") or "",
+                                "status": ff_st,
+                                "compiled": comp,
+                                "generation_status": "PASS",
+                                "fixed_tests": {
+                                    "status": "PASS" if p_n == e_n and e_n == pl_n and e_n > 0 else "PARTIAL",
+                                    "passed": p_n,
+                                    "evaluated": e_n,
+                                    "planned": pl_n,
+                                },
+                                "formal": {"status": f_st, "full_specification_verified": False if f_st == "PASS" else None},
+                                "llm_calls": None,
+                                "evidence": ev_rel,
+                                "trace_run_id": _resolve_trace_run_id(active_root, ev_rel),
+                            }
+                        )
+                    )
+                groups.append(
+                    {
+                        "group_id": "six_task_fullflow",
+                        "source_file": "results/summary/six_task_fullflow_20261114.csv",
+                        "date": "2026-11-14",
+                        "tier": "subset",
+                        "archived": False,
+                        "title_en": "STAR · deepseek-v4.1-flash-1017 (6-Task Re-check)",
+                        "title_zh": "STAR · deepseek-v4.1-flash-1017（6 题完整流程重测）",
+                        "driver": "star",
+                        "model": "deepseek-v4.1-flash-1017",
+                        "condition": "E3",
+                        "completed_tasks": len(tasks_out),
+                        "planned_tasks": len(tasks_out),
+                        "compiled_tasks": compiled_n,
+                        "fixed_cases": {"passed": passed_c, "evaluated": eval_c, "planned": plan_c},
+                        "formal_status_counts": formal_counts,
+                        "outcome_counts": _count_outcomes(tasks_out, "status"),
+                        "raw_outcome_counts": _count_outcomes(tasks_out, "raw_status"),
+                        "difficulty_breakdown": _compute_difficulty_breakdown(tasks_out),
+                        "tasks": tasks_out,
+                    }
+                )
+        except Exception:
+            pass
+
+    codex_pilot = summaries.get("codex_cli_pilot_20261114")
+    if isinstance(codex_pilot, dict) and codex_pilot.get("task_id"):
+        ft = codex_pilot.get("fixed_tests") or {}
+        fv = codex_pilot.get("formal_verification") or {}
+        overall = str(codex_pilot.get("overall") or "UNVERIFIED")
+        f_st = str(fv.get("status") or "UNKNOWN")
+        tid = str(codex_pilot["task_id"])
+        task_entry = _apply_showcase_task_outcome(
+            {
+                "task_id": tid,
+                "difficulty": "easy",
+                "status": overall,
+                "compiled": codex_pilot.get("compile") == "PASS",
+                "generation_status": codex_pilot.get("generation_status"),
+                "fixed_tests": {
+                    "status": ft.get("status"),
+                    "passed": ft.get("passed", 0),
+                    "evaluated": ft.get("executed", 0),
+                    "planned": ft.get("planned", 0),
+                },
+                "formal": {
+                    "status": f_st,
+                    "full_specification_verified": fv.get("full_specification_verified"),
+                },
+                "llm_calls": codex_pilot.get("requests"),
+                "elapsed_seconds": codex_pilot.get("elapsed_seconds"),
+                "evidence": codex_pilot.get("evidence_note"),
+                "trace_run_id": None,
+            }
+        )
+        groups.append(
+            {
+                "group_id": "codex_cli_pilot",
+                "source_file": "results/summary/codex_cli_pilot_20261114.json",
+                "date": str(codex_pilot.get("date") or ""),
+                "tier": "subset",
+                "archived": False,
+                "title_en": f"Codex CLI · {codex_pilot.get('model', '')} (Pilot 1/1)",
+                "title_zh": f"Codex CLI · {codex_pilot.get('model', '')}（试测 1 题）",
+                "driver": str(codex_pilot.get("driver") or "codex_cli"),
+                "model": str(codex_pilot.get("model") or ""),
+                "condition": "codex_cli",
+                "completed_tasks": 1,
+                "planned_tasks": 1,
+                "compiled_tasks": 1 if task_entry["compiled"] else 0,
+                "fixed_cases": {
+                    "passed": int(ft.get("passed") or 0),
+                    "evaluated": int(ft.get("executed") or 0),
+                    "planned": int(ft.get("planned") or 0),
+                },
+                "formal_status_counts": {f_st: 1},
+                "outcome_counts": _count_outcomes([task_entry], "status"),
+                "raw_outcome_counts": _count_outcomes([task_entry], "raw_status"),
+                "difficulty_breakdown": _compute_difficulty_breakdown([task_entry]),
+                "tasks": [task_entry],
+                "note": codex_pilot.get("evidence_note"),
+            }
+        )
+
+    pilot_latest = summaries.get("pilot_pair_latest")
+    if isinstance(pilot_latest, dict) and isinstance(pilot_latest.get("statuses"), dict):
+        statuses = pilot_latest["statuses"]
+        pilot_tasks = []
+        outcome_counts: dict[str, int] = {}
+        compiled_n = 0
+        for tid, st in statuses.items():
+            st_s = str(st)
+            outcome_counts[st_s] = outcome_counts.get(st_s, 0) + 1
+            if st_s == "PASS":
+                compiled_n += 1
+            pilot_tasks.append(
+                {
+                    "task_id": tid,
+                    "difficulty": "easy",
+                    "status": st_s,
+                    "compiled": st_s == "PASS",
+                    "generation_status": st_s,
+                    "fixed_tests": {"status": st_s, "passed": None, "evaluated": None, "planned": None},
+                    "formal": {"status": "UNVERIFIED", "full_specification_verified": None},
+                    "llm_calls": None,
+                    "evidence": "results/summary/pilot_pair_latest.json",
+                    "trace_run_id": None,
+                }
+            )
+        groups.append(
+            {
+                "group_id": "early_pilot_pair",
+                "source_file": "results/summary/pilot_pair_latest.json",
+                "date": "2026-11-10",
+                "tier": "archived_pilot",
+                "archived": True,
+                "title_en": "Early Pilot Pair (Pre-CEGAR 2026-11-10)",
+                "title_zh": "前期两题试跑归档（CEGAR 上线前）",
+                "driver": "star_early_pilot",
+                "model": "early-pilot",
+                "condition": "pilot",
+                "completed_tasks": len(pilot_tasks),
+                "planned_tasks": len(pilot_tasks),
+                "compiled_tasks": compiled_n,
+                "fixed_cases": {},
+                "formal_status_counts": {"UNVERIFIED": len(pilot_tasks)},
+                "outcome_counts": outcome_counts,
+                "difficulty_breakdown": _compute_difficulty_breakdown(pilot_tasks),
+                "tasks": pilot_tasks,
+            }
+        )
+
+    return {
+        "benchmark_groups": groups,
+        "interpretation": (
+            (interpretations[0] + " ") if interpretations else ""
+        )
+        + "Display status classifies compiled + 100% planned fixed tests PASS + coupled SMV checks PASS as PASS; PARTIAL strictly retains Reason 2 (UNSUPPORTED_ST or incomplete fixed-test execution). Raw archive statuses remain preserved on disk.",
+    }
 
 
 def handle_api_request(
@@ -352,11 +683,14 @@ def handle_api_request(
 
         metrics = summaries.get("metrics")
         campaign = summaries.get("campaign")
+        bench_bundle = _build_benchmark_groups(active_root, summaries)
         return 200, {
             "metrics": metrics,
             "campaign": campaign,
             "conditions": conditions,
             "summaries": summaries,
+            "benchmark_groups": bench_bundle["benchmark_groups"],
+            "interpretation": bench_bundle["interpretation"],
         }
 
     # 4b. GET /api/runs

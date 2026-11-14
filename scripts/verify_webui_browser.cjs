@@ -51,20 +51,20 @@ const assert=require('node:assert/strict');
     assert.match(await page.locator('#task-overview').innerText(),/Alarm Handling/);
     assert.match(await page.locator('#review-details').innerText(),/Teacher-provided public task/);
     assert.match(await page.locator('#ltl-container').innerText(),/How to review a specification/);
-    for(const tab of ['waveform','trace','sandbox','explorer']){
+    for(const tab of ['benchmark','trace','sandbox','explorer']){
       await page.locator(`[data-tab="${tab}"]`).click();
-      assert.equal(await page.locator(`[data-tab="${tab}"]`).getAttribute('class'),'tab-btn active');
+      assert.equal(await page.locator(`[data-tab="${tab}"]`).getAttribute('class'),'nav-tab active');
       assert.equal(await page.locator('#tab-'+tab).isVisible(),true);
       assert.doesNotMatch(await page.locator('#tab-'+tab).innerText(),/[\u4e00-\u9fff]/);
+      const clipped=await page.locator(`[data-tab="${tab}"]`).evaluate(el=>el.scrollWidth>el.clientWidth+1);
+      assert.equal(clipped,false);
     }
     await page.evaluate(()=>window.scrollTo(0,0));
     await page.screenshot({path:path.join(output,'en-overview.png'),animations:'disabled'});
     await page.reload();
     await page.waitForFunction(()=>gCurrentTask?.task.id==='PUB003');
     assert.equal(await page.locator('#language-select').inputValue(),'en');
-    await page.locator('#pilot-only').check();
-    assert.equal(await page.locator('.pilot-card').count(),6);
-    await page.locator('#pilot-only').uncheck();
+    assert.equal(await page.locator('#pilot-only').count(),0);
     await page.selectOption('#kind-filter','self');
     assert.equal(await page.locator('.pilot-card').count(),12);
     await page.locator('#task-search').fill('重试');
