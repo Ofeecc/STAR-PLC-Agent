@@ -21,70 +21,73 @@ class WebUITests(unittest.TestCase):
     def test_every_task_has_current_chinese_review_interface_tests_and_properties(self):
         from plc_agent.common import digest
         from plc_agent.task_view import agent_view
-        status, listing=handle_api_request('GET','/api/tasks',{},None,self.settings)
-        self.assertEqual(status,200)
-        self.assertEqual(len(listing['task_review']),32)
-        self.assertEqual(len(listing['pilot_review']),6)
-        count=0
-        for summary in listing['tasks']:
-            status,detail=handle_api_request('GET','/api/task',{'id':summary['id']},None,self.settings)
-            task,review=detail['task'],detail['review']
-            self.assertTrue(review['source_matches'])
-            self.assertEqual(review['source_task_sha256'],digest(task))
-            self.assertEqual(review['review_status'],'HUMAN_REVIEWED')
-            self.assertEqual(detail['agent_view'],agent_view(task))
-            self.assertNotIn('translation_zh',detail['agent_view'])
-            for field in ('title_zh','translation_zh','assumptions_zh','coverage_zh','review_points_zh'):
-                self.assertRegex(review[field],r'[\u4e00-\u9fff]')
-            self.assertEqual(set(review['interface_zh']),{p['name'] for p in task['interface']})
-            self.assertEqual(set(review['tests_zh']),{c['id'] for c in task['tests']})
-            for case in task['tests']:
-                self.assertEqual(review['tests_zh'][case['id']]['source_sha256'],digest(case))
-            self.assertEqual(set(review['properties_zh']),{p['id'] for p in task['ltl']})
-            for prop in task['ltl']:
-                self.assertEqual(review['properties_zh'][prop['id']]['formula'],prop['formula'])
-                self.assertRegex(review['properties_zh'][prop['id']]['description'],r'[\u4e00-\u9fff]')
-                count+=1
-        self.assertEqual(count,294)
+
+        status, listing = handle_api_request("GET", "/api/tasks", {}, None, self.settings)
+        self.assertEqual(status, 200)
+        self.assertEqual(len(listing["task_review"]), 32)
+        self.assertEqual(len(listing["pilot_review"]), 6)
+        count = 0
+        for summary in listing["tasks"]:
+            status, detail = handle_api_request("GET", "/api/task", {"id": summary["id"]}, None, self.settings)
+            task, review = detail["task"], detail["review"]
+            self.assertTrue(review["source_matches"])
+            self.assertEqual(review["source_task_sha256"], digest(task))
+            self.assertEqual(review["review_status"], "HUMAN_REVIEWED")
+            self.assertEqual(detail["agent_view"], agent_view(task))
+            self.assertNotIn("translation_zh", detail["agent_view"])
+            for field in ("title_zh", "translation_zh", "assumptions_zh", "coverage_zh", "review_points_zh"):
+                self.assertRegex(review[field], r"[\u4e00-\u9fff]")
+            self.assertEqual(set(review["interface_zh"]), {p["name"] for p in task["interface"]})
+            self.assertEqual(set(review["tests_zh"]), {c["id"] for c in task["tests"]})
+            for case in task["tests"]:
+                self.assertEqual(review["tests_zh"][case["id"]]["source_sha256"], digest(case))
+            self.assertEqual(set(review["properties_zh"]), {p["id"] for p in task["ltl"]})
+            for prop in task["ltl"]:
+                self.assertEqual(review["properties_zh"][prop["id"]]["formula"], prop["formula"])
+                self.assertRegex(review["properties_zh"][prop["id"]]["description"], r"[\u4e00-\u9fff]")
+                count += 1
+        self.assertEqual(count, 294)
 
     def test_six_pilot_tasks_have_review_material_and_match_current_dataset(self):
-        status, listing = handle_api_request('GET','/api/tasks',{},None,self.settings)
-        self.assertEqual(status,200)
-        ids = ['PUB001','PUB003','PUB009','PUB010','PUB015','PUB016']
-        self.assertEqual([r['id'] for r in listing['pilot_review']],ids)
+        status, listing = handle_api_request("GET", "/api/tasks", {}, None, self.settings)
+        self.assertEqual(status, 200)
+        ids = ["PUB001", "PUB003", "PUB009", "PUB010", "PUB015", "PUB016"]
+        self.assertEqual([r["id"] for r in listing["pilot_review"]], ids)
         cases = steps = 0
         difficulties = []
         for tid in ids:
-            status, detail = handle_api_request('GET','/api/task',{'id':tid},None,self.settings)
-            self.assertEqual(status,200)
-            self.assertEqual(detail['task']['kind'],'public')
-            self.assertEqual(detail['review']['id'],tid)
-            for field in ('title_zh','translation_zh','assumptions_zh','coverage_zh','review_points_zh'):
-                self.assertTrue(detail['review'][field])
-            cases += len(detail['tests'])
-            steps += sum(len(c['steps']) for c in detail['tests'])
-            difficulties.append(detail['task']['difficulty'])
-            summary = next(t for t in listing['tasks'] if t['id'] == tid)
-            self.assertEqual(summary['steps_count'],sum(len(c['steps']) for c in detail['tests']))
-        selected = [t for t in listing['tasks'] if t['id'] in ids]
+            status, detail = handle_api_request("GET", "/api/task", {"id": tid}, None, self.settings)
+            self.assertEqual(status, 200)
+            self.assertEqual(detail["task"]["kind"], "public")
+            self.assertEqual(detail["review"]["id"], tid)
+            for field in ("title_zh", "translation_zh", "assumptions_zh", "coverage_zh", "review_points_zh"):
+                self.assertTrue(detail["review"][field])
+            cases += len(detail["tests"])
+            steps += sum(len(c["steps"]) for c in detail["tests"])
+            difficulties.append(detail["task"]["difficulty"])
+            summary = next(t for t in listing["tasks"] if t["id"] == tid)
+            self.assertEqual(summary["steps_count"], sum(len(c["steps"]) for c in detail["tests"]))
+        selected = [t for t in listing["tasks"] if t["id"] in ids]
         self.assertGreaterEqual((cases, steps), (26, 314))
-        self.assertEqual((cases, steps), (sum(t['tests_count'] for t in selected), sum(t['steps_count'] for t in selected)))
-        self.assertEqual(difficulties,['easy','easy','medium','medium','hard','hard'])
+        self.assertEqual(
+            (cases, steps), (sum(t["tests_count"] for t in selected), sum(t["steps_count"] for t in selected))
+        )
+        self.assertEqual(difficulties, ["easy", "easy", "medium", "medium", "hard", "hard"])
 
     def test_pilot_chinese_explanations_cover_every_current_formula(self):
         count = 0
-        for tid in ['PUB001','PUB003','PUB009','PUB010','PUB015','PUB016']:
-            status, detail = handle_api_request('GET','/api/task',{'id':tid},None,self.settings)
-            self.assertEqual(status,200)
-            chinese = detail['review']['properties_zh']
-            self.assertEqual(set(chinese),{p['id'] for p in detail['task']['ltl']})
-            for prop in detail['task']['ltl']:
-                row = chinese[prop['id']]
-                self.assertEqual(row['formula'],prop['formula'])
-                self.assertTrue(row['description'])
-                self.assertTrue(row['review'])
+        for tid in ["PUB001", "PUB003", "PUB009", "PUB010", "PUB015", "PUB016"]:
+            status, detail = handle_api_request("GET", "/api/task", {"id": tid}, None, self.settings)
+            self.assertEqual(status, 200)
+            chinese = detail["review"]["properties_zh"]
+            self.assertEqual(set(chinese), {p["id"] for p in detail["task"]["ltl"]})
+            for prop in detail["task"]["ltl"]:
+                row = chinese[prop["id"]]
+                self.assertEqual(row["formula"], prop["formula"])
+                self.assertTrue(row["description"])
+                self.assertTrue(row["review"])
                 count += 1
-        self.assertEqual(count,64)
+        self.assertEqual(count, 64)
 
     def test_model_checker_api_keeps_reference_scope_and_rejects_other_tasks(self):
         import tempfile
@@ -92,51 +95,53 @@ class WebUITests(unittest.TestCase):
         from unittest.mock import patch
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            tmp_status = Path(tmpdir) / 'smv_status.json'
+            tmp_status = Path(tmpdir) / "smv_status.json"
             for body in (
                 None,
                 {},
-                {'task_id': 'NON_EXISTENT'},
-                {'task_id': '../../arbitrary'},
-                {'task_id': 'PUB001', 'variant': '../bad'},
+                {"task_id": "NON_EXISTENT"},
+                {"task_id": "../../arbitrary"},
+                {"task_id": "PUB001", "variant": "../bad"},
             ):
                 status, _ = handle_api_request(
-                    'POST', '/api/check-reference-model', {}, body, self.settings, smv_status_path=tmp_status
+                    "POST", "/api/check-reference-model", {}, body, self.settings, smv_status_path=tmp_status
                 )
                 self.assertEqual(status, 400)
-            with patch('plc_agent.model_checker.find_nusmv', side_effect=ValueError('not installed')), patch(
-                'plc_agent.model_checker.find_nuxmv', side_effect=ValueError('not installed')
-            ), patch('plc_agent.model_checker.check_model', side_effect=ValueError('not installed')):
-                for tid in ('PUB001', 'PUB016'):
+            with (
+                patch("plc_agent.model_checker.find_nusmv", side_effect=ValueError("not installed")),
+                patch("plc_agent.model_checker.find_nuxmv", side_effect=ValueError("not installed")),
+                patch("plc_agent.model_checker.check_model", side_effect=ValueError("not installed")),
+            ):
+                for tid in ("PUB001", "PUB016"):
                     status, data = handle_api_request(
-                        'POST',
-                        '/api/check-reference-model',
+                        "POST",
+                        "/api/check-reference-model",
                         {},
-                        {'task_id': tid},
+                        {"task_id": tid},
                         self.settings,
                         smv_status_path=tmp_status,
                     )
                     self.assertEqual(status, 503)
-                    self.assertEqual(data['status'], 'TOOL_ERROR')
-                    self.assertEqual(data['verification_status'], 'CHECKER_MISSING')
-                    self.assertTrue(data['checker_missing'])
-                    self.assertEqual(data['smv_status']['scope'], 'EXPLICIT_SMV_MODEL_ONLY')
-                    self.assertFalse(data['smv_status']['candidate_st_verified'])
+                    self.assertEqual(data["status"], "TOOL_ERROR")
+                    self.assertEqual(data["verification_status"], "CHECKER_MISSING")
+                    self.assertTrue(data["checker_missing"])
+                    self.assertEqual(data["smv_status"]["scope"], "EXPLICIT_SMV_MODEL_ONLY")
+                    self.assertFalse(data["smv_status"]["candidate_st_verified"])
 
     def test_persisted_smv_status_reports_verified_both_for_all_32_tasks(self):
-        status, listing = handle_api_request('GET', '/api/tasks', {}, None, self.settings)
+        status, listing = handle_api_request("GET", "/api/tasks", {}, None, self.settings)
         self.assertEqual(status, 200)
-        self.assertIn('checker_availability', listing)
-        self.assertEqual(len(listing['tasks']), 32)
-        for t in listing['tasks']:
-            smv = t['smv_status']
-            self.assertEqual(smv['scope'], 'EXPLICIT_SMV_MODEL_ONLY')
-            self.assertFalse(smv['candidate_st_verified'])
-            self.assertTrue(smv['authored'])
-            self.assertFalse(smv['stale'], t['id'])
-            self.assertEqual(smv['verification_status'], 'VERIFIED_BOTH', t['id'])
-            self.assertRegex(smv['authoring_text_zh'], r'[\u4e00-\u9fff]')
-            self.assertRegex(smv['badge_text_zh'], r'[\u4e00-\u9fff]')
+        self.assertIn("checker_availability", listing)
+        self.assertEqual(len(listing["tasks"]), 32)
+        for t in listing["tasks"]:
+            smv = t["smv_status"]
+            self.assertEqual(smv["scope"], "EXPLICIT_SMV_MODEL_ONLY")
+            self.assertFalse(smv["candidate_st_verified"])
+            self.assertTrue(smv["authored"])
+            self.assertFalse(smv["stale"], t["id"])
+            self.assertEqual(smv["verification_status"], "VERIFIED_BOTH", t["id"])
+            self.assertRegex(smv["authoring_text_zh"], r"[\u4e00-\u9fff]")
+            self.assertRegex(smv["badge_text_zh"], r"[\u4e00-\u9fff]")
 
     def test_missing_checker_handling_preserves_baseline_and_records_unverified_missing(self):
         import shutil
@@ -148,67 +153,71 @@ class WebUITests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmpdir:
             # Subcase A: persisted baseline present + checker uninstalled
-            copied_status = Path(tmpdir) / 'copied_status.json'
+            copied_status = Path(tmpdir) / "copied_status.json"
             shutil.copy2(DEFAULT_SMV_STATUS_PATH, copied_status)
-            with patch('plc_agent.model_checker.find_nusmv', side_effect=ValueError('NuSMV missing')), patch(
-                'plc_agent.model_checker.find_nuxmv', side_effect=ValueError('nuXmv missing')
-            ), patch('plc_agent.model_checker.check_model', side_effect=ValueError('checker missing')):
+            with (
+                patch("plc_agent.model_checker.find_nusmv", side_effect=ValueError("NuSMV missing")),
+                patch("plc_agent.model_checker.find_nuxmv", side_effect=ValueError("nuXmv missing")),
+                patch("plc_agent.model_checker.check_model", side_effect=ValueError("checker missing")),
+            ):
                 status, detail = handle_api_request(
-                    'GET', '/api/task', {'id': 'PUB015'}, None, self.settings, smv_status_path=copied_status
+                    "GET", "/api/task", {"id": "PUB015"}, None, self.settings, smv_status_path=copied_status
                 )
                 self.assertEqual(status, 200)
-                smv = detail['smv_status']
-                self.assertTrue(smv['checker_missing'])
-                self.assertFalse(smv['live_rerunnable'])
-                self.assertEqual(smv['verification_status'], 'VERIFIED_BOTH')
-                self.assertIn('nuXmv', smv['badge_text_zh'])
+                smv = detail["smv_status"]
+                self.assertTrue(smv["checker_missing"])
+                self.assertFalse(smv["live_rerunnable"])
+                self.assertEqual(smv["verification_status"], "VERIFIED_BOTH")
+                self.assertIn("nuXmv", smv["badge_text_zh"])
 
                 post_status, post_data = handle_api_request(
-                    'POST',
-                    '/api/check-reference-model',
+                    "POST",
+                    "/api/check-reference-model",
                     {},
-                    {'task_id': 'PUB015', 'variant': 'reference'},
+                    {"task_id": "PUB015", "variant": "reference"},
                     self.settings,
                     smv_status_path=copied_status,
                 )
                 self.assertEqual(post_status, 503)
-                self.assertEqual(post_data['verification_status'], 'CHECKER_MISSING')
+                self.assertEqual(post_data["verification_status"], "CHECKER_MISSING")
                 store_after = load_smv_status_store(copied_status)
                 self.assertEqual(
-                    store_after['records']['PUB015']['models']['reference']['status'],
-                    'MODEL_PROPERTIES_TRUE',
+                    store_after["records"]["PUB015"]["models"]["reference"]["status"],
+                    "MODEL_PROPERTIES_TRUE",
                 )
                 self.assertEqual(
-                    store_after['records']['PUB015']['last_run_attempt']['status'],
-                    'CHECKER_MISSING',
+                    store_after["records"]["PUB015"]["last_run_attempt"]["status"],
+                    "CHECKER_MISSING",
                 )
 
             # Subcase B: fresh store + checker missing
-            empty_status = Path(tmpdir) / 'empty_status.json'
-            with patch('plc_agent.model_checker.find_nusmv', side_effect=ValueError('NuSMV missing')), patch(
-                'plc_agent.model_checker.find_nuxmv', side_effect=ValueError('nuXmv missing')
-            ), patch('plc_agent.model_checker.check_model', side_effect=ValueError('checker missing')):
+            empty_status = Path(tmpdir) / "empty_status.json"
+            with (
+                patch("plc_agent.model_checker.find_nusmv", side_effect=ValueError("NuSMV missing")),
+                patch("plc_agent.model_checker.find_nuxmv", side_effect=ValueError("nuXmv missing")),
+                patch("plc_agent.model_checker.check_model", side_effect=ValueError("checker missing")),
+            ):
                 status, detail = handle_api_request(
-                    'GET', '/api/task', {'id': 'PUB015'}, None, self.settings, smv_status_path=empty_status
+                    "GET", "/api/task", {"id": "PUB015"}, None, self.settings, smv_status_path=empty_status
                 )
                 self.assertEqual(status, 200)
-                self.assertEqual(detail['smv_status']['verification_status'], 'CHECKER_MISSING')
-                self.assertFalse(detail['smv_status']['persisted_record_present'])
+                self.assertEqual(detail["smv_status"]["verification_status"], "CHECKER_MISSING")
+                self.assertFalse(detail["smv_status"]["persisted_record_present"])
 
                 post_status, post_data = handle_api_request(
-                    'POST',
-                    '/api/check-reference-model',
+                    "POST",
+                    "/api/check-reference-model",
                     {},
-                    {'task_id': 'PUB015', 'variant': 'reference'},
+                    {"task_id": "PUB015", "variant": "reference"},
                     self.settings,
                     smv_status_path=empty_status,
                 )
                 self.assertEqual(post_status, 503)
-                self.assertEqual(post_data['verification_status'], 'CHECKER_MISSING')
+                self.assertEqual(post_data["verification_status"], "CHECKER_MISSING")
                 persisted = load_smv_status_store(empty_status)
                 self.assertEqual(
-                    persisted['records']['PUB015']['models']['reference']['status'],
-                    'CHECKER_MISSING',
+                    persisted["records"]["PUB015"]["models"]["reference"]["status"],
+                    "CHECKER_MISSING",
                 )
 
     def test_stale_smv_status_detected_when_model_hash_differs(self):
@@ -218,52 +227,52 @@ class WebUITests(unittest.TestCase):
         from plc_agent.smv_status import DEFAULT_SMV_STATUS_PATH, load_smv_status_store, save_smv_status_store
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            stale_status = Path(tmpdir) / 'stale_status.json'
+            stale_status = Path(tmpdir) / "stale_status.json"
             store = load_smv_status_store(DEFAULT_SMV_STATUS_PATH)
-            store['records']['PUB001']['models']['reference']['model_sha256'] = '0' * 64
+            store["records"]["PUB001"]["models"]["reference"]["model_sha256"] = "0" * 64
             save_smv_status_store(store, status_path=stale_status)
             status, detail = handle_api_request(
-                'GET', '/api/task', {'id': 'PUB001'}, None, self.settings, smv_status_path=stale_status
+                "GET", "/api/task", {"id": "PUB001"}, None, self.settings, smv_status_path=stale_status
             )
             self.assertEqual(status, 200)
-            self.assertEqual(detail['smv_status']['verification_status'], 'STALE')
-            self.assertTrue(detail['smv_status']['stale'])
-            self.assertTrue(detail['smv_status']['models']['reference']['stale'])
+            self.assertEqual(detail["smv_status"]["verification_status"], "STALE")
+            self.assertTrue(detail["smv_status"]["stale"])
+            self.assertTrue(detail["smv_status"]["models"]["reference"]["stale"])
 
     def test_symbol_glossary_covers_all_tokens_and_highlights_persistence(self):
         import re
 
-        status, listing = handle_api_request('GET', '/api/tasks', {}, None, self.settings)
+        status, listing = handle_api_request("GET", "/api/tasks", {}, None, self.settings)
         self.assertEqual(status, 200)
         inout_checked = 0
-        for summary in listing['tasks']:
-            tid = summary['id']
-            st, detail = handle_api_request('GET', '/api/task', {'id': tid}, None, self.settings)
+        for summary in listing["tasks"]:
+            tid = summary["id"]
+            st, detail = handle_api_request("GET", "/api/task", {"id": tid}, None, self.settings)
             self.assertEqual(st, 200)
-            glossary = detail['symbol_glossary']
-            task = detail['task']
-            for pin in task.get('interface', []):
-                self.assertIn(pin['name'], glossary, f'{tid}:{pin["name"]}')
-                entry = glossary[pin['name']]
-                self.assertTrue(entry.get('category_en'))
-                self.assertTrue(entry.get('type_en'))
-                self.assertTrue(entry.get('definition_en'))
-                if pin.get('direction') == 'IN_OUT':
+            glossary = detail["symbol_glossary"]
+            task = detail["task"]
+            for pin in task.get("interface", []):
+                self.assertIn(pin["name"], glossary, f"{tid}:{pin['name']}")
+                entry = glossary[pin["name"]]
+                self.assertTrue(entry.get("category_en"))
+                self.assertTrue(entry.get("type_en"))
+                self.assertTrue(entry.get("definition_en"))
+                if pin.get("direction") == "IN_OUT":
                     inout_checked += 1
-                    self.assertEqual(entry['category'], 'persistent_inout')
-                    self.assertTrue(entry['is_persistent'])
-                    self.assertTrue(entry['persistence_warning_zh'])
-                    self.assertTrue(entry.get('persistence_warning_en'))
-            for prop in task.get('ltl', []):
-                for tok in re.findall(r'[A-Za-z_][A-Za-z_0-9.]*', prop['formula']):
-                    if tok in {'G', 'F', 'X', 'U', 'R', 'V', 'W', 'TRUE', 'FALSE', 'AND', 'OR', 'NOT'} or tok.isdigit():
+                    self.assertEqual(entry["category"], "persistent_inout")
+                    self.assertTrue(entry["is_persistent"])
+                    self.assertTrue(entry["persistence_warning_zh"])
+                    self.assertTrue(entry.get("persistence_warning_en"))
+            for prop in task.get("ltl", []):
+                for tok in re.findall(r"[A-Za-z_][A-Za-z_0-9.]*", prop["formula"]):
+                    if tok in {"G", "F", "X", "U", "R", "V", "W", "TRUE", "FALSE", "AND", "OR", "NOT"} or tok.isdigit():
                         continue
-                    self.assertIn(tok, glossary, f'Missing glossary token {tid} {prop["id"]}: {tok}')
-            if tid == 'PUB001':
-                self.assertEqual(glossary['phase']['category'], 'ghost_state')
-                self.assertTrue(glossary['phase']['is_persistent'])
-                self.assertEqual(glossary['bottleSensor']['category'], 'input')
-                self.assertEqual(glossary['Pump_Motor']['category'], 'output')
+                    self.assertIn(tok, glossary, f"Missing glossary token {tid} {prop['id']}: {tok}")
+            if tid == "PUB001":
+                self.assertEqual(glossary["phase"]["category"], "ghost_state")
+                self.assertTrue(glossary["phase"]["is_persistent"])
+                self.assertEqual(glossary["bottleSensor"]["category"], "input")
+                self.assertEqual(glossary["Pump_Motor"]["category"], "output")
         self.assertGreater(inout_checked, 0)
 
     def test_render_index_html_contains_titles_and_components(self):
@@ -303,7 +312,7 @@ class WebUITests(unittest.TestCase):
             "symbol_glossary",
         ):
             self.assertIn(req_id, html)
-        self.assertLess(html.index('id="spec-popover"'), html.rindex('<script>'))
+        self.assertLess(html.index('id="spec-popover"'), html.rindex("<script>"))
 
     def test_app_js_parses_and_renders_all_32_tasks_in_js_runtime(self):
         import re
@@ -313,7 +322,7 @@ class WebUITests(unittest.TestCase):
         from pathlib import Path
 
         html = render_index_html()
-        match = re.search(r'<script>\s*(.*)\s*</script>', html, re.S)
+        match = re.search(r"<script>\s*(.*)\s*</script>", html, re.S)
         self.assertIsNotNone(match)
         js_code = match.group(1)
         gjs_exe = shutil.which("gjs")
@@ -505,7 +514,9 @@ const check = [
             "candidate": "Invalid ST candidate",
             "include_random": False,
         }
-        status, data = handle_api_request("POST", "/api/evaluate", {}, body, self.settings, backend=backend, evidence_root=self.evidence_root)
+        status, data = handle_api_request(
+            "POST", "/api/evaluate", {}, body, self.settings, backend=backend, evidence_root=self.evidence_root
+        )
         self.assertEqual(status, 200)
         self.assertIn("compile", data)
         self.assertFalse(data["compile"]["success"])
@@ -515,9 +526,7 @@ const check = [
 
     def test_handle_api_request_evaluate_with_fake_backend_simulation_failure(self):
         # Step fn returns all False/0 which fails against SELF001 contract
-        backend = FakeBackend(
-            step_fn=lambda inp, dt: {"High": False, "Alarm": False, "Filtered": 0.0}
-        )
+        backend = FakeBackend(step_fn=lambda inp, dt: {"High": False, "Alarm": False, "Filtered": 0.0})
         body = {
             "task_id": "SELF001",
             "candidate": {
@@ -526,7 +535,9 @@ const check = [
             },
             "include_random": True,
         }
-        status, data = handle_api_request("POST", "/api/evaluate", {}, body, self.settings, backend=backend, evidence_root=self.evidence_root)
+        status, data = handle_api_request(
+            "POST", "/api/evaluate", {}, body, self.settings, backend=backend, evidence_root=self.evidence_root
+        )
         self.assertEqual(status, 200)
         self.assertIn("compile", data)
         self.assertTrue(data["compile"]["success"])
@@ -551,7 +562,9 @@ const check = [
                         infrastructure_error="Compiler did not produce usable evidence",
                     )
                 )
-                status, data = handle_api_request("POST", "/api/evaluate", {}, body, self.settings, backend=backend, evidence_root=self.evidence_root)
+                status, data = handle_api_request(
+                    "POST", "/api/evaluate", {}, body, self.settings, backend=backend, evidence_root=self.evidence_root
+                )
                 self.assertEqual(status, 200)
                 self.assertEqual(data["compile"]["status"], compile_status)
                 self.assertEqual(data["simulation"]["status"], compile_status)
@@ -570,7 +583,9 @@ const check = [
             },
             "include_random": False,
         }
-        status, data = handle_api_request("POST", "/api/evaluate", {}, body, self.settings, backend=backend, evidence_root=self.evidence_root)
+        status, data = handle_api_request(
+            "POST", "/api/evaluate", {}, body, self.settings, backend=backend, evidence_root=self.evidence_root
+        )
         self.assertEqual(status, 200)
         self.assertTrue(data["compile"]["success"])
         self.assertEqual(data["simulation"]["status"], "PASS")
@@ -623,9 +638,7 @@ const check = [
         )
         self.assertIsNotNone(pub1_pass)
 
-        st, trace = handle_api_request(
-            "GET", "/api/run-trace", {"run": pub1_pass["run_id"]}, None, self.settings
-        )
+        st, trace = handle_api_request("GET", "/api/run-trace", {"run": pub1_pass["run_id"]}, None, self.settings)
         self.assertEqual(st, 200)
         self.assertEqual(trace["task_id"], "PUB001")
         self.assertEqual(trace["framework_kind"], "star")
@@ -645,18 +658,34 @@ const check = [
         star_run = root / "experiments" / "E3" / "campaign_demo" / "PUB001" / "run_01"
         star_run.mkdir(parents=True)
         (star_run / "runtime_config.json").write_text(
-            json.dumps({"condition": "E3", "framework": "self_harness", "model": "demo-model", "utc": "2026-11-14T10:00:00Z"}),
+            json.dumps(
+                {"condition": "E3", "framework": "self_harness", "model": "demo-model", "utc": "2026-11-14T10:00:00Z"}
+            ),
             encoding="utf-8",
         )
         (star_run / "task_view.json").write_text(json.dumps({"id": "PUB001", "title": "Bottling"}), encoding="utf-8")
-        (star_run / "plan.json").write_text(json.dumps({"state_machine": {"states": [{"name": "IDLE", "phase": 0}]}}), encoding="utf-8")
-        (star_run / "dialect_cards.json").write_text(json.dumps([{"id": "ton_timer", "title": "TON"}]), encoding="utf-8")
+        (star_run / "plan.json").write_text(
+            json.dumps({"state_machine": {"states": [{"name": "IDLE", "phase": 0}]}}), encoding="utf-8"
+        )
+        (star_run / "dialect_cards.json").write_text(
+            json.dumps([{"id": "ton_timer", "title": "TON"}]), encoding="utf-8"
+        )
         (star_run / "version_00.json").write_text(
-            json.dumps({"declaration": "FUNCTION_BLOCK FB_Task\nVAR_OUTPUT\n x : BOOL;\nEND_VAR", "implementation": "x := TRUE;"}),
+            json.dumps(
+                {
+                    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_OUTPUT\n x : BOOL;\nEND_VAR",
+                    "implementation": "x := TRUE;",
+                }
+            ),
             encoding="utf-8",
         )
         (star_run / "version_sim_01.json").write_text(
-            json.dumps({"declaration": "FUNCTION_BLOCK FB_Task\nVAR_OUTPUT\n x : BOOL;\nEND_VAR", "implementation": "x := FALSE;"}),
+            json.dumps(
+                {
+                    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_OUTPUT\n x : BOOL;\nEND_VAR",
+                    "implementation": "x := FALSE;",
+                }
+            ),
             encoding="utf-8",
         )
         (star_run / "compile_sim_01").mkdir()
@@ -664,18 +693,48 @@ const check = [
             json.dumps({"status": "COMPILE_FAIL", "success": False}), encoding="utf-8"
         )
         (star_run / "final_candidate.json").write_text(
-            json.dumps({"declaration": "FUNCTION_BLOCK FB_Task\nVAR_OUTPUT\n x : BOOL;\nEND_VAR", "implementation": "x := TRUE;"}),
+            json.dumps(
+                {
+                    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_OUTPUT\n x : BOOL;\nEND_VAR",
+                    "implementation": "x := TRUE;",
+                }
+            ),
             encoding="utf-8",
         )
         (star_run / "selftest.json").write_text(json.dumps([{"id": "case_1", "steps": []}]), encoding="utf-8")
         (star_run / "model_calls.jsonl").write_text(
-            json.dumps({"utc": "2026-11-14T10:00:01Z", "event": "request_started", "call_dir": "llm_planner", "model": "demo-model"}) + "\n"
-            + json.dumps({"utc": "2026-11-14T10:00:05Z", "event": "request_completed", "call_dir": "llm_planner", "elapsed_seconds": 4.0}) + "\n"
-            + json.dumps({"utc": "2026-11-14T10:00:06Z", "event": "request_started", "call_dir": "llm_tester", "model": "demo-model"}) + "\n",
+            json.dumps(
+                {
+                    "utc": "2026-11-14T10:00:01Z",
+                    "event": "request_started",
+                    "call_dir": "llm_planner",
+                    "model": "demo-model",
+                }
+            )
+            + "\n"
+            + json.dumps(
+                {
+                    "utc": "2026-11-14T10:00:05Z",
+                    "event": "request_completed",
+                    "call_dir": "llm_planner",
+                    "elapsed_seconds": 4.0,
+                }
+            )
+            + "\n"
+            + json.dumps(
+                {
+                    "utc": "2026-11-14T10:00:06Z",
+                    "event": "request_started",
+                    "call_dir": "llm_tester",
+                    "model": "demo-model",
+                }
+            )
+            + "\n",
             encoding="utf-8",
         )
         (star_run / "execution.jsonl").write_text(
-            json.dumps({"utc": "2026-11-14T10:00:08Z", "event": "compile_finished", "status": "PASS", "success": True}) + "\n"
+            json.dumps({"utc": "2026-11-14T10:00:08Z", "event": "compile_finished", "status": "PASS", "success": True})
+            + "\n"
             + '{"utc": "partial_unclosed_line',
             encoding="utf-8",
         )
@@ -684,15 +743,31 @@ const check = [
         (base_run / "turn_00").mkdir(parents=True)
         (base_run / "trusted" / "compile_00").mkdir(parents=True)
         (base_run / "runtime_config.json").write_text(
-            json.dumps({"condition": "E1", "framework": "custom_tool_loop", "model": "demo-model", "utc": "2026-11-14T09:00:00Z"}),
+            json.dumps(
+                {
+                    "condition": "E1",
+                    "framework": "custom_tool_loop",
+                    "model": "demo-model",
+                    "utc": "2026-11-14T09:00:00Z",
+                }
+            ),
             encoding="utf-8",
         )
         (base_run / "task.json").write_text(json.dumps({"id": "SELF001"}), encoding="utf-8")
         (base_run / "turn_00" / "tool_01.json").write_text(
-            json.dumps({"call_id": "c1", "name": "compile_st", "arguments": {}, "result": {"status": "PASS"}}), encoding="utf-8"
+            json.dumps({"call_id": "c1", "name": "compile_st", "arguments": {}, "result": {"status": "PASS"}}),
+            encoding="utf-8",
         )
         (base_run / "result.json").write_text(
-            json.dumps({"task_id": "SELF001", "condition": "E1", "framework": "custom_tool_loop", "status": "UNVERIFIED", "final_compiled": True}),
+            json.dumps(
+                {
+                    "task_id": "SELF001",
+                    "condition": "E1",
+                    "framework": "custom_tool_loop",
+                    "status": "UNVERIFIED",
+                    "final_compiled": True,
+                }
+            ),
             encoding="utf-8",
         )
 
@@ -714,7 +789,12 @@ const check = [
         self.assertEqual(ratchet_stage["metrics"]["rollback_count"], 1)
         sim_v = next(v for v in star_trace["versions"] if v["id"] == "version_sim_01")
         self.assertTrue(sim_v["rolled_back"])
-        self.assertTrue(any("-x := TRUE;" in line and "+x := FALSE;" in "\n".join(sim_v["diff_from_prev"]) for line in sim_v["diff_from_prev"]))
+        self.assertTrue(
+            any(
+                "-x := TRUE;" in line and "+x := FALSE;" in "\n".join(sim_v["diff_from_prev"])
+                for line in sim_v["diff_from_prev"]
+            )
+        )
 
         st, base_trace = handle_api_request(
             "GET", "/api/run-trace", {"run": listed["runs"][1]["run_id"]}, None, self.settings, workspace_root=root

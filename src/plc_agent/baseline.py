@@ -80,8 +80,8 @@ def run_baseline(
     agent_dir.mkdir(parents=True, exist_ok=True)
     trusted.mkdir(parents=True, exist_ok=True)
     snapshot = asdict(settings)
-    snapshot.pop('api_key', None)
-    write_json(workspace / 'runtime_config.json', snapshot)
+    snapshot.pop("api_key", None)
+    write_json(workspace / "runtime_config.json", snapshot)
 
     result = empty_result(task, condition, model, driver)
     result["completed_agent_turns"] = 0
@@ -98,14 +98,23 @@ def run_baseline(
     prompt = (
         CODE_CONTRACT
         + "\nYou are the existing coding-agent baseline. The complete task is supplied below. "
-        + "Use the supplied compiler and simulation tools directly; shell commands are unnecessary for this task. "
-        + f"Use compile_st to compile each candidate. Maximum {settings.max_repairs + 1} total compiler calls. "
-        + f"Use simulate_st to simulate candidates against your test cases. Maximum {settings.max_simulations} total simulation calls. "
-        + "After compilation errors or simulation failures, repair and retest within these limits. "
+        + "Use the supplied compiler, simulator, and formal verification tools directly; shell commands are unnecessary for this task. "
+        + (
+            f"Use compile_st to compile each candidate. Maximum {settings.max_repairs + 1} total compiler calls. "
+            if settings.max_repairs >= 0
+            else "Use compile_st to compile each candidate. "
+        )
+        + (
+            f"Use simulate_st to simulate candidates against your test cases. Maximum {settings.max_simulations} total simulation calls. "
+            if settings.max_simulations > 0
+            else "Use simulate_st to simulate candidates against your test cases. "
+        )
+        + "Use verify_st to formally verify FB_Task against the LTL/INVAR specifications (returns PASS or counterexample trace). "
+        + "After compilation errors, counterexamples, or simulation failures, repair and retest within these limits. "
         + "Stop on successful verification or infrastructure failure. "
         + "Do not inspect other directories, environment variables, API credentials, reference code, or other runs. "
         + "Save the exact final submitted source to candidate.json. "
-        + "Return a concise status; raw trusted compiler and simulation evidence will be used for evaluation.\nTASK\n"
+        + "Return a concise status; raw trusted compiler, formal verification, and simulation evidence will be used for evaluation.\nTASK\n"
         + task_prompt(view)
     )
     (agent_dir / "prompt.txt").write_text(prompt, encoding="utf-8")
@@ -138,10 +147,23 @@ def run_baseline(
                     "required": ["source", "cases"],
                 },
             },
+            {
+                "type": "function",
+                "name": "verify_st",
+                "description": (
+                    "Formally verify FB_Task against task LTL/INVAR properties via ST->SMV and NuSMV/nuXmv. "
+                    "Returns PASS or COUNTEREXAMPLE with scan trace (no ground-truth oracle outputs leaked)."
+                ),
+                "parameters": {
+                    "type": "object",
+                    "properties": {"source": CANDIDATE_SCHEMA},
+                    "required": ["source"],
+                },
+            },
         ]
 
         messages = [{"role": "user", "content": prompt}]
-        max_turns = min(settings.max_llm_calls, 20)
+        max_turns = min(settings.max_llm_calls, 20) if settings.max_llm_calls > 0 else 20
 
         for turn in range(max_turns):
             if time.monotonic() - started > settings.task_timeout:
@@ -177,11 +199,13 @@ def run_baseline(
                 break
 
             # Preserve the Responses output items once, including all parallel calls.
-            if resp.get('output'):
-                messages.extend(resp['output'])
+            if resp.get("output"):
+                messages.extend(resp["output"])
             else:
-                messages.extend({'type':'function_call', 'call_id':cid, 'name':name,
-                                 'arguments':json.dumps(arguments)} for cid,name,arguments in tool_calls)
+                messages.extend(
+                    {"type": "function_call", "call_id": cid, "name": name, "arguments": json.dumps(arguments)}
+                    for cid, name, arguments in tool_calls
+                )
 
             for call_id, name, args in tool_calls:
                 result["tool_call_count"] += 1
@@ -196,21 +220,28 @@ def run_baseline(
                 except Exception as exc:
                     content_text = json.dumps({"error": str(exc)})
 
-                messages.append({
-                    "type": "function_call_output",
-                    "call_id": call_id,
-                    "output": content_text,
-                })
-                write_json(turn_dir / f"tool_{result['tool_call_count']:02d}.json",
-                           {'call_id':call_id,'name':name,'arguments':args,'result':tool_resp or content_text})
+                messages.append(
+                    {
+                        "type": "function_call_output",
+                        "call_id": call_id,
+                        "output": content_text,
+                    }
+                )
+                write_json(
+                    turn_dir / f"tool_{result['tool_call_count']:02d}.json",
+                    {"call_id": call_id, "name": name, "arguments": args, "result": tool_resp or content_text},
+                )
                 try:
-                    tool_status = json.loads(content_text).get('status')
+                    tool_status = json.loads(content_text).get("status")
                 except (ValueError, AttributeError):
                     tool_status = None
-                if tool_status in ('TOOL_ERROR','TIMEOUT'):
-                    result['status'], result['reason'] = tool_status, 'Trusted tool infrastructure failed; stopped model requests'
+                if tool_status in ("TOOL_ERROR", "TIMEOUT"):
+                    result["status"], result["reason"] = (
+                        tool_status,
+                        "Trusted tool infrastructure failed; stopped model requests",
+                    )
                     break
-            if result['status'] in ('TOOL_ERROR','TIMEOUT'):
+            if result["status"] in ("TOOL_ERROR", "TIMEOUT"):
                 break
 
     elif driver == "codex_cli":
@@ -242,6 +273,7 @@ def run_baseline(
                         "compiler_timeout",
                         "max_repairs",
                         "max_simulations",
+                        "max_verifications",
                     )
                 }
                 write_json(trusted / "compiler_config.json", compiler_config)
@@ -302,9 +334,10 @@ def run_baseline(
                 env["PYTHONPATH"] = str(ROOT / "src")
                 process = None
                 try:
-                    with (workspace / "events.private.tmp").open("wb") as out, (
-                        workspace / "stderr.private.tmp"
-                    ).open("wb") as err:
+                    with (
+                        (workspace / "events.private.tmp").open("wb") as out,
+                        (workspace / "stderr.private.tmp").open("wb") as err,
+                    ):
                         process = subprocess.Popen(
                             command + ["-"],
                             stdin=subprocess.PIPE,
@@ -359,6 +392,7 @@ def run_baseline(
                     "compiler_timeout",
                     "max_repairs",
                     "max_simulations",
+                    "max_verifications",
                 )
             }
             with tempfile.TemporaryDirectory() as mcp_dir:
@@ -391,9 +425,10 @@ def run_baseline(
                 env["PLC_LLM_API_KEY"] = settings.api_key
                 env["PYTHONPATH"] = str(ROOT / "src")
                 try:
-                    with (workspace / "events.private.tmp").open("wb") as out, (
-                        workspace / "stderr.private.tmp"
-                    ).open("wb") as err:
+                    with (
+                        (workspace / "events.private.tmp").open("wb") as out,
+                        (workspace / "stderr.private.tmp").open("wb") as err,
+                    ):
                         process = subprocess.Popen(
                             command,
                             stdin=subprocess.PIPE,
@@ -421,13 +456,21 @@ def run_baseline(
     sim_attempts = [read_json(p) for p in sorted(trusted.glob("sim_*/simulation_result.json"))]
     result["simulation_call_count"] = len(sim_attempts)
 
+    verify_attempts = [read_json(p) for p in sorted(trusted.glob("verify_*/verification_result.json"))]
+    result["verification_call_count"] = len(verify_attempts)
+    if verify_attempts:
+        result["verification"] = verify_attempts[-1]
+
     if attempts and attempts[0].get("status") in ("PASS", "COMPILE_FAIL"):
         result["first_pass_compiled"] = attempts[0].get("success", False)
-    if attempts and result['status'] not in ('TOOL_ERROR','TIMEOUT'):
+    if attempts and result["status"] not in ("TOOL_ERROR", "TIMEOUT"):
         last = attempts[-1]
         if last.get("success"):
             result["final_compiled"] = True
-            result["status"], result["reason"] = "UNVERIFIED", "CODESYS compiled; PLC functional execution not yet evaluated"
+            result["status"], result["reason"] = (
+                "UNVERIFIED",
+                "CODESYS compiled; PLC functional execution not yet evaluated",
+            )
             candidate_files = sorted(trusted.glob("compile_*/candidate.json"))
             if candidate_files:
                 shutil.copy2(candidate_files[-1], workspace / "final_candidate.json")

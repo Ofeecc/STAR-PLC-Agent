@@ -42,7 +42,11 @@ def detect_codesys() -> tuple[str, str]:
         for prof_dir in (common_dir.parent / "Profiles", common_dir.parent.parent / "Profiles"):
             if prof_dir.is_dir():
                 try:
-                    profiles = sorted([*prof_dir.glob("*.profile"), *prof_dir.glob("*.profile.xml")], key=lambda p: p.stat().st_mtime, reverse=True)
+                    profiles = sorted(
+                        [*prof_dir.glob("*.profile"), *prof_dir.glob("*.profile.xml")],
+                        key=lambda p: p.stat().st_mtime,
+                        reverse=True,
+                    )
                     if profiles:
                         found_profile = profiles[0].name.removesuffix(".xml").removesuffix(".profile")
                         break
@@ -65,7 +69,8 @@ class Settings:
     task_timeout: int = 2400
     max_repairs: int = 3
     max_simulations: int = 3
-    max_llm_calls: int = 9
+    max_verifications: int = 3
+    max_llm_calls: int = 0
     max_output_tokens: int = 24576
     reasoning_effort: str = "medium"
     context_window_tokens: int = 131072
@@ -75,12 +80,12 @@ class Settings:
     planner_max_output_tokens: int = 0
     coder_max_output_tokens: int = 0
     repair_max_output_tokens: int = 0
-    max_total_tokens: int = 300000
+    max_total_tokens: int = 0
 
     def output_limit(self, role: str) -> int:
-        if role not in ('planner', 'coder', 'repair', 'tester'):
-            raise ValueError('Unknown agent role: ' + role)
-        return getattr(self, role + '_max_output_tokens') or self.max_output_tokens
+        if role not in ("planner", "coder", "repair", "tester"):
+            raise ValueError("Unknown agent role: " + role)
+        return getattr(self, role + "_max_output_tokens") or self.max_output_tokens
 
     def get_ascii_work_root(self) -> Path:
         if self.ascii_work_root:
@@ -108,11 +113,7 @@ class Settings:
         if target_path and target_path.is_file():
             data = read_json(target_path)
 
-        values = {
-            k: v
-            for k, v in data.items()
-            if k in cls.__dataclass_fields__ and k != "api_key"
-        }
+        values = {k: v for k, v in data.items() if k in cls.__dataclass_fields__ and k != "api_key"}
 
         # Load environment variables from .env if present
         env_file = ROOT / ".env"

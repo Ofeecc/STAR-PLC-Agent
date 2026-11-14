@@ -8,6 +8,7 @@ Classifies every identifier appearing in LTL formulas and task contracts into:
 - ghost_state: input-driven reference pre/post state, edge memory I[k-1], or timer state
 - alias: pure combinational / temporal / contract macro alias
 """
+
 from __future__ import annotations
 
 import json
@@ -189,8 +190,16 @@ _COMMON_EN: dict[str, tuple[str, str, str | None]] = {
         "Edge-detection history: must latch unconditionally on every scan cycle, even during faults or resets.",
     ),
     "TIME": ("IEC 32-Bit Duration Type", "Standard IEC 61131-3 32-bit time literal type, e.g., TIME#5s.", None),
-    "LTIME": ("IEC 64-Bit Nanosecond Duration Type", "High-resolution 64-bit CODESYS/IEC time literal type, e.g., LTIME#500h.", None),
-    "TIME_TO_LTIME": ("Time Precision Conversion", "IEC type conversion function promoting TIME values to LTIME precision.", None),
+    "LTIME": (
+        "IEC 64-Bit Nanosecond Duration Type",
+        "High-resolution 64-bit CODESYS/IEC time literal type, e.g., LTIME#500h.",
+        None,
+    ),
+    "TIME_TO_LTIME": (
+        "Time Precision Conversion",
+        "IEC type conversion function promoting TIME values to LTIME precision.",
+        None,
+    ),
     "h": ("Hour Unit Suffix", "IEC duration literal unit suffix for hours (1h = 3,600,000 ms).", None),
     "ms": ("Millisecond Unit Suffix", "IEC duration literal unit suffix for milliseconds.", None),
 }
@@ -237,7 +246,25 @@ def _classify_alias(name: str, task: dict[str, Any], hbs: dict[str, Any]) -> str
     if name in _GHOST_STATE_NAMES or name.startswith("PrevBit"):
         return "ghost_state"
     ap_val = str((task.get("atomic_propositions") or {}).get(name, ""))
-    if any(marker in ap_val for marker in ("Spre.", "Spost.", "Sref.", "pre-phase", "post-phase", "pre-database", "pre-queue", "pre-count", "pre-runtime", "pre-firingTemp", "pre-busy", "pre-sequence", "retained", "latched_batch_mode")):
+    if any(
+        marker in ap_val
+        for marker in (
+            "Spre.",
+            "Spost.",
+            "Sref.",
+            "pre-phase",
+            "post-phase",
+            "pre-database",
+            "pre-queue",
+            "pre-count",
+            "pre-runtime",
+            "pre-firingTemp",
+            "pre-busy",
+            "pre-sequence",
+            "retained",
+            "latched_batch_mode",
+        )
+    ):
         return "ghost_state"
     if "previous_observed_output" in ap_val or "O[k-1]" in ap_val:
         return "obs_history"
@@ -321,7 +348,12 @@ def build_symbol_glossary(task: dict[str, Any], review: dict[str, Any] | None = 
         if raw_name in glossary:
             continue
         custom = aliases_zh.get(raw_name) or {}
-        src_val = ap_map.get(raw_name) or fc_map.get(raw_name) or abs_map.get(raw_name) or (indexed_sources.get(raw_name, (None, ""))[1])
+        src_val = (
+            ap_map.get(raw_name)
+            or fc_map.get(raw_name)
+            or abs_map.get(raw_name)
+            or (indexed_sources.get(raw_name, (None, ""))[1])
+        )
         src_text = _format_source_def(src_val) if src_val not in (None, "") else ""
 
         if raw_name in hbs:
@@ -354,7 +386,11 @@ def build_symbol_glossary(task: dict[str, Any], review: dict[str, Any] | None = 
                 else f"Bit {bit} (BOOL) of the current unsigned 32-bit input I[k].value."
             )
             auto_warn = "跨拍输入位记忆：首拍全 0，每拍无条件刷新。" if is_prev else None
-            auto_warn_en = "Cross-scan input bit memory: 0 before scan 0, refreshed unconditionally every scan." if is_prev else None
+            auto_warn_en = (
+                "Cross-scan input bit memory: 0 before scan 0, refreshed unconditionally every scan."
+                if is_prev
+                else None
+            )
             typ_str = f"BOOL 展开位 (bit {bit})"
             typ_en = f"Expanded BOOL Bit (bit {bit})"
         elif m := re.match(r"^TopThree([1-5])$", raw_name):
@@ -362,8 +398,8 @@ def build_symbol_glossary(task: dict[str, Any], review: dict[str, Any] | None = 
             cat = "alias"
             auto_label = f"自动前三优先位 · 泵{idx}"
             auto_label_en = f"Top-3 Priority Bit · Pump {idx}"
-            auto_zh = f"判断第 {idx} 号泵（下标 {int(idx)-1}）按优先级降序（同优先级小下标优先）是否位于前 3 名。"
-            auto_en = f"True iff pump {idx} (0-based index {int(idx)-1}) ranks among the top 3 active priorities (ties broken by lower index)."
+            auto_zh = f"判断第 {idx} 号泵（下标 {int(idx) - 1}）按优先级降序（同优先级小下标优先）是否位于前 3 名。"
+            auto_en = f"True iff pump {idx} (0-based index {int(idx) - 1}) ranks among the top 3 active priorities (ties broken by lower index)."
             auto_warn = None
             auto_warn_en = None
             typ_str = "布尔优先判定别名"
@@ -400,12 +436,20 @@ def build_symbol_glossary(task: dict[str, Any], review: dict[str, Any] | None = 
             typ_str = (
                 "有限合取宏"
                 if raw_name in fc_map
-                else ("跨拍参考/内存状态" if cat == "ghost_state" else ("历史输出绑定" if cat == "obs_history" else "规约别名 / 命题"))
+                else (
+                    "跨拍参考/内存状态"
+                    if cat == "ghost_state"
+                    else ("历史输出绑定" if cat == "obs_history" else "规约别名 / 命题")
+                )
             )
             typ_en = (
                 "Finite Conjunction Macro"
                 if raw_name in fc_map
-                else ("Cross-Scan Ref / Memory State" if cat == "ghost_state" else ("Observed Output History" if cat == "obs_history" else "Spec Alias / Proposition"))
+                else (
+                    "Cross-Scan Ref / Memory State"
+                    if cat == "ghost_state"
+                    else ("Observed Output History" if cat == "obs_history" else "Spec Alias / Proposition")
+                )
             )
 
         glossary[raw_name] = {
@@ -420,7 +464,8 @@ def build_symbol_glossary(task: dict[str, Any], review: dict[str, Any] | None = 
             "is_persistent": cat in {"persistent_inout", "ghost_state", "obs_history"},
             "definition_zh": custom.get("description_zh") or auto_zh,
             "definition_en": custom.get("description_en") or auto_en,
-            "definition_source": src_text or (f"{raw_name}: {indexed_sources[raw_name][0]}" if raw_name in indexed_sources else raw_name),
+            "definition_source": src_text
+            or (f"{raw_name}: {indexed_sources[raw_name][0]}" if raw_name in indexed_sources else raw_name),
             "persistence_warning_zh": custom.get("persistence_note_zh") or auto_warn,
             "persistence_warning_en": custom.get("persistence_note_en") or auto_warn_en,
         }

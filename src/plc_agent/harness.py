@@ -15,9 +15,11 @@ from .compiler import (
     normalize_candidate,
 )
 from .config import Settings
-from .dialect_cards import select_dialect_cards
+from .dialect_cards import select_dialect_cards, select_static_analysis_hint
+from .formal_verify import verify_candidate
 from .llm import ProviderError, parse_candidate
 from .selftest import validate_self_tests
+from .st_verifier import sanitize_counterexamples_for_agent
 from .task_view import agent_view
 
 CODE_CONTRACT = """Return ONLY a JSON object with declaration, implementation, supporting_objects.
@@ -51,9 +53,7 @@ def task_prompt(task: dict) -> str:
     return json.dumps(task, ensure_ascii=False, indent=2)
 
 
-def empty_result(
-    task: dict, condition: str, model: str, framework: str, reason: str | None = None
-) -> dict:
+def empty_result(task: dict, condition: str, model: str, framework: str, reason: str | None = None) -> dict:
     return {
         "schema_version": 1,
         "task_id": task["id"],
@@ -72,6 +72,8 @@ def empty_result(
         "compiler_call_count": 0,
         "tool_call_count": 0,
         "simulation_call_count": 0,
+        "verification_call_count": 0,
+        "cegar_repairs": 0,
         "llm_calls": 0,
         "usage": [],
         "selftest_rejected": [],
@@ -166,9 +168,7 @@ def compact_diagnostics(
                     line_num = None
 
         if col_num is None and pos_str:
-            col_match = re.search(
-                r"\bCol(?:umn)?\s*[:#]?\s*(-?\d+)", pos_str, re.IGNORECASE
-            )
+            col_match = re.search(r"\bCol(?:umn)?\s*[:#]?\s*(-?\d+)", pos_str, re.IGNORECASE)
             if col_match:
                 try:
                     col_num = int(col_match.group(1))
@@ -231,6 +231,17 @@ def compact_diagnostics(
         else:
             entry_text = entry_header
 
+        low_text = text.lower()
+        if "sa0027" in low_text:
+            entry_text += (
+                "\n  [Hint SA0027]: Rename the conflicting internal variable, or if the task interface mandates that exact name, "
+                "add `{attribute 'analysis' := '-27'}` on the line immediately before the variable declaration."
+            )
+        if "sa0033" in low_text:
+            entry_text += (
+                "\n  [Hint SA0033]: Remove the unused variable declaration or ensure it is read/used meaningfully."
+            )
+
         formatted_entries.append(entry_text)
 
     combined = "\n\n".join(formatted_entries)
@@ -239,10 +250,16 @@ def compact_diagnostics(
     return combined
 
 
+def _format_attempt_ledger(entries: list[str], max_entries: int = 8) -> str:
+    """Format a compact cross-round history ledger to prevent A<->B repair oscillations."""
+    if not entries:
+        return ""
+    recent = entries[-max_entries:]
+    return "REPAIR ATTEMPT LEDGER (do NOT repeat failed approaches):\n" + "\n".join(f"- {e}" for e in recent)
+
+
 class _HarnessCodesysBackend(CodesysBackend):
-    def compile(
-        self, task: dict, candidate: dict | str, workspace: Path
-    ) -> CompileResult:
+    def compile(self, task: dict, candidate: dict | str, workspace: Path) -> CompileResult:
         ws = Path(workspace)
         return compile_st(task, candidate, ws, self.settings)
 
@@ -291,6 +308,8 @@ def run_harness(
         "compiler_call_count": 0,
         "tool_call_count": 0,
         "simulation_call_count": 0,
+        "verification_call_count": 0,
+        "cegar_repairs": 0,
         "llm_calls": 0,
         "usage": [],
         "selftest_rejected": [],
@@ -314,6 +333,10 @@ def run_harness(
     def is_timed_out() -> bool:
         return time.monotonic() - started >= settings.task_timeout
 
+    best_candidate: Any = None
+    best_score: tuple[bool, int, int] = (False, 0, 0)
+    attempt_ledger: list[str] = []
+
     try:
         # Step 1: Planner
         plan: dict = {}
@@ -324,7 +347,7 @@ def run_harness(
                     "Task deadline exhausted before planner",
                 )
                 return result
-            if result["llm_calls"] < settings.max_llm_calls:
+            if not settings.max_llm_calls or result["llm_calls"] < settings.max_llm_calls:
                 planner_prompt = (
                     "You are a PLC control software architect. Analyze the requirements and produce an architecture plan in JSON format with keys:\n"
                     "- state_machine: list of states and transitions\n"
@@ -344,7 +367,7 @@ def run_harness(
                     model,
                     planner_messages,
                     workspace / "llm_planner",
-                    max_tokens=settings.output_limit('planner'),
+                    max_tokens=settings.output_limit("planner"),
                     timeout=remaining_time(),
                 )
                 result["llm_calls"] += 1
@@ -362,19 +385,22 @@ def run_harness(
         # Step 2: Dialect Selection
         if ablation != "no_dialect":
             cards = select_dialect_cards(view, max_cards=4)
+            static_hint = select_static_analysis_hint(view)
         else:
             cards = []
+            static_hint = None
         write_json(workspace / "dialect_cards.json", cards)
 
         # Step 3: Coder & Compile-Repair Loop
-        coder_developer = (
-            CODE_CONTRACT
-            + "\nTarget: CODESYS 3.5 IEC 61131-3 Structured Text offline compilation."
+        coder_developer = CODE_CONTRACT + "\nTarget: CODESYS 3.5 IEC 61131-3 Structured Text offline compilation."
+        static_hint_block = (
+            f"\n\nSTATIC ANALYSIS LIGHT GUIDANCE:\n{json.dumps(static_hint, indent=2)}" if static_hint else ""
         )
         coder_user = (
             f"TASK SPECIFICATIONS:\n{json.dumps(view, indent=2)}\n\n"
             f"ARCHITECTURAL PLAN:\n{json.dumps(plan, indent=2)}\n\n"
             f"CODESYS DIALECT CARDS:\n{json.dumps(cards, indent=2)}"
+            f"{static_hint_block}"
         )
 
         if is_timed_out():
@@ -384,7 +410,7 @@ def run_harness(
             )
             return result
 
-        if result["llm_calls"] >= settings.max_llm_calls:
+        if settings.max_llm_calls and result["llm_calls"] >= settings.max_llm_calls:
             result["status"], result["reason"] = (
                 "BUDGET_EXHAUSTED",
                 "LLM call limit reached",
@@ -399,7 +425,7 @@ def run_harness(
             model,
             messages,
             workspace / "llm_code_00",
-            max_tokens=settings.output_limit('coder'),
+            max_tokens=settings.output_limit("coder"),
             timeout=remaining_time(),
         )
         result["llm_calls"] += 1
@@ -433,21 +459,25 @@ def run_harness(
         stagnation_detected = False
 
         attempt = 0
-        while not compiled.success and attempt < settings.max_repairs:
+        while not compiled.success and (settings.max_repairs < 0 or attempt < settings.max_repairs):
             if is_timed_out():
                 result["status"], result["reason"] = (
                     "TIMEOUT",
                     "Task deadline exhausted during compile repair",
                 )
                 break
-            if result["llm_calls"] >= settings.max_llm_calls:
+            if settings.max_llm_calls and result["llm_calls"] >= settings.max_llm_calls:
                 break
-            if result["compiler_call_count"] >= settings.max_repairs + 1:
+            if settings.max_repairs >= 0 and result["compiler_call_count"] >= settings.max_repairs + 1:
                 break
 
             attempt += 1
             result["repair_attempts"] = attempt
             diag_str = compact_diagnostics(candidate, compiled.diagnostics)
+            attempt_ledger.append(
+                f"Compile #{attempt - 1} failed ({prev_cand_hash[:8]}): "
+                + (diag_str.splitlines() or ["no diagnostic details"])[0][:140]
+            )
 
             stagnation_msg = ""
             if stagnation_detected:
@@ -456,11 +486,13 @@ def run_harness(
                     "(hash matches previous attempt). You MUST modify the implementation to address the errors.\n"
                 )
 
+            ledger_text = _format_attempt_ledger(attempt_ledger)
             repair_prompt = (
                 f"Compilation failed with the following diagnostics:\n{diag_str}\n"
-                f"{stagnation_msg}\n"
-                f"Current code:\n{json.dumps(candidate, indent=2)}\n\n"
-                "Please fix the compilation errors while preserving the required interface and logic."
+                f"{stagnation_msg}"
+                + (f"\n{ledger_text}\n" if ledger_text else "")
+                + f"\nCurrent code:\n{json.dumps(candidate, indent=2)}\n\n"
+                + "Please fix the compilation errors while preserving the required interface and logic."
             )
 
             repair_messages = [
@@ -473,7 +505,7 @@ def run_harness(
                 model,
                 repair_messages,
                 workspace / f"llm_repair_{attempt:02d}",
-                max_tokens=settings.output_limit('repair'),
+                max_tokens=settings.output_limit("repair"),
                 timeout=remaining_time(),
             )
             result["llm_calls"] += 1
@@ -495,9 +527,7 @@ def run_harness(
             stagnation_detected = new_hash in previous_hashes
             previous_hashes.append(new_hash)
 
-            compiled = backend.compile(
-                task, candidate, workspace / f"compile_{attempt:02d}"
-            )
+            compiled = backend.compile(task, candidate, workspace / f"compile_{attempt:02d}")
             result["tool_call_count"] += 1
             result["compiler_call_count"] += 1
             result["compilation_attempts"].append(asdict(compiled))
@@ -512,7 +542,7 @@ def run_harness(
         result["final_compiled"] = compiled.success
         result["final_candidate"] = candidate
         best_candidate = candidate
-        best_score = (compiled.success, 0)
+        best_score = (compiled.success, 0, 0)
 
         if not compiled.success:
             if result["status"] not in ("TOOL_ERROR", "TIMEOUT"):
@@ -521,14 +551,129 @@ def run_harness(
             return result
 
         result["status"] = "UNVERIFIED"
-        result["reason"] = (
-            "CODESYS compiled; PLC functional execution remains to be evaluated"
-        )
+        result["reason"] = "CODESYS compiled; PLC functional execution remains to be evaluated"
+
+        # Step 3.5: Self-Developed ST->SMV Formal Verification & CEGAR Repair Loop
+        max_ver_cfg = getattr(settings, "max_verifications", 3)
+        max_ver_runs = 5 if max_ver_cfg < 0 else max_ver_cfg
+        if result["final_compiled"] and ablation not in ("no_verify", "no_cegar") and max_ver_runs > 0:
+            cegar_hashes = {prev_cand_hash}
+            for ver_idx in range(max_ver_runs):
+                if is_timed_out():
+                    break
+                ver_res = verify_candidate(
+                    task=task,
+                    candidate=candidate,
+                    out_dir=workspace / f"verify_{ver_idx:02d}",
+                    include_expected_observer=False,
+                )
+                result["tool_call_count"] += 1
+                result["verification_call_count"] += 1
+                result["verification"] = ver_res
+
+                ver_status = ver_res.get("status")
+                passed_props = int(ver_res.get("passed_properties") or 0)
+                if ver_status in ("PASS", "COUNTEREXAMPLE") and (ver_res.get("unknown_properties") or 0) == 0:
+                    if (True, passed_props, best_score[2]) >= best_score:
+                        best_score = (True, passed_props, best_score[2])
+                        best_candidate = candidate
+
+                if ver_status == "PASS":
+                    attempt_ledger.append(
+                        f"Formal verify #{ver_idx:02d}: PASS ({passed_props}/{ver_res.get('total_properties')})"
+                    )
+                    break
+                if ver_status != "COUNTEREXAMPLE":
+                    # UNSUPPORTED_ST / INCONCLUSIVE / TOOL_ERROR / TIMEOUT — log and proceed cleanly
+                    attempt_ledger.append(
+                        f"Formal verify #{ver_idx:02d}: {ver_status} ({ver_res.get('reason') or 'skipped CEGAR'})"[:160]
+                    )
+                    break
+
+                if ver_idx + 1 >= max_ver_runs:
+                    break
+                if settings.max_llm_calls and result["llm_calls"] >= settings.max_llm_calls:
+                    break
+                if is_timed_out():
+                    break
+
+                failed_props = [
+                    {"id": p.get("id"), "explanation": p.get("explanation", ""), "expression": p.get("expression")}
+                    for p in (ver_res.get("property_results") or [])
+                    if p.get("holds") is False
+                ]
+                san_ces = sanitize_counterexamples_for_agent(ver_res.get("counterexamples") or [])
+                attempt_ledger.append(
+                    f"Formal verify #{ver_idx:02d} FAILED ({passed_props}/{ver_res.get('total_properties')} passed; failed={[p['id'] for p in failed_props]})"
+                )
+                ledger_text = _format_attempt_ledger(attempt_ledger)
+                cegar_prompt = (
+                    "Formal LTL/INVAR verification (ST->SMV + NuSMV/nuXmv) found counterexample(s) where your code "
+                    "violates the specification:\n"
+                    f"VIOLATED PROPERTIES:\n{json.dumps(failed_props[:4], ensure_ascii=False, indent=2)}\n\n"
+                    f"COUNTEREXAMPLE TRACE(S) (observed inputs & your outputs only):\n{json.dumps(san_ces, indent=2)}\n\n"
+                    + (f"{ledger_text}\n\n" if ledger_text else "")
+                    + f"Current code:\n{json.dumps(candidate, indent=2)}\n\n"
+                    + "Fix the logic so every property holds across all scan sequences and edge cases. "
+                    + "Return ONLY JSON with declaration, implementation, supporting_objects."
+                )
+                cegar_messages = [
+                    {"role": "developer", "content": coder_developer},
+                    {"role": "user", "content": coder_user},
+                    {"role": "user", "content": cegar_prompt},
+                ]
+                reply = client.respond(
+                    model,
+                    cegar_messages,
+                    workspace / f"llm_cegar_{ver_idx:02d}",
+                    max_tokens=settings.output_limit("repair"),
+                    timeout=remaining_time(),
+                )
+                result["llm_calls"] += 1
+                if reply.get("usage"):
+                    result["usage"].append(reply["usage"])
+
+                try:
+                    new_candidate = parse_candidate(reply.get("text", ""))
+                except Exception:
+                    break
+
+                try:
+                    new_hash = digest(normalize_candidate(new_candidate))
+                except Exception:
+                    new_hash = digest(str(new_candidate))
+                if new_hash in cegar_hashes:
+                    attempt_ledger.append(f"CEGAR #{ver_idx + 1:02d} stagnated (identical code hash {new_hash[:8]})")
+                    break
+                cegar_hashes.add(new_hash)
+
+                comp_cegar = backend.compile(task, new_candidate, workspace / f"compile_cegar_{ver_idx:02d}")
+                result["tool_call_count"] += 1
+                result["compiler_call_count"] += 1
+                result["compilation_attempts"].append(asdict(comp_cegar))
+                if comp_cegar.status not in ("PASS", "COMPILE_FAIL"):
+                    result["status"], result["reason"] = comp_cegar.status, comp_cegar.infrastructure_error
+                    candidate = best_candidate
+                    break
+                if not comp_cegar.success:
+                    attempt_ledger.append(f"CEGAR #{ver_idx + 1:02d} failed compile")
+                    candidate = best_candidate
+                    continue
+
+                result["cegar_repairs"] += 1
+                candidate = new_candidate
+                write_json(workspace / f"version_cegar_{ver_idx:02d}.json", candidate)
+
+            if (result.get("verification") or {}).get("status") == "PASS":
+                best_candidate = candidate
+            else:
+                candidate = best_candidate
+            result["final_candidate"] = best_candidate
 
         # Step 4: Independent Tester (Self-Tests)
         valid_cases: list[dict] = []
         if result["final_compiled"] and ablation != "no_selftest":
-            if not is_timed_out() and result["llm_calls"] < settings.max_llm_calls:
+            if not is_timed_out() and (not settings.max_llm_calls or result["llm_calls"] < settings.max_llm_calls):
                 tester_prompt = (
                     "You are an independent PLC test engineer. Generate comprehensive unit test cases for the specified PLC function block.\n"
                     "Return a JSON array of test case objects. Each test case must have:\n"
@@ -547,17 +692,17 @@ def run_harness(
                     {"role": "user", "content": tester_prompt},
                 ]
                 if settings.selftest_max_cases and settings.selftest_max_steps_per_case:
-                    tester_messages[-1]['content'] += (
-                        f'\nOutput budget: at most {settings.selftest_max_cases} cases, '
-                        f'at most {settings.selftest_max_steps_per_case} steps per case. '
-                        'Use compact JSON. Cover a complete normal path and one important boundary. '
-                        'Keep reasoning concise enough to finish the entire JSON within the output budget.'
+                    tester_messages[-1]["content"] += (
+                        f"\nOutput budget: at most {settings.selftest_max_cases} cases, "
+                        f"at most {settings.selftest_max_steps_per_case} steps per case. "
+                        "Use compact JSON. Cover a complete normal path and one important boundary. "
+                        "Keep reasoning concise enough to finish the entire JSON within the output budget."
                     )
                 reply = client.respond(
                     model,
                     tester_messages,
                     workspace / "llm_tester",
-                    max_tokens=settings.output_limit('tester'),
+                    max_tokens=settings.output_limit("tester"),
                     timeout=remaining_time(),
                 )
                 result["llm_calls"] += 1
@@ -593,9 +738,7 @@ def run_harness(
                 if result["simulation_call_count"] >= settings.max_simulations:
                     break
 
-                sim = backend.simulate(
-                    task, candidate, active_cases, workspace / f"sim_{sim_attempt:02d}"
-                )
+                sim = backend.simulate(task, candidate, active_cases, workspace / f"sim_{sim_attempt:02d}")
                 result["tool_call_count"] += 1
                 result["simulation_call_count"] += 1
                 sim_attempt += 1
@@ -609,8 +752,8 @@ def run_harness(
 
                 passed_cases = sim.passed_cases
                 result["status"], result["reason"] = "TEST_FAIL", "Active self-tests have behavioral failures"
-                if (True, passed_cases) >= best_score:
-                    best_score = (True, passed_cases)
+                if (True, best_score[1], passed_cases) >= best_score:
+                    best_score = (True, best_score[1], passed_cases)
                     best_candidate = candidate
                     best_was_simulated = True
 
@@ -621,7 +764,7 @@ def run_harness(
 
                 if (
                     sim_attempt >= settings.max_simulations
-                    or result["llm_calls"] >= settings.max_llm_calls
+                    or (settings.max_llm_calls and result["llm_calls"] >= settings.max_llm_calls)
                     or is_timed_out()
                 ):
                     break
@@ -640,11 +783,17 @@ def run_harness(
                         }
                     )
 
+                attempt_ledger.append(
+                    f"Sim #{sim_attempt:02d}: passed {passed_cases}/{len(active_cases)} "
+                    + f"(first fail: {failures_summary[0]['case_id'] if failures_summary else 'none'})"
+                )
+                ledger_text = _format_attempt_ledger(attempt_ledger)
                 remaining_rejections = max_rejections - len(rejected_case_ids)
                 sim_repair_prompt = (
                     f"Simulation failed on {len(sim.failures)} test case(s):\n"
                     f"{json.dumps(failures_summary, indent=2)}\n\n"
-                    f"You may:\n"
+                    + (f"{ledger_text}\n\n" if ledger_text else "")
+                    + f"You may:\n"
                     f"1. Fix the candidate implementation to satisfy the test expectations.\n"
                     f"2. If you believe a self-test case was incorrectly specified, you may reject it by providing:\n"
                     f'   "reject_cases": [{{"id": "<case_id>", "reason": "<reason>"}}]\n'
@@ -662,7 +811,7 @@ def run_harness(
                     model,
                     sim_repair_messages,
                     workspace / f"llm_sim_repair_{sim_attempt:02d}",
-                    max_tokens=settings.output_limit('repair'),
+                    max_tokens=settings.output_limit("repair"),
                     timeout=remaining_time(),
                 )
                 result["llm_calls"] += 1
@@ -674,16 +823,11 @@ def run_harness(
                 # Check for reject_cases
                 try:
                     parsed_reply = safe_extract_json(reply_text)
-                    if (
-                        isinstance(parsed_reply, dict)
-                        and "reject_cases" in parsed_reply
-                    ):
+                    if isinstance(parsed_reply, dict) and "reject_cases" in parsed_reply:
                         for rej in parsed_reply["reject_cases"]:
                             if isinstance(rej, dict) and "id" in rej:
                                 rej_id = rej["id"]
-                                if rej_id not in rejected_case_ids and rej_id in {
-                                    c["id"] for c in valid_cases
-                                }:
+                                if rej_id not in rejected_case_ids and rej_id in {c["id"] for c in valid_cases}:
                                     if len(rejected_case_ids) < max_rejections:
                                         rejected_case_ids.add(rej_id)
                                         result["selftest_rejected"].append(rej)
@@ -693,7 +837,7 @@ def run_harness(
                 next_cases = [c for c in valid_cases if c["id"] not in rejected_case_ids]
                 if next_cases != active_cases:
                     # Scores from different test sets are not comparable.
-                    best_score = (True, -1)
+                    best_score = (True, best_score[1], -1)
                     best_was_simulated = False
                 active_cases = next_cases
 
@@ -704,7 +848,7 @@ def run_harness(
                     candidate = best_candidate
                     continue
 
-                if result["compiler_call_count"] >= settings.max_repairs + 1:
+                if is_timed_out():
                     candidate = best_candidate
                     break
 
@@ -718,7 +862,7 @@ def run_harness(
                     result["status"], result["reason"] = comp_res.status, comp_res.infrastructure_error
                     break
                 if not comp_res.success:
-                    # Ratchet rejects uncompiled code (False, 0) < best_score (True, ...)
+                    # Ratchet rejects uncompiled code (False, 0, 0) < best_score (True, ...)
                     candidate = best_candidate
                     continue
 
@@ -727,15 +871,24 @@ def run_harness(
 
             # Update best_candidate as final_candidate
             result["final_candidate"] = best_candidate
-            result["selftest_evaluation"] = {"candidate_sha256": digest(normalize_candidate(best_candidate)),
-                "cases_sha256": digest(active_cases), "status": result["status"],
+            result["selftest_evaluation"] = {
+                "candidate_sha256": digest(normalize_candidate(best_candidate)),
+                "cases_sha256": digest(active_cases),
+                "status": result["status"],
                 "evaluated_cases": len(active_cases) if best_was_simulated else 0,
-                "passed_cases": max(0, best_score[1]) if best_was_simulated else 0}
+                "passed_cases": max(0, best_score[2]) if best_was_simulated else 0,
+            }
         else:
             result["final_candidate"] = best_candidate
 
     except ProviderError as exc:
-        result["status"], result["reason"] = "TOOL_ERROR", str(exc)
+        if result.get("final_compiled") and best_candidate is not None:
+            result["final_candidate"] = best_candidate
+            if result.get("status") not in ("PASS", "TEST_FAIL"):
+                result["status"] = "UNVERIFIED"
+            result["reason"] = f"Provider limit/error after valid compilation preserved best_candidate: {exc}"
+        else:
+            result["status"], result["reason"] = "TOOL_ERROR", str(exc)
     except OSError as exc:
         result["status"], result["reason"] = (
             "TOOL_ERROR",
@@ -751,9 +904,7 @@ def run_harness(
         result["finished_utc"] = now()
         if result.get("final_candidate") is not None:
             try:
-                write_json(
-                    workspace / "final_candidate.json", result["final_candidate"]
-                )
+                write_json(workspace / "final_candidate.json", result["final_candidate"])
             except Exception:
                 pass
         try:

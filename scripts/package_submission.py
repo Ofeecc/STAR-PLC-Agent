@@ -3,6 +3,7 @@
 No source files are deleted or moved. Staging snapshots stay under .local and
 are excluded from the archive; credentials, environments and caches are omitted.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -27,7 +28,9 @@ from audit_submission import (
 from plc_agent.common import now, write_json
 
 
-def verify_zip(path: Path, expected: dict[str, dict], archive_root: str, secrets: list[bytes], root: Path = ROOT) -> dict:
+def verify_zip(
+    path: Path, expected: dict[str, dict], archive_root: str, secrets: list[bytes], root: Path = ROOT
+) -> dict:
     """Reopen every member and compare its bytes, name and secret scan to staging."""
     with zipfile.ZipFile(path) as archive:
         corrupt = archive.testzip()
@@ -89,28 +92,52 @@ def build_package(root: Path = ROOT, *, output: Path | None = None, require_comp
     staged_campaign = stage / "results/summary/campaign.json"
     if staged_campaign.is_file() and report.get("campaign_snapshot_sha256") != sha256_file(staged_campaign):
         raise ValueError("Campaign changed while staging; rerun packaging after execution finishes")
-    status = {"schema_version": 1, "package_id": package_id, "created_utc": now(),
-              "status": report["status"], "complete_submission_claim": report["status"] == "PASS",
-              "checks": report["checks"], "pending": report["pending_mandatory_or_delivery_checks"],
-              "warnings": report["warnings"], "source_audit": "results/summary/submission_audit.json",
-              "scope": "Source, frozen data, actual compiler/experiment logs and available artifacts; no fabricated results",
-              "not_included": ["API credentials", "Conda environment", "model weights", "installers", "build/runtime caches", "temporary staging"]}
+    status = {
+        "schema_version": 1,
+        "package_id": package_id,
+        "created_utc": now(),
+        "status": report["status"],
+        "complete_submission_claim": report["status"] == "PASS",
+        "checks": report["checks"],
+        "pending": report["pending_mandatory_or_delivery_checks"],
+        "warnings": report["warnings"],
+        "source_audit": "results/summary/submission_audit.json",
+        "scope": "Source, frozen data, actual compiler/experiment logs and available artifacts; no fabricated results",
+        "not_included": [
+            "API credentials",
+            "Conda environment",
+            "model weights",
+            "installers",
+            "build/runtime caches",
+            "temporary staging",
+        ],
+    }
     write_json(stage / "submission/status.json", status)
     secrets = known_secrets(root)
     for path in sorted(stage.rglob("*")):
         if path.is_file() and scan_file(path, path.relative_to(stage).as_posix(), secrets):
-            raise ValueError("Secret or unscanned archive finding in staged file: " + path.relative_to(stage).as_posix())
+            raise ValueError(
+                "Secret or unscanned archive finding in staged file: " + path.relative_to(stage).as_posix()
+            )
     # The manifest describes every payload file except itself and its text view;
     # a file cannot contain its own final hash without a circular definition.
     payload = {}
     for path in sorted(stage.rglob("*"), key=lambda p: p.relative_to(stage).as_posix()):
         if path.is_file():
             payload[path.relative_to(stage).as_posix()] = {"sha256": sha256_file(path), "bytes": path.stat().st_size}
-    manifest = {"schema_version": 1, "package_id": package_id, "created_utc": status["created_utc"],
-                "hash_algorithm": "SHA-256", "paths_are_relative_to": root.name,
-                "self_exclusion": ["submission/MANIFEST.json", "submission/MANIFEST.sha256"], "files": payload}
+    manifest = {
+        "schema_version": 1,
+        "package_id": package_id,
+        "created_utc": status["created_utc"],
+        "hash_algorithm": "SHA-256",
+        "paths_are_relative_to": root.name,
+        "self_exclusion": ["submission/MANIFEST.json", "submission/MANIFEST.sha256"],
+        "files": payload,
+    }
     write_json(stage / "submission/MANIFEST.json", manifest)
-    (stage / "submission/MANIFEST.sha256").write_text("".join(entry["sha256"] + "  " + name + "\n" for name, entry in payload.items()), encoding="utf-8")
+    (stage / "submission/MANIFEST.sha256").write_text(
+        "".join(entry["sha256"] + "  " + name + "\n" for name, entry in payload.items()), encoding="utf-8"
+    )
     all_files = {**payload}
     for name in ("submission/MANIFEST.json", "submission/MANIFEST.sha256"):
         path = stage / name
@@ -122,15 +149,26 @@ def build_package(root: Path = ROOT, *, output: Path | None = None, require_comp
         raise ValueError("Package output must remain inside the project submission directory")
     destination.parent.mkdir(exist_ok=True)
     temporary = destination.with_name(destination.name + ".tmp")
-    with zipfile.ZipFile(temporary, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6, strict_timestamps=False) as archive:
+    with zipfile.ZipFile(
+        temporary, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6, strict_timestamps=False
+    ) as archive:
         for name in sorted(all_files):
             archive.write(stage / name, root.name + "/" + name)
     verification = verify_zip(temporary, all_files, root.name, secrets, root)
     temporary.replace(destination)
-    result = {"status": report["status"], "path": str(destination), "package_id": package_id,
-              "created_utc": status["created_utc"], "payload_file_count": len(payload),
-              "zip_verification": verification, "pending": status["pending"], "warnings": status["warnings"],
-              "manifest": "submission/MANIFEST.json inside ZIP", "stage": str(stage), "excluded_count": len(omitted)}
+    result = {
+        "status": report["status"],
+        "path": str(destination),
+        "package_id": package_id,
+        "created_utc": status["created_utc"],
+        "payload_file_count": len(payload),
+        "zip_verification": verification,
+        "pending": status["pending"],
+        "warnings": status["warnings"],
+        "manifest": "submission/MANIFEST.json inside ZIP",
+        "stage": str(stage),
+        "excluded_count": len(omitted),
+    }
     write_json(root / "submission/package_receipt.json", result)
     write_json(root / "submission/status.json", status)
     return result

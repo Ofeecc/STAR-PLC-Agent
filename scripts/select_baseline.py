@@ -1,4 +1,5 @@
 """Record a transparent pre-benchmark baseline substitution, preserving setup runs."""
+
 import sys
 from pathlib import Path
 
@@ -14,14 +15,19 @@ for condition in config["conditions"]:
         condition["framework"] = "smolagents"
 config["selection_status"] = "RESPONSES_MODELS_VERIFIED_BASELINE_TOOL_INTEGRATION_PENDING"
 config["baseline_version"] = "smolagents 1.26.0 ToolCallingAgent"
-config["baseline_substitution_reason"] = "Codex CLI tool execution required approvals unavailable under its local noninteractive policy; preserved as setup infrastructure failures. No policy was bypassed."
+config["baseline_substitution_reason"] = (
+    "Codex CLI tool execution required approvals unavailable under its local noninteractive policy; preserved as setup infrastructure failures. No policy was bypassed."
+)
 write_json(settings_path, config)
 campaign_path = ROOT / "results/summary/campaign.json"
 manifest = read_json(campaign_path)
 if manifest["conditions"] != config["conditions"]:
     archive = ROOT / "results/raw/protocol_revision_codex_to_smolagents.json"
     if not archive.exists():
-        write_json(archive, {"observed_utc": now(), "reason": config["baseline_substitution_reason"], "previous_campaign": manifest})
+        write_json(
+            archive,
+            {"observed_utc": now(), "reason": config["baseline_substitution_reason"], "previous_campaign": manifest},
+        )
     manifest["conditions"] = config["conditions"]
     manifest["protocol_revised_utc"] = now()
     manifest["protocol_revision_evidence"] = str(archive.relative_to(ROOT))
@@ -34,8 +40,19 @@ if manifest["conditions"] != config["conditions"]:
             previous = read_json(ROOT / manifest["records"][key])
             if previous["framework"] == "smolagents":
                 continue
-            destination = ROOT / "experiments" / condition["id"] / manifest["id"] / task["id"] / "planned_smolagents_result.json"
-            write_json(destination, empty_result(task, condition["id"], condition["model"], "smolagents", "Awaiting smolagents baseline integration; Codex setup outcomes preserved separately"))
+            destination = (
+                ROOT / "experiments" / condition["id"] / manifest["id"] / task["id"] / "planned_smolagents_result.json"
+            )
+            write_json(
+                destination,
+                empty_result(
+                    task,
+                    condition["id"],
+                    condition["model"],
+                    "smolagents",
+                    "Awaiting smolagents baseline integration; Codex setup outcomes preserved separately",
+                ),
+            )
             manifest["records"][key] = str(destination.relative_to(ROOT))
     write_json(campaign_path, manifest)
 print("Baseline selected: smolagents 1.26.0. Prior Codex setup records preserved.")

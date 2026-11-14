@@ -29,6 +29,7 @@ FORBIDDEN_KEYS = {
     "provenance",
 }
 
+
 def agent_view(task: dict, spec_visible: bool = True) -> dict:
     """Return a sanitized, leak-free task view for agent consumption."""
     visible_keys = ALLOWED_KEYS | (SPEC_KEYS if spec_visible else set())

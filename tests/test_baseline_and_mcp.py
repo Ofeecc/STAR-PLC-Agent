@@ -1,4 +1,5 @@
 """Tests for baseline suite (deepseek_harness, codex_cli, claude_code) and dual-tool MCP server."""
+
 from __future__ import annotations
 
 import copy
@@ -62,17 +63,21 @@ class FakeToolClient:
     def respond(self, model, input_items, log_dir, tools=None, tool_choice=None, max_tokens=None, timeout=None):
         log_dir = Path(log_dir)
         log_dir.mkdir(parents=True, exist_ok=True)
-        self.recorded_calls.append({
-            "model": model,
-            "input": copy.deepcopy(input_items),
-            "tools": tools,
-            "log_dir": log_dir,
-        })
+        self.recorded_calls.append(
+            {
+                "model": model,
+                "input": copy.deepcopy(input_items),
+                "tools": tools,
+                "log_dir": log_dir,
+            }
+        )
         if self.actions:
             return self.actions.pop(0)
         return {
             "text": "Completed task successfully.",
-            "output": [{"type": "message", "content": [{"type": "output_text", "text": "Completed task successfully."}]}],
+            "output": [
+                {"type": "message", "content": [{"type": "output_text", "text": "Completed task successfully."}]}
+            ],
             "usage": {"prompt_tokens": 50, "completion_tokens": 20, "total_tokens": 70},
         }
 
@@ -198,9 +203,7 @@ class BaselineAndMCPTests(unittest.TestCase):
             trusted.mkdir()
             settings = Settings(max_repairs=3, max_simulations=3)
             # Backend outputs m1=False always
-            backend = FakeBackend(
-                step_fn=lambda inp, dt=None: {"m1": False, "m2": False}
-            )
+            backend = FakeBackend(step_fn=lambda inp, dt=None: {"m1": False, "m2": False})
 
             # 3-step test case: step 0 expects False (passes), step 1 expects True (fails), step 2 expects True
             cases = [
@@ -261,15 +264,22 @@ class BaselineAndMCPTests(unittest.TestCase):
                         {
                             "type": "function_call",
                             "name": "simulate_st",
-                            "arguments": json.dumps({
-                                "source": SAMPLE_CANDIDATE,
-                                "cases": [
-                                    {
-                                        "id": "s1",
-                                        "steps": [{"inputs": {"start": True, "stop": False}, "expected": {"m1": True, "m2": False}}],
-                                    }
-                                ],
-                            }),
+                            "arguments": json.dumps(
+                                {
+                                    "source": SAMPLE_CANDIDATE,
+                                    "cases": [
+                                        {
+                                            "id": "s1",
+                                            "steps": [
+                                                {
+                                                    "inputs": {"start": True, "stop": False},
+                                                    "expected": {"m1": True, "m2": False},
+                                                }
+                                            ],
+                                        }
+                                    ],
+                                }
+                            ),
                             "call_id": "call_s1",
                         }
                     ],
@@ -280,7 +290,9 @@ class BaselineAndMCPTests(unittest.TestCase):
                     "output": [
                         {
                             "type": "message",
-                            "content": [{"type": "output_text", "text": "Implementation confirmed. Candidate is ready."}],
+                            "content": [
+                                {"type": "output_text", "text": "Implementation confirmed. Candidate is ready."}
+                            ],
                         }
                     ],
                     "usage": {"prompt_tokens": 200, "completion_tokens": 20, "total_tokens": 220},
@@ -310,14 +322,29 @@ class BaselineAndMCPTests(unittest.TestCase):
 
     def test_baseline_retains_observed_first_compile_after_later_tool_error(self):
         def reply(index):
-            return {"output": [{"type": "function_call", "name": "compile_st",
-                                "arguments": json.dumps({"source": SAMPLE_CANDIDATE}), "call_id": str(index)}]}
+            return {
+                "output": [
+                    {
+                        "type": "function_call",
+                        "name": "compile_st",
+                        "arguments": json.dumps({"source": SAMPLE_CANDIDATE}),
+                        "call_id": str(index),
+                    }
+                ]
+            }
 
         with tempfile.TemporaryDirectory() as tmp:
             outcomes = iter([CompileResult("COMPILE_FAIL"), CompileResult("TOOL_ERROR", infrastructure_error="unit")])
             backend = FakeBackend(compile_fn=lambda *args: next(outcomes))
-            result = run_baseline(SAMPLE_TASK, "unit", Path(tmp) / "run", Settings(), driver="deepseek_harness",
-                                  client=FakeToolClient([reply(1), reply(2)]), backend=backend)
+            result = run_baseline(
+                SAMPLE_TASK,
+                "unit",
+                Path(tmp) / "run",
+                Settings(),
+                driver="deepseek_harness",
+                client=FakeToolClient([reply(1), reply(2)]),
+                backend=backend,
+            )
             self.assertEqual(result["status"], "TOOL_ERROR")
             self.assertIs(result["first_pass_compiled"], False)
             self.assertIsNone(result["final_compiled"])

@@ -1,4 +1,5 @@
 """Manually fixed expected traces versus independent Python state machines."""
+
 import json
 import tempfile
 import unittest
@@ -81,12 +82,19 @@ class ReferenceTests(unittest.TestCase):
         self.assertEqual(restart["Attempts"], 1)
 
     def test_expected_trace_mutation_is_detected(self):
-        task = {"id": "SELF001", "tests": [{"id": "mutation", "steps": [
-            {"inputs": {"Start": True, "Stop": True, "GuardClosed": True}, "expected": {"Run": True}}
-        ]}]}
+        task = {
+            "id": "SELF001",
+            "tests": [
+                {
+                    "id": "mutation",
+                    "steps": [
+                        {"inputs": {"Start": True, "Stop": True, "GuardClosed": True}, "expected": {"Run": True}}
+                    ],
+                }
+            ],
+        }
         self.assertFalse(evaluate_reference(task)["passed"])
 
 
 if __name__ == "__main__":
     unittest.main()
-

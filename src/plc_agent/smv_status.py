@@ -1,4 +1,5 @@
 """Inventory, checker-availability probing, and persisted verification status for explicit SMV models."""
+
 from __future__ import annotations
 
 import hashlib
@@ -423,7 +424,11 @@ def record_checker_missing_attempt(
 
     existing = models_rec.get(variant)
     # Preserve valid hash-matched baseline evidence; record CHECKER_MISSING only if absent or stale.
-    if not existing or existing.get("model_sha256") != live_sha or existing.get("status") not in {"MODEL_PROPERTIES_TRUE", "COUNTEREXAMPLE"}:
+    if (
+        not existing
+        or existing.get("model_sha256") != live_sha
+        or existing.get("status") not in {"MODEL_PROPERTIES_TRUE", "COUNTEREXAMPLE"}
+    ):
         models_rec[variant] = {
             "path": rel_path,
             "model_sha256": live_sha,
@@ -484,7 +489,9 @@ def run_and_persist_smv_check(
 
     avail = probe_checker_availability()
     req_engine, req_tool = _detect_model_requirements(smv_path)
-    output = (out_root or (ROOT / ".local/model_checker_evidence")) / f"{task_id}_{resolved_variant}_{uuid.uuid4().hex[:8]}"
+    output = (
+        out_root or (ROOT / ".local/model_checker_evidence")
+    ) / f"{task_id}_{resolved_variant}_{uuid.uuid4().hex[:8]}"
 
     try:
         result = model_checker.check_model(smv_path, output, timeout=timeout)
@@ -494,7 +501,9 @@ def run_and_persist_smv_check(
             kw in err_msg.lower() for kw in ("install", "not installed", "does not exist", "nuxmv", "nusmv", "missing")
         )
         if is_missing:
-            store = record_checker_missing_attempt(task_id, resolved_variant, smv_path, err_msg, status_path=status_path)
+            store = record_checker_missing_attempt(
+                task_id, resolved_variant, smv_path, err_msg, status_path=status_path
+            )
             smv_status = build_task_smv_status(
                 task_id, store=store, status_path=status_path, models_dir=models_dir, availability=avail
             )

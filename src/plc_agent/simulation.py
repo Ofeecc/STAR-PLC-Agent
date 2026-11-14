@@ -5,6 +5,7 @@ assigns fixed inputs, invokes the generated FB exactly once per task scan,
 and copies actual sampled inputs and outputs to typed trace arrays. Expected
 outputs never appear in the generated test program.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -20,10 +21,26 @@ from pathlib import Path
 from .common import ROOT, digest, now, read_json, write_json
 from .compiler import _kill_tree, codesys_command, normalize_candidate, stage_ascii_workspace, sync_ascii_artifacts
 
-SCALAR_TYPES = {"BOOL", "BYTE", "WORD", "DWORD", "LWORD", "SINT", "INT", "DINT", "LINT",
-                "USINT", "UINT", "UDINT", "ULINT", "REAL", "LREAL"}
+SCALAR_TYPES = {
+    "BOOL",
+    "BYTE",
+    "WORD",
+    "DWORD",
+    "LWORD",
+    "SINT",
+    "INT",
+    "DINT",
+    "LINT",
+    "USINT",
+    "UINT",
+    "UDINT",
+    "ULINT",
+    "REAL",
+    "LREAL",
+}
 INTEGER_TYPES = SCALAR_TYPES - {"BOOL", "REAL", "LREAL"}
 TIME_TYPES = {"TIME", "LTIME"}
+
 
 def get_struct_defs(task: dict | None = None) -> dict[str, dict[str, str]]:
     defs: dict[str, dict[str, str]] = {
@@ -67,17 +84,22 @@ def get_struct_defs(task: dict | None = None) -> dict[str, dict[str, str]]:
             defs[st["name"]] = fields
     return defs
 
+
 def is_array_type(type_name: str) -> bool:
     return bool(re.fullmatch(r"ARRAY\s*\[.+\]\s+OF\s+.+", type_name.strip(), re.IGNORECASE))
 
+
 def parse_array_type(type_name: str) -> tuple[int | None, int | None, str]:
-    m = re.fullmatch(r"ARRAY\s*\[\s*(\*|-?\d+)\s*(?:\.\.\s*(-?\d+))?\s*\]\s+OF\s+(.+)", type_name.strip(), re.IGNORECASE)
+    m = re.fullmatch(
+        r"ARRAY\s*\[\s*(\*|-?\d+)\s*(?:\.\.\s*(-?\d+))?\s*\]\s+OF\s+(.+)", type_name.strip(), re.IGNORECASE
+    )
     if not m:
         raise ValueError(f"Invalid array type: {type_name}")
     low_s, high_s, elem_t = m.group(1), m.group(2), m.group(3).strip()
     if low_s == "*":
         return None, None, elem_t
     return int(low_s), int(high_s), elem_t
+
 
 def supported_type(type_name: str, task: dict | None = None) -> bool:
     val = type_name.strip()
@@ -94,6 +116,7 @@ def supported_type(type_name: str, task: dict | None = None) -> bool:
         return True
     return False
 
+
 def eligibility(task: dict, cases: list[dict] | None = None) -> list[str]:
     reasons = []
     if cases is None:
@@ -102,6 +125,7 @@ def eligibility(task: dict, cases: list[dict] | None = None) -> list[str]:
         if not supported_type(field["type"], task):
             reasons.append("Unsupported automatic monitoring type: " + field["type"])
     return sorted(set(reasons))
+
 
 def st_literal(value: object, type_name: str, task: dict | None = None) -> str:
     typ = type_name.strip()
@@ -150,6 +174,7 @@ def st_literal(value: object, type_name: str, task: dict | None = None) -> str:
         return "(" + ", ".join(parts) + ")"
     raise ValueError("Unsupported test input type: " + type_name)
 
+
 def generate_assignments(lhs: str, value: object, type_name: str, task: dict | None = None) -> list[str]:
     typ = type_name.strip()
     up = typ.upper()
@@ -175,6 +200,7 @@ def generate_assignments(lhs: str, value: object, type_name: str, task: dict | N
                 lines.extend(generate_assignments(f"{lhs}.{fname}", value[fname], ftype, task))
         return lines
     return [f"{lhs} := {st_literal(value, typ, task)};"]
+
 
 def get_case_inouts(task: dict, case_index: int, case: dict) -> dict[str, dict]:
     res = {}
@@ -233,6 +259,7 @@ def get_case_inouts(task: dict, case_index: int, case: dict) -> dict[str, dict]:
                 }
     return res
 
+
 def parse_value(raw: object, type_name: str) -> object:
     value = str(raw).strip().replace("_", "")
     typ = type_name.upper()
@@ -257,15 +284,16 @@ def parse_value(raw: object, type_name: str) -> object:
         return float(value)
     for marker, base in (("16#", 16), ("8#", 8), ("2#", 2)):
         if value.upper().startswith(marker):
-            return int(value[len(marker):], base)
+            return int(value[len(marker) :], base)
     return int(value)
+
 
 def unflatten_observations(program: dict, raw_values: dict[str, str]) -> list[dict]:
     def get_raw(expr: str) -> str | None:
         if expr in raw_values:
             return raw_values[expr]
         if expr.startswith("PLC_PRG."):
-            short = expr[len("PLC_PRG."):]
+            short = expr[len("PLC_PRG.") :]
             if short in raw_values:
                 return raw_values[short]
         else:
@@ -304,6 +332,7 @@ def unflatten_observations(program: dict, raw_values: dict[str, str]) -> list[di
         observations.append(row)
     return observations
 
+
 def build_program(task: dict, cases: list[dict] | None = None) -> dict:
     if cases is None:
         cases = task["tests"]
@@ -325,7 +354,13 @@ def build_program(task: dict, cases: list[dict] | None = None) -> dict:
 
     case_inouts_map = [get_case_inouts(task, c_idx, c) for c_idx, c in enumerate(cases)]
 
-    declarations = ["PROGRAM PLC_PRG", "VAR", " BenchStep : UDINT := 0;", " BenchCalls : UDINT := 0;", " BenchDone : BOOL := FALSE;"]
+    declarations = [
+        "PROGRAM PLC_PRG",
+        "VAR",
+        " BenchStep : UDINT := 0;",
+        " BenchCalls : UDINT := 0;",
+        " BenchDone : BOOL := FALSE;",
+    ]
     if is_timed:
         declarations += [
             " BenchLastTime : TIME := T#0ms;",
@@ -346,7 +381,8 @@ def build_program(task: dict, cases: list[dict] | None = None) -> dict:
         fname = field["name"]
         if is_array_type(ftyp):
             low, high, elem_t = parse_array_type(ftyp)
-            if low is None: low = 1
+            if low is None:
+                low = 1
             max_len = max(len(c["steps"][0]["inputs"][fname]) for c in cases)
             for idx in range(max_len):
                 declarations.append(f" TraceIn_{fname}_{low + idx} : ARRAY[0..{count - 1}] OF {elem_t};")
@@ -363,7 +399,8 @@ def build_program(task: dict, cases: list[dict] | None = None) -> dict:
         fname = field["name"]
         if is_array_type(ftyp):
             low, high, elem_t = parse_array_type(ftyp)
-            if low is None: low = 1
+            if low is None:
+                low = 1
             for elem_idx in range(low, high + 1):
                 declarations.append(f" TraceOut_{fname}_{elem_idx} : ARRAY[0..{count - 1}] OF {elem_t};")
         elif ftyp in sdefs:
@@ -467,7 +504,8 @@ def build_program(task: dict, cases: list[dict] | None = None) -> dict:
                 ftyp = field["type"]
                 if is_array_type(ftyp):
                     low, high, elem_t = parse_array_type(ftyp)
-                    if low is None: low = 1
+                    if low is None:
+                        low = 1
                     val = step["inputs"][fname]
                     elements = []
                     for idx in range(len(val)):
@@ -513,7 +551,8 @@ def build_program(task: dict, cases: list[dict] | None = None) -> dict:
                 ftyp = field["type"]
                 if is_array_type(ftyp):
                     low, high, elem_t = parse_array_type(ftyp)
-                    if low is None: low = 1
+                    if low is None:
+                        low = 1
                     elements = []
                     for elem_idx in range(low, high + 1):
                         tr_var = f"TraceOut_{fname}_{elem_idx}"
@@ -556,7 +595,9 @@ def build_program(task: dict, cases: list[dict] | None = None) -> dict:
                         s_map = {}
                         for sfname, sftype in sdefs["ST_Pump"].items():
                             tr_var = f"TraceOut_pumpGroup_{idx}_{sfname}"
-                            body.append(f"{indent}{tr_var}[{step_index}] := Binding_{case_index}_pumpGroup[{idx}].{sfname};")
+                            body.append(
+                                f"{indent}{tr_var}[{step_index}] := Binding_{case_index}_pumpGroup[{idx}].{sfname};"
+                            )
                             expr = f"PLC_PRG.{tr_var}[{step_index}]"
                             s_map[sfname] = {"kind": "scalar", "expr": expr, "type": sftype}
                             trace_expressions.append(expr)
@@ -568,7 +609,9 @@ def build_program(task: dict, cases: list[dict] | None = None) -> dict:
                     elements = []
                     for idx in range(1, cur_len + 1):
                         tr_var = f"TraceOut_analogValues_{idx}"
-                        body.append(f"{indent}{tr_var}[{step_index}] := Binding_{case_index}_analogValues[{a_low + idx - 1}];")
+                        body.append(
+                            f"{indent}{tr_var}[{step_index}] := Binding_{case_index}_analogValues[{a_low + idx - 1}];"
+                        )
                         expr = f"PLC_PRG.{tr_var}[{step_index}]"
                         elements.append({"kind": "scalar", "expr": expr, "type": "INT"})
                         trace_expressions.append(expr)
@@ -581,7 +624,9 @@ def build_program(task: dict, cases: list[dict] | None = None) -> dict:
                         s_map = {}
                         for sfname, sftype in sdefs["ST_AnalogChannel"].items():
                             tr_var = f"TraceOut_channels_{idx}_{sfname}"
-                            body.append(f"{indent}{tr_var}[{step_index}] := Binding_{case_index}_channels[{c_low + idx - 1}].{sfname};")
+                            body.append(
+                                f"{indent}{tr_var}[{step_index}] := Binding_{case_index}_channels[{c_low + idx - 1}].{sfname};"
+                            )
                             expr = f"PLC_PRG.{tr_var}[{step_index}]"
                             s_map[sfname] = {"kind": "scalar", "expr": expr, "type": sftype}
                             trace_expressions.append(expr)
@@ -596,7 +641,9 @@ def build_program(task: dict, cases: list[dict] | None = None) -> dict:
                         s_map = {}
                         for sfname, sftype in sdefs["ST_Recipe"].items():
                             tr_var = f"TraceOut_recipe_{idx}_{sfname}"
-                            body.append(f"{indent}{tr_var}[{step_index}] := Binding_{case_index}_recipe[{idx}].{sfname};")
+                            body.append(
+                                f"{indent}{tr_var}[{step_index}] := Binding_{case_index}_recipe[{idx}].{sfname};"
+                            )
                             expr = f"PLC_PRG.{tr_var}[{step_index}]"
                             s_map[sfname] = {"kind": "scalar", "expr": expr, "type": sftype}
                             trace_expressions.append(expr)
@@ -610,7 +657,9 @@ def build_program(task: dict, cases: list[dict] | None = None) -> dict:
                 body.append("  END_IF;")
 
             trace_mappings.append(step_map)
-            steps.append({"index": step_index, "case_id": case["id"], "case_step": case_step, "dt_ms": step.get("dt_ms", 0)})
+            steps.append(
+                {"index": step_index, "case_id": case["id"], "case_step": case_step, "dt_ms": step.get("dt_ms", 0)}
+            )
             step_index += 1
 
     body.append(" END_CASE;")
@@ -629,16 +678,27 @@ def build_program(task: dict, cases: list[dict] | None = None) -> dict:
         "trace_mapping": trace_mappings,
     }
 
-def run_functional(task: dict, candidate: dict | str, source_hash: str, workspace: Path, settings, cases: list[dict] | None = None) -> dict:
+
+def run_functional(
+    task: dict, candidate: dict | str, source_hash: str, workspace: Path, settings, cases: list[dict] | None = None
+) -> dict:
     """Return real simulation trace/evidence. Unsupported tasks remain UNVERIFIED."""
     if cases is None:
         cases = task["tests"]
     workspace = Path(workspace).resolve()
     workspace.mkdir(parents=True, exist_ok=False)
     started = time.monotonic()
-    result = {"status": "UNVERIFIED", "actual_simulation": False, "execution_verified": False,
-              "backend": "CODESYS_SIMULATION", "task_id": task["id"], "source_sha256": source_hash,
-              "physical_connection_allowed": False, "trace_path": None, "reason": None}
+    result = {
+        "status": "UNVERIFIED",
+        "actual_simulation": False,
+        "execution_verified": False,
+        "backend": "CODESYS_SIMULATION",
+        "task_id": task["id"],
+        "source_sha256": source_hash,
+        "physical_connection_allowed": False,
+        "trace_path": None,
+        "reason": None,
+    }
     reasons = eligibility(task, cases=cases)
     if reasons:
         result["reason"] = "; ".join(reasons)
@@ -661,24 +721,49 @@ def run_functional(task: dict, candidate: dict | str, source_hash: str, workspac
     )
     project = exec_ws / "simulation.project"
     shutil.copy2(staged_template, project)
-    request = {"request_id": token, "mode": "IDE_SIMULATION_ONLY", "no_physical_connection": True,
-               "workspace": str(exec_ws), "project": str(project), "template": str(staged_template),
-               "task_id": task["id"], "task_sha256": digest(task), "source_sha256": source_hash,
-               "candidate": candidate, "program": program,
-               "result_path": str(exec_ws / "simulation_evidence.json")}
+    request = {
+        "request_id": token,
+        "mode": "IDE_SIMULATION_ONLY",
+        "no_physical_connection": True,
+        "workspace": str(exec_ws),
+        "project": str(project),
+        "template": str(staged_template),
+        "task_id": task["id"],
+        "task_sha256": digest(task),
+        "source_sha256": source_hash,
+        "candidate": candidate,
+        "program": program,
+        "result_path": str(exec_ws / "simulation_evidence.json"),
+    }
     write_json(exec_ws / "request.json", request)
     write_json(exec_ws / "candidate.json", candidate)
-    (exec_ws / "test_program.st").write_text(program["declaration"] + "\n\n" + program["implementation"] + "\nEND_PROGRAM\n", encoding="utf-8")
+    (exec_ws / "test_program.st").write_text(
+        program["declaration"] + "\n\n" + program["implementation"] + "\nEND_PROGRAM\n", encoding="utf-8"
+    )
     if exec_ws != workspace:
         write_json(workspace / "request.json", request)
         write_json(workspace / "candidate.json", candidate)
-        (workspace / "test_program.st").write_text(program["declaration"] + "\n\n" + program["implementation"] + "\nEND_PROGRAM\n", encoding="utf-8")
-    command = [settings.codesys_exe, "--profile=" + settings.codesys_profile,
-               "--runscript=" + str(staged_script), "--noUI", "--culture=en"]
+        (workspace / "test_program.st").write_text(
+            program["declaration"] + "\n\n" + program["implementation"] + "\nEND_PROGRAM\n", encoding="utf-8"
+        )
+    command = [
+        settings.codesys_exe,
+        "--profile=" + settings.codesys_profile,
+        "--runscript=" + str(staged_script),
+        "--noUI",
+        "--culture=en",
+    ]
     if settings.additional_folder:
         command.append("--additionalfolder=" + settings.additional_folder)
-    write_json(exec_ws / "invocation.json", {"argv": command, "template_sha256": hashlib.sha256(Path(settings.codesys_template).read_bytes()).hexdigest(),
-        "script_sha256": hashlib.sha256(staged_script.read_bytes()).hexdigest(), "program_sha256": digest(program)})
+    write_json(
+        exec_ws / "invocation.json",
+        {
+            "argv": command,
+            "template_sha256": hashlib.sha256(Path(settings.codesys_template).read_bytes()).hexdigest(),
+            "script_sha256": hashlib.sha256(staged_script.read_bytes()).hexdigest(),
+            "program_sha256": digest(program),
+        },
+    )
     env = os.environ.copy()
     env["PLC_CODESYS_TEST_REQUEST"] = str(exec_ws / "request.json")
     for key in ("PLC_LLM_API_KEY", "OPENAI_API_KEY", "PLC_API_CONFIG"):
@@ -689,8 +774,10 @@ def run_functional(task: dict, candidate: dict | str, source_hash: str, workspac
         with lock_path.open("a+b") as lock:
             if os.name == "nt":
                 import msvcrt
+
                 if lock.tell() == 0:
-                    lock.write(b"0"); lock.flush()
+                    lock.write(b"0")
+                    lock.flush()
                 lock.seek(0)
                 deadline = time.monotonic() + 900
                 while True:
@@ -702,8 +789,13 @@ def run_functional(task: dict, candidate: dict | str, source_hash: str, workspac
                             raise TimeoutError("Shared CODESYS lock wait exceeded 900 seconds")
                         time.sleep(0.25)
             with (exec_ws / "stdout.log").open("wb") as out, (exec_ws / "stderr.log").open("wb") as err:
-                proc = subprocess.Popen(codesys_command(command), env=env, stdout=out, stderr=err,
-                    creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
+                proc = subprocess.Popen(
+                    codesys_command(command),
+                    env=env,
+                    stdout=out,
+                    stderr=err,
+                    creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+                )
                 try:
                     result["process_exit_code"] = proc.wait(timeout=max(180, settings.compiler_timeout))
                 except subprocess.TimeoutExpired:
@@ -711,9 +803,18 @@ def run_functional(task: dict, candidate: dict | str, source_hash: str, workspac
                     result["status"], result["reason"] = "TIMEOUT", "CODESYS simulation process timeout"
             if result["status"] != "TIMEOUT":
                 evidence = read_json(exec_ws / "simulation_evidence.json")
-                if evidence.get("request_id") != token or evidence.get("source_sha256") != source_hash or evidence.get("physical_connection_allowed") is not False:
+                if (
+                    evidence.get("request_id") != token
+                    or evidence.get("source_sha256") != source_hash
+                    or evidence.get("physical_connection_allowed") is not False
+                ):
                     raise ValueError("Unrelated simulation evidence")
-                result.update({k: evidence.get(k) for k in ("status", "actual_simulation", "execution_verified", "infrastructure_error")})
+                result.update(
+                    {
+                        k: evidence.get(k)
+                        for k in ("status", "actual_simulation", "execution_verified", "infrastructure_error")
+                    }
+                )
                 if result["process_exit_code"] != 0:
                     result["status"], result["reason"] = "TOOL_ERROR", "Simulation IDE process exited abnormally"
                 elif evidence.get("execution_verified"):
@@ -733,15 +834,23 @@ def run_functional(task: dict, candidate: dict | str, source_hash: str, workspac
                     if cases != task.get("tests"):
                         task_eval = dict(task)
                         task_eval["tests"] = cases
-                    trace = {"task_id": task["id"], "task_sha256": digest(task_eval), "source_sha256": source_hash,
-                             "backend": "CODESYS_SIMULATION", "operator": "automated CODESYS IDE simulation scan sequencer",
-                             "acquisition": "automated CODESYS IDE simulation with native scan sequencer",
-                             "observed_utc": now(), "evidence_files": ["simulation_evidence.json", "test_program.st", "request.json"], "cases": cases_dict,
-                             "scan_control": "One FB invocation per real simulator task scan; separate freshly initialized instance per fixed test"}
+                    trace = {
+                        "task_id": task["id"],
+                        "task_sha256": digest(task_eval),
+                        "source_sha256": source_hash,
+                        "backend": "CODESYS_SIMULATION",
+                        "operator": "automated CODESYS IDE simulation scan sequencer",
+                        "acquisition": "automated CODESYS IDE simulation with native scan sequencer",
+                        "observed_utc": now(),
+                        "evidence_files": ["simulation_evidence.json", "test_program.st", "request.json"],
+                        "cases": cases_dict,
+                        "scan_control": "One FB invocation per real simulator task scan; separate freshly initialized instance per fixed test",
+                    }
                     write_json(workspace / "trace.json", trace)
                     if exec_ws != workspace:
                         sync_ascii_artifacts(exec_ws, workspace)
                     from .functional import evaluate_trace
+
                     evaluated = evaluate_trace(task_eval, source_hash, trace, evidence_root=workspace)
                     result["status"] = evaluated["status"]
                     result["functional"] = evaluated

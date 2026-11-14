@@ -105,8 +105,7 @@ def validate_self_tests(
 
             if cumulative_dt + step_dt_int <= max_total_dt_ms:
                 norm_inputs = {
-                    declared_inputs_ci.get(k.casefold(), k): copy.deepcopy(v)
-                    for k, v in step.get("inputs", {}).items()
+                    declared_inputs_ci.get(k.casefold(), k): copy.deepcopy(v) for k, v in step.get("inputs", {}).items()
                 }
                 norm_expected = {
                     declared_outputs_ci.get(k.casefold(), k): copy.deepcopy(v)

@@ -1,4 +1,5 @@
 """Offline boundary tests. Synthetic evidence here is never benchmark evidence."""
+
 from __future__ import annotations
 
 import json
@@ -25,8 +26,15 @@ class CoreTests(unittest.TestCase):
 
     def test_stale_evidence_is_rejected(self):
         request = {"request_id": "current", "source_sha256": "abc"}
-        evidence = {"backend": "CODESYS", "request_id": "old", "source_sha256": "abc", "finished": True,
-                    "rebuild_invoked": True, "error_count": 0, "compiled_pou_crc": "1"}
+        evidence = {
+            "backend": "CODESYS",
+            "request_id": "old",
+            "source_sha256": "abc",
+            "finished": True,
+            "rebuild_invoked": True,
+            "error_count": 0,
+            "compiled_pou_crc": "1",
+        }
         with self.assertRaisesRegex(ValueError, "Stale"):
             verify_evidence(evidence, request)
         evidence["request_id"] = "current"
@@ -39,13 +47,20 @@ class CoreTests(unittest.TestCase):
 
     def test_missing_codesys_is_tool_error_never_compile_failure(self):
         with tempfile.TemporaryDirectory() as tmp:
-            result = compile_st({"id": "UNIT_ONLY"}, {"declaration": "FUNCTION_BLOCK FB_Task\nVAR END_VAR", "implementation": ""}, Path(tmp)/"run", Settings())
+            result = compile_st(
+                {"id": "UNIT_ONLY"},
+                {"declaration": "FUNCTION_BLOCK FB_Task\nVAR END_VAR", "implementation": ""},
+                Path(tmp) / "run",
+                Settings(),
+            )
             self.assertEqual(result.status, "TOOL_ERROR")
             self.assertFalse(result.success)
             self.assertIsNone(result.evidence)
 
     def test_full_st_split(self):
-        text = "FUNCTION_BLOCK FB_Task\nVAR_INPUT A:BOOL; END_VAR\nVAR_OUTPUT B:BOOL; END_VAR\nB := A;\nEND_FUNCTION_BLOCK"
+        text = (
+            "FUNCTION_BLOCK FB_Task\nVAR_INPUT A:BOOL; END_VAR\nVAR_OUTPUT B:BOOL; END_VAR\nB := A;\nEND_FUNCTION_BLOCK"
+        )
         self.assertEqual(normalize_candidate(text)["implementation"], "B := A;")
 
     def test_aggregation_denominator_and_missing_are_explicit(self):
@@ -55,22 +70,31 @@ class CoreTests(unittest.TestCase):
         self.assertIsNone(summary["first_pass_compilation_rate"])
         self.assertEqual(summary["compiler_coverage"], 0)
         first.update(first_pass_compiled=False, final_compiled=True, status="UNVERIFIED")
-        first["compilation_attempts"] = [{"status": "COMPILE_FAIL", "success": False}, {"status": "PASS", "success": True}]
+        first["compilation_attempts"] = [
+            {"status": "COMPILE_FAIL", "success": False},
+            {"status": "PASS", "success": True},
+        ]
         summary = aggregate([first], 32)[2]
-        self.assertEqual(summary["final_compilation_rate"], 1/32)
+        self.assertEqual(summary["final_compilation_rate"], 1 / 32)
         self.assertEqual(summary["repair_effectiveness"], 1)
         self.assertEqual(audit_records([first]), [])
         with self.assertRaisesRegex(ValueError, "Duplicate"):
             aggregate([first, first], 32)
 
     def test_boolean_and_number_are_not_interchangeable(self):
-        self.assertFalse(equal(1, True)); self.assertFalse(equal(False, 0))
+        self.assertFalse(equal(1, True))
+        self.assertFalse(equal(False, 0))
         self.assertTrue(equal({"x": 1.000001, "extra": 8}, {"x": 1.0}))
         self.assertFalse(equal(float("nan"), 1.0))
 
     def test_reference_trace_cannot_be_counted_as_plc(self):
         task = load_tasks()[0]
-        trace = {"task_id": task["id"], "task_sha256": digest(task), "source_sha256": "x", "backend": "PYTHON_REFERENCE_ONLY"}
+        trace = {
+            "task_id": task["id"],
+            "task_sha256": digest(task),
+            "source_sha256": "x",
+            "backend": "PYTHON_REFERENCE_ONLY",
+        }
         with self.assertRaisesRegex(ValueError, "real CODESYS"):
             evaluate_trace(task, "x", trace)
 
@@ -91,13 +115,18 @@ class CoreTests(unittest.TestCase):
     def test_harness_repair_and_stop_control_flow_only(self):
         # Injected doubles test state-machine logic only; outputs remain in temp directories.
         from plc_agent.compiler import CompileResult
+
         class FakeClient:
             def respond(self, *args, **kwargs):
-                return {"text": json.dumps({"declaration": "FUNCTION_BLOCK FB_Task", "implementation": ""}), "usage": None}
+                return {
+                    "text": json.dumps({"declaration": "FUNCTION_BLOCK FB_Task", "implementation": ""}),
+                    "usage": None,
+                }
+
         failed = CompileResult("COMPILE_FAIL", diagnostics=[{"severity": "Error", "text": "synthetic unit error"}])
         passed = CompileResult("PASS", success=True)
         with tempfile.TemporaryDirectory() as tmp, patch("plc_agent.harness.compile_st", side_effect=[failed, passed]):
-            result = run_harness(load_tasks()[0], "UNIT_TEST_DOUBLE", Path(tmp)/"run", FakeClient(), Settings())
+            result = run_harness(load_tasks()[0], "UNIT_TEST_DOUBLE", Path(tmp) / "run", FakeClient(), Settings())
             self.assertEqual(result["repair_attempts"], 1)
             self.assertEqual(result["status"], "UNVERIFIED")
             self.assertTrue(result["final_compiled"])
@@ -115,7 +144,9 @@ class CoreTests(unittest.TestCase):
                     client = Mock()
                     client.respond.return_value = {"text": json.dumps(candidate)}
                     backend = FakeBackend(compile_fn=lambda *args: CompileResult(status, infrastructure_error="unit"))
-                    result = run_harness(task, "unit", Path(tmp) / status, client, Settings(), backend=backend, ablation="no_planner")
+                    result = run_harness(
+                        task, "unit", Path(tmp) / status, client, Settings(), backend=backend, ablation="no_planner"
+                    )
                     self.assertEqual(result["status"], status)
                     self.assertIsNone(result["first_pass_compiled"])
                     self.assertIsNone(result["final_compiled"])
@@ -133,10 +164,13 @@ class CoreTests(unittest.TestCase):
             client.respond.return_value = {"text": json.dumps(candidate)}
             outcomes = iter([CompileResult("COMPILE_FAIL"), CompileResult("TOOL_ERROR", infrastructure_error="unit")])
             backend = FakeBackend(compile_fn=lambda *args: next(outcomes))
-            result = run_harness(load_tasks()[0], "unit", Path(tmp) / "run", client, Settings(), backend=backend, ablation="no_planner")
+            result = run_harness(
+                load_tasks()[0], "unit", Path(tmp) / "run", client, Settings(), backend=backend, ablation="no_planner"
+            )
             self.assertEqual(result["status"], "TOOL_ERROR")
             self.assertIs(result["first_pass_compiled"], False)
             self.assertIsNone(result["final_compiled"])
+
 
 if __name__ == "__main__":
     unittest.main()

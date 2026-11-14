@@ -41,7 +41,9 @@ class CliAndConfigTests(unittest.TestCase):
 
     def test_cli_test_reference_fake_backend(self):
         with tempfile.TemporaryDirectory() as tmp:
-            with patch("sys.argv", ["plc-agent", "test-reference", "--task", "SELF001", "--backend", "fake", "--out-dir", tmp]):
+            with patch(
+                "sys.argv", ["plc-agent", "test-reference", "--task", "SELF001", "--backend", "fake", "--out-dir", tmp]
+            ):
                 code = main()
                 self.assertEqual(code, 0)
 
@@ -76,7 +78,9 @@ class CliAndConfigTests(unittest.TestCase):
                         patch("plc_agent.cli.ROOT", root),
                         patch("plc_agent.cli.load_tasks", return_value=[task]),
                         patch("plc_agent.cli.summarize"),
-                        patch("plc_agent.simulation.run_functional", return_value={"status": "UNVERIFIED"}) as run_functional,
+                        patch(
+                            "plc_agent.simulation.run_functional", return_value={"status": "UNVERIFIED"}
+                        ) as run_functional,
                     ):
                         self.assertEqual(main(), 0)
                     self.assertEqual(run_functional.call_args.args[1:3], (selected, selected_hash))
@@ -103,7 +107,10 @@ class CliAndConfigTests(unittest.TestCase):
                 return {"status": "UNVERIFIED", "evidence_files": []}
 
             with (
-                patch("sys.argv", ["plc-agent", "import-trace", "--condition", "E3", "--task", "UNIT", "--trace", str(trace_path)]),
+                patch(
+                    "sys.argv",
+                    ["plc-agent", "import-trace", "--condition", "E3", "--task", "UNIT", "--trace", str(trace_path)],
+                ),
                 patch("plc_agent.cli.ROOT", root),
                 patch("plc_agent.cli.load_tasks", return_value=[task]),
                 patch("plc_agent.functional.evaluate_trace", side_effect=check_hash),

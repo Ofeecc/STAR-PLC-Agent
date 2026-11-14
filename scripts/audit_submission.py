@@ -3,6 +3,7 @@
 This checks reproducibility and consistency of saved evidence. It does not
 authenticate a remote model or prove that a human-entered runtime trace is true.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -28,24 +29,74 @@ from plc_agent.functional import evaluate_trace
 from plc_agent.metrics import aggregate, audit_records
 
 INCLUDED_DIRECTORIES = {
-    "src", "tests", "scripts", "codesys", "configs", "dataset", "requirements",
-    "experiments", "results", "docs", "report", "presentation", "video",
+    "src",
+    "tests",
+    "scripts",
+    "codesys",
+    "configs",
+    "dataset",
+    "requirements",
+    "experiments",
+    "results",
+    "docs",
+    "report",
+    "presentation",
+    "video",
 }
 INCLUDED_ROOT_FILES = {"README.md", "pyproject.toml", ".gitignore", ".env.example", "LICENSE"}
 EXCLUDED_PARTS = {
-    ".git", ".local", ".venv", "venv", "env", "envs", "node_modules",
-    "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache", "installers",
-    "weights", "checkpoints", ".cache", "cache", "caches", "build", "tmp", "temp",
+    ".git",
+    ".local",
+    ".venv",
+    "venv",
+    "env",
+    "envs",
+    "node_modules",
+    "__pycache__",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".ruff_cache",
+    "installers",
+    "weights",
+    "checkpoints",
+    ".cache",
+    "cache",
+    "caches",
+    "build",
+    "tmp",
+    "temp",
 }
 EXCLUDED_SUFFIXES = {
-    ".pyc", ".pyo", ".pdb", ".bak", ".tmp", ".cache", ".precompilecache",
-    ".opt", ".compileinfo", ".bootinfo", ".exe", ".msi", ".msix", ".dll",
-    ".safetensors", ".ckpt", ".pt", ".pth", ".onnx", ".gguf",
+    ".pyc",
+    ".pyo",
+    ".pdb",
+    ".bak",
+    ".tmp",
+    ".cache",
+    ".precompilecache",
+    ".opt",
+    ".compileinfo",
+    ".bootinfo",
+    ".exe",
+    ".msi",
+    ".msix",
+    ".dll",
+    ".safetensors",
+    ".ckpt",
+    ".pt",
+    ".pth",
+    ".onnx",
+    ".gguf",
 }
 SECRET_PATTERNS = (
     ("api_token", re.compile(rb"\bsk-(?:proj-)?[A-Za-z0-9_-]{20,}")),
     ("bearer_token", re.compile(rb"(?i)\bbearer[ \t]+[A-Za-z0-9_.-]{24,}")),
-    ("assigned_api_key", re.compile(rb'''(?i)["']?(?:api[_-]?key|access[_-]?token|client[_-]?secret)["']?[ \t]*[:=][ \t]*["']([A-Za-z0-9_.-]{24,})["']''')),
+    (
+        "assigned_api_key",
+        re.compile(
+            rb"""(?i)["']?(?:api[_-]?key|access[_-]?token|client[_-]?secret)["']?[ \t]*[:=][ \t]*["']([A-Za-z0-9_.-]{24,})["']"""
+        ),
+    ),
 )
 
 
@@ -85,7 +136,7 @@ def artifact_path(value: str | Path, root: Path = ROOT) -> Path:
     position = raw.casefold().rfind(marker.casefold())
     if position < 0:
         raise ValueError("Historical evidence path has no project-root suffix")
-    suffix = raw[position + len(marker):]
+    suffix = raw[position + len(marker) :]
     resolved = (root / suffix).resolve()
     if not resolved.is_relative_to(root):
         raise ValueError("Relocated evidence path escapes project")
@@ -100,7 +151,11 @@ def exclusion_reason(path: Path, root: Path = ROOT) -> str | None:
         return "cache, local state, environment, installer, or build output"
     if name != ".env.example" and (name == ".env" or name.startswith(".env.") or "apikey" in name or "api_key" in name):
         return "private API configuration"
-    if name.endswith(".key") or name.startswith("auth.") or name in {"credentials", "credentials.json", "token.json", "secrets.json"}:
+    if (
+        name.endswith(".key")
+        or name.startswith("auth.")
+        or name in {"credentials", "credentials.json", "token.json", "secrets.json"}
+    ):
         return "credential material"
     if path.suffix.casefold() in EXCLUDED_SUFFIXES or name.endswith("~") or "simulation.bootinfo" in name:
         return "rebuildable cache, executable, installer, model weight, or temporary file"
@@ -175,7 +230,9 @@ def scan_file(path: Path, label: str, secrets: list[bytes]) -> list[dict[str, An
                 if member.is_dir():
                     continue
                 if member.file_size > 64 * 1024 * 1024:
-                    findings.append({"path": label + "!" + member.filename, "kind": "oversized_unscanned_member", "count": 1})
+                    findings.append(
+                        {"path": label + "!" + member.filename, "kind": "oversized_unscanned_member", "count": 1}
+                    )
                     continue
                 findings.extend(_scan_bytes(archive.read(member), label + "!" + member.filename, secrets))
     return findings
@@ -184,7 +241,11 @@ def scan_file(path: Path, label: str, secrets: list[bytes]) -> list[dict[str, An
 def check_compile_attempt(attempt: dict[str, Any], root: Path = ROOT) -> dict[str, Any]:
     status = attempt.get("status")
     if status not in {"PASS", "COMPILE_FAIL"}:
-        return {"eligible": False, "status": status, "infrastructure_error_retained": bool(attempt.get("infrastructure_error"))}
+        return {
+            "eligible": False,
+            "status": status,
+            "infrastructure_error_retained": bool(attempt.get("infrastructure_error")),
+        }
     evidence_path = artifact_path(attempt["evidence"], root)
     evidence = read_json(evidence_path)
     folder = evidence_path.parent
@@ -210,9 +271,14 @@ def check_compile_attempt(attempt: dict[str, Any], root: Path = ROOT) -> dict[st
     project = artifact_path(attempt["project"], root)
     if not project.is_file() or project.stat().st_size == 0:
         raise ValueError("Compiled project is absent or empty")
-    return {"eligible": True, "status": status, "error_count": evidence["error_count"],
-            "source_sha256": attempt["source_sha256"], "request_id": request["request_id"],
-            "evidence": relative(evidence_path, root)}
+    return {
+        "eligible": True,
+        "status": status,
+        "error_count": evidence["error_count"],
+        "source_sha256": attempt["source_sha256"],
+        "request_id": request["request_id"],
+        "evidence": relative(evidence_path, root),
+    }
 
 
 def _check_item(identifier: str, state: str, detail: str, paths: list[str] | None = None) -> dict[str, Any]:
@@ -229,8 +295,13 @@ def _media_duration(path: Path) -> float | None:
     ffprobe = shutil.which("ffprobe")
     if ffprobe:
         try:
-            result = subprocess.run([ffprobe, "-v", "error", "-show_entries", "format=duration", "-of", "json", str(path)],
-                                    capture_output=True, text=True, check=True, timeout=20)
+            result = subprocess.run(
+                [ffprobe, "-v", "error", "-show_entries", "format=duration", "-of", "json", str(path)],
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=20,
+            )
             return float(json.loads(result.stdout)["format"]["duration"])
         except (OSError, ValueError, KeyError, subprocess.SubprocessError):
             pass
@@ -282,7 +353,9 @@ def _pdf_page_count(path: Path) -> int | None:
     if not command:
         return None
     try:
-        result = subprocess.run([command, str(path)], capture_output=True, text=True, errors="replace", check=True, timeout=20)
+        result = subprocess.run(
+            [command, str(path)], capture_output=True, text=True, errors="replace", check=True, timeout=20
+        )
         match = re.search(r"(?m)^Pages:\s+(\d+)\s*$", result.stdout)
         return int(match.group(1)) if match else None
     except (OSError, ValueError, subprocess.SubprocessError):
@@ -298,7 +371,14 @@ def audit(root: Path = ROOT, *, scan_secrets: bool = True) -> dict[str, Any]:
     coverage = public_coverage(tasks, read_json(source)) if source.is_file() else None
     dataset_ok = not validation["errors"] and coverage is not None and coverage["verbatim_all_included"]
     dataset_ok = dataset_ok and validation["by_kind"].get("self_built", 0) >= 10
-    checks.append(_check_item("dataset", "PASS" if dataset_ok else "FAIL", f"{validation['task_count']} tasks; {validation['test_cases']} cases; {validation['test_steps']} scan steps; verbatim official coverage checked", ["dataset", "requirements/source/public_bank_original.json"]))
+    checks.append(
+        _check_item(
+            "dataset",
+            "PASS" if dataset_ok else "FAIL",
+            f"{validation['task_count']} tasks; {validation['test_cases']} cases; {validation['test_steps']} scan steps; verbatim official coverage checked",
+            ["dataset", "requirements/source/public_bank_original.json"],
+        )
+    )
     errors.extend(validation["errors"])
     if not dataset_ok:
         errors.append("Dataset coverage or structural validation failed")
@@ -316,7 +396,14 @@ def audit(root: Path = ROOT, *, scan_secrets: bool = True) -> dict[str, Any]:
                 raise ValueError("Source alignment record is not affirmative")
         except (OSError, ValueError, KeyError, TypeError) as exc:
             errors.append("Original source integrity: " + str(exc))
-    checks.append(_check_item("source_records", "PASS" if source_ok else "PARTIAL", "Original source byte hashes and documented adaptation/alignment records are retained", ["requirements/source", "requirements/source_alignment.json", "dataset/specifications"]))
+    checks.append(
+        _check_item(
+            "source_records",
+            "PASS" if source_ok else "PARTIAL",
+            "Original source byte hashes and documented adaptation/alignment records are retained",
+            ["requirements/source", "requirements/source_alignment.json", "dataset/specifications"],
+        )
+    )
 
     preflight_path = root / "results/summary/compiler_preflight.json"
     preflight_checks = []
@@ -329,7 +416,14 @@ def audit(root: Path = ROOT, *, scan_secrets: bool = True) -> dict[str, Any]:
         template_path = artifact_path("codesys/templates/benchmark.project", root)
         if sha256_file(template_path) != preflight.get("template_sha256"):
             raise ValueError("Frozen compiler template changed after preflight")
-        checks.append(_check_item("codesys_compiler", "PASS", "Real valid-invalid-repaired evidence was rechecked, including the failed build", [relative(preflight_path, root)]))
+        checks.append(
+            _check_item(
+                "codesys_compiler",
+                "PASS",
+                "Real valid-invalid-repaired evidence was rechecked, including the failed build",
+                [relative(preflight_path, root)],
+            )
+        )
     except (OSError, ValueError, KeyError, TypeError) as exc:
         checks.append(_check_item("codesys_compiler", "PARTIAL", str(exc), [relative(preflight_path, root)]))
         if preflight_path.is_file():
@@ -341,7 +435,14 @@ def audit(root: Path = ROOT, *, scan_secrets: bool = True) -> dict[str, Any]:
         model_data = read_json(model_path)
         model_ids = model_data.get("selected", [])
         compatible = {row["model"] for row in model_data.get("model_tests", []) if row.get("tool_roundtrip")}
-    checks.append(_check_item("two_models", "PASS" if len(set(model_ids)) >= 2 and set(model_ids).issubset(compatible) else "PARTIAL", "Two relay IDs require actual streaming/tool round trips; upstream identity, context limits and prices remain unverified unless separately evidenced", [relative(model_path, root)]))
+    checks.append(
+        _check_item(
+            "two_models",
+            "PASS" if len(set(model_ids)) >= 2 and set(model_ids).issubset(compatible) else "PARTIAL",
+            "Two relay IDs require actual streaming/tool round trips; upstream identity, context limits and prices remain unverified unless separately evidenced",
+            [relative(model_path, root)],
+        )
+    )
 
     campaign_path = root / "results/summary/campaign.json"
     records, compile_checks, computed_metrics = [], [], []
@@ -372,7 +473,9 @@ def audit(root: Path = ROOT, *, scan_secrets: bool = True) -> dict[str, Any]:
                 condition = condition_map[row["condition"]]
                 if row.get("task_sha256") != digest(task):
                     raise ValueError("Task changed after this run")
-                if framework_identity(row.get("framework")) != framework_identity(condition.get("framework")) or row.get("model") != condition.get("model"):
+                if framework_identity(row.get("framework")) != framework_identity(
+                    condition.get("framework")
+                ) or row.get("model") != condition.get("model"):
                     raise ValueError("Recorded framework/model differs from the campaign condition")
                 for attempt in row.get("compilation_attempts", []):
                     compile_checks.append({"record": key, **check_compile_attempt(attempt, root)})
@@ -405,8 +508,17 @@ def audit(root: Path = ROOT, *, scan_secrets: bool = True) -> dict[str, Any]:
                                 reference["path"] = replacement
                             else:
                                 trace["evidence_files"][trace["evidence_files"].index(reference)] = replacement
-                    checked = evaluate_trace(task, row["compilation_attempts"][-1]["source_sha256"], trace, evidence_root=trace_root)
-                    for field in ("status", "planned_cases", "evaluated_cases", "passed_cases", "evaluated_steps", "passed_steps"):
+                    checked = evaluate_trace(
+                        task, row["compilation_attempts"][-1]["source_sha256"], trace, evidence_root=trace_root
+                    )
+                    for field in (
+                        "status",
+                        "planned_cases",
+                        "evaluated_cases",
+                        "passed_cases",
+                        "evaluated_steps",
+                        "passed_steps",
+                    ):
                         if checked[field] != row["functional"][field]:
                             raise ValueError("Functional trace recomputation disagrees with " + field)
             except (OSError, ValueError, KeyError, TypeError, IndexError) as exc:
@@ -416,23 +528,63 @@ def audit(root: Path = ROOT, *, scan_secrets: bool = True) -> dict[str, Any]:
             computed_metrics = aggregate(records, len(tasks))
             for condition in computed_metrics:
                 rows = [r for r in records if r["condition"] == condition["condition"]]
-                done = len(rows) == len(tasks) and all(r.get("status") != "NOT_RUN" and r.get("finished_utc") for r in rows)
-                condition_statuses.append({"condition": condition["condition"], "executed": sum(r.get("status") != "NOT_RUN" for r in rows), "planned": len(tasks), "execution_complete": done,
-                                           "status_counts": condition["status_counts"], "compiler_coverage": condition["compiler_coverage"]})
-            execution_complete = len(condition_statuses) == 4 and all(c["execution_complete"] for c in condition_statuses)
+                done = len(rows) == len(tasks) and all(
+                    r.get("status") != "NOT_RUN" and r.get("finished_utc") for r in rows
+                )
+                condition_statuses.append(
+                    {
+                        "condition": condition["condition"],
+                        "executed": sum(r.get("status") != "NOT_RUN" for r in rows),
+                        "planned": len(tasks),
+                        "execution_complete": done,
+                        "status_counts": condition["status_counts"],
+                        "compiler_coverage": condition["compiler_coverage"],
+                    }
+                )
+            execution_complete = len(condition_statuses) == 4 and all(
+                c["execution_complete"] for c in condition_statuses
+            )
             metrics_path = root / "results/summary/metrics.json"
             if metrics_path.is_file() and read_json(metrics_path).get("conditions") != computed_metrics:
                 warnings.append("Saved metrics differ from the captured campaign; regenerate aggregate before hand-in")
         except (ValueError, KeyError, TypeError) as exc:
             errors.append("Metric recomputation: " + str(exc))
-    checks.append(_check_item("four_condition_benchmark", "PASS" if execution_complete else "PARTIAL", f"{sum(c['executed'] for c in condition_statuses)} of {4 * len(tasks)} runs executed; failed runs remain in the denominator and raw logs", ["results/summary/campaign.json", "experiments"]))
+    checks.append(
+        _check_item(
+            "four_condition_benchmark",
+            "PASS" if execution_complete else "PARTIAL",
+            f"{sum(c['executed'] for c in condition_statuses)} of {4 * len(tasks)} runs executed; failed runs remain in the denominator and raw logs",
+            ["results/summary/campaign.json", "experiments"],
+        )
+    )
     frameworks = {framework_identity(r.get("framework")) for r in records if r.get("status") != "NOT_RUN"}
-    pairs = {(r["condition"], r["model"]) for r in records if r.get("status") != "NOT_RUN" and r.get("compilation_attempts")}
-    checks.append(_check_item("existing_agent_baseline", "PASS" if execution_complete and len(frameworks) >= 2 and len(pairs) == 4 else "PARTIAL", "The saved record must identify the actual existing framework and show its compiler tool use with both selected models", ["docs/baseline.md", "docs/smolagents_baseline.md", "results/summary/codex_compatibility.json"]))
+    pairs = {
+        (r["condition"], r["model"]) for r in records if r.get("status") != "NOT_RUN" and r.get("compilation_attempts")
+    }
+    checks.append(
+        _check_item(
+            "existing_agent_baseline",
+            "PASS" if execution_complete and len(frameworks) >= 2 and len(pairs) == 4 else "PARTIAL",
+            "The saved record must identify the actual existing framework and show its compiler tool use with both selected models",
+            ["docs/baseline.md", "docs/smolagents_baseline.md", "results/summary/codex_compatibility.json"],
+        )
+    )
     compiled_rows = [r for r in records if r.get("final_compiled")]
-    tested_rows = [r for r in compiled_rows if r["functional"]["planned_cases"] > 0 and r["functional"]["evaluated_cases"] == r["functional"]["planned_cases"]]
+    tested_rows = [
+        r
+        for r in compiled_rows
+        if r["functional"]["planned_cases"] > 0
+        and r["functional"]["evaluated_cases"] == r["functional"]["planned_cases"]
+    ]
     functional_complete = bool(compiled_rows) and len(tested_rows) == len(compiled_rows)
-    checks.append(_check_item("functional_execution", "PASS" if functional_complete else "PARTIAL", f"All fixed cases evaluated for {len(tested_rows)} of {len(compiled_rows)} compiled candidates; Python reference checks are excluded", ["experiments", "docs/functional_testing.md"]))
+    checks.append(
+        _check_item(
+            "functional_execution",
+            "PASS" if functional_complete else "PARTIAL",
+            f"All fixed cases evaluated for {len(tested_rows)} of {len(compiled_rows)} compiled candidates; Python reference checks are excluded",
+            ["experiments", "docs/functional_testing.md"],
+        )
+    )
 
     screenshot_ok = False
     screenshot_record = root / "results/summary/compiler_screenshot.json"
@@ -440,20 +592,30 @@ def audit(root: Path = ROOT, *, scan_secrets: bool = True) -> dict[str, Any]:
         try:
             shot = read_json(screenshot_record)
             shot_file = artifact_path(shot["path"], root)
-            screenshot_ok = (shot_file.resolve().is_relative_to(root.resolve())
-                             and shot_file.is_file() and shot_file.stat().st_size > 0
-                             and shot.get("sha256") == sha256_file(shot_file)
-                             and shot.get("actual_codesys_gui") is True
-                             and bool(shot.get("captured_utc")))
+            screenshot_ok = (
+                shot_file.resolve().is_relative_to(root.resolve())
+                and shot_file.is_file()
+                and shot_file.stat().st_size > 0
+                and shot.get("sha256") == sha256_file(shot_file)
+                and shot.get("actual_codesys_gui") is True
+                and bool(shot.get("captured_utc"))
+            )
         except (OSError, ValueError, KeyError, TypeError):
             screenshot_ok = False
-    checks.append(_check_item("compiler_gui_screenshot", "PASS" if screenshot_ok else "PARTIAL",
-        "The requested real IDE screenshot needs a hash-bound capture record; diagnostic text is not a GUI screenshot",
-        ["docs/compiler_screenshot.md", "results/summary/compiler_screenshot.json"]))
+    checks.append(
+        _check_item(
+            "compiler_gui_screenshot",
+            "PASS" if screenshot_ok else "PARTIAL",
+            "The requested real IDE screenshot needs a hash-bound capture record; diagnostic text is not a GUI screenshot",
+            ["docs/compiler_screenshot.md", "results/summary/compiler_screenshot.json"],
+        )
+    )
 
     report_pdfs = [p for p in [root / "report/report.pdf"] if p.is_file()]
     slides = [p for p in [root / "presentation/slides.pptx"] if p.is_file()]
-    report_ok = bool(report_pdfs) and any(p.read_bytes().startswith(b"%PDF-") and b"%%EOF" in p.read_bytes()[-2048:] for p in report_pdfs)
+    report_ok = bool(report_pdfs) and any(
+        p.read_bytes().startswith(b"%PDF-") and b"%%EOF" in p.read_bytes()[-2048:] for p in report_pdfs
+    )
     ppt_info = []
     for path in slides:
         try:
@@ -462,8 +624,22 @@ def audit(root: Path = ROOT, *, scan_secrets: bool = True) -> dict[str, Any]:
                 ppt_info.append({"path": relative(path, root), "slides": count, "editable_ooxml": count > 0})
         except (OSError, zipfile.BadZipFile):
             errors.append("Invalid PPTX container: " + relative(path, root))
-    checks.append(_check_item("english_pdf_report", "PASS" if report_ok else "PARTIAL", "A readable compiled PDF is required; visual QA and numerical consistency must also be documented", [relative(p, root) for p in report_pdfs]))
-    checks.append(_check_item("editable_presentation", "PASS" if any(p["editable_ooxml"] and 6 <= p["slides"] <= 8 for p in ppt_info) else "PARTIAL", "An editable OOXML deck of 6-8 slides is expected; container inspection is not visual QA", [p["path"] for p in ppt_info]))
+    checks.append(
+        _check_item(
+            "english_pdf_report",
+            "PASS" if report_ok else "PARTIAL",
+            "A readable compiled PDF is required; visual QA and numerical consistency must also be documented",
+            [relative(p, root) for p in report_pdfs],
+        )
+    )
+    checks.append(
+        _check_item(
+            "editable_presentation",
+            "PASS" if any(p["editable_ooxml"] and 6 <= p["slides"] <= 8 for p in ppt_info) else "PARTIAL",
+            "An editable OOXML deck of 6-8 slides is expected; container inspection is not visual QA",
+            [p["path"] for p in ppt_info],
+        )
+    )
     qa_path = root / "results/summary/artifact_qa.json"
     qa_ok = False
     if qa_path.is_file():
@@ -472,31 +648,71 @@ def audit(root: Path = ROOT, *, scan_secrets: bool = True) -> dict[str, Any]:
             report_qa, slides_qa = qa["report"], qa["presentation"]
             report_file, slides_file = artifact_path(report_qa["path"], root), artifact_path(slides_qa["path"], root)
             page_count = _pdf_page_count(report_file) or report_qa.get("page_count")
-            slide_count = next((entry["slides"] for entry in ppt_info if entry["path"] == relative(slides_file, root)), None)
+            slide_count = next(
+                (entry["slides"] for entry in ppt_info if entry["path"] == relative(slides_file, root)), None
+            )
             report_pages = report_qa.get("reviewed_pages", [])
             slide_pages = slides_qa.get("reviewed_slides", [])
-            qa_ok = (report_qa.get("compiled") is True and report_qa.get("visual_inspection_passed") is True
-                     and isinstance(page_count, int) and page_count > 0 and report_pages == list(range(1, page_count + 1))
-                     and report_qa.get("sha256") == sha256_file(report_file)
-                     and slides_qa.get("visual_inspection_passed") is True and slides_qa.get("editable_verified") is True
-                     and isinstance(slide_count, int) and slide_count > 0 and slide_pages == list(range(1, slide_count + 1))
-                     and slides_qa.get("sha256") == sha256_file(slides_file))
+            qa_ok = (
+                report_qa.get("compiled") is True
+                and report_qa.get("visual_inspection_passed") is True
+                and isinstance(page_count, int)
+                and page_count > 0
+                and report_pages == list(range(1, page_count + 1))
+                and report_qa.get("sha256") == sha256_file(report_file)
+                and slides_qa.get("visual_inspection_passed") is True
+                and slides_qa.get("editable_verified") is True
+                and isinstance(slide_count, int)
+                and slide_count > 0
+                and slide_pages == list(range(1, slide_count + 1))
+                and slides_qa.get("sha256") == sha256_file(slides_file)
+            )
             if not qa_ok:
                 warnings.append("Artifact QA record is incomplete or its hashes no longer match final files")
         except (OSError, ValueError, KeyError, TypeError) as exc:
             warnings.append("Artifact QA record could not be verified: " + str(exc))
-    checks.append(_check_item("artifact_visual_qa", "PASS" if qa_ok else "PARTIAL", "A saved, hash-bound review records actual PDF-page inspection and editable-slide inspection; it is an operator assertion backed by the renderer workflow", ["results/summary/artifact_qa.json"]))
+    checks.append(
+        _check_item(
+            "artifact_visual_qa",
+            "PASS" if qa_ok else "PARTIAL",
+            "A saved, hash-bound review records actual PDF-page inspection and editable-slide inspection; it is an operator assertion backed by the renderer workflow",
+            ["results/summary/artifact_qa.json"],
+        )
+    )
     video_info = []
     for path in sorted((root / "video").glob("*")):
         if path.suffix.casefold() in {".mp4", ".mov", ".mkv", ".webm", ".avi"}:
             video_info.append({"path": relative(path, root), "seconds": _media_duration(path)})
     short_video = any(v["seconds"] is not None and 0 < v["seconds"] < 360 for v in video_info)
-    recording_materials = (root / "presentation/speaker_notes.md").is_file() and any(p.is_file() for p in (root / "video/recording_plan.md", root / "video/README.md"))
-    checks.append(_check_item("explanation_video", "PASS" if short_video else "PARTIAL", "Verified video must be shorter than 360 seconds; a recording-ready fallback is useful but does not count as a finished teacher-required recording", [v["path"] for v in video_info]))
-    checks.append(_check_item("recording_materials", "PASS" if recording_materials else "PARTIAL", "Speaking notes, a practical recording plan and defense questions should match the final results", ["presentation/speaker_notes.md", "presentation/defense_qa.md", "video/recording_plan.md"]))
+    recording_materials = (root / "presentation/speaker_notes.md").is_file() and any(
+        p.is_file() for p in (root / "video/recording_plan.md", root / "video/README.md")
+    )
+    checks.append(
+        _check_item(
+            "explanation_video",
+            "PASS" if short_video else "PARTIAL",
+            "Verified video must be shorter than 360 seconds; a recording-ready fallback is useful but does not count as a finished teacher-required recording",
+            [v["path"] for v in video_info],
+        )
+    )
+    checks.append(
+        _check_item(
+            "recording_materials",
+            "PASS" if recording_materials else "PARTIAL",
+            "Speaking notes, a practical recording plan and defense questions should match the final results",
+            ["presentation/speaker_notes.md", "presentation/defense_qa.md", "video/recording_plan.md"],
+        )
+    )
     unit_log = root / "results/summary/unit_tests.log"
     unit_text = unit_log.read_text(encoding="utf-8-sig", errors="replace") if unit_log.is_file() else ""
-    checks.append(_check_item("offline_tests", "PASS" if re.search(r"Ran \d+ tests", unit_text) and re.search(r"\bOK\b", unit_text) else "PARTIAL", "Saved offline unit/regression evidence; synthetic unit fixtures are never campaign results", ["results/summary/unit_tests.log"]))
+    checks.append(
+        _check_item(
+            "offline_tests",
+            "PASS" if re.search(r"Ran \d+ tests", unit_text) and re.search(r"\bOK\b", unit_text) else "PARTIAL",
+            "Saved offline unit/regression evidence; synthetic unit fixtures are never campaign results",
+            ["results/summary/unit_tests.log"],
+        )
+    )
 
     selected, omitted = submission_inventory(root)
     secret_findings = []
@@ -504,24 +720,42 @@ def audit(root: Path = ROOT, *, scan_secrets: bool = True) -> dict[str, Any]:
         secrets = known_secrets(root)
         for path in selected:
             secret_findings.extend(scan_file(path, relative(path, root), secrets))
-    checks.append(_check_item("submission_secret_scan", "FAIL" if secret_findings else "PASS" if scan_secrets else "PARTIAL", f"{len(selected)} eligible files scanned; {len(secret_findings)} findings. Secret values are never reported."))
+    checks.append(
+        _check_item(
+            "submission_secret_scan",
+            "FAIL" if secret_findings else "PASS" if scan_secrets else "PARTIAL",
+            f"{len(selected)} eligible files scanned; {len(secret_findings)} findings. Secret values are never reported.",
+        )
+    )
     if secret_findings:
         errors.append("Secret scan findings must be resolved before packaging")
     if manifest_before and campaign_path.read_bytes() != manifest_before:
         warnings.append("Campaign changed while this audit ran; rerun after execution finishes")
     pending = [c["id"] for c in checks if c["status"] == "PARTIAL"]
     status = "FAIL" if errors else "PARTIAL" if pending or warnings else "PASS"
-    return {"schema_version": 1, "audited_utc": now(), "status": status,
-            "evidence_scope": "Offline consistency and packaging audit; no paid model calls or PLC invocations",
-            "checks": checks, "pending_mandatory_or_delivery_checks": pending, "errors": errors,
-            "warnings": warnings, "dataset": validation, "public_coverage": coverage,
-            "compiler_preflight_recomputed": preflight_checks, "campaign_conditions": condition_statuses,
-            "eligible_compilation_attempts_recomputed": sum(c["eligible"] for c in compile_checks),
-            "metrics_recomputed": computed_metrics, "campaign_snapshot_sha256": hashlib.sha256(manifest_before).hexdigest() if manifest_before else None,
-            "presentation_containers": ppt_info,
-            "video_files": video_info, "secret_findings": secret_findings,
-            "selected_file_count": len(selected), "selected_bytes": sum(p.stat().st_size for p in selected),
-            "exclusions": omitted}
+    return {
+        "schema_version": 1,
+        "audited_utc": now(),
+        "status": status,
+        "evidence_scope": "Offline consistency and packaging audit; no paid model calls or PLC invocations",
+        "checks": checks,
+        "pending_mandatory_or_delivery_checks": pending,
+        "errors": errors,
+        "warnings": warnings,
+        "dataset": validation,
+        "public_coverage": coverage,
+        "compiler_preflight_recomputed": preflight_checks,
+        "campaign_conditions": condition_statuses,
+        "eligible_compilation_attempts_recomputed": sum(c["eligible"] for c in compile_checks),
+        "metrics_recomputed": computed_metrics,
+        "campaign_snapshot_sha256": hashlib.sha256(manifest_before).hexdigest() if manifest_before else None,
+        "presentation_containers": ppt_info,
+        "video_files": video_info,
+        "secret_findings": secret_findings,
+        "selected_file_count": len(selected),
+        "selected_bytes": sum(p.stat().st_size for p in selected),
+        "exclusions": omitted,
+    }
 
 
 def main() -> int:
@@ -534,9 +768,20 @@ def main() -> int:
     result = audit(root)
     output = args.output or root / "results/summary/submission_audit.json"
     write_json(output, result)
-    print(json.dumps({"status": result["status"], "audit": str(output), "errors": result["errors"],
-                      "pending": result["pending_mandatory_or_delivery_checks"], "warnings": result["warnings"],
-                      "secret_finding_count": len(result["secret_findings"])}, ensure_ascii=False, indent=2))
+    print(
+        json.dumps(
+            {
+                "status": result["status"],
+                "audit": str(output),
+                "errors": result["errors"],
+                "pending": result["pending_mandatory_or_delivery_checks"],
+                "warnings": result["warnings"],
+                "secret_finding_count": len(result["secret_findings"]),
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
     return 1 if result["status"] == "FAIL" or (args.require_complete and result["status"] != "PASS") else 0
 
 

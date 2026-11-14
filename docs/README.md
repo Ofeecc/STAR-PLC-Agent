@@ -16,6 +16,7 @@
 | [functional_trace_format.md](functional_trace_format.md) | Importing actual CODESYS functional observations & trace format |
 | [simulation_testing.md](simulation_testing.md) | Optional automated testing in CODESYS IDE simulation |
 | [ltl_semantics.md](ltl_semantics.md) | Discrete scan semantics and LTL interpretation |
+| [formal_verification_architecture_and_boundaries.md](formal_verification_architecture_and_boundaries.md) | 自研 ST-to-SMV 形式化验证器原理、NuSMV/nuXmv 能力边界与六态严谨返回规范 |
 | [baseline.md](baseline.md) | Historical Codex CLI / baseline compatibility setup record |
 | [reproducibility.md](reproducibility.md) | Reproducing and auditing the benchmark |
 | [静态分析与模型检查使用指南.md](静态分析与模型检查使用指南.md) | Static Analysis Light 与本地 NuSMV/nuXmv SMV 模型检查使用指南 |

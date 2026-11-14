@@ -97,21 +97,26 @@ class NuXmvIntegrationTests(unittest.TestCase):
         self.assertIn("go_msat\n", inf_script)
         self.assertNotIn("build_boolean_model", inf_script)
         self.assertIn("check_invar_ic3\n", inf_script)
-        self.assertIn(f"echo {SBMC_START_MARKER}\nmsat_check_ltlspec_sbmc_inc -k 15\necho {LTL_RESULTS_MARKER}\ncheck_ltlspec_ic3\n", inf_script)
+        self.assertIn(
+            f"echo {SBMC_START_MARKER}\nmsat_check_ltlspec_sbmc_inc -k 15\necho {LTL_RESULTS_MARKER}\ncheck_ltlspec_ic3\n",
+            inf_script,
+        )
 
         word_script = _build_nuxmv_smt_script("VAR w : unsigned word[32];", invar_count=1, ltl_count=0, bmc_bound=25)
         self.assertIn("go_msat\nbuild_boolean_model\ncheck_invar_ic3\nquit\n", word_script)
 
     def test_parse_results_strips_sbmc_phase_and_handles_ltl_and_invariant(self):
-        stdout = "\n".join([
-            "-- invariant x >= 0  is true",
-            SBMC_START_MARKER,
-            "-- no counterexample found with bound 1",
-            "-- LTL specification G (x >= 0)  is false",
-            LTL_RESULTS_MARKER,
-            "-- LTL specification G (x >= 0)  is true",
-            "-- specification !dead  is false",
-        ])
+        stdout = "\n".join(
+            [
+                "-- invariant x >= 0  is true",
+                SBMC_START_MARKER,
+                "-- no counterexample found with bound 1",
+                "-- LTL specification G (x >= 0)  is false",
+                LTL_RESULTS_MARKER,
+                "-- LTL specification G (x >= 0)  is true",
+                "-- specification !dead  is false",
+            ]
+        )
         parsed = parse_results(stdout, "", 0, expected_count=3)
         self.assertEqual(parsed["status"], "COUNTEREXAMPLE")
         self.assertEqual(parsed["checked_properties"], 3)
@@ -148,13 +153,22 @@ class NuXmvIntegrationTests(unittest.TestCase):
             buf = io.StringIO()
             with (
                 mock.patch("plc_agent.model_checker.check_model", return_value=fake_res) as mocked,
-                mock.patch.object(sys, "argv", [
-                    "plc-agent", "check-model",
-                    "--model", str(smv_path),
-                    "--out-dir", str(Path(tmp) / "out"),
-                    "--tool", "nuxmv",
-                    "--engine", "smt",
-                ]),
+                mock.patch.object(
+                    sys,
+                    "argv",
+                    [
+                        "plc-agent",
+                        "check-model",
+                        "--model",
+                        str(smv_path),
+                        "--out-dir",
+                        str(Path(tmp) / "out"),
+                        "--tool",
+                        "nuxmv",
+                        "--engine",
+                        "smt",
+                    ],
+                ),
                 contextlib.redirect_stdout(buf),
             ):
                 rc = cli.main()

@@ -18,8 +18,10 @@ BASELINE_MAP = {
 }
 STANDARD_CONDITIONS = ("E1", "E2", "E3", "E4", "A1", "A2", "A3", "S1", "S2")
 
+
 def rate(numerator, denominator):
     return numerator / denominator if denominator else None
+
 
 def mcnemar_exact(b: int, c: int) -> float:
     """Exact two-sided McNemar binomial test for paired comparison between methods.
@@ -37,8 +39,9 @@ def mcnemar_exact(b: int, c: int) -> float:
         return 1.0
     k = min(b, c)
     n = b + c
-    p = 2.0 * sum(math.comb(n, i) * (0.5 ** n) for i in range(k + 1))
+    p = 2.0 * sum(math.comb(n, i) * (0.5**n) for i in range(k + 1))
     return min(1.0, float(p))
+
 
 def bootstrap_ci(
     values: list[float],
@@ -57,8 +60,10 @@ def bootstrap_ci(
     high_idx = min(n_boot - 1, int((1.0 - alpha / 2.0) * n_boot))
     return (float(boot_means[low_idx]), float(boot_means[high_idx]))
 
+
 def _usage_number(value):
     return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else None
+
 
 def _usage_totals(usage):
     """Do not turn an unreported usage field into zero tokens."""
@@ -75,9 +80,11 @@ def _usage_totals(usage):
     coverage = {key: sum(x is not None for x in items) for key, items in values.items()}
     return totals, coverage
 
+
 def _reported_sum(rows, key):
     values = [row.get(key) for row in rows]
     return sum(values) if values and all(_usage_number(v) is not None for v in values) else None
+
 
 def aggregate(records, planned_tasks, conditions=None):
     seen = [(r["condition"], r["task_id"]) for r in records]
@@ -106,9 +113,19 @@ def aggregate(records, planned_tasks, conditions=None):
         attempted = sum(r["first_pass_compiled"] is not None for r in rows)
         passed_cases = sum(r["functional"]["passed_cases"] for r in rows)
         evaluated_cases = sum(r["functional"]["evaluated_cases"] for r in rows)
-        evaluated_tasks = sum(r["functional"]["evaluated_cases"] == r["functional"]["planned_cases"] and r["functional"]["planned_cases"] > 0 for r in rows)
-        task_passes = sum(r["functional"]["status"] == "PASS" and r["functional"]["planned_cases"] > 0
-                          and r["functional"]["passed_cases"] == r["functional"]["evaluated_cases"] == r["functional"]["planned_cases"] for r in rows)
+        evaluated_tasks = sum(
+            r["functional"]["evaluated_cases"] == r["functional"]["planned_cases"]
+            and r["functional"]["planned_cases"] > 0
+            for r in rows
+        )
+        task_passes = sum(
+            r["functional"]["status"] == "PASS"
+            and r["functional"]["planned_cases"] > 0
+            and r["functional"]["passed_cases"]
+            == r["functional"]["evaluated_cases"]
+            == r["functional"]["planned_cases"]
+            for r in rows
+        )
         usage = [u for r in rows for u in r["usage"] if isinstance(u, dict)]
         totals, usage_coverage = _usage_totals(usage)
         repaired = sum(r["first_pass_compiled"] is False and r["final_compiled"] is True for r in rows)
@@ -120,12 +137,43 @@ def aggregate(records, planned_tasks, conditions=None):
             and r.get("verification", {}).get("status") in ("PASS", "VERIFIED")
             for r in rows
         )
+        verification_inconclusive = sum(
+            isinstance(r.get("verification"), dict) and r["verification"].get("status") == "INCONCLUSIVE" for r in rows
+        )
+        verification_unsupported = sum(
+            isinstance(r.get("verification"), dict) and r["verification"].get("status") == "UNSUPPORTED_ST"
+            for r in rows
+        )
+        verification_eval_rows = [
+            r
+            for r in rows
+            if isinstance(r.get("verification"), dict)
+            and r["verification"].get("status") in ("PASS", "VERIFIED", "COUNTEREXAMPLE", "VIOLATION", "FAIL")
+        ]
+        verification_prop_ratios = []
+        for r in verification_eval_rows:
+            v = r["verification"]
+            ratio = v.get("property_pass_ratio")
+            if ratio is None and (v.get("unknown_properties") or 0) == 0:
+                total_p = v.get("total_properties") or 0
+                passed_p = v.get("passed_properties") or 0
+                if total_p > 0:
+                    ratio = passed_p / total_p
+            if ratio is not None:
+                verification_prop_ratios.append(float(ratio))
 
         # Bootstrap confidence intervals
         comp_vals = [1.0 if r["final_compiled"] is True else 0.0 for r in rows]
         pass_vals = [
-            1.0 if (r["functional"]["status"] == "PASS" and r["functional"]["planned_cases"] > 0
-                    and r["functional"]["passed_cases"] == r["functional"]["evaluated_cases"] == r["functional"]["planned_cases"]) else 0.0
+            1.0
+            if (
+                r["functional"]["status"] == "PASS"
+                and r["functional"]["planned_cases"] > 0
+                and r["functional"]["passed_cases"]
+                == r["functional"]["evaluated_cases"]
+                == r["functional"]["planned_cases"]
+            )
+            else 0.0
             for r in rows
         ]
         compilation_ci = bootstrap_ci(comp_vals) if comp_vals else None
@@ -138,13 +186,23 @@ def aggregate(records, planned_tasks, conditions=None):
         if base_cond and base_cond in all_cond_rows:
             base_rows = all_cond_rows[base_cond]
             c_map = {
-                r["task_id"]: (r["functional"]["status"] == "PASS" and r["functional"]["planned_cases"] > 0
-                               and r["functional"]["passed_cases"] == r["functional"]["evaluated_cases"] == r["functional"]["planned_cases"])
+                r["task_id"]: (
+                    r["functional"]["status"] == "PASS"
+                    and r["functional"]["planned_cases"] > 0
+                    and r["functional"]["passed_cases"]
+                    == r["functional"]["evaluated_cases"]
+                    == r["functional"]["planned_cases"]
+                )
                 for r in rows
             }
             b_map = {
-                r["task_id"]: (r["functional"]["status"] == "PASS" and r["functional"]["planned_cases"] > 0
-                               and r["functional"]["passed_cases"] == r["functional"]["evaluated_cases"] == r["functional"]["planned_cases"])
+                r["task_id"]: (
+                    r["functional"]["status"] == "PASS"
+                    and r["functional"]["planned_cases"] > 0
+                    and r["functional"]["passed_cases"]
+                    == r["functional"]["evaluated_cases"]
+                    == r["functional"]["planned_cases"]
+                )
                 for r in base_rows
             }
             shared = set(c_map.keys()) & set(b_map.keys())
@@ -161,58 +219,75 @@ def aggregate(records, planned_tasks, conditions=None):
                 c_comp_disc = sum(not c_comp_map[t] and b_comp_map[t] for t in shared_comp)
                 mcnemar_comp_p = mcnemar_exact(b_comp_disc, c_comp_disc)
 
-        cost_total = sum(r["api_cost"] for r in rows) if rows and all(r.get("api_cost") is not None for r in rows) else None
+        cost_total = (
+            sum(r["api_cost"] for r in rows) if rows and all(r.get("api_cost") is not None for r in rows) else None
+        )
 
-        out.append({
-            "condition": condition,
-            "planned_tasks": planned_tasks,
-            "recorded_tasks": len(rows),
-            "status_counts": dict(Counter(r["status"] for r in rows)),
-            "actual_first_compilations": attempted,
-            "first_pass_compiled_tasks": first,
-            "final_compiled_tasks": final,
-            # A planned campaign has no measured rate until at least one real compiler evaluation.
-            "first_pass_compilation_rate": rate(first, planned_tasks) if attempted else None,
-            "final_compilation_rate": rate(final, planned_tasks) if attempted else None,
-            "compilation_rate_ci": compilation_ci,
-            "first_pass_rate_among_evaluated": rate(first, attempted),
-            "compiler_coverage": rate(attempted, planned_tasks),
-            "campaign_complete": len(rows) == planned_tasks and attempted == planned_tasks,
-            "repair_successes": repaired,
-            "repair_effectiveness": rate(repaired, initial_fail),
-            "passed_cases": passed_cases,
-            "evaluated_cases": evaluated_cases,
-            "test_case_pass_rate": rate(passed_cases, evaluated_cases),
-            "passed_tasks": task_passes,
-            "fully_evaluated_tasks": evaluated_tasks,
-            "test_task_pass_rate": rate(task_passes, evaluated_tasks),
-            "test_task_pass_rate_ci": test_pass_ci,
-            "functional_task_coverage": rate(evaluated_tasks, planned_tasks),
-            "verification_passed_tasks": verification_passes,
-            "verification_pass_rate": rate(verification_passes, planned_tasks) if attempted else None,
-            "mcnemar_p_value_vs_baseline": mcnemar_p,
-            "mcnemar_compilation_p_value_vs_baseline": mcnemar_comp_p,
-            "compiler_call_count": sum(len(r["compilation_attempts"]) for r in rows),
-            "reported_tool_call_count": _reported_sum(rows, "tool_call_count"),
-            "reported_llm_call_count": _reported_sum(rows, "llm_calls"),
-            "mean_elapsed_seconds": mean(r["elapsed_seconds"] for r in rows if r["status"] != "NOT_RUN") if any(r["status"] != "NOT_RUN" for r in rows) else None,
-            "token_usage_reported_calls": len(usage),
-            "reported_tokens": totals if usage else None,
-            "mean_tokens_per_task": rate(totals["total_tokens"], len(rows)) if totals.get("total_tokens") is not None else None,
-            "token_usage_field_reported_records": usage_coverage,
-            "token_usage_reporting_unit": "provider usage records; a Codex turn record can aggregate several internal model calls",
-            "api_cost": cost_total,
-            "mean_cost_per_task": rate(cost_total, len(rows)) if cost_total is not None else None,
-        })
+        out.append(
+            {
+                "condition": condition,
+                "planned_tasks": planned_tasks,
+                "recorded_tasks": len(rows),
+                "status_counts": dict(Counter(r["status"] for r in rows)),
+                "actual_first_compilations": attempted,
+                "first_pass_compiled_tasks": first,
+                "final_compiled_tasks": final,
+                # A planned campaign has no measured rate until at least one real compiler evaluation.
+                "first_pass_compilation_rate": rate(first, planned_tasks) if attempted else None,
+                "final_compilation_rate": rate(final, planned_tasks) if attempted else None,
+                "compilation_rate_ci": compilation_ci,
+                "first_pass_rate_among_evaluated": rate(first, attempted),
+                "compiler_coverage": rate(attempted, planned_tasks),
+                "campaign_complete": len(rows) == planned_tasks and attempted == planned_tasks,
+                "repair_successes": repaired,
+                "repair_effectiveness": rate(repaired, initial_fail),
+                "passed_cases": passed_cases,
+                "evaluated_cases": evaluated_cases,
+                "test_case_pass_rate": rate(passed_cases, evaluated_cases),
+                "passed_tasks": task_passes,
+                "fully_evaluated_tasks": evaluated_tasks,
+                "test_task_pass_rate": rate(task_passes, evaluated_tasks),
+                "test_task_pass_rate_ci": test_pass_ci,
+                "functional_task_coverage": rate(evaluated_tasks, planned_tasks),
+                "verification_passed_tasks": verification_passes,
+                "verification_evaluated_tasks": len(verification_eval_rows),
+                "verification_inconclusive_tasks": verification_inconclusive,
+                "verification_unsupported_tasks": verification_unsupported,
+                "verification_pass_rate": rate(verification_passes, planned_tasks) if attempted else None,
+                "verification_pass_rate_among_evaluated": rate(verification_passes, len(verification_eval_rows)),
+                "mean_property_pass_ratio": mean(verification_prop_ratios) if verification_prop_ratios else None,
+                "mcnemar_p_value_vs_baseline": mcnemar_p,
+                "mcnemar_compilation_p_value_vs_baseline": mcnemar_comp_p,
+                "compiler_call_count": sum(len(r["compilation_attempts"]) for r in rows),
+                "reported_tool_call_count": _reported_sum(rows, "tool_call_count"),
+                "reported_llm_call_count": _reported_sum(rows, "llm_calls"),
+                "mean_elapsed_seconds": mean(r["elapsed_seconds"] for r in rows if r["status"] != "NOT_RUN")
+                if any(r["status"] != "NOT_RUN" for r in rows)
+                else None,
+                "token_usage_reported_calls": len(usage),
+                "reported_tokens": totals if usage else None,
+                "mean_tokens_per_task": rate(totals["total_tokens"], len(rows))
+                if totals.get("total_tokens") is not None
+                else None,
+                "token_usage_field_reported_records": usage_coverage,
+                "token_usage_reporting_unit": "provider usage records; a Codex turn record can aggregate several internal model calls",
+                "api_cost": cost_total,
+                "mean_cost_per_task": rate(cost_total, len(rows)) if cost_total is not None else None,
+            }
+        )
     return out
+
 
 def audit_records(records):
     errors = []
     for row in records:
         attempts = row["compilation_attempts"]
         valid = [a for a in attempts if a["status"] in ("PASS", "COMPILE_FAIL")]
-        if row["first_pass_compiled"] is not None and (not attempts or attempts[0]["status"] not in ("PASS", "COMPILE_FAIL")
-                                                      or attempts[0]["success"] != row["first_pass_compiled"]):
+        if row["first_pass_compiled"] is not None and (
+            not attempts
+            or attempts[0]["status"] not in ("PASS", "COMPILE_FAIL")
+            or attempts[0]["success"] != row["first_pass_compiled"]
+        ):
             errors.append(f"{row['condition']}/{row['task_id']}: first-pass mismatch")
         if row["final_compiled"] is True:
             if not any(a["success"] for a in valid):
@@ -229,6 +304,8 @@ def audit_records(records):
             errors.append(f"{row['condition']}/{row['task_id']}: invalid test-step counts")
         if f["evaluated_cases"] and f["evidence"] not in ("CODESYS_SIMULATION", "CODESYS_RUNTIME"):
             errors.append(f"{row['condition']}/{row['task_id']}: non-CODESYS functional evidence")
-        if f["status"] == "PASS" and not (f["planned_cases"] > 0 and f["passed_cases"] == f["evaluated_cases"] == f["planned_cases"]):
+        if f["status"] == "PASS" and not (
+            f["planned_cases"] > 0 and f["passed_cases"] == f["evaluated_cases"] == f["planned_cases"]
+        ):
             errors.append(f"{row['condition']}/{row['task_id']}: functional PASS requires every planned case to pass")
     return errors

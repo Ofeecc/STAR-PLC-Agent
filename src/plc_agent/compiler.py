@@ -29,23 +29,28 @@ class CompileResult:
     evidence: str | None = None
     process_exit_code: int | None = None
 
+
 def normalize_candidate(source):
     if isinstance(source, str):
         # Full ST text is accepted for a single FB, split at the last END_VAR.
         import re
+
         source = re.sub(r"\s*END_FUNCTION_BLOCK\s*$", "", source, flags=re.I)
         ends = list(re.finditer(r"\bEND_VAR\b", source, flags=re.I))
         if not ends:
             raise ValueError("Full ST must include FB declaration and END_VAR")
         pos = ends[-1].end()
         source = {"declaration": source[:pos], "implementation": source[pos:].strip(), "supporting_objects": []}
-    if not isinstance(source, dict) or not all(isinstance(source.get(k), str) for k in ("declaration", "implementation")):
+    if not isinstance(source, dict) or not all(
+        isinstance(source.get(k), str) for k in ("declaration", "implementation")
+    ):
         raise ValueError("Candidate needs string declaration and implementation")
     result = {k: source[k] for k in ("declaration", "implementation")}
     result["supporting_objects"] = source.get("supporting_objects", [])
     if not isinstance(result["supporting_objects"], list):
         raise ValueError("supporting_objects must be a list")
     return result
+
 
 def final_compile_attempt(row, candidate=None):
     """Find the successful compile of the selected candidate in a result row."""
@@ -59,15 +64,21 @@ def final_compile_attempt(row, candidate=None):
     else:
         source_hash = digest(normalize_candidate(candidate))
         for attempt in reversed(attempts):
-            if attempt["status"] == "PASS" and attempt["success"] is True and attempt.get("source_sha256") == source_hash:
+            if (
+                attempt["status"] == "PASS"
+                and attempt["success"] is True
+                and attempt.get("source_sha256") == source_hash
+            ):
                 return attempt
     raise ValueError("final candidate has no matching successful compiler evidence")
+
 
 def _kill_tree(process):
     if os.name == "nt":
         subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"], capture_output=True, timeout=15)
     else:
         process.kill()
+
 
 def codesys_command(argv):
     """CODESYS parses raw Windows command line and requires quotes AFTER '='."""
@@ -77,12 +88,13 @@ def codesys_command(argv):
     for arg in argv[1:]:
         if arg.startswith("--") and "=" in arg:
             name, value = arg.split("=", 1)
-            if any(c in value for c in ('"', '\n', '\r')):
+            if any(c in value for c in ('"', "\n", "\r")):
                 raise ValueError("Unsupported quote/newline in CODESYS argument")
-            parts.append(name + '=\"' + value + '\"')
+            parts.append(name + '="' + value + '"')
         else:
             parts.append(subprocess.list2cmdline([arg]))
     return " ".join(parts)
+
 
 def verify_evidence(evidence, request):
     """Fail closed: exit code, empty/stale messages alone never prove compilation."""
@@ -92,13 +104,18 @@ def verify_evidence(evidence, request):
         raise ValueError("Incomplete compiler evidence")
     if evidence.get("infrastructure_error"):
         return "TOOL_ERROR", False
-    if not evidence.get("rebuild_invoked") or type(evidence.get("error_count")) is not int or evidence["error_count"] < 0:
+    if (
+        not evidence.get("rebuild_invoked")
+        or type(evidence.get("error_count")) is not int
+        or evidence["error_count"] < 0
+    ):
         raise ValueError("No reliable rebuild diagnostics")
     if evidence["error_count"]:
         return "COMPILE_FAIL", False
     if not evidence.get("compiled_pou_crc"):
         raise ValueError("FB_Task was not demonstrably compiled")
     return "PASS", True
+
 
 @contextmanager
 def compiler_lock(timeout=180):
@@ -107,9 +124,11 @@ def compiler_lock(timeout=180):
     started = time.monotonic()
     with path.open("a+b") as lock:
         if lock.tell() == 0:
-            lock.write(b"0"); lock.flush()
+            lock.write(b"0")
+            lock.flush()
         if os.name == "nt":
             import msvcrt
+
             while True:
                 try:
                     lock.seek(0)
@@ -126,6 +145,7 @@ def compiler_lock(timeout=180):
                 lock.seek(0)
                 msvcrt.locking(lock.fileno(), msvcrt.LK_UNLCK, 1)
 
+
 ASCII_SYNC_FILES = (
     "codesys_evidence.json",
     "simulation_evidence.json",
@@ -133,6 +153,7 @@ ASCII_SYNC_FILES = (
     "stderr.log",
     "request.json",
 )
+
 
 def sync_ascii_artifacts(staged_ws: Path | str, target_ws: Path | str) -> None:
     staged = Path(staged_ws)
@@ -145,6 +166,7 @@ def sync_ascii_artifacts(staged_ws: Path | str, target_ws: Path | str) -> None:
         if src.is_file():
             shutil.copy2(src, target / name)
 
+
 def stage_ascii_workspace(
     workspace: Path | str,
     script_path: Path | str,
@@ -156,10 +178,7 @@ def stage_ascii_workspace(
     template = Path(template_path)
 
     paths = (ws, script, template)
-    needs_staging = any(
-        not str(p).isascii() or not str(p.resolve()).isascii()
-        for p in paths
-    )
+    needs_staging = any(not str(p).isascii() or not str(p.resolve()).isascii() for p in paths)
     if not needs_staging:
         return ws, script, template
 
@@ -186,6 +205,7 @@ def stage_ascii_workspace(
 
     return staged_ws, staged_script, staged_tpl
 
+
 def _compile_st(task, source_code, workspace, settings=None):
     cfg = settings or Settings.load()
     candidate = normalize_candidate(source_code)
@@ -193,7 +213,9 @@ def _compile_st(task, source_code, workspace, settings=None):
     workspace.mkdir(parents=True, exist_ok=False)
     source_hash = digest(candidate)
     write_json(workspace / "candidate.json", candidate)
-    (workspace / "FB_Task.st").write_text(candidate["declaration"] + "\n\n" + candidate["implementation"] + "\nEND_FUNCTION_BLOCK\n", encoding="utf-8")
+    (workspace / "FB_Task.st").write_text(
+        candidate["declaration"] + "\n\n" + candidate["implementation"] + "\nEND_FUNCTION_BLOCK\n", encoding="utf-8"
+    )
     request_id = uuid.uuid4().hex
     result = CompileResult("TOOL_ERROR", source_sha256=source_hash, request_id=request_id)
     started = time.monotonic()
@@ -209,18 +231,33 @@ def _compile_st(task, source_code, workspace, settings=None):
         project = exec_ws / "task.project"
         shutil.copy2(staged_template, project)
         result.project = str(project)
-        request = {"request_id": request_id, "source_sha256": source_hash, "task_id": task["id"],
-                   "project": str(project), "candidate": candidate,
-                   "result_path": str(exec_ws / "codesys_evidence.json"), "started_utc": now()}
+        request = {
+            "request_id": request_id,
+            "source_sha256": source_hash,
+            "task_id": task["id"],
+            "project": str(project),
+            "candidate": candidate,
+            "result_path": str(exec_ws / "codesys_evidence.json"),
+            "started_utc": now(),
+        }
         if task.get("id") == "STATIC_ANALYSIS_SMOKE" and task.get("diagnostic_probe_program"):
             request["diagnostic_probe_program"] = task["diagnostic_probe_program"]
         write_json(exec_ws / "request.json", request)
         if exec_ws != workspace:
             write_json(workspace / "request.json", request)
             write_json(exec_ws / "candidate.json", candidate)
-            (exec_ws / "FB_Task.st").write_text(candidate["declaration"] + "\n\n" + candidate["implementation"] + "\nEND_FUNCTION_BLOCK\n", encoding="utf-8")
-        command = [cfg.codesys_exe, "--profile=" + cfg.codesys_profile,
-                   "--runscript=" + str(staged_script), "--scriptargs:" + request_id, "--noUI", "--culture=en"]
+            (exec_ws / "FB_Task.st").write_text(
+                candidate["declaration"] + "\n\n" + candidate["implementation"] + "\nEND_FUNCTION_BLOCK\n",
+                encoding="utf-8",
+            )
+        command = [
+            cfg.codesys_exe,
+            "--profile=" + cfg.codesys_profile,
+            "--runscript=" + str(staged_script),
+            "--scriptargs:" + request_id,
+            "--noUI",
+            "--culture=en",
+        ]
         if cfg.additional_folder:
             command.append("--additionalfolder=" + cfg.additional_folder)
         env = os.environ.copy()
@@ -228,13 +265,21 @@ def _compile_st(task, source_code, workspace, settings=None):
         # Compiler does not need an API credential.
         for key in ("PLC_LLM_API_KEY", "OPENAI_API_KEY", "PLC_API_CONFIG"):
             env.pop(key, None)
-        write_json(exec_ws / "invocation.json", {"argv": command, "template_sha256": hashlib.sha256(Path(cfg.codesys_template).read_bytes()).hexdigest()})
+        write_json(
+            exec_ws / "invocation.json",
+            {"argv": command, "template_sha256": hashlib.sha256(Path(cfg.codesys_template).read_bytes()).hexdigest()},
+        )
         try:
             # Global serial lock prevents concurrent IDE repository access.
             with compiler_lock(cfg.compiler_timeout):
                 with (exec_ws / "stdout.log").open("wb") as out, (exec_ws / "stderr.log").open("wb") as err:
-                    process = subprocess.Popen(codesys_command(command), stdout=out, stderr=err, env=env,
-                                               creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
+                    process = subprocess.Popen(
+                        codesys_command(command),
+                        stdout=out,
+                        stderr=err,
+                        env=env,
+                        creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+                    )
                     try:
                         result.process_exit_code = process.wait(timeout=cfg.compiler_timeout)
                     except subprocess.TimeoutExpired:
@@ -246,7 +291,9 @@ def _compile_st(task, source_code, workspace, settings=None):
                     evidence = read_json(evidence_path)
                     if exec_ws != workspace:
                         sync_ascii_artifacts(exec_ws, workspace)
-                    result.evidence = str(workspace / "codesys_evidence.json") if exec_ws != workspace else str(evidence_path)
+                    result.evidence = (
+                        str(workspace / "codesys_evidence.json") if exec_ws != workspace else str(evidence_path)
+                    )
                     result.status, result.success = verify_evidence(evidence, request)
                     result.diagnostics = evidence.get("diagnostics", [])
                     result.infrastructure_error = evidence.get("infrastructure_error")
@@ -264,6 +311,7 @@ def _compile_st(task, source_code, workspace, settings=None):
     write_json(workspace / "compile_result.json", asdict(result))
     return result
 
+
 def compile_st(task, source_code, workspace, settings=None):
     """Always classify local service I/O failures separately from generated-code errors."""
     started = time.monotonic()
@@ -271,13 +319,18 @@ def compile_st(task, source_code, workspace, settings=None):
         return _compile_st(task, source_code, workspace, settings)
     except OSError as exc:
         candidate = normalize_candidate(source_code)
-        result = CompileResult("TOOL_ERROR", infrastructure_error=f"Local compiler infrastructure: {type(exc).__name__}: {exc}",
-            source_sha256=digest(candidate), elapsed_seconds=time.monotonic() - started)
+        result = CompileResult(
+            "TOOL_ERROR",
+            infrastructure_error=f"Local compiler infrastructure: {type(exc).__name__}: {exc}",
+            source_sha256=digest(candidate),
+            elapsed_seconds=time.monotonic() - started,
+        )
         try:
             write_json(Path(workspace) / "compile_result.json", asdict(result))
         except OSError:
             pass
         return result
+
 
 def actionable_diagnostics(result, max_chars=6000):
     unique = []

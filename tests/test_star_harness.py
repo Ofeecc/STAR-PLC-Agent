@@ -1,4 +1,5 @@
 """Tests for the stateless STAR PLC Agent harness."""
+
 from __future__ import annotations
 
 import copy
@@ -57,16 +58,24 @@ class MockLLMClient:
         self.call_count += 1
         log_dir = Path(log_dir)
         log_dir.mkdir(parents=True, exist_ok=True)
-        self.recorded_calls.append({
-            "model": model,
-            "input": copy.deepcopy(input_items),
-            "log_dir": log_dir,
-        })
-        text = self.responses.pop(0) if self.responses else json.dumps({
-            "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT start, stop: BOOL; END_VAR\nVAR_OUTPUT m1, m2: BOOL; END_VAR",
-            "implementation": "m1 := start AND NOT stop;\nm2 := FALSE;",
-            "supporting_objects": [],
-        })
+        self.recorded_calls.append(
+            {
+                "model": model,
+                "input": copy.deepcopy(input_items),
+                "log_dir": log_dir,
+            }
+        )
+        text = (
+            self.responses.pop(0)
+            if self.responses
+            else json.dumps(
+                {
+                    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT start, stop: BOOL; END_VAR\nVAR_OUTPUT m1, m2: BOOL; END_VAR",
+                    "implementation": "m1 := start AND NOT stop;\nm2 := FALSE;",
+                    "supporting_objects": [],
+                }
+            )
+        )
         return {
             "text": text,
             "output": [],
@@ -133,17 +142,21 @@ class StarHarnessTests(unittest.TestCase):
 
     def test_hash_stagnation_detection(self):
         # Initial code fails compile; repair returns exact same code (hash stagnation)
-        stagnant_code = json.dumps({
-            "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT start, stop: BOOL; END_VAR\nVAR_OUTPUT m1, m2: BOOL; END_VAR",
-            "implementation": "syntax error bad code",
-            "supporting_objects": [],
-        })
-        client = MockLLMClient(responses=[
-            json.dumps({"state_machine": ["IDLE"]}),  # planner
-            stagnant_code,  # coder version 0
-            stagnant_code,  # repair 1 (same hash)
-            stagnant_code,  # repair 2
-        ])
+        stagnant_code = json.dumps(
+            {
+                "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT start, stop: BOOL; END_VAR\nVAR_OUTPUT m1, m2: BOOL; END_VAR",
+                "implementation": "syntax error bad code",
+                "supporting_objects": [],
+            }
+        )
+        client = MockLLMClient(
+            responses=[
+                json.dumps({"state_machine": ["IDLE"]}),  # planner
+                stagnant_code,  # coder version 0
+                stagnant_code,  # repair 1 (same hash)
+                stagnant_code,  # repair 2
+            ]
+        )
         compile_fail = CompileResult(
             status="COMPILE_FAIL",
             success=False,
@@ -169,43 +182,65 @@ class StarHarnessTests(unittest.TestCase):
         # Planner response
         plan_resp = json.dumps({"state_machine": ["IDLE"]})
         # Initial Coder response: passes compile, passes 1 of 4 cases
-        cand_0 = json.dumps({
-            "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT start, stop: BOOL; END_VAR\nVAR_OUTPUT m1, m2: BOOL; END_VAR",
-            "implementation": "m1 := start;\nm2 := FALSE;",
-            "supporting_objects": [],
-        })
+        cand_0 = json.dumps(
+            {
+                "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT start, stop: BOOL; END_VAR\nVAR_OUTPUT m1, m2: BOOL; END_VAR",
+                "implementation": "m1 := start;\nm2 := FALSE;",
+                "supporting_objects": [],
+            }
+        )
         # Tester response: 4 test cases
-        tester_resp = json.dumps([
-            {"id": "case_1", "steps": [{"inputs": {"start": True, "stop": False}, "expected": {"m1": True, "m2": False}}]},
-            {"id": "case_2", "steps": [{"inputs": {"start": False, "stop": True}, "expected": {"m1": False, "m2": False}}]},
-            {"id": "case_3", "steps": [{"inputs": {"start": True, "stop": True}, "expected": {"m1": False, "m2": False}}]},
-            {"id": "case_4", "steps": [{"inputs": {"start": False, "stop": False}, "expected": {"m1": False, "m2": False}}]},
-        ])
+        tester_resp = json.dumps(
+            [
+                {
+                    "id": "case_1",
+                    "steps": [{"inputs": {"start": True, "stop": False}, "expected": {"m1": True, "m2": False}}],
+                },
+                {
+                    "id": "case_2",
+                    "steps": [{"inputs": {"start": False, "stop": True}, "expected": {"m1": False, "m2": False}}],
+                },
+                {
+                    "id": "case_3",
+                    "steps": [{"inputs": {"start": True, "stop": True}, "expected": {"m1": False, "m2": False}}],
+                },
+                {
+                    "id": "case_4",
+                    "steps": [{"inputs": {"start": False, "stop": False}, "expected": {"m1": False, "m2": False}}],
+                },
+            ]
+        )
         # Behavioral repair 1: attempts to reject 3 cases (over 50% cap of 4//2 = 2) + provides cand_1 (uncompilable)
-        cand_uncompilable = json.dumps({
-            "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT start, stop: BOOL; END_VAR\nVAR_OUTPUT m1, m2: BOOL; END_VAR",
-            "implementation": "THIS IS UNCOMPILABLE SYNTAX ERROR",
-            "supporting_objects": [],
-            "reject_cases": [
-                {"id": "case_2", "reason": "flawed"},
-                {"id": "case_3", "reason": "flawed"},
-                {"id": "case_4", "reason": "flawed"},  # Exceeds cap (max 2 allowed)
-            ],
-        })
+        cand_uncompilable = json.dumps(
+            {
+                "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT start, stop: BOOL; END_VAR\nVAR_OUTPUT m1, m2: BOOL; END_VAR",
+                "implementation": "THIS IS UNCOMPILABLE SYNTAX ERROR",
+                "supporting_objects": [],
+                "reject_cases": [
+                    {"id": "case_2", "reason": "flawed"},
+                    {"id": "case_3", "reason": "flawed"},
+                    {"id": "case_4", "reason": "flawed"},  # Exceeds cap (max 2 allowed)
+                ],
+            }
+        )
         # Behavioral repair 2: provides cand_2 (compiles but passes 0 cases - regression!)
-        cand_regressed = json.dumps({
-            "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT start, stop: BOOL; END_VAR\nVAR_OUTPUT m1, m2: BOOL; END_VAR",
-            "implementation": "m1 := FALSE;\nm2 := FALSE;",
-            "supporting_objects": [],
-        })
+        cand_regressed = json.dumps(
+            {
+                "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT start, stop: BOOL; END_VAR\nVAR_OUTPUT m1, m2: BOOL; END_VAR",
+                "implementation": "m1 := FALSE;\nm2 := FALSE;",
+                "supporting_objects": [],
+            }
+        )
 
-        client = MockLLMClient(responses=[
-            plan_resp,
-            cand_0,
-            tester_resp,
-            cand_uncompilable,
-            cand_regressed,
-        ])
+        client = MockLLMClient(
+            responses=[
+                plan_resp,
+                cand_0,
+                tester_resp,
+                cand_uncompilable,
+                cand_regressed,
+            ]
+        )
 
         compile_pass = CompileResult(status="PASS", success=True)
         compile_fail = CompileResult(status="COMPILE_FAIL", success=False)
@@ -225,14 +260,16 @@ class StarHarnessTests(unittest.TestCase):
                 if c["id"] == "case_1" and "m1 := start" in str(candidate):
                     passed += 1
                 else:
-                    failures.append(SimCaseFailure(
-                        case_id=c["id"],
-                        first_bad_step=0,
-                        field="m1",
-                        expected=True,
-                        observed=False,
-                        inputs_prefix=[c["steps"][0]["inputs"]],
-                    ))
+                    failures.append(
+                        SimCaseFailure(
+                            case_id=c["id"],
+                            first_bad_step=0,
+                            field="m1",
+                            expected=True,
+                            observed=False,
+                            inputs_prefix=[c["steps"][0]["inputs"]],
+                        )
+                    )
             status = "PASS" if passed == len(cases) else "TEST_FAIL"
             return SimResult(status=status, passed_cases=passed, evaluated_cases=len(cases), failures=failures)
 
@@ -264,7 +301,9 @@ class StarHarnessTests(unittest.TestCase):
 
         def counting_compile(*args, **kwargs):
             compile_counts[0] += 1
-            return CompileResult(status="COMPILE_FAIL", success=False, diagnostics=[{"severity": "Error", "text": "err"}])
+            return CompileResult(
+                status="COMPILE_FAIL", success=False, diagnostics=[{"severity": "Error", "text": "err"}]
+            )
 
         backend = FakeBackend(compile_fn=counting_compile)
         with tempfile.TemporaryDirectory() as tmp:

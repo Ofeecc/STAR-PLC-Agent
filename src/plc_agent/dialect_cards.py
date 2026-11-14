@@ -121,6 +121,19 @@ END_CASE;""",
     },
 }
 
+STATIC_ANALYSIS_LIGHT_CARD: dict[str, str] = {
+    "id": "static_analysis_light",
+    "title": "CODESYS Static Analysis Light (SA0027 / SA0033)",
+    "body": """// Avoid SA0027 identifier collision with IEC keywords/reserved library symbols & SA0033 unused variables:
+// 1. If the required task interface declares variables named `error`, `status`, `state`, `mode`, `result`, or `info`,
+//    add the CODESYS attribute right before the variable declaration if SA0027 warns:
+VAR_OUTPUT
+    {attribute 'analysis' := '-27'}
+    error : BOOL := FALSE;
+END_VAR
+// 2. Declare only variables that are actively read and written (avoid SA0033 unused variable warnings).""",
+}
+
 _ORDERED_CARD_IDS = list(DIALECT_CARDS.keys())
 
 
@@ -183,7 +196,9 @@ def _score_card(card_id: str, task_view: dict[str, Any]) -> int:
     elif card_id == "inout_struct_array":
         if inouts:
             score += 60
-            if any("ARRAY" in str(v.get("type", "")).upper() or "ST_" in str(v.get("type", "")).upper() for v in inouts):
+            if any(
+                "ARRAY" in str(v.get("type", "")).upper() or "ST_" in str(v.get("type", "")).upper() for v in inouts
+            ):
                 score += 40
         if any("ST_" in t for t in types):
             score += 30
@@ -205,6 +220,22 @@ def _score_card(card_id: str, task_view: dict[str, Any]) -> int:
             score += 30
 
     return score
+
+
+def select_static_analysis_hint(task_view: dict[str, Any]) -> dict[str, str] | None:
+    """Return the SA0027/SA0033 light static analysis hint card when relevant to the task interface."""
+    text = (
+        str(task_view.get("title", ""))
+        + " "
+        + str(task_view.get("requirements", ""))
+        + " "
+        + str(task_view.get("scenario", ""))
+    ).lower()
+    reserved_names = {"error", "status", "state", "mode", "result", "info"}
+    iface_names = {str(v.get("name", "")).lower() for v in task_view.get("interface", []) if isinstance(v, dict)}
+    if (iface_names & reserved_names) or any(tok in text for tok in ("sa0027", "sa0033", "analysis")):
+        return copy.deepcopy(STATIC_ANALYSIS_LIGHT_CARD)
+    return None
 
 
 def select_dialect_cards(task_view: dict[str, Any], max_cards: int = 4) -> list[dict[str, str]]:

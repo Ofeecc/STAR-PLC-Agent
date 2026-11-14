@@ -1,4 +1,5 @@
 """Run an in-IDE script with captured binary logs, using a real installed profile."""
+
 import argparse
 import os
 import subprocess
@@ -22,10 +23,23 @@ env = os.environ.copy()
 env["PLC_CODESYS_TEMPLATE"] = str(root / "codesys/templates/benchmark.project")
 env["PLC_CODESYS_PROBE"] = str(root / "results/raw/codesys_installation.json")
 env["PLC_CODESYS_INSTALL_ROOT"] = "D:/Codesys/CODESYS"
-command = [args.exe, "--profile=" + args.profile, "--runscript=" + str((root / args.script).resolve()), "--noUI", "--culture=en"]
+command = [
+    args.exe,
+    "--profile=" + args.profile,
+    "--runscript=" + str((root / args.script).resolve()),
+    "--noUI",
+    "--culture=en",
+]
 with log.open("wb") as stream:
-    proc = subprocess.run(codesys_command(command), cwd=root, env=env, stdout=stream, stderr=subprocess.STDOUT,
-        timeout=args.timeout, creationflags=subprocess.CREATE_NO_WINDOW)
+    proc = subprocess.run(
+        codesys_command(command),
+        cwd=root,
+        env=env,
+        stdout=stream,
+        stderr=subprocess.STDOUT,
+        timeout=args.timeout,
+        creationflags=subprocess.CREATE_NO_WINDOW,
+    )
 print("CODESYS exit:", proc.returncode)
 print("Log:", log)
 raise SystemExit(proc.returncode)

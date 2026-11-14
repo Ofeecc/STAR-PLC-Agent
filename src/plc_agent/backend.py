@@ -3,6 +3,7 @@
 Supports real CODESYS execution via CodesysBackend and fast deterministic
 testing via FakeBackend with failure truncation to the first diverging scan step.
 """
+
 from __future__ import annotations
 
 import copy
@@ -71,12 +72,18 @@ def find_first_mismatch(
         if name not in actual:
             return (name, exp_val, None)
         act_val = actual[name]
-        if task.get("id") == "PUB008" and task.get("specification_version", "").startswith(("normalized", "2.")) and inputs is not None:
+        if (
+            task.get("id") == "PUB008"
+            and task.get("specification_version", "").startswith(("normalized", "2."))
+            and inputs is not None
+        ):
             from .array_contracts import analog_field_matches
+
             if not analog_field_matches(name, act_val, exp_val, inputs):
                 return (name, exp_val, act_val)
         elif name in times:
             from .timed_contracts import duration_ns
+
             try:
                 if duration_ns(act_val) != duration_ns(exp_val):
                     return (name, exp_val, act_val)
@@ -216,7 +223,7 @@ class CodesysBackend:
                     exp_val = expected.get(field_name)
                     obs_val = None
 
-            inputs_prefix = [copy.deepcopy(s["inputs"]) for s in steps[:first_bad_step + 1]]
+            inputs_prefix = [copy.deepcopy(s["inputs"]) for s in steps[: first_bad_step + 1]]
             failures.append(
                 SimCaseFailure(
                     case_id=case_id,
@@ -328,7 +335,7 @@ class FakeBackend:
                         exp_val = expected.get(field_name)
                         obs_val = observed.get(field_name) if isinstance(observed, dict) else observed
 
-                    inputs_prefix = [copy.deepcopy(s["inputs"]) for s in steps[:step_idx + 1]]
+                    inputs_prefix = [copy.deepcopy(s["inputs"]) for s in steps[: step_idx + 1]]
                     failures.append(
                         SimCaseFailure(
                             case_id=case_id,

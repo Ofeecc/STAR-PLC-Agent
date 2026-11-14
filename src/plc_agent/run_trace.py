@@ -1,4 +1,5 @@
 """Discovery and execution-trace extraction for live and archived agent runs."""
+
 from __future__ import annotations
 
 import difflib
@@ -9,7 +10,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any, Callable
 
 from .backend import SimCaseFailure, SimResult
-from .common import digest, read_json
+from .common import digest
 
 _MARKERS = (
     "result.json",
@@ -91,7 +92,9 @@ def _detect_framework_kind(ws: Path, result: dict | None, runtime_cfg: dict | No
         return "star"
     if fw in ("custom_tool_loop", "claude_code", "codex_cli", "baseline"):
         return "baseline"
-    if any((ws / p).exists() for p in ("plan.json", "dialect_cards.json", "llm_planner", "llm_code_00", "selftest.json")):
+    if any(
+        (ws / p).exists() for p in ("plan.json", "dialect_cards.json", "llm_planner", "llm_code_00", "selftest.json")
+    ):
         return "star"
     if any((ws / p).exists() for p in ("turn_00", "trusted", "agent")):
         return "baseline"
@@ -112,7 +115,9 @@ def _infer_task_id(ws: Path, result: dict | None) -> str:
     return ws.name
 
 
-def _infer_condition_and_campaign(ws: Path, root: Path, source: str, result: dict | None, runtime_cfg: dict | None) -> tuple[str, str]:
+def _infer_condition_and_campaign(
+    ws: Path, root: Path, source: str, result: dict | None, runtime_cfg: dict | None
+) -> tuple[str, str]:
     condition = (result or {}).get("condition") or (runtime_cfg or {}).get("condition") or ""
     campaign = ""
     try:
@@ -164,19 +169,27 @@ def _extract_token_summary(model_calls: list[dict[str, Any]], result: dict | Non
         vals = [v for u in usage_records if (v := getter(u)) is not None]
         return sum(vals) if vals else None
 
-    elapsed_vals = [float(e["elapsed_seconds"]) for e in completed if isinstance(e.get("elapsed_seconds"), (int, float))]
+    elapsed_vals = [
+        float(e["elapsed_seconds"]) for e in completed if isinstance(e.get("elapsed_seconds"), (int, float))
+    ]
     return {
         "usage_available": bool(usage_records),
         "request_started_count": len(started),
         "request_completed_count": len(completed),
         "reused_count": len(reused),
-        "input_tokens": _sum_optional(lambda u: u.get("input_tokens") if u.get("input_tokens") is not None else u.get("prompt_tokens")),
-        "output_tokens": _sum_optional(lambda u: u.get("output_tokens") if u.get("output_tokens") is not None else u.get("completion_tokens")),
+        "input_tokens": _sum_optional(
+            lambda u: u.get("input_tokens") if u.get("input_tokens") is not None else u.get("prompt_tokens")
+        ),
+        "output_tokens": _sum_optional(
+            lambda u: u.get("output_tokens") if u.get("output_tokens") is not None else u.get("completion_tokens")
+        ),
         "reasoning_tokens": _sum_optional(lambda u: (u.get("completion_tokens_details") or {}).get("reasoning_tokens")),
         "cached_tokens": _sum_optional(
-            lambda u: (u.get("input_tokens_details") or {}).get("cached_tokens")
-            if (u.get("input_tokens_details") or {}).get("cached_tokens") is not None
-            else (u.get("prompt_tokens_details") or {}).get("cached_tokens")
+            lambda u: (
+                (u.get("input_tokens_details") or {}).get("cached_tokens")
+                if (u.get("input_tokens_details") or {}).get("cached_tokens") is not None
+                else (u.get("prompt_tokens_details") or {}).get("cached_tokens")
+            )
         ),
         "total_tokens": _sum_optional(lambda u: u.get("total_tokens")),
         "llm_elapsed_seconds": round(sum(elapsed_vals), 3) if elapsed_vals else None,
@@ -259,33 +272,32 @@ def _extract_versions(ws: Path, framework_kind: str, *, include_diffs: bool = Tr
         sha = digest(cand)
         rolled_back = bool(
             compile_failed
-            or (
-                stage != "final"
-                and earliest_final_idx is not None
-                and idx > earliest_final_idx
-                and sha != final_sha
-            )
+            or (stage != "final" and earliest_final_idx is not None and idx > earliest_final_idx and sha != final_sha)
         )
-        versions.append({
-            "id": vid,
-            "label": label,
-            "stage": stage,
-            "sha256": sha,
-            "is_final": bool(final_sha and sha == final_sha),
-            "rolled_back": rolled_back,
-            "declaration": str(cand.get("declaration") or ""),
-            "implementation": str(cand.get("implementation") or ""),
-            "supporting_objects": cand.get("supporting_objects") or [],
-            "full_st": full_st,
-            "diff_from_prev": diff_lines,
-        })
+        versions.append(
+            {
+                "id": vid,
+                "label": label,
+                "stage": stage,
+                "sha256": sha,
+                "is_final": bool(final_sha and sha == final_sha),
+                "rolled_back": rolled_back,
+                "declaration": str(cand.get("declaration") or ""),
+                "implementation": str(cand.get("implementation") or ""),
+                "supporting_objects": cand.get("supporting_objects") or [],
+                "full_st": full_st,
+                "diff_from_prev": diff_lines,
+            }
+        )
     return versions
 
 
 def _compile_attempts_from_ws(ws: Path, result: dict | None, framework_kind: str) -> list[dict[str, Any]]:
     if result and isinstance(result.get("compilation_attempts"), list) and result["compilation_attempts"]:
         return result["compilation_attempts"]
-    pattern = "trusted/compile_*/compile_result.json" if framework_kind == "baseline" else "compile_*/compile_result.json"
+    pattern = (
+        "trusted/compile_*/compile_result.json" if framework_kind == "baseline" else "compile_*/compile_result.json"
+    )
     out = []
     for p in sorted(ws.glob(pattern)):
         data = _read_json_safe(p)
@@ -323,7 +335,9 @@ def _build_star_stages(
 ) -> list[dict[str, Any]]:
     is_live = result is None
     ablation = (result or runtime_cfg or {}).get("ablation")
-    started_calls = {e.get("call_dir") for e in model_calls if e.get("event") == "request_started" and e.get("call_dir")}
+    started_calls = {
+        e.get("call_dir") for e in model_calls if e.get("event") == "request_started" and e.get("call_dir")
+    }
     completed_calls = {
         e.get("call_dir")
         for e in model_calls
@@ -355,8 +369,12 @@ def _build_star_stages(
         "label_en": "1. Planner",
         "label_zh": "1. 架构规划",
         "status": planner_status,
-        "summary_en": f"{len(states)} states planned" if states else ("Skipped (ablation)" if ablation == "no_planner" else "State machine & timer decomposition"),
-        "summary_zh": f"已规划 {len(states)} 个状态" if states else ("已跳过（消融）" if ablation == "no_planner" else "状态机与定时器分解"),
+        "summary_en": f"{len(states)} states planned"
+        if states
+        else ("Skipped (ablation)" if ablation == "no_planner" else "State machine & timer decomposition"),
+        "summary_zh": f"已规划 {len(states)} 个状态"
+        if states
+        else ("已跳过（消融）" if ablation == "no_planner" else "状态机与定时器分解"),
         "metrics": {"state_count": len(states)},
         "detail": plan if isinstance(plan, dict) else {},
     }
@@ -376,8 +394,12 @@ def _build_star_stages(
         "label_en": "2. Dialect Cards",
         "label_zh": "2. CODESYS 方言卡",
         "status": dialect_status,
-        "summary_en": f"{len(cards)} ST dialect cards injected" if cards else ("Skipped (ablation)" if ablation == "no_dialect" else "CODESYS IEC 61131-3 guardrails"),
-        "summary_zh": f"已注入 {len(cards)} 张方言卡" if cards else ("已跳过（消融）" if ablation == "no_dialect" else "CODESYS IEC 61131-3 规范卡"),
+        "summary_en": f"{len(cards)} ST dialect cards injected"
+        if cards
+        else ("Skipped (ablation)" if ablation == "no_dialect" else "CODESYS IEC 61131-3 guardrails"),
+        "summary_zh": f"已注入 {len(cards)} 张方言卡"
+        if cards
+        else ("已跳过（消融）" if ablation == "no_dialect" else "CODESYS IEC 61131-3 规范卡"),
         "metrics": {"card_count": len(cards)},
         "detail": {"cards": [{"id": c.get("id"), "title": c.get("title")} for c in cards if isinstance(c, dict)]},
     }
@@ -436,16 +458,18 @@ def _build_star_stages(
         "label_en": "4. Self-Test Synth",
         "label_zh": "4. 自测用例合成",
         "status": tester_status,
-        "summary_en": f"{len(st_cases)} agent self-test cases" if st_cases else ("Skipped" if tester_status == "SKIPPED" else "Edge-case sequence synthesis"),
-        "summary_zh": f"{len(st_cases)} 组Agent自测序列" if st_cases else ("已跳过" if tester_status == "SKIPPED" else "边界与边沿时序合成"),
+        "summary_en": f"{len(st_cases)} agent self-test cases"
+        if st_cases
+        else ("Skipped" if tester_status == "SKIPPED" else "Edge-case sequence synthesis"),
+        "summary_zh": f"{len(st_cases)} 组Agent自测序列"
+        if st_cases
+        else ("已跳过" if tester_status == "SKIPPED" else "边界与边沿时序合成"),
         "metrics": {"selftest_cases": len(st_cases), "rejected_cases": len(rejected)},
         "detail": {"cases": st_cases, "rejected": rejected},
     }
 
     # 5. Sim & Monotonic Ratchet
-    sim_repair_active = any(
-        c.startswith("llm_sim_repair_") and c not in completed_calls for c in started_calls
-    )
+    sim_repair_active = any(c.startswith("llm_sim_repair_") and c not in completed_calls for c in started_calls)
     sim_started = sum(1 for e in exec_events if e.get("event") in ("selftest_started", "fixed_evaluation_started"))
     sim_finished = sum(1 for e in exec_events if e.get("event") in ("selftest_finished", "fixed_evaluation_finished"))
     run_status = (result or {}).get("status")
@@ -501,8 +525,18 @@ def _build_baseline_stages(ws: Path, result: dict | None) -> list[dict[str, Any]
     context_done = (ws / "task.json").exists() or (ws / "agent" / "prompt.txt").exists()
     tool_status = "DONE" if (not is_live and (turns or tool_files)) else ("RUNNING" if is_live and turns else "PENDING")
     compile_ok = any(a.get("success") for a in compile_attempts)
-    gate_status = "DONE" if compile_ok else ("FAIL" if compile_attempts and not is_live else ("RUNNING" if is_live and compile_attempts else "PENDING"))
-    final_status = run_status if run_status in ("PASS", "UNVERIFIED") else ("FAIL" if run_status in ("TEST_FAIL", "COMPILE_FAIL", "TOOL_ERROR", "TIMEOUT") else "PENDING")
+    gate_status = (
+        "DONE"
+        if compile_ok
+        else (
+            "FAIL" if compile_attempts and not is_live else ("RUNNING" if is_live and compile_attempts else "PENDING")
+        )
+    )
+    final_status = (
+        run_status
+        if run_status in ("PASS", "UNVERIFIED")
+        else ("FAIL" if run_status in ("TEST_FAIL", "COMPILE_FAIL", "TOOL_ERROR", "TIMEOUT") else "PENDING")
+    )
 
     return [
         {
@@ -540,56 +574,72 @@ def _build_baseline_stages(ws: Path, result: dict | None) -> list[dict[str, Any]
             "label_en": "4. Final Held-Out Eval",
             "label_zh": "4. 最终冻结评测",
             "status": final_status,
-            "summary_en": f"{func.get('passed_cases', 0)}/{func.get('evaluated_cases', 0)} fixed tests" if func.get("evaluated_cases") else (run_status or "Pending"),
-            "summary_zh": f"冻结测试 {func.get('passed_cases', 0)}/{func.get('evaluated_cases', 0)} 通过" if func.get("evaluated_cases") else (run_status or "等待"),
+            "summary_en": f"{func.get('passed_cases', 0)}/{func.get('evaluated_cases', 0)} fixed tests"
+            if func.get("evaluated_cases")
+            else (run_status or "Pending"),
+            "summary_zh": f"冻结测试 {func.get('passed_cases', 0)}/{func.get('evaluated_cases', 0)} 通过"
+            if func.get("evaluated_cases")
+            else (run_status or "等待"),
             "metrics": {"passed_cases": func.get("passed_cases"), "evaluated_cases": func.get("evaluated_cases")},
             "detail": {"functional": func},
         },
     ]
 
 
-def _build_timeline(ws: Path, model_calls: list[dict[str, Any]], exec_events: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _build_timeline(
+    ws: Path, model_calls: list[dict[str, Any]], exec_events: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
     timeline: list[dict[str, Any]] = []
     for idx, ev in enumerate(model_calls):
         kind = ev.get("event", "model_event")
         usage = ev.get("usage") if isinstance(ev.get("usage"), dict) else {}
-        timeline.append({
-            "seq": idx,
-            "utc": ev.get("utc") or "",
-            "source": "model",
-            "event": kind,
-            "actor": ev.get("call_dir") or "llm",
-            "model": ev.get("reported_model") or ev.get("model"),
-            "elapsed_seconds": ev.get("elapsed_seconds"),
-            "total_tokens": usage.get("total_tokens"),
-            "status": "REUSED" if kind == "request_reused" else ("DONE" if kind == "request_completed" else "STARTED"),
-            "detail": {
-                k: v for k, v in ev.items()
-                if k in ("call_dir", "request_number", "reasoning_effort_requested", "history_truncated", "new_request")
-            },
-        })
+        timeline.append(
+            {
+                "seq": idx,
+                "utc": ev.get("utc") or "",
+                "source": "model",
+                "event": kind,
+                "actor": ev.get("call_dir") or "llm",
+                "model": ev.get("reported_model") or ev.get("model"),
+                "elapsed_seconds": ev.get("elapsed_seconds"),
+                "total_tokens": usage.get("total_tokens"),
+                "status": "REUSED"
+                if kind == "request_reused"
+                else ("DONE" if kind == "request_completed" else "STARTED"),
+                "detail": {
+                    k: v
+                    for k, v in ev.items()
+                    if k
+                    in ("call_dir", "request_number", "reasoning_effort_requested", "history_truncated", "new_request")
+                },
+            }
+        )
     for idx, ev in enumerate(exec_events):
-        timeline.append({
-            "seq": len(model_calls) + idx,
-            "utc": ev.get("utc") or "",
-            "source": "execution",
-            "event": ev.get("event") or "exec_event",
-            "actor": ev.get("event", "").split("_")[0] or "codesys",
-            "status": ev.get("status") or ("STARTED" if str(ev.get("event", "")).endswith("_started") else "DONE"),
-            "detail": {k: v for k, v in ev.items() if k not in ("utc", "event", "status", "functional")},
-        })
+        timeline.append(
+            {
+                "seq": len(model_calls) + idx,
+                "utc": ev.get("utc") or "",
+                "source": "execution",
+                "event": ev.get("event") or "exec_event",
+                "actor": ev.get("event", "").split("_")[0] or "codesys",
+                "status": ev.get("status") or ("STARTED" if str(ev.get("event", "")).endswith("_started") else "DONE"),
+                "detail": {k: v for k, v in ev.items() if k not in ("utc", "event", "status", "functional")},
+            }
+        )
     for idx, tfile in enumerate(sorted(ws.glob("turn_*/tool_*.json"))):
         tool_data = _read_json_safe(tfile)
         if isinstance(tool_data, dict):
-            timeline.append({
-                "seq": len(model_calls) + len(exec_events) + idx,
-                "utc": "",
-                "source": "tool",
-                "event": f"tool_call:{tool_data.get('name', 'unknown')}",
-                "actor": tfile.parent.name,
-                "status": "DONE",
-                "detail": {"name": tool_data.get("name"), "call_id": tool_data.get("call_id")},
-            })
+            timeline.append(
+                {
+                    "seq": len(model_calls) + len(exec_events) + idx,
+                    "utc": "",
+                    "source": "tool",
+                    "event": f"tool_call:{tool_data.get('name', 'unknown')}",
+                    "actor": tfile.parent.name,
+                    "status": "DONE",
+                    "detail": {"name": tool_data.get("name"), "call_id": tool_data.get("call_id")},
+                }
+            )
     timeline.sort(key=lambda item: (item["utc"] == "", item["utc"], item["seq"]))
     return timeline
 
@@ -605,14 +655,22 @@ def _extract_waveforms(
 
     # Priority order: held-out fixed evaluation -> functional_trace -> post_failure -> self-test
     eval_candidates: list[tuple[str, Path, Path | None]] = [
-        ("fixed_evaluation", ws / "fixed_evaluation" / "trace.json", ws / "fixed_evaluation" / "simulation_result.json"),
+        (
+            "fixed_evaluation",
+            ws / "fixed_evaluation" / "trace.json",
+            ws / "fixed_evaluation" / "simulation_result.json",
+        ),
         ("functional_trace", ws / "functional_trace.json", None),
     ]
     for fdir in sorted(ws.glob("functional_*"), reverse=True):
         if fdir.is_dir():
             eval_candidates.append(("functional_trace", fdir / "trace.json", fdir / "simulation_result.json"))
     eval_candidates.append(
-        ("post_failure_fixed_evaluation", ws / "post_failure_fixed_evaluation" / "trace.json", ws / "post_failure_fixed_evaluation" / "simulation_result.json")
+        (
+            "post_failure_fixed_evaluation",
+            ws / "post_failure_fixed_evaluation" / "trace.json",
+            ws / "post_failure_fixed_evaluation" / "simulation_result.json",
+        )
     )
 
     for kind, trace_path, sim_path in eval_candidates:
@@ -636,7 +694,9 @@ def _extract_waveforms(
                 )
         sim_status = str((sim_json or {}).get("status") or func_info.get("status") or "PASS")
         recorded_ids = set((trace_data.get("cases") or {}).keys())
-        target_cases = [c for c in task.get("tests", []) if c.get("id") in recorded_ids] if recorded_ids else task.get("tests", [])
+        target_cases = (
+            [c for c in task.get("tests", []) if c.get("id") in recorded_ids] if recorded_ids else task.get("tests", [])
+        )
         sim_res = SimResult(
             status=sim_status,
             evaluated_cases=int(func_info.get("evaluated_cases") or len(recorded_ids)),
@@ -650,7 +710,9 @@ def _extract_waveforms(
             "trace_relpath": str(trace_path.relative_to(ws)),
             "backend": trace_data.get("backend") or func_info.get("evidence") or "UNKNOWN",
             "acquisition": trace_data.get("acquisition") or func_info.get("acquisition") or "",
-            "execution_verified": bool((sim_json or {}).get("execution_verified", True)) if trace_data.get("backend") == "CODESYS_SIMULATION" else False,
+            "execution_verified": bool((sim_json or {}).get("execution_verified", True))
+            if trace_data.get("backend") == "CODESYS_SIMULATION"
+            else False,
             "observed_utc": trace_data.get("observed_utc"),
         }
 
@@ -727,7 +789,9 @@ def _summarize_run(ws: Path, root: Path, source: str) -> dict[str, Any]:
         "started_utc": started_utc or "",
         "finished_utc": (result or {}).get("finished_utc"),
         "elapsed_seconds": (result or {}).get("elapsed_seconds"),
-        "llm_calls": (result or {}).get("llm_calls") if (result or {}).get("llm_calls") is not None else tokens["request_started_count"],
+        "llm_calls": (result or {}).get("llm_calls")
+        if (result or {}).get("llm_calls") is not None
+        else tokens["request_started_count"],
         "first_pass_compiled": (result or {}).get("first_pass_compiled"),
         "final_compiled": (result or {}).get("final_compiled"),
         "repair_attempts": (result or {}).get("repair_attempts"),
@@ -798,7 +862,9 @@ def inspect_run_trace(
             else (tasks_by_id.get(task_id) or eval_task or local_task)
         )
     )
-    waveforms, waveform_source = _extract_waveforms(ws, task if isinstance(task, dict) else None, result, waveform_builder)
+    waveforms, waveform_source = _extract_waveforms(
+        ws, task if isinstance(task, dict) else None, result, waveform_builder
+    )
     formal = (result or {}).get("formal_verification") or {
         "status": "UNVERIFIED",
         "reason": "Candidate ST has no verified SMV encoding",
@@ -840,7 +906,11 @@ def load_reference_st(task_id: str, root: Path) -> tuple[int, dict[str, Any]]:
         return 404, {"error": f"No reference ST example found for '{task_id}'", "task_id": task_id, "available": False}
     data = _read_json_safe(target)
     if not isinstance(data, dict):
-        return 500, {"error": f"Failed to parse reference ST example for '{task_id}'", "task_id": task_id, "available": False}
+        return 500, {
+            "error": f"Failed to parse reference ST example for '{task_id}'",
+            "task_id": task_id,
+            "available": False,
+        }
     return 200, {
         "task_id": task_id,
         "available": True,

@@ -5,6 +5,7 @@ state and every input valuation in the finite SELF task domains. This validates
 the Python reference model and selected properties; it does not implement an
 LTL model checker and does not prove that any generated ST obeys the properties.
 """
+
 from __future__ import annotations
 
 import itertools
@@ -44,9 +45,13 @@ def safety(task_id, q, i, o):
         checks["permitted_start"] = not (i["Start"] and not i["Stop"] and i["GuardClosed"]) or o["Run"]
     elif task_id == "SELF002":
         checks["mutual_exclusion"] = not (o["Forward"] and o["Reverse"])
-        checks["neutral_on_reversal"] = not ((q.get("direction", 0) == 1 and i["ReverseButton"] and not i["ForwardButton"]) or
-                                                    (q.get("direction", 0) == -1 and i["ForwardButton"] and not i["ReverseButton"])) or not (o["Forward"] or o["Reverse"])
-        checks["ambiguous_or_stop_is_neutral"] = not (i["Stop"] or i["ForwardButton"] == i["ReverseButton"]) or not (o["Forward"] or o["Reverse"])
+        checks["neutral_on_reversal"] = not (
+            (q.get("direction", 0) == 1 and i["ReverseButton"] and not i["ForwardButton"])
+            or (q.get("direction", 0) == -1 and i["ForwardButton"] and not i["ReverseButton"])
+        ) or not (o["Forward"] or o["Reverse"])
+        checks["ambiguous_or_stop_is_neutral"] = not (i["Stop"] or i["ForwardButton"] == i["ReverseButton"]) or not (
+            o["Forward"] or o["Reverse"]
+        )
     elif task_id == "SELF003":
         checks["estop_priority"] = i["EStopNC"] or (not o["Run"] and o["ResetRequired"])
         checks["inhibited_scan_cannot_start"] = not q.get("required", True) or not o["Run"]
@@ -64,13 +69,21 @@ def safety(task_id, q, i, o):
     elif task_id == "SELF006":
         checks["exact_sensor_fault"] = o["SensorFault"] == (i["HighWet"] and not i["LowWet"])
         checks["inhibit_full_fault_stop"] = not (i["Inhibit"] or i["HighWet"] or o["SensorFault"]) or not o["Fill"]
-        checks["middle_retention"] = not (i["LowWet"] and not i["HighWet"] and not i["Inhibit"]) or o["Fill"] == q.get("fill", False)
+        checks["middle_retention"] = not (i["LowWet"] and not i["HighWet"] and not i["Inhibit"]) or o["Fill"] == q.get(
+            "fill", False
+        )
     elif task_id == "SELF007":
         checks["mutual_exclusion"] = not (o["PumpA"] and o["PumpB"])
-        checks["fault_demand_priority"] = not ((i["FaultA"] or not i["Demand"]) and o["PumpA"]) and not ((i["FaultB"] or not i["Demand"]) and o["PumpB"])
-        checks["available_pump_serves_demand"] = not (i["Demand"] and not (i["FaultA"] and i["FaultB"])) or (o["PumpA"] or o["PumpB"])
+        checks["fault_demand_priority"] = not ((i["FaultA"] or not i["Demand"]) and o["PumpA"]) and not (
+            (i["FaultB"] or not i["Demand"]) and o["PumpB"]
+        )
+        checks["available_pump_serves_demand"] = not (i["Demand"] and not (i["FaultA"] and i["FaultB"])) or (
+            o["PumpA"] or o["PumpB"]
+        )
         toggle_due = q.get("demand", False) and not i["Demand"] and q.get("served", False)
-        checks["episode_alternation"] = o["LeadA"] == (not q.get("lead_a", True) if toggle_due else q.get("lead_a", True))
+        checks["episode_alternation"] = o["LeadA"] == (
+            not q.get("lead_a", True) if toggle_due else q.get("lead_a", True)
+        )
     elif task_id == "SELF008":
         valid = 1 <= i["Preset"] <= 5
         healthy = valid and i["Request"] and not i["Trip"]
@@ -83,11 +96,15 @@ def safety(task_id, q, i, o):
         checks["reset_and_invalid_clear"] = not (i["Reset"] or not valid) or (o["Count"] == 0 and not o["Complete"])
         checks["count_bounds"] = 0 <= o["Count"] <= (i["Target"] if valid else 0)
         checks["complete_threshold"] = o["Complete"] == (valid and not i["Reset"] and o["Count"] >= i["Target"])
-        checks["held_pulse_cannot_increment"] = not (q.get("pulse", False) and i["PartPulse"]) or o["Count"] <= q.get("count", 0)
+        checks["held_pulse_cannot_increment"] = not (q.get("pulse", False) and i["PartPulse"]) or o["Count"] <= q.get(
+            "count", 0
+        )
     elif task_id == "SELF010":
         checks["horn_encoding"] = o["Horn"] == (o["Alarm"] and not o["Acknowledged"])
         checks["present_fault_latches"] = not i["Fault"] or o["Alarm"]
-        checks["new_event_reannunciates"] = not (i["Fault"] and not q.get("fault", False)) or (o["Horn"] and not o["Acknowledged"])
+        checks["new_event_reannunciates"] = not (i["Fault"] and not q.get("fault", False)) or (
+            o["Horn"] and not o["Acknowledged"]
+        )
         checks["clear_reset"] = not (i["Reset"] and not i["Fault"]) or not any(o.values())
     elif task_id == "SELF011":
         commands = sum(o[n] for n in ("Extend", "Clamp", "Release", "Retract"))
@@ -131,26 +148,45 @@ def explore(task):
             transitions += 1
             if len(seen) > 10000:
                 raise RuntimeError("Unexpected unbounded reference state")
-    return dict(task_id=task["id"], reachable_state_encodings=len(seen), input_valuations=len(inputs),
-                transitions=transitions, checked_properties=counts, passed=not failures, failures=failures,
-                numeric_domain_note="BOOL exhaustively enumerated; Preset 0..6 and Target 0..21 cover valid ranges and adjacent invalid boundaries. Larger USINT invalid values are represented by the invalid-class boundaries, not exhaustively enumerated.")
+    return dict(
+        task_id=task["id"],
+        reachable_state_encodings=len(seen),
+        input_valuations=len(inputs),
+        transitions=transitions,
+        checked_properties=counts,
+        passed=not failures,
+        failures=failures,
+        numeric_domain_note="BOOL exhaustively enumerated; Preset 0..6 and Target 0..21 cover valid ranges and adjacent invalid boundaries. Larger USINT invalid values are represented by the invalid-class boundaries, not exhaustively enumerated.",
+    )
 
 
 def main():
-    tasks = [json.loads(p.read_text(encoding="utf-8")) for p in sorted((ROOT / "dataset/self_built").glob("SELF*.json"))]
+    tasks = [
+        json.loads(p.read_text(encoding="utf-8")) for p in sorted((ROOT / "dataset/self_built").glob("SELF*.json"))
+    ]
     traces = [evaluate_reference(task) for task in tasks]
     exploration = [explore(task) for task in tasks]
-    result = dict(evidence="PYTHON_REFERENCE_ONLY", generated_utc=datetime.now(timezone.utc).isoformat(),
-                  interpreter=sys.executable, python_version=platform.python_version(), task_count=len(tasks),
-                  test_cases=sum(len(t["tests"]) for t in tasks),
-                  scan_observations=sum(len(c["steps"]) for t in tasks for c in t["tests"]),
-                  reference_traces=traces, finite_safety_exploration=exploration,
-                  passed=all(t["passed"] for t in traces) and all(e["passed"] for e in exploration),
-                  limitation="No ST interpreter, real CODESYS compiler, PLC runtime or unbounded LTL model checker was invoked by this reference review. Exclude all counts here from PLC functional success metrics.")
+    result = dict(
+        evidence="PYTHON_REFERENCE_ONLY",
+        generated_utc=datetime.now(timezone.utc).isoformat(),
+        interpreter=sys.executable,
+        python_version=platform.python_version(),
+        task_count=len(tasks),
+        test_cases=sum(len(t["tests"]) for t in tasks),
+        scan_observations=sum(len(c["steps"]) for t in tasks for c in t["tests"]),
+        reference_traces=traces,
+        finite_safety_exploration=exploration,
+        passed=all(t["passed"] for t in traces) and all(e["passed"] for e in exploration),
+        limitation="No ST interpreter, real CODESYS compiler, PLC runtime or unbounded LTL model checker was invoked by this reference review. Exclude all counts here from PLC functional success metrics.",
+    )
     target = ROOT / "results/summary/reference_validation.json"
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(json.dumps({k: result[k] for k in ("evidence", "task_count", "test_cases", "scan_observations", "passed")}, indent=2))
+    print(
+        json.dumps(
+            {k: result[k] for k in ("evidence", "task_count", "test_cases", "scan_observations", "passed")}, indent=2
+        )
+    )
     print("Explored transitions:", sum(x["transitions"] for x in exploration))
     return 0 if result["passed"] else 1
 

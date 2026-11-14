@@ -70,20 +70,30 @@ class DialectAndSelfTestTests(unittest.TestCase):
                 "id": "S1",
                 "purpose": "valid",
                 "steps": [
-                    {"inputs": {"Start": True, "Stop": False, "GuardClosed": True}, "expected": {"Run": True}, "dt_ms": 40000},
-                    {"inputs": {"Start": False, "Stop": True, "GuardClosed": True}, "expected": {"Run": False}, "dt_ms": 40000},
+                    {
+                        "inputs": {"Start": True, "Stop": False, "GuardClosed": True},
+                        "expected": {"Run": True},
+                        "dt_ms": 40000,
+                    },
+                    {
+                        "inputs": {"Start": False, "Stop": True, "GuardClosed": True},
+                        "expected": {"Run": False},
+                        "dt_ms": 40000,
+                    },
                 ],
             },
             {
                 "id": "S_bad_field",
-                "steps": [
-                    {"inputs": {"Unknown": True}, "expected": {"Run": False}}
-                ],
+                "steps": [{"inputs": {"Unknown": True}, "expected": {"Run": False}}],
             },
             {
                 "id": "S_neg_dt",
                 "steps": [
-                    {"inputs": {"Start": False, "Stop": False, "GuardClosed": False}, "expected": {"Run": False}, "dt_ms": -5}
+                    {
+                        "inputs": {"Start": False, "Stop": False, "GuardClosed": False},
+                        "expected": {"Run": False},
+                        "dt_ms": -5,
+                    }
                 ],
             },
         ]
@@ -99,17 +109,13 @@ class DialectAndSelfTestTests(unittest.TestCase):
         view = agent_view(task)
 
         # Output variable placed into inputs
-        raw_output_as_input = [{
-            "id": "S_out_in",
-            "steps": [{"inputs": {"Run": True}, "expected": {"Run": True}}]
-        }]
+        raw_output_as_input = [{"id": "S_out_in", "steps": [{"inputs": {"Run": True}, "expected": {"Run": True}}]}]
         self.assertEqual(validate_self_tests(view, raw_output_as_input), [])
 
         # Input variable placed into expected
-        raw_input_as_expected = [{
-            "id": "S_in_exp",
-            "steps": [{"inputs": {"Start": True}, "expected": {"Start": True}}]
-        }]
+        raw_input_as_expected = [
+            {"id": "S_in_exp", "steps": [{"inputs": {"Start": True}, "expected": {"Start": True}}]}
+        ]
         self.assertEqual(validate_self_tests(view, raw_input_as_expected), [])
 
     def test_validate_self_tests_rejects_non_finite_and_invalid_dt(self):
@@ -117,10 +123,7 @@ class DialectAndSelfTestTests(unittest.TestCase):
         view = agent_view(task)
 
         for bad_dt in [float("nan"), float("inf"), -float("inf"), "100", True, None]:
-            raw = [{
-                "id": "bad",
-                "steps": [{"inputs": {"Start": True}, "expected": {"Run": True}, "dt_ms": bad_dt}]
-            }]
+            raw = [{"id": "bad", "steps": [{"inputs": {"Start": True}, "expected": {"Run": True}, "dt_ms": bad_dt}]}]
             self.assertEqual(validate_self_tests(view, raw), [], f"Failed to reject bad dt: {bad_dt}")
 
     def test_validate_self_tests_caps_cases_and_steps_per_case(self):
@@ -132,9 +135,13 @@ class DialectAndSelfTestTests(unittest.TestCase):
             {
                 "id": f"C{i}",
                 "steps": [
-                    {"inputs": {"Start": True, "Stop": False, "GuardClosed": True}, "expected": {"Run": True}, "dt_ms": 100}
+                    {
+                        "inputs": {"Start": True, "Stop": False, "GuardClosed": True},
+                        "expected": {"Run": True},
+                        "dt_ms": 100,
+                    }
                     for _ in range(25)  # 25 steps per case
-                ]
+                ],
             }
             for i in range(6)
         ]
@@ -184,12 +191,18 @@ class DialectAndSelfTestTests(unittest.TestCase):
     def test_validate_self_tests_case_insensitive_name_normalization(self):
         task = next(t for t in load_tasks() if t["id"] == "SELF001")
         view = agent_view(task)
-        raw = [{
-            "id": "C_ci",
-            "steps": [
-                {"inputs": {"start": True, "stop": False, "guardclosed": True}, "expected": {"run": True}, "dt_ms": 0}
-            ]
-        }]
+        raw = [
+            {
+                "id": "C_ci",
+                "steps": [
+                    {
+                        "inputs": {"start": True, "stop": False, "guardclosed": True},
+                        "expected": {"run": True},
+                        "dt_ms": 0,
+                    }
+                ],
+            }
+        ]
         cleaned = validate_self_tests(view, raw)
         self.assertEqual(len(cleaned), 1)
         step = cleaned[0]["steps"][0]

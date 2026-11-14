@@ -28,7 +28,7 @@ class RandomTestingTests(unittest.TestCase):
                         full_outputs = reference_step(task, monitor, s["inputs"], s.get("dt_ms"))
                         self.assertTrue(
                             equal(full_outputs, s["expected"]),
-                            f"Output mismatch on {tid}/{case['id']} scan {j}: {full_outputs} vs {s['expected']}"
+                            f"Output mismatch on {tid}/{case['id']} scan {j}: {full_outputs} vs {s['expected']}",
                         )
                         row = dict(inputs=s["inputs"], outputs=full_outputs)
                         if "dt_ms" in s:
@@ -39,7 +39,7 @@ class RandomTestingTests(unittest.TestCase):
                 self.assertEqual(
                     res["status"],
                     "NO_VIOLATION_IN_OBSERVED_TRACE",
-                    f"Contract violation on {tid}/{case['id']}: {res.get('violations')}"
+                    f"Contract violation on {tid}/{case['id']}: {res.get('violations')}",
                 )
                 self.assertEqual(res["violations"], [])
 
@@ -64,7 +64,7 @@ class RandomTestingTests(unittest.TestCase):
                     self.assertEqual(
                         res["status"],
                         "NO_VIOLATION_IN_OBSERVED_TRACE",
-                        f"Generated random case violated contract on {tid}: {res.get('violations')}"
+                        f"Generated random case violated contract on {tid}: {res.get('violations')}",
                     )
                     self.assertEqual(res["violations"], [])
 

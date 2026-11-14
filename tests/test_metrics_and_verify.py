@@ -200,55 +200,59 @@ class MetricsAndVerificationTests(unittest.TestCase):
         for i, t in enumerate(tasks):
             # E1 passes first 16, fails rest
             e1_pass = i < 16
-            e1_records.append({
-                "condition": "E1",
-                "task_id": t["id"],
-                "framework": "baseline",
-                "model": "deepseek-v4.1-flash",
-                "status": "PASS" if e1_pass else "TEST_FAIL",
-                "first_pass_compiled": e1_pass,
-                "final_compiled": e1_pass,
-                "repair_attempts": 0,
-                "compilation_attempts": [{"status": "PASS" if e1_pass else "COMPILE_FAIL", "success": e1_pass}],
-                "functional": {
+            e1_records.append(
+                {
+                    "condition": "E1",
+                    "task_id": t["id"],
+                    "framework": "baseline",
+                    "model": "deepseek-v4.1-flash",
                     "status": "PASS" if e1_pass else "TEST_FAIL",
-                    "planned_cases": 2,
-                    "evaluated_cases": 2,
-                    "passed_cases": 2 if e1_pass else 1,
-                    "passed_steps": 4 if e1_pass else 2,
-                    "evaluated_steps": 4,
-                    "evidence": "CODESYS_SIMULATION",
-                },
-                "usage": [],
-                "elapsed_seconds": 10.0,
-                "api_cost": 0.05,
-            })
+                    "first_pass_compiled": e1_pass,
+                    "final_compiled": e1_pass,
+                    "repair_attempts": 0,
+                    "compilation_attempts": [{"status": "PASS" if e1_pass else "COMPILE_FAIL", "success": e1_pass}],
+                    "functional": {
+                        "status": "PASS" if e1_pass else "TEST_FAIL",
+                        "planned_cases": 2,
+                        "evaluated_cases": 2,
+                        "passed_cases": 2 if e1_pass else 1,
+                        "passed_steps": 4 if e1_pass else 2,
+                        "evaluated_steps": 4,
+                        "evidence": "CODESYS_SIMULATION",
+                    },
+                    "usage": [],
+                    "elapsed_seconds": 10.0,
+                    "api_cost": 0.05,
+                }
+            )
 
             # E3 passes first 28, fails rest (outperforms E1)
             e3_pass = i < 28
-            e3_records.append({
-                "condition": "E3",
-                "task_id": t["id"],
-                "framework": "self_harness",
-                "model": "deepseek-v4.1-flash",
-                "status": "PASS" if e3_pass else "TEST_FAIL",
-                "first_pass_compiled": e3_pass,
-                "final_compiled": e3_pass,
-                "repair_attempts": 0,
-                "compilation_attempts": [{"status": "PASS" if e3_pass else "COMPILE_FAIL", "success": e3_pass}],
-                "functional": {
+            e3_records.append(
+                {
+                    "condition": "E3",
+                    "task_id": t["id"],
+                    "framework": "self_harness",
+                    "model": "deepseek-v4.1-flash",
                     "status": "PASS" if e3_pass else "TEST_FAIL",
-                    "planned_cases": 2,
-                    "evaluated_cases": 2,
-                    "passed_cases": 2 if e3_pass else 1,
-                    "passed_steps": 4 if e3_pass else 2,
-                    "evaluated_steps": 4,
-                    "evidence": "CODESYS_SIMULATION",
-                },
-                "usage": [],
-                "elapsed_seconds": 15.0,
-                "api_cost": 0.08,
-            })
+                    "first_pass_compiled": e3_pass,
+                    "final_compiled": e3_pass,
+                    "repair_attempts": 0,
+                    "compilation_attempts": [{"status": "PASS" if e3_pass else "COMPILE_FAIL", "success": e3_pass}],
+                    "functional": {
+                        "status": "PASS" if e3_pass else "TEST_FAIL",
+                        "planned_cases": 2,
+                        "evaluated_cases": 2,
+                        "passed_cases": 2 if e3_pass else 1,
+                        "passed_steps": 4 if e3_pass else 2,
+                        "evaluated_steps": 4,
+                        "evidence": "CODESYS_SIMULATION",
+                    },
+                    "usage": [],
+                    "elapsed_seconds": 15.0,
+                    "api_cost": 0.08,
+                }
+            )
 
         all_records = e1_records + e3_records
         agg = aggregate(all_records, planned_tasks)
@@ -278,7 +282,8 @@ class MetricsAndVerificationTests(unittest.TestCase):
         res = subprocess.run(
             [sys.executable, "-m", "plc_agent.cli", "--help"],
             capture_output=True,
-            text=True, encoding="utf-8",
+            text=True,
+            encoding="utf-8",
             cwd=str(ROOT),
             env={"PYTHONPATH": str(ROOT / "src"), "PYTHONUTF8": "1"},
         )
@@ -307,7 +312,8 @@ class MetricsAndVerificationTests(unittest.TestCase):
                 str(rand_out),
             ],
             capture_output=True,
-            text=True, encoding="utf-8",
+            text=True,
+            encoding="utf-8",
             cwd=str(ROOT),
             env={"PYTHONPATH": str(ROOT / "src"), "PYTHONUTF8": "1"},
         )
@@ -320,11 +326,13 @@ class MetricsAndVerificationTests(unittest.TestCase):
         # Test CLI export-verify
         cand_file = self.work_dir / "candidate.json"
         cand_file.write_text(
-            json.dumps({
-                "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT A:BOOL; END_VAR\nVAR_OUTPUT B:BOOL; END_VAR",
-                "implementation": "B := A;",
-                "supporting_objects": [],
-            }),
+            json.dumps(
+                {
+                    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT A:BOOL; END_VAR\nVAR_OUTPUT B:BOOL; END_VAR",
+                    "implementation": "B := A;",
+                    "supporting_objects": [],
+                }
+            ),
             encoding="utf-8",
         )
         bundle_dir = self.work_dir / "cli_bundle"
@@ -342,7 +350,8 @@ class MetricsAndVerificationTests(unittest.TestCase):
                 str(bundle_dir),
             ],
             capture_output=True,
-            text=True, encoding="utf-8",
+            text=True,
+            encoding="utf-8",
             cwd=str(ROOT),
             env={"PYTHONPATH": str(ROOT / "src"), "PYTHONUTF8": "1"},
         )
@@ -366,7 +375,8 @@ class MetricsAndVerificationTests(unittest.TestCase):
                 str(ev_file),
             ],
             capture_output=True,
-            text=True, encoding="utf-8",
+            text=True,
+            encoding="utf-8",
             cwd=str(ROOT),
             env={"PYTHONPATH": str(ROOT / "src"), "PYTHONUTF8": "1"},
         )

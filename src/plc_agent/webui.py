@@ -4,6 +4,7 @@ Provides a standalone zero-dependency HTTP server with a rich single-page applic
 for exploring tasks, visualizing logic waveforms, inspecting agent traces,
 and testing/verifying ST programs.
 """
+
 from __future__ import annotations
 
 import contextlib
@@ -22,7 +23,7 @@ from .backend import Backend, CodesysBackend, FakeBackend, SimResult
 from .common import ROOT, digest, read_json
 from .config import Settings
 from .dataset import load_tasks
-from .formal_verify import export_verification_bundle
+from .formal_verify import export_verification_bundle, verify_candidate
 from .functional import outputs_equal
 from .random_testing import generate_random_cases
 from .run_trace import inspect_run_trace, list_runs, load_reference_st, resolve_safe_run_dir
@@ -98,50 +99,71 @@ def _build_step_waveforms(
                 is_match = outputs_equal(task, obs, expected, inputs)
                 divergence = None
                 if not is_match:
-                    diff_fields = [k for k in expected if not outputs_equal(task, {k: obs.get(k)}, {k: expected.get(k)}, inputs)]
+                    diff_fields = [
+                        k for k in expected if not outputs_equal(task, {k: obs.get(k)}, {k: expected.get(k)}, inputs)
+                    ]
                     field_name = diff_fields[0] if diff_fields else next(iter(expected.keys()), "")
                     divergence = {
                         "field": field_name,
                         "expected": expected.get(field_name),
                         "observed": obs.get(field_name) if isinstance(obs, dict) else obs,
                     }
-                steps_data.append({
-                    "step": step_idx,
-                    "inputs": inputs,
-                    "expected": expected,
-                    "observed": obs,
-                    "dt_ms": dt_ms,
-                    "match": is_match,
-                    "divergence": divergence,
-                })
-            elif case_fail:
-                if step_idx < case_fail.first_bad_step:
-                    steps_data.append({
-                        "step": step_idx,
-                        "inputs": inputs,
-                        "expected": expected,
-                        "observed": None,
-                        "dt_ms": dt_ms,
-                        "match": None,
-                        "divergence": None,
-                    })
-                elif step_idx == case_fail.first_bad_step:
-                    obs = {case_fail.field: case_fail.observed}
-                    steps_data.append({
+                steps_data.append(
+                    {
                         "step": step_idx,
                         "inputs": inputs,
                         "expected": expected,
                         "observed": obs,
                         "dt_ms": dt_ms,
-                        "match": False,
-                        "divergence": {
-                            "field": case_fail.field,
-                            "expected": case_fail.expected,
-                            "observed": case_fail.observed,
-                        },
-                    })
+                        "match": is_match,
+                        "divergence": divergence,
+                    }
+                )
+            elif case_fail:
+                if step_idx < case_fail.first_bad_step:
+                    steps_data.append(
+                        {
+                            "step": step_idx,
+                            "inputs": inputs,
+                            "expected": expected,
+                            "observed": None,
+                            "dt_ms": dt_ms,
+                            "match": None,
+                            "divergence": None,
+                        }
+                    )
+                elif step_idx == case_fail.first_bad_step:
+                    obs = {case_fail.field: case_fail.observed}
+                    steps_data.append(
+                        {
+                            "step": step_idx,
+                            "inputs": inputs,
+                            "expected": expected,
+                            "observed": obs,
+                            "dt_ms": dt_ms,
+                            "match": False,
+                            "divergence": {
+                                "field": case_fail.field,
+                                "expected": case_fail.expected,
+                                "observed": case_fail.observed,
+                            },
+                        }
+                    )
                 else:
-                    steps_data.append({
+                    steps_data.append(
+                        {
+                            "step": step_idx,
+                            "inputs": inputs,
+                            "expected": expected,
+                            "observed": None,
+                            "dt_ms": dt_ms,
+                            "match": None,
+                            "divergence": None,
+                        }
+                    )
+            else:
+                steps_data.append(
+                    {
                         "step": step_idx,
                         "inputs": inputs,
                         "expected": expected,
@@ -149,24 +171,17 @@ def _build_step_waveforms(
                         "dt_ms": dt_ms,
                         "match": None,
                         "divergence": None,
-                    })
-            else:
-                steps_data.append({
-                    "step": step_idx,
-                    "inputs": inputs,
-                    "expected": expected,
-                    "observed": None,
-                    "dt_ms": dt_ms,
-                    "match": None,
-                    "divergence": None,
-                })
+                    }
+                )
 
-        waveforms.append({
-            "case_id": case_id,
-            "name": case_name,
-            "passed": False if case_fail else (True if raw_steps and sim_res.status == "PASS" else None),
-            "steps": steps_data,
-        })
+        waveforms.append(
+            {
+                "case_id": case_id,
+                "name": case_name,
+                "passed": False if case_fail else (True if raw_steps and sim_res.status == "PASS" else None),
+                "steps": steps_data,
+            }
+        )
 
     return waveforms
 
@@ -193,23 +208,23 @@ def handle_api_request(
             return str(val[0]) if val else None
         return str(val) if val is not None else None
 
-    review_path = ROOT / 'configs/pilot_review.json'
-    pilot_items = read_json(review_path).get('tasks', []) if review_path.is_file() else []
-    all_review_path = ROOT / 'configs/task_review_zh.json'
-    review_items = read_json(all_review_path).get('tasks', []) if all_review_path.is_file() else pilot_items
-    review_by_id = {r['id']: r for r in review_items}
+    review_path = ROOT / "configs/pilot_review.json"
+    pilot_items = read_json(review_path).get("tasks", []) if review_path.is_file() else []
+    all_review_path = ROOT / "configs/task_review_zh.json"
+    review_items = read_json(all_review_path).get("tasks", []) if all_review_path.is_file() else pilot_items
+    review_by_id = {r["id"]: r for r in review_items}
 
-    if method == 'POST' and path == '/api/check-reference-model':
+    if method == "POST" and path == "/api/check-reference-model":
         # Fixed whitelisted tasks & variants only: never execute a browser-supplied path or command.
         if not isinstance(body, dict):
-            return 400, {'error': 'Request body must be a JSON object'}
-        task_id = body.get('task_id')
-        variant = body.get('variant')
-        known_ids = {t['id'] for t in load_tasks()}
-        if not isinstance(task_id, str) or not re.fullmatch(r'[A-Za-z0-9_]+', task_id) or task_id not in known_ids:
-            return 400, {'error': f"Unsupported or invalid task_id: '{task_id}'"}
-        if variant is not None and (not isinstance(variant, str) or variant not in ('reference', 'complete', 'mutant')):
-            return 400, {'error': f"Unsupported SMV variant: '{variant}'"}
+            return 400, {"error": "Request body must be a JSON object"}
+        task_id = body.get("task_id")
+        variant = body.get("variant")
+        known_ids = {t["id"] for t in load_tasks()}
+        if not isinstance(task_id, str) or not re.fullmatch(r"[A-Za-z0-9_]+", task_id) or task_id not in known_ids:
+            return 400, {"error": f"Unsupported or invalid task_id: '{task_id}'"}
+        if variant is not None and (not isinstance(variant, str) or variant not in ("reference", "complete", "mutant")):
+            return 400, {"error": f"Unsupported SMV variant: '{variant}'"}
         return run_and_persist_smv_check(task_id, variant, status_path=resolved_status_path)
 
     # 1. GET /api/tasks
@@ -249,7 +264,7 @@ def handle_api_request(
         rand_cases = generate_random_cases(task)
         review = review_by_id.get(task_id)
         if review:
-            review = dict(review, source_matches=review.get('source_task_sha256') == digest(task))
+            review = dict(review, source_matches=review.get("source_task_sha256") == digest(task))
         return 200, {
             "task": task,
             "agent_view": agent_view(task),
@@ -281,7 +296,10 @@ def handle_api_request(
             if _is_compiler_ready(settings):
                 backend = CodesysBackend(settings)
             else:
-                return 503, {"error": "CODESYS is not configured; candidate execution was not performed", "status": "UNVERIFIED"}
+                return 503, {
+                    "error": "CODESYS is not configured; candidate execution was not performed",
+                    "status": "UNVERIFIED",
+                }
 
         resolved_evidence_root = evidence_root or (ROOT / ".local" / "webui_evidence")
         with contextlib.nullcontext(resolved_evidence_root / uuid.uuid4().hex) as tmpdir:
@@ -406,6 +424,31 @@ def handle_api_request(
             "candidate_st": st_content,
             "spec_ltl": ltl_content,
         }
+
+    # 5b. POST /api/verify-candidate
+    if method == "POST" and path == "/api/verify-candidate":
+        if not body or not isinstance(body, dict):
+            return 400, {"error": "Request body must be a JSON object"}
+        task_id = body.get("task_id")
+        if not task_id:
+            return 400, {"error": "Missing required field: 'task_id'"}
+        candidate = body.get("candidate")
+        if candidate is None:
+            return 400, {"error": "Missing required field: 'candidate'"}
+
+        tasks = load_tasks()
+        task = next((t for t in tasks if t["id"] == task_id), None)
+        if not task:
+            return 404, {"error": f"Task '{task_id}' not found"}
+
+        out_dir_str = body.get("out_dir")
+        out_dir = Path(out_dir_str) if out_dir_str else Path(tempfile.mkdtemp(prefix=f"star_st_verify_{task_id}_"))
+        out_dir.mkdir(parents=True, exist_ok=True)
+        timeout = int(body.get("timeout") or 30)
+        ver_res = verify_candidate(task=task, candidate=candidate, out_dir=out_dir, timeout=timeout)
+        smv_path = Path(ver_res["smv_path"]) if ver_res.get("smv_path") else None
+        smv_text = smv_path.read_text(encoding="utf-8", errors="replace") if smv_path and smv_path.is_file() else ""
+        return 200, {**ver_res, "bundle_dir": str(out_dir), "smv_text": smv_text}
 
     return 404, {"error": f"Not found: {method} {path}"}
 

@@ -2,6 +2,7 @@
 The controller owns task/attempt budget; tool input can supply source and cases.
 Stdout is exclusively JSON-RPC. No API key is needed by this process.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -13,7 +14,9 @@ from pathlib import Path
 from .common import read_json, write_json
 from .compiler import compile_st
 from .config import Settings
+from .formal_verify import verify_candidate
 from .selftest import validate_self_tests
+from .st_verifier import sanitize_counterexamples_for_agent
 from .task_view import agent_view
 
 CANDIDATE_SCHEMA = {
@@ -38,6 +41,13 @@ SIMULATE_SCHEMA = {
         },
     },
     "required": ["source", "cases"],
+    "additionalProperties": False,
+}
+
+VERIFY_SCHEMA = {
+    "type": "object",
+    "properties": {"source": CANDIDATE_SCHEMA},
+    "required": ["source"],
     "additionalProperties": False,
 }
 
@@ -72,10 +82,18 @@ def dispatch(message: dict, task: dict, trusted: Path, settings: Settings, backe
                 {
                     "name": "simulate_st",
                     "description": (
-                        f"Simulate FB_Task against test cases. "
-                        f"At most {settings.max_simulations} simulation attempts."
+                        f"Simulate FB_Task against test cases. At most {settings.max_simulations} simulation attempts."
                     ),
                     "inputSchema": SIMULATE_SCHEMA,
+                },
+                {
+                    "name": "verify_st",
+                    "description": (
+                        "Formally verify FB_Task against the task's LTL/INVAR specification "
+                        "using ST->SMV symbolic compilation and NuSMV/nuXmv. "
+                        "Returns PASS, COUNTEREXAMPLE (with offending scan trace), UNSUPPORTED_ST, TIMEOUT, or TOOL_ERROR."
+                    ),
+                    "inputSchema": VERIFY_SCHEMA,
                 },
             ]
         }
@@ -86,7 +104,7 @@ def dispatch(message: dict, task: dict, trusted: Path, settings: Settings, backe
 
         if tool_name == "compile_st":
             records = sorted(trusted.glob("compile_*/compile_result.json"))
-            if len(records) >= settings.max_repairs + 1:
+            if settings.max_repairs >= 0 and len(records) >= settings.max_repairs + 1:
                 return {
                     "content": [{"type": "text", "text": "Compilation budget exhausted"}],
                     "isError": True,
@@ -99,7 +117,9 @@ def dispatch(message: dict, task: dict, trusted: Path, settings: Settings, backe
                 result = compile_st(task, source, run_dir, settings)
             res_dict = asdict(result) if is_dataclass(result) else result
             write_json(run_dir / "compile_result.json", res_dict)
-            cand_to_write = source if isinstance(source, dict) else {"declaration": "", "implementation": str(source or "")}
+            cand_to_write = (
+                source if isinstance(source, dict) else {"declaration": "", "implementation": str(source or "")}
+            )
             write_json(run_dir / "candidate.json", cand_to_write)
             return {
                 "content": [{"type": "text", "text": json.dumps(res_dict)}],
@@ -108,7 +128,7 @@ def dispatch(message: dict, task: dict, trusted: Path, settings: Settings, backe
 
         if tool_name == "simulate_st":
             records = sorted(trusted.glob("sim_*/simulation_result.json"))
-            if len(records) >= settings.max_simulations:
+            if settings.max_simulations > 0 and len(records) >= settings.max_simulations:
                 return {
                     "content": [{"type": "text", "text": "Simulation budget exhausted"}],
                     "isError": True,
@@ -127,11 +147,77 @@ def dispatch(message: dict, task: dict, trusted: Path, settings: Settings, backe
                 res = backend.simulate(task, source, valid_cases, run_dir)
             else:
                 from .backend import CodesysBackend
+
                 res = CodesysBackend(settings).simulate(task, source, valid_cases, run_dir)
             res_dict = asdict(res) if is_dataclass(res) else res
             write_json(run_dir / "simulation_result.json", res_dict)
             return {
                 "content": [{"type": "text", "text": json.dumps(res_dict)}],
+                "isError": False,
+            }
+
+        if tool_name == "verify_st":
+            records = sorted(trusted.glob("verify_*/verification_result.json"))
+            max_ver = getattr(settings, "max_verifications", 3)
+            if max_ver > 0 and len(records) >= max_ver:
+                return {
+                    "content": [{"type": "text", "text": "Formal verification budget exhausted"}],
+                    "isError": True,
+                }
+            run_dir = trusted / f"verify_{len(records):02d}"
+            source = args.get("source")
+            full_res = verify_candidate(
+                task=task,
+                candidate=source,
+                out_dir=run_dir,
+                include_expected_observer=False,
+            )
+            # Zero-leakage response returned to the agent: strip observer_vars and internal file paths
+            ver_status = full_res.get("status")
+            ver_reason = str(full_res.get("reason") or "")
+            guidance = None
+            if ver_status == "UNSUPPORTED_ST":
+                if "Conditional or looped invocation" in ver_reason:
+                    guidance = (
+                        "Refactor stateful FUNCTION_BLOCK calls so each instance is invoked unconditionally "
+                        "once per scan and pass branch logic via input pins (e.g., IN := cond), or rely on compile_st/simulate_st."
+                    )
+                else:
+                    guidance = (
+                        "ST construct is outside the bounded symbolic verifier fragment (not a bug verdict). "
+                        "Use compile_st and simulate_st to validate this candidate."
+                    )
+            elif ver_status == "INCONCLUSIVE":
+                guidance = (
+                    "Model checker returned UNKNOWN on at least one property (inconclusive, neither proven nor falsified). "
+                    "Inspect unknown_property_ids and validate with compile_st and simulate_st."
+                )
+            elif ver_status in ("TIMEOUT", "TOOL_ERROR"):
+                guidance = (
+                    f"Verification infrastructure stopped with {ver_status} (not a bug verdict). "
+                    "Use compile_st and simulate_st to validate behavior."
+                )
+
+            agent_payload = {
+                "status": ver_status,
+                "verified": full_res.get("verified", False),
+                "total_properties": full_res.get("total_properties", 0),
+                "passed_properties": full_res.get("passed_properties", 0),
+                "failed_properties": full_res.get("failed_properties", 0),
+                "unknown_properties": full_res.get("unknown_properties", 0),
+                "property_pass_ratio": full_res.get("property_pass_ratio"),
+                "failed_property_ids": [
+                    pr.get("id") for pr in (full_res.get("property_results") or []) if pr.get("holds") is False
+                ],
+                "unknown_property_ids": [
+                    pr.get("id") for pr in (full_res.get("property_results") or []) if pr.get("holds") is None
+                ],
+                "counterexamples": sanitize_counterexamples_for_agent(full_res.get("counterexamples") or []),
+                "reason": full_res.get("reason"),
+                "guidance": guidance,
+            }
+            return {
+                "content": [{"type": "text", "text": json.dumps(agent_payload)}],
                 "isError": False,
             }
 

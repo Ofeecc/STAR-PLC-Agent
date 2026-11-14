@@ -53,20 +53,27 @@ def export_verification_bundle(task: dict, candidate: dict | str, out_dir: Path 
         "",
     ]
     formatted_props = []
-    for prop in ltl_items:
-        pid = prop.get("id", "PROP")
-        formula = prop.get("formula", "TRUE")
-        desc = prop.get("explanation") or prop.get("description") or prop.get("name") or ""
+    for idx, prop in enumerate(ltl_items, start=1):
+        if isinstance(prop, dict):
+            pid = prop.get("id", f"PROP_{idx}")
+            formula = prop.get("formula", "TRUE")
+            desc = prop.get("explanation") or prop.get("description") or prop.get("name") or ""
+        else:
+            pid = f"PROP_{idx}"
+            formula = str(prop)
+            desc = ""
         ltl_lines.append(f"-- Property: {pid}")
         if desc:
             ltl_lines.append(f"-- Description: {desc}")
         ltl_lines.append(f"LTLSPEC NAME {pid} := {formula};")
         ltl_lines.append("")
-        formatted_props.append({
-            "id": pid,
-            "formula": formula,
-            "description": desc,
-        })
+        formatted_props.append(
+            {
+                "id": pid,
+                "formula": formula,
+                "description": desc,
+            }
+        )
 
     ltl_file = out_dir / "spec.ltl"
     ltl_file.write_text("\n".join(ltl_lines), encoding="utf-8")
@@ -87,6 +94,51 @@ def export_verification_bundle(task: dict, candidate: dict | str, out_dir: Path 
     }
     write_json(out_dir / "verification_manifest.json", manifest)
     return manifest
+
+
+def verify_candidate(
+    task: dict[str, Any],
+    candidate: dict[str, Any] | str,
+    out_dir: Path | str,
+    timeout: int = 60,
+    executable: str | None = None,
+    tool: str = "auto",
+    engine: str = "auto",
+    bmc_bound: int = 25,
+    include_expected_observer: bool = True,
+) -> dict[str, Any]:
+    """Export verification bundle, compile ST->SMV, and run NuSMV/nuXmv on candidate ST."""
+    from .st_verifier import verify_candidate_st
+
+    out = Path(out_dir).resolve()
+    manifest = export_verification_bundle(task=task, candidate=candidate, out_dir=out)
+    result = verify_candidate_st(
+        task=task,
+        candidate=candidate,
+        out_dir=out,
+        timeout=timeout,
+        executable=executable,
+        tool=tool,
+        engine=engine,
+        bmc_bound=bmc_bound,
+        include_expected_observer=include_expected_observer,
+    )
+
+    if result.get("smv_path"):
+        manifest["smv_path"] = result["smv_path"]
+        manifest["observer_smv"] = result.get("observer_smv")
+        manifest["tools_supported"] = [result.get("tool")] if result.get("tool") else ["NuSMV", "nuXmv"]
+        manifest["encoding_complete"] = True
+        manifest["bundle_status"] = result.get("status", "UNKNOWN")
+        manifest["verification_status"] = result.get("status")
+        manifest["candidate_st_verified"] = result.get("verified", False)
+        manifest["property_pass_ratio"] = result.get("property_pass_ratio")
+    else:
+        manifest["bundle_status"] = result.get("status", "UNSUPPORTED_ST")
+        manifest["verification_status"] = result.get("status")
+        manifest["reason"] = result.get("reason")
+    write_json(out / "verification_manifest.json", manifest)
+    return result
 
 
 def import_verification_evidence(bundle_dir: Path | str, evidence_file: Path | str) -> dict[str, Any]:
@@ -110,7 +162,11 @@ def import_verification_evidence(bundle_dir: Path | str, evidence_file: Path | s
     # Solver SAT/UNSAT has no universal property-validity meaning.
     reported = str(data.get("status", data.get("result", ""))).upper()
     truths = re.findall(r"^--\s*specification\s+(?:.+?\s+)?is\s+(true|false)\s*$", raw_text, re.I | re.M)
-    if reported in {"COUNTEREXAMPLE", "FAIL"} or "false" in [v.lower() for v in truths] or re.search(r"trace type:\s*counterexample", raw_text, re.I):
+    if (
+        reported in {"COUNTEREXAMPLE", "FAIL"}
+        or "false" in [v.lower() for v in truths]
+        or re.search(r"trace type:\s*counterexample", raw_text, re.I)
+    ):
         status = "COUNTEREXAMPLE"
     elif reported in {"SAT", "UNSAT"}:
         status = reported
@@ -120,18 +176,28 @@ def import_verification_evidence(bundle_dir: Path | str, evidence_file: Path | s
         status = "REPORTED_PASS"
     expected_ids = {p["id"] for p in manifest.get("properties", [])}
     checks = data.get("property_results", {})
-    bound = bool(manifest.get("encoding_complete") is True and expected_ids
+    bound = bool(
+        manifest.get("encoding_complete") is True
+        and expected_ids
         and data.get("source_sha256") == manifest.get("source_sha256")
         and data.get("task_sha256") == manifest.get("task_sha256")
         and data.get("tool") in manifest.get("tools_supported", [])
-        and isinstance(checks, dict) and set(checks) == expected_ids)
-    verified = bool(bound and reported == "PASS" and status != "COUNTEREXAMPLE" and all(v is True for v in checks.values()))
+        and isinstance(checks, dict)
+        and set(checks) == expected_ids
+    )
+    verified = bool(
+        bound and reported == "PASS" and status != "COUNTEREXAMPLE" and all(v is True for v in checks.values())
+    )
     result = {
-        "task_id": task_id, "source_sha256": manifest.get("source_sha256"),
-        "evidence_file": evidence_file.name, "status": "PASS" if verified else status,
-        "verified": verified, "evidence_bound": bound,
+        "task_id": task_id,
+        "source_sha256": manifest.get("source_sha256"),
+        "evidence_file": evidence_file.name,
+        "status": "PASS" if verified else status,
+        "verified": verified,
+        "evidence_bound": bound,
         "reason": None if verified else "No complete, encoded and hash-bound property proof",
-        "details": data or {"raw_evidence_snippet": raw_text[:500]}, "imported_utc": now(),
+        "details": data or {"raw_evidence_snippet": raw_text[:500]},
+        "imported_utc": now(),
     }
     write_json(bundle_dir / "verification_result.json", result)
     return result

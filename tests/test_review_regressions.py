@@ -3,6 +3,7 @@
 Synthetic artifacts in this module are not CODESYS execution evidence and are
 never written under the benchmark results directory.
 """
+
 from __future__ import annotations
 
 import tempfile
@@ -21,14 +22,22 @@ class TraceReviewTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
         (self.root / "capture.log").write_text("UNIT TEST DOUBLE ONLY\n", encoding="utf-8")
-        self.task = {"id": "UNIT_REVIEW", "tests": [{"id": "timed", "steps": [
-            {"inputs": {"Enable": True}, "expected": {"Run": True}, "dt_ms": 100}
-        ]}]}
-        self.trace = {"task_id": self.task["id"], "task_sha256": digest(self.task), "source_sha256": "unit-source",
-                      "backend": "CODESYS_SIMULATION", "operator": "UNIT_TEST_DOUBLE", "observed_utc": "2026-10-25T00:00:00Z",
-                      "evidence_files": ["capture.log"], "cases": {"timed": [
-                          {"inputs": {"Enable": True}, "outputs": {"Run": True}, "dt_ms": 100}
-                      ]}}
+        self.task = {
+            "id": "UNIT_REVIEW",
+            "tests": [
+                {"id": "timed", "steps": [{"inputs": {"Enable": True}, "expected": {"Run": True}, "dt_ms": 100}]}
+            ],
+        }
+        self.trace = {
+            "task_id": self.task["id"],
+            "task_sha256": digest(self.task),
+            "source_sha256": "unit-source",
+            "backend": "CODESYS_SIMULATION",
+            "operator": "UNIT_TEST_DOUBLE",
+            "observed_utc": "2026-10-25T00:00:00Z",
+            "evidence_files": ["capture.log"],
+            "cases": {"timed": [{"inputs": {"Enable": True}, "outputs": {"Run": True}, "dt_ms": 100}]},
+        }
 
     def evaluate(self):
         return evaluate_trace(self.task, "unit-source", self.trace, evidence_root=self.root)
@@ -99,7 +108,10 @@ class MetricReviewTests(unittest.TestCase):
     def test_final_success_requires_final_attempt_success(self):
         row = self.record()
         row.update(first_pass_compiled=True, final_compiled=True)
-        row["compilation_attempts"] = [{"status": "PASS", "success": True}, {"status": "COMPILE_FAIL", "success": False}]
+        row["compilation_attempts"] = [
+            {"status": "PASS", "success": True},
+            {"status": "COMPILE_FAIL", "success": False},
+        ]
         self.assertTrue(any("final candidate" in error for error in audit_records([row])))
 
     def test_audit_checks_selected_candidate_against_successful_compile(self):
@@ -119,8 +131,9 @@ class MetricReviewTests(unittest.TestCase):
 
     def test_partial_functional_result_cannot_claim_task_pass(self):
         row = self.record()
-        row["functional"].update(status="PASS", planned_cases=2, evaluated_cases=1, passed_cases=1,
-                                 evidence="CODESYS_SIMULATION")
+        row["functional"].update(
+            status="PASS", planned_cases=2, evaluated_cases=1, passed_cases=1, evidence="CODESYS_SIMULATION"
+        )
         summary = aggregate([row], 1)[0]
         self.assertEqual(summary["passed_tasks"], 0)
         self.assertTrue(any("every planned case" in error for error in audit_records([row])))

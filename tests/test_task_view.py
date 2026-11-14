@@ -33,9 +33,7 @@ class TaskViewTests(unittest.TestCase):
             script.write_text("# script\n", encoding="utf-8")
             template.write_bytes(b"TEMPLATE")
             ascii_root = Path(tmp) / "plc_work"
-            staged_ws, staged_script, staged_tpl = stage_ascii_workspace(
-                non_ascii, script, template, ascii_root
-            )
+            staged_ws, staged_script, staged_tpl = stage_ascii_workspace(non_ascii, script, template, ascii_root)
             self.assertTrue(staged_ws.is_dir())
             self.assertEqual(staged_script.read_text(encoding="utf-8"), "# script\n")
             self.assertEqual(staged_tpl.read_bytes(), b"TEMPLATE")
@@ -50,9 +48,7 @@ class TaskViewTests(unittest.TestCase):
             script.write_text("# script\n", encoding="utf-8")
             template.write_bytes(b"TEMPLATE")
             ascii_root = Path(tmp) / "plc_work"
-            staged_ws, staged_script, staged_tpl = stage_ascii_workspace(
-                ascii_ws, script, template, ascii_root
-            )
+            staged_ws, staged_script, staged_tpl = stage_ascii_workspace(ascii_ws, script, template, ascii_root)
             if str(ascii_ws.resolve()).isascii():
                 self.assertEqual(staged_ws, ascii_ws)
                 self.assertEqual(staged_script, script)

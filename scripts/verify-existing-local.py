@@ -1,4 +1,5 @@
 """Recompile and simulate an existing candidate; never requests model inference."""
+
 from __future__ import annotations
 
 import argparse
@@ -28,15 +29,23 @@ def main():
     candidate = normalize_candidate(read_json(args.candidate))
     work = ROOT / "results/raw" / ("local_existing_" + args.task + "_" + now().replace(":", "").replace(".", ""))
     work.mkdir(parents=True)
-    report = {"purpose": "LOCAL_ENVIRONMENT_ACCEPTANCE_ONLY", "task": args.task,
-              "candidate_origin": str(args.candidate.resolve()), "source_sha256": digest(candidate),
-              "observed_utc": now(), "model_inference": False}
+    report = {
+        "purpose": "LOCAL_ENVIRONMENT_ACCEPTANCE_ONLY",
+        "task": args.task,
+        "candidate_origin": str(args.candidate.resolve()),
+        "source_sha256": digest(candidate),
+        "observed_utc": now(),
+        "model_inference": False,
+    }
     compiled = compile_st(task, candidate, work / "compile", cfg)
     report["compile"] = asdict(compiled)
     if compiled.success:
         report["simulation"] = run_functional(task, candidate, digest(candidate), work / "simulation", cfg)
-    report["verified"] = bool(compiled.success and report.get("simulation", {}).get("status") == "PASS"
-                              and report.get("simulation", {}).get("execution_verified"))
+    report["verified"] = bool(
+        compiled.success
+        and report.get("simulation", {}).get("status") == "PASS"
+        and report.get("simulation", {}).get("execution_verified")
+    )
     write_json(work / "acceptance.json", report)
     write_json(ROOT / "results/summary/local_acceptance.json", report)
     print("ACCEPTANCE:", "PASS" if report["verified"] else "FAIL")

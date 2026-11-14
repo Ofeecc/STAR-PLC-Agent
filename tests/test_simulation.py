@@ -1,4 +1,5 @@
 """Offline tests of the real simulation adapter, with no runtime claims."""
+
 import copy
 import unittest
 from pathlib import Path
@@ -16,7 +17,9 @@ class SimulationAdapterTests(unittest.TestCase):
                     self.assertEqual(eligibility(task), [])
                     program = build_program(task)
                     self.assertEqual(program["step_count"], sum(len(c["steps"]) for c in task["tests"]))
-                    self.assertEqual(program["implementation"].count("BenchCalls := BenchCalls + 1;"), program["step_count"])
+                    self.assertEqual(
+                        program["implementation"].count("BenchCalls := BenchCalls + 1;"), program["step_count"]
+                    )
 
     def test_expected_answers_cannot_influence_the_executed_test_program(self):
         task = next(t for t in load_tasks() if t["id"] == "SELF001")
@@ -73,18 +76,38 @@ class SimulationAdapterTests(unittest.TestCase):
         self.assertEqual(st_literal([1, 2, 3], "ARRAY[1..3] OF INT"), "[INT#1, INT#2, INT#3]")
         self.assertEqual(
             st_literal({"recipeID": 1, "ingredientType": 2}, "ST_Recipe"),
-            "(recipeID := INT#1, ingredientType := INT#2)"
+            "(recipeID := INT#1, ingredientType := INT#2)",
         )
 
     def test_build_program_custom_cases(self):
         pub004 = next(t for t in load_tasks() if t["id"] == "PUB004")
-        custom_cases = [{
-            "id": "custom1",
-            "steps": [
-                {"inputs": {"VISCOSITY_OK": True, "PASTE_E_STOP_NC": True, "DebounceTime": "T#1s", "CycleTime": "T#100ms"}, "expected": {}, "dt_ms": 0},
-                {"inputs": {"VISCOSITY_OK": True, "PASTE_E_STOP_NC": True, "DebounceTime": "T#1s", "CycleTime": "T#100ms"}, "expected": {}, "dt_ms": 100},
-            ]
-        }]
+        custom_cases = [
+            {
+                "id": "custom1",
+                "steps": [
+                    {
+                        "inputs": {
+                            "VISCOSITY_OK": True,
+                            "PASTE_E_STOP_NC": True,
+                            "DebounceTime": "T#1s",
+                            "CycleTime": "T#100ms",
+                        },
+                        "expected": {},
+                        "dt_ms": 0,
+                    },
+                    {
+                        "inputs": {
+                            "VISCOSITY_OK": True,
+                            "PASTE_E_STOP_NC": True,
+                            "DebounceTime": "T#1s",
+                            "CycleTime": "T#100ms",
+                        },
+                        "expected": {},
+                        "dt_ms": 100,
+                    },
+                ],
+            }
+        ]
         self.assertEqual(eligibility(pub004, cases=custom_cases), [])
         prog = build_program(pub004, cases=custom_cases)
         self.assertEqual(prog["step_count"], 2)
@@ -120,7 +143,9 @@ class SimulationAdapterTests(unittest.TestCase):
         step0 = obs[0]
         self.assertEqual(step0["inputs"]["addRecipe"], False)
         self.assertEqual(step0["inputs"]["recipeIn"]["recipeID"], 0)
-        self.assertTrue(isinstance(step0["inputs"]["recipe"], dict) and step0["inputs"]["recipe"].get("$binding") == "recipe")
+        self.assertTrue(
+            isinstance(step0["inputs"]["recipe"], dict) and step0["inputs"]["recipe"].get("$binding") == "recipe"
+        )
         self.assertEqual(step0["outputs"]["recipeAdded"], False)
         self.assertEqual(step0["outputs"]["status"], 0)
         self.assertEqual(step0["outputs"]["recipeQueryResult"]["recipeID"], 42)
@@ -130,20 +155,14 @@ class SimulationAdapterTests(unittest.TestCase):
 
     def test_functional_default_timing_tolerance(self):
         from plc_agent.common import digest
+
         task = {
             "id": "PUB999_TEST",
             "interface": [
                 {"direction": "INPUT", "name": "In", "type": "BOOL"},
                 {"direction": "OUTPUT", "name": "Out", "type": "BOOL"},
             ],
-            "tests": [
-                {
-                    "id": "T1",
-                    "steps": [
-                        {"inputs": {"In": True}, "expected": {"Out": True}, "dt_ms": 100}
-                    ]
-                }
-            ]
+            "tests": [{"id": "T1", "steps": [{"inputs": {"In": True}, "expected": {"Out": True}, "dt_ms": 100}]}],
         }
         trace = {
             "task_id": "PUB999_TEST",
@@ -155,11 +174,16 @@ class SimulationAdapterTests(unittest.TestCase):
             "evidence_files": [],
             "cases": {
                 "T1": [
-                    {"inputs": {"In": True}, "outputs": {"Out": True}, "dt_ms": 115}  # 15ms jitter, within default 25ms tolerance
+                    {
+                        "inputs": {"In": True},
+                        "outputs": {"Out": True},
+                        "dt_ms": 115,
+                    }  # 15ms jitter, within default 25ms tolerance
                 ]
-            }
+            },
         }
         import tempfile
+
         with tempfile.TemporaryDirectory() as td:
             p = Path(td)
             (p / "ev.log").write_text("ok")
@@ -171,6 +195,7 @@ class SimulationAdapterTests(unittest.TestCase):
             trace["cases"]["T1"][0]["dt_ms"] = 130
             with self.assertRaises(ValueError):
                 evaluate_trace(task, "fake_hash", trace, evidence_root=p)
+
 
 if __name__ == "__main__":
     unittest.main()
