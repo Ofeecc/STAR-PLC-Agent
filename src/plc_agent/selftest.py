@@ -137,3 +137,59 @@ def validate_self_tests(
             break
 
     return valid_cases
+
+
+def check_initial_condition_warnings(
+    cases: list[dict[str, Any]],
+    task_view: dict[str, Any],
+) -> list[str]:
+    """Warn when a self-test case's quiet step-0 contradicts task initial_conditions."""
+    init_conds = task_view.get("initial_conditions")
+    if not isinstance(init_conds, dict) or not init_conds:
+        return []
+
+    init_ci = {str(k).casefold(): v for k, v in init_conds.items()}
+    warnings: list[str] = []
+    for case in cases:
+        if not isinstance(case, dict):
+            continue
+        steps = case.get("steps")
+        if not isinstance(steps, list) or not steps:
+            continue
+        step0 = steps[0]
+        if not isinstance(step0, dict):
+            continue
+        inputs0 = step0.get("inputs") or {}
+        if not isinstance(inputs0, dict):
+            continue
+        quiet_inputs = all(
+            (v is False) or (isinstance(v, (int, float)) and not isinstance(v, bool) and v == 0) or (v == "")
+            for v in inputs0.values()
+        )
+        if not quiet_inputs:
+            continue
+        expected0 = step0.get("expected") or {}
+        if not isinstance(expected0, dict):
+            continue
+        case_id = str(case.get("id", "unknown"))
+        for k, exp_val in expected0.items():
+            if k.casefold() not in init_ci:
+                continue
+            init_val = init_ci[k.casefold()]
+            if type(exp_val) is bool and type(init_val) is bool and exp_val != init_val:
+                warnings.append(
+                    f"Case '{case_id}' step 0 has quiet inputs but expected {k}={exp_val} "
+                    f"differs from initial_conditions ({init_val})."
+                )
+            elif (
+                isinstance(exp_val, (int, float))
+                and not isinstance(exp_val, bool)
+                and isinstance(init_val, (int, float))
+                and not isinstance(init_val, bool)
+                and exp_val != init_val
+            ):
+                warnings.append(
+                    f"Case '{case_id}' step 0 has quiet inputs but expected {k}={exp_val} "
+                    f"differs from initial_conditions ({init_val})."
+                )
+    return warnings

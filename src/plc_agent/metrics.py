@@ -222,6 +222,19 @@ def aggregate(records, planned_tasks, conditions=None):
         cost_total = (
             sum(r["api_cost"] for r in rows) if rows and all(r.get("api_cost") is not None for r in rows) else None
         )
+        ver_status_counter: Counter[str] = Counter()
+        for r in rows:
+            vcounts = r.get("verification_status_counts")
+            if isinstance(vcounts, dict) and vcounts:
+                for k, v in vcounts.items():
+                    if isinstance(v, int):
+                        ver_status_counter[str(k)] += v
+            elif isinstance(r.get("verification"), dict) and r["verification"].get("status"):
+                ver_status_counter[str(r["verification"]["status"])] += 1
+        total_ratchet_rollbacks = sum(int(r.get("ratchet_rollbacks") or 0) for r in rows)
+        selftest_rejection_count = sum(
+            len(r.get("selftest_rejected") or []) for r in rows if isinstance(r.get("selftest_rejected"), list)
+        )
 
         out.append(
             {
@@ -256,6 +269,9 @@ def aggregate(records, planned_tasks, conditions=None):
                 "verification_pass_rate": rate(verification_passes, planned_tasks) if attempted else None,
                 "verification_pass_rate_among_evaluated": rate(verification_passes, len(verification_eval_rows)),
                 "mean_property_pass_ratio": mean(verification_prop_ratios) if verification_prop_ratios else None,
+                "verification_status_counts": dict(ver_status_counter),
+                "total_ratchet_rollbacks": total_ratchet_rollbacks,
+                "selftest_rejection_count": selftest_rejection_count,
                 "mcnemar_p_value_vs_baseline": mcnemar_p,
                 "mcnemar_compilation_p_value_vs_baseline": mcnemar_comp_p,
                 "compiler_call_count": sum(len(r["compilation_attempts"]) for r in rows),

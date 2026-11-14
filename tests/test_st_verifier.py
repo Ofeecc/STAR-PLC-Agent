@@ -6,8 +6,9 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from plc_agent.backend import FakeBackend
+from plc_agent.backend import FakeBackend, SimCaseFailure, SimResult
 from plc_agent.common import ROOT, read_json
+from plc_agent.compiler import verify_interface_signature
 from plc_agent.config import Settings
 from plc_agent.dataset import load_tasks
 from plc_agent.dialect_cards import (
@@ -629,6 +630,277 @@ class STVerifierTests(unittest.TestCase):
         compiled_big = compile_st_to_smv(big_lit_cand, self.tasks["SELF001"])
         self.assertTrue(compiled_big["uses_smt"])
         self.assertIn("cand_state_big : integer;", compiled_big["smv_text"])
+
+    def test_scheme_a_standalone_verification_and_zero_complete_behavior_leak(self):
+        # 1. agent_view strips CompleteBehavior and .COMPLETE from spec_visible view
+        self001_full = self.tasks["SELF001"]
+        self.assertIn("CompleteBehavior", self001_full.get("atomic_propositions", {}))
+        self.assertTrue(any(str(p.get("id", "")).endswith(".COMPLETE") for p in self001_full.get("ltl", [])))
+
+        view = agent_view(self001_full, spec_visible=True)
+        self.assertNotIn("CompleteBehavior", view.get("atomic_propositions", {}))
+        self.assertFalse(any(str(p.get("id", "")).endswith(".COMPLETE") for p in view.get("ltl", [])))
+        self.assertGreaterEqual(len(view.get("ltl", [])), 5)
+
+        # 2. Standalone compilation never reads models/*.smv (observer_smv is None)
+        ref_self001 = read_json(ROOT / "codesys/examples/SELF001.json")
+        with patch(
+            "plc_agent.st_verifier.discover_observer_smv", side_effect=AssertionError("must not read observer smv")
+        ):
+            standalone_compiled = compile_st_to_smv(ref_self001, view, use_observer_smv=False)
+        self.assertIsNone(standalone_compiled["observer_smv"])
+        self.assertEqual(standalone_compiled["expected_spec_count"], 5)
+
+        # 3. Full standalone verification works against real NuSMV/nuXmv
+        self._require_checkers()
+        with patch(
+            "plc_agent.st_verifier.discover_observer_smv", side_effect=AssertionError("must not read observer smv")
+        ):
+            ver_pass = verify_candidate(
+                task=view,
+                candidate=ref_self001,
+                out_dir=self.work_dir / "standalone_pass",
+                include_expected_observer=False,
+                use_observer_smv=False,
+                extra_assertions=[{"id": "A_extra", "formula": "G (Stop -> !Run)"}],
+            )
+        self.assertEqual(ver_pass["status"], "PASS")
+        self.assertTrue(ver_pass["standalone_mode"])
+        self.assertIsNone(ver_pass["observer_smv"])
+        self.assertEqual(ver_pass["passed_properties"], 6)
+
+        bug_self001 = dict(ref_self001)
+        bug_self001["implementation"] = "IF Start THEN\n    Run := TRUE;\nEND_IF;\n"
+        ver_fail = verify_candidate(
+            task=view,
+            candidate=bug_self001,
+            out_dir=self.work_dir / "standalone_fail",
+            include_expected_observer=False,
+            use_observer_smv=False,
+        )
+        self.assertEqual(ver_fail["status"], "COUNTEREXAMPLE")
+        self.assertFalse(ver_fail["verified"])
+        self.assertIsNone(ver_fail["observer_smv"])
+        san = sanitize_counterexamples_for_agent(ver_fail["counterexamples"])
+        self.assertTrue(san)
+
+    def test_whitebox_internal_state_preserved_in_sanitized_counterexamples(self):
+        self._require_checkers()
+        view = agent_view(self.tasks["SELF001"], spec_visible=True)
+        cand_with_internal_var = {
+            "declaration": (
+                "FUNCTION_BLOCK FB_Task\n"
+                "VAR_INPUT\n    Start : BOOL;\n    Stop : BOOL;\n    GuardClosed : BOOL;\nEND_VAR\n"
+                "VAR_OUTPUT\n    Run : BOOL := FALSE;\nEND_VAR\n"
+                "VAR\n    state : INT := 0;\nEND_VAR\n"
+            ),
+            "implementation": ("IF Start THEN\n    state := 1;\nEND_IF;\nRun := (state = 1);\n"),
+            "supporting_objects": [],
+        }
+        ver = verify_candidate_st(
+            view,
+            cand_with_internal_var,
+            self.work_dir / "whitebox_state",
+            timeout=20,
+            include_expected_observer=False,
+            use_observer_smv=False,
+        )
+        self.assertEqual(ver["status"], "COUNTEREXAMPLE")
+        san = sanitize_counterexamples_for_agent(ver["counterexamples"])
+        self.assertTrue(san)
+        has_internal = any(
+            isinstance(step.get("internal_state"), dict) and "cand_state_state" in step["internal_state"]
+            for ce in san
+            for step in ce.get("trace", [])
+        )
+        self.assertTrue(has_internal)
+        for ce in san:
+            for step in ce["trace"]:
+                self.assertNotIn("observer_vars", step)
+
+    def test_interface_signature_hard_lock_and_fake_backend_enforcement(self):
+        task = self.tasks["SELF001"]
+        # Wrong output type (DINT instead of BOOL)
+        bad_type = {
+            "declaration": (
+                "FUNCTION_BLOCK FB_Task\n"
+                "VAR_INPUT\n    Start, Stop, GuardClosed : BOOL;\nEND_VAR\n"
+                "VAR_OUTPUT\n    Run : DINT := 0;\nEND_VAR\n"
+            ),
+            "implementation": "Run := 0;",
+            "supporting_objects": [],
+        }
+        diags = verify_interface_signature(bad_type, task["interface"])
+        self.assertTrue(diags)
+        self.assertIn("INTERFACE_VIOLATION", diags[0]["text"])
+
+        backend = FakeBackend()
+        comp_res = backend.compile(task, bad_type, self.work_dir / "iface_bad_type")
+        self.assertEqual(comp_res.status, "COMPILE_FAIL")
+        self.assertFalse(comp_res.success)
+
+        # Wrong direction + extra unexpected variable
+        bad_dir = {
+            "declaration": (
+                "FUNCTION_BLOCK FB_Task\n"
+                "VAR_INPUT\n    Start, Stop, GuardClosed, Run : BOOL;\n    ExtraPort : INT;\nEND_VAR\n"
+            ),
+            "implementation": "",
+            "supporting_objects": [],
+        }
+        diags_dir = verify_interface_signature(bad_dir, task["interface"])
+        texts = "\n".join(d["text"] for d in diags_dir)
+        self.assertIn("expected in VAR_OUTPUT", texts)
+        self.assertIn("ExtraPort", texts)
+
+        # Synthetic minimal placeholder remains compatible
+        stub = {"declaration": "FUNCTION_BLOCK FB_Task", "implementation": "", "supporting_objects": []}
+        self.assertEqual(verify_interface_signature(stub, task["interface"]), [])
+
+    def test_step5_4d_ratchet_blocks_lazy_reject_cases_without_code_edit(self):
+        task = self.tasks["SELF001"]
+        cand_same = read_json(ROOT / "codesys/examples/SELF001.json")
+        plan_json = json.dumps({"state_machine": ["IDLE", "RUN"], "scan_execution_order": ["1", "2", "3", "4"]})
+        cases_json = json.dumps(
+            [
+                {
+                    "id": "c1",
+                    "steps": [
+                        {"inputs": {"Start": True, "Stop": False, "GuardClosed": True}, "expected": {"Run": True}}
+                    ],
+                },
+                {
+                    "id": "c2",
+                    "steps": [
+                        {"inputs": {"Start": True, "Stop": False, "GuardClosed": True}, "expected": {"Run": True}}
+                    ],
+                },
+                {
+                    "id": "c3",
+                    "steps": [
+                        {"inputs": {"Start": True, "Stop": False, "GuardClosed": True}, "expected": {"Run": True}}
+                    ],
+                },
+                {
+                    "id": "c4",
+                    "steps": [
+                        {"inputs": {"Start": True, "Stop": False, "GuardClosed": True}, "expected": {"Run": True}}
+                    ],
+                },
+            ]
+        )
+        # Lazy LLM returns identical candidate ST code + tries to cheat PASS by rejecting failing c2, c3
+        lazy_repair = dict(cand_same)
+        lazy_repair["reject_cases"] = [
+            {"id": "c2", "reason": "lazy"},
+            {"id": "c3", "reason": "lazy"},
+        ]
+
+        class _SeqClient:
+            def __init__(self, responses):
+                self._responses = list(responses)
+                self.prompts = {}
+
+            def respond(self, model, messages, log_dir, max_tokens=None, timeout=None):
+                Path(log_dir).mkdir(parents=True, exist_ok=True)
+                self.prompts[Path(log_dir).name] = messages
+                text = self._responses.pop(0)
+                return {"text": text, "usage": {"input_tokens": 10, "output_tokens": 10}}
+
+        client = _SeqClient(
+            [
+                plan_json,
+                json.dumps(cand_same),
+                cases_json,
+                json.dumps(lazy_repair),
+            ]
+        )
+
+        def _mock_simulate(t, candidate, cases, ws):
+            passed = 0
+            failures = []
+            for c in cases:
+                if c["id"] in ("c1", "c4"):
+                    passed += 1
+                else:
+                    failures.append(
+                        SimCaseFailure(
+                            case_id=c["id"],
+                            first_bad_step=0,
+                            field="Run",
+                            expected=True,
+                            observed=False,
+                            inputs_prefix=[c["steps"][0]["inputs"]],
+                            step_window=[
+                                {
+                                    "step": 0,
+                                    "dt_ms": 0,
+                                    "inputs": c["steps"][0]["inputs"],
+                                    "expected": {"Run": True},
+                                    "observed": {"Run": False},
+                                }
+                            ],
+                        )
+                    )
+            return SimResult(
+                status="PASS" if passed == len(cases) else "TEST_FAIL",
+                passed_cases=passed,
+                evaluated_cases=len(cases),
+                failures=failures,
+            )
+
+        backend = FakeBackend()
+        backend.simulate = _mock_simulate
+        settings = Settings(max_simulations=2, max_verifications=0, max_repairs=1)
+        res = run_harness(task, "mock", self.work_dir / "anti_hack", client, settings, backend=backend)
+
+        # Must block lazy PASS promotion even though c1 & c4 passed after rejecting c2 & c3
+        self.assertEqual(res["status"], "TEST_FAIL")
+        self.assertGreaterEqual(res["ratchet_rollbacks"], 1)
+        # Check multi-turn assistant message formatting & explicit JSON schema hint in sim_repair
+        sim_msgs = client.prompts["llm_sim_repair_01"]
+        self.assertEqual([m["role"] for m in sim_msgs], ["developer", "user", "assistant", "user"])
+        self.assertIn("step_window", sim_msgs[-1]["content"])
+        self.assertIn("reject_cases", sim_msgs[-1]["content"])
+
+        # Metrics aggregation carries forward rollback & rejection counts
+        agg = aggregate([res], 1, conditions=[res["condition"]])
+        self.assertGreaterEqual(agg[0]["total_ratchet_rollbacks"], 1)
+        self.assertEqual(agg[0]["selftest_rejection_count"], 2)
+
+    def test_mcp_simulate_st_precompile_quota_parity(self):
+        task = self.tasks["SELF001"]
+        trusted = self.work_dir / "mcp_precompile"
+        trusted.mkdir(parents=True, exist_ok=True)
+        settings = Settings(max_repairs=1, max_simulations=2)
+        bad_iface_src = {
+            "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT Start, Stop, GuardClosed : BOOL; END_VAR\nVAR_OUTPUT Run : DINT; END_VAR\n",
+            "implementation": "Run := 0;",
+            "supporting_objects": [],
+        }
+        cases = [
+            {
+                "id": "c1",
+                "steps": [{"inputs": {"Start": True, "Stop": False, "GuardClosed": True}, "expected": {"Run": True}}],
+            }
+        ]
+        resp = dispatch(
+            {
+                "method": "tools/call",
+                "params": {"name": "simulate_st", "arguments": {"source": bad_iface_src, "cases": cases}},
+            },
+            task,
+            trusted,
+            settings,
+            backend=FakeBackend(),
+        )
+        self.assertFalse(resp["isError"])
+        payload = json.loads(resp["content"][0]["text"])
+        self.assertEqual(payload["status"], "COMPILE_FAIL")
+        self.assertFalse(payload["success"])
+        self.assertTrue(any("INTERFACE_VIOLATION" in str(d.get("text", "")) for d in payload["diagnostics"]))
+        # Must NOT consume any compile_st quota slots
+        self.assertEqual(list(trusted.glob("compile_*")), [])
 
 
 if __name__ == "__main__":

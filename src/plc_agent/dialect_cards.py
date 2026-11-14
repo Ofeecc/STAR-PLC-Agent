@@ -52,16 +52,16 @@ END_IF;""",
     "ton_timer": {
         "id": "ton_timer",
         "title": "Standard IEC TON Timer Block Invocation",
-        "body": """// Standard IEC TON timer block declaration, invocation, and reading Q/ET
+        "body": """// Standard IEC TON timer: MUST invoke unconditionally OUTSIDE CASE/IF every scan!
 VAR
     timer : TON;
+    runTimer : BOOL;
 END_VAR
-timer(IN := runCondition, PT := T#2s);
+// Control via boolean IN flag (never put timer(...) only inside an IF/CASE arm):
+runTimer := (state = 1) AND NOT resetCmd;
+timer(IN := runTimer, PT := T#2s);
 IF timer.Q THEN
     // Timer expired; timer.ET holds elapsed time
-END_IF;
-IF NOT runCondition THEN
-    timer(IN := FALSE); // Reset timer
 END_IF;""",
     },
     "edge_detection": {
@@ -108,16 +108,19 @@ END_IF;""",
     "case_state_machine": {
         "id": "case_state_machine",
         "title": "Explicit CASE State Machine Transitions",
-        "body": """// Enum / INT based CASE state OF ... explicit transitions
+        "body": """// 4-Stage Scan Order: 1) Edge sample 2) Reset/priority & CASE state transition
+// 3) Unconditional top-level TON/R_TRIG calls 4) Unified output assignments
 VAR
     state : INT := 0; // 0=IDLE, 1=RUN, 2=FAULT
 END_VAR
+IF emergencyStop THEN state := 2; END_IF;
 CASE state OF
-    0: IF startCmd THEN state := 1; END_IF;
+    0: IF startCmd AND NOT fault THEN state := 1; END_IF;
     1: IF faultCmd THEN state := 2; ELSIF stopCmd THEN state := 0; END_IF;
     2: IF resetCmd THEN state := 0; END_IF;
     ELSE state := 0;
-END_CASE;""",
+END_CASE;
+outActive := (state = 1); // Assign outputs unconditionally from current state""",
     },
 }
 

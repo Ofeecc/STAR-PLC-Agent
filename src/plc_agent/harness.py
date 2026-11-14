@@ -18,7 +18,7 @@ from .config import Settings
 from .dialect_cards import select_dialect_cards, select_static_analysis_hint
 from .formal_verify import verify_candidate
 from .llm import ProviderError, parse_candidate
-from .selftest import validate_self_tests
+from .selftest import check_initial_condition_warnings, validate_self_tests
 from .st_verifier import sanitize_counterexamples_for_agent
 from .task_view import agent_view
 
@@ -310,6 +310,8 @@ def run_harness(
         "simulation_call_count": 0,
         "verification_call_count": 0,
         "cegar_repairs": 0,
+        "ratchet_rollbacks": 0,
+        "verification_status_counts": {},
         "llm_calls": 0,
         "usage": [],
         "selftest_rejected": [],
@@ -334,7 +336,7 @@ def run_harness(
         return time.monotonic() - started >= settings.task_timeout
 
     best_candidate: Any = None
-    best_score: tuple[bool, int, int] = (False, 0, 0)
+    best_score: tuple[bool, int, int, int] = (False, 0, 0, 0)
     attempt_ledger: list[str] = []
 
     try:
@@ -353,7 +355,9 @@ def run_harness(
                     "- state_machine: list of states and transitions\n"
                     "- timer_plan: timers required, PT durations, reset conditions\n"
                     "- priorities: safety and operational priorities\n"
-                    "- initial_values: initial values for variables\n\n"
+                    "- initial_values: initial values for variables\n"
+                    "- scan_execution_order: explicit 4-stage scan order (1. edge sampling, 2. safety/reset priority & state transitions, 3. unconditional top-level timer FB calls outside CASE/IF, 4. unified output assignments)\n"
+                    '- formal_assertions: optional list of {"id": "A1", "formula": "G(...)"} temporal/invariant assertions over declared VAR_INPUT/VAR_OUTPUT port names\n\n'
                     f"SPECIFICATIONS:\n{json.dumps(view, indent=2)}"
                 )
                 planner_messages = [
@@ -491,13 +495,13 @@ def run_harness(
                 f"Compilation failed with the following diagnostics:\n{diag_str}\n"
                 f"{stagnation_msg}"
                 + (f"\n{ledger_text}\n" if ledger_text else "")
-                + f"\nCurrent code:\n{json.dumps(candidate, indent=2)}\n\n"
-                + "Please fix the compilation errors while preserving the required interface and logic."
+                + "\nPlease fix the compilation errors while preserving the required interface and logic."
             )
 
             repair_messages = [
                 {"role": "developer", "content": coder_developer},
                 {"role": "user", "content": coder_user},
+                {"role": "assistant", "content": json.dumps(candidate, ensure_ascii=False, indent=2)},
                 {"role": "user", "content": repair_prompt},
             ]
 
@@ -542,7 +546,7 @@ def run_harness(
         result["final_compiled"] = compiled.success
         result["final_candidate"] = candidate
         best_candidate = candidate
-        best_score = (compiled.success, 0, 0)
+        best_score = (compiled.success, 0, 0, 0)
 
         if not compiled.success:
             if result["status"] not in ("TOOL_ERROR", "TIMEOUT"):
@@ -553,30 +557,40 @@ def run_harness(
         result["status"] = "UNVERIFIED"
         result["reason"] = "CODESYS compiled; PLC functional execution remains to be evaluated"
 
-        # Step 3.5: Self-Developed ST->SMV Formal Verification & CEGAR Repair Loop
+        # Step 3.5: Self-Developed ST->SMV Formal Verification & CEGAR Repair Loop (observer-free Scheme A)
         max_ver_cfg = getattr(settings, "max_verifications", 3)
         max_ver_runs = 5 if max_ver_cfg < 0 else max_ver_cfg
         if result["final_compiled"] and ablation not in ("no_verify", "no_cegar") and max_ver_runs > 0:
             cegar_hashes = {prev_cand_hash}
+            formal_assertions = plan.get("formal_assertions") if isinstance(plan, dict) else None
+            if not isinstance(formal_assertions, list):
+                formal_assertions = None
             for ver_idx in range(max_ver_runs):
                 if is_timed_out():
                     break
                 ver_res = verify_candidate(
-                    task=task,
+                    task=view,
                     candidate=candidate,
                     out_dir=workspace / f"verify_{ver_idx:02d}",
                     include_expected_observer=False,
+                    use_observer_smv=False,
+                    extra_assertions=formal_assertions,
                 )
                 result["tool_call_count"] += 1
                 result["verification_call_count"] += 1
                 result["verification"] = ver_res
 
-                ver_status = ver_res.get("status")
+                ver_status = str(ver_res.get("status") or "UNKNOWN")
+                status_counts = result["verification_status_counts"]
+                status_counts[ver_status] = status_counts.get(ver_status, 0) + 1
                 passed_props = int(ver_res.get("passed_properties") or 0)
                 if ver_status in ("PASS", "COUNTEREXAMPLE") and (ver_res.get("unknown_properties") or 0) == 0:
-                    if (True, passed_props, best_score[2]) >= best_score:
-                        best_score = (True, passed_props, best_score[2])
+                    cand_ver_score = (True, passed_props, best_score[2], best_score[3])
+                    if cand_ver_score >= best_score:
+                        best_score = cand_ver_score
                         best_candidate = candidate
+                    elif ver_idx > 0:
+                        result["ratchet_rollbacks"] += 1
 
                 if ver_status == "PASS":
                     attempt_ledger.append(
@@ -611,15 +625,15 @@ def run_harness(
                     "Formal LTL/INVAR verification (ST->SMV + NuSMV/nuXmv) found counterexample(s) where your code "
                     "violates the specification:\n"
                     f"VIOLATED PROPERTIES:\n{json.dumps(failed_props[:4], ensure_ascii=False, indent=2)}\n\n"
-                    f"COUNTEREXAMPLE TRACE(S) (observed inputs & your outputs only):\n{json.dumps(san_ces, indent=2)}\n\n"
+                    f"COUNTEREXAMPLE TRACE(S) (inputs, your outputs, and candidate internal state):\n{json.dumps(san_ces, indent=2)}\n\n"
                     + (f"{ledger_text}\n\n" if ledger_text else "")
-                    + f"Current code:\n{json.dumps(candidate, indent=2)}\n\n"
                     + "Fix the logic so every property holds across all scan sequences and edge cases. "
                     + "Return ONLY JSON with declaration, implementation, supporting_objects."
                 )
                 cegar_messages = [
                     {"role": "developer", "content": coder_developer},
                     {"role": "user", "content": coder_user},
+                    {"role": "assistant", "content": json.dumps(candidate, ensure_ascii=False, indent=2)},
                     {"role": "user", "content": cegar_prompt},
                 ]
                 reply = client.respond(
@@ -657,6 +671,7 @@ def run_harness(
                     break
                 if not comp_cegar.success:
                     attempt_ledger.append(f"CEGAR #{ver_idx + 1:02d} failed compile")
+                    result["ratchet_rollbacks"] += 1
                     candidate = best_candidate
                     continue
 
@@ -667,6 +682,8 @@ def run_harness(
             if (result.get("verification") or {}).get("status") == "PASS":
                 best_candidate = candidate
             else:
+                if candidate is not best_candidate:
+                    result["ratchet_rollbacks"] += 1
                 candidate = best_candidate
             result["final_candidate"] = best_candidate
 
@@ -676,6 +693,9 @@ def run_harness(
             if not is_timed_out() and (not settings.max_llm_calls or result["llm_calls"] < settings.max_llm_calls):
                 tester_prompt = (
                     "You are an independent PLC test engineer. Generate comprehensive unit test cases for the specified PLC function block.\n"
+                    "CODESYS Simulation Timing & Edge Rules:\n"
+                    "- dt_ms advances elapsed PLC scan time for that step; TON/TOF timers accumulate dt_ms across consecutive steps while IN keeps its active state (e.g., IN=TRUE for TON).\n"
+                    "- Rising-edge detection (R_TRIG or x AND NOT prev_x) requires a step with x=FALSE before the step with x=TRUE.\n\n"
                     "Return a JSON array of test case objects. Each test case must have:\n"
                     "- id: string identifier (e.g. 'case_1')\n"
                     "- steps: array of steps, where each step has:\n"
@@ -719,6 +739,10 @@ def run_harness(
                     valid_cases = []
 
         write_json(workspace / "selftest.json", valid_cases)
+        init_cond_warnings = check_initial_condition_warnings(valid_cases, view)
+        if init_cond_warnings:
+            write_json(workspace / "selftest_warnings.json", init_cond_warnings)
+            attempt_ledger.append(f"Self-test step-0 initial_conditions warning: {init_cond_warnings[0][:120]}")
 
         # Step 5: Simulation & Behavioral Repair Loop
         if valid_cases:
@@ -726,6 +750,8 @@ def run_harness(
             best_was_simulated = False
             max_rejections = len(valid_cases) // 2
             rejected_case_ids: set[str] = set()
+            sim_tested_hashes: set[str] = set()
+            cases_rejected_in_prev_step = False
 
             sim_attempt = 0
             while sim_attempt < settings.max_simulations:
@@ -737,6 +763,13 @@ def run_harness(
                     break
                 if result["simulation_call_count"] >= settings.max_simulations:
                     break
+
+                try:
+                    cur_cand_hash = digest(normalize_candidate(candidate))
+                except Exception:
+                    cur_cand_hash = digest(str(candidate))
+                was_previously_simulated = bool(cur_cand_hash and cur_cand_hash in sim_tested_hashes)
+                sim_tested_hashes.add(cur_cand_hash)
 
                 sim = backend.simulate(task, candidate, active_cases, workspace / f"sim_{sim_attempt:02d}")
                 result["tool_call_count"] += 1
@@ -752,15 +785,29 @@ def run_harness(
 
                 passed_cases = sim.passed_cases
                 result["status"], result["reason"] = "TEST_FAIL", "Active self-tests have behavioral failures"
-                if (True, best_score[1], passed_cases) >= best_score:
-                    best_score = (True, best_score[1], passed_cases)
-                    best_candidate = candidate
-                    best_was_simulated = True
 
-                if passed_cases == len(active_cases) and len(active_cases) > 0:
-                    result["status"] = "PASS"
-                    result["reason"] = "All active self-tests passed"
-                    break
+                lazy_rejection_blocked = cases_rejected_in_prev_step and was_previously_simulated
+                sim_score = (True, best_score[1], passed_cases, -len(rejected_case_ids))
+
+                if lazy_rejection_blocked:
+                    result["ratchet_rollbacks"] += 1
+                    result["reason"] = "Blocked lazy test-case rejection without candidate code modification"
+                else:
+                    if passed_cases == len(active_cases) and len(active_cases) > 0:
+                        best_score = sim_score
+                        best_candidate = candidate
+                        best_was_simulated = True
+                        result["status"] = "PASS"
+                        result["reason"] = "All active self-tests passed"
+                        break
+                    if sim_score >= best_score:
+                        best_score = sim_score
+                        best_candidate = candidate
+                        best_was_simulated = True
+                    elif sim_attempt > 1:
+                        result["ratchet_rollbacks"] += 1
+
+                cases_rejected_in_prev_step = False
 
                 if (
                     sim_attempt >= settings.max_simulations
@@ -769,19 +816,20 @@ def run_harness(
                 ):
                     break
 
-                # Format failures for model
+                # Format failures for model (including local waveform window around first_bad_step)
                 failures_summary = []
                 for f in sim.failures:
-                    failures_summary.append(
-                        {
-                            "case_id": f.case_id,
-                            "first_bad_step": f.first_bad_step,
-                            "field": f.field,
-                            "expected": f.expected,
-                            "observed": f.observed,
-                            "inputs_prefix": f.inputs_prefix,
-                        }
-                    )
+                    f_item: dict[str, Any] = {
+                        "case_id": f.case_id,
+                        "first_bad_step": f.first_bad_step,
+                        "field": f.field,
+                        "expected": f.expected,
+                        "observed": f.observed,
+                        "inputs_prefix": f.inputs_prefix,
+                    }
+                    if getattr(f, "step_window", None):
+                        f_item["step_window"] = f.step_window
+                    failures_summary.append(f_item)
 
                 attempt_ledger.append(
                     f"Sim #{sim_attempt:02d}: passed {passed_cases}/{len(active_cases)} "
@@ -793,17 +841,19 @@ def run_harness(
                     f"Simulation failed on {len(sim.failures)} test case(s):\n"
                     f"{json.dumps(failures_summary, indent=2)}\n\n"
                     + (f"{ledger_text}\n\n" if ledger_text else "")
-                    + f"You may:\n"
-                    f"1. Fix the candidate implementation to satisfy the test expectations.\n"
-                    f"2. If you believe a self-test case was incorrectly specified, you may reject it by providing:\n"
-                    f'   "reject_cases": [{{"id": "<case_id>", "reason": "<reason>"}}]\n'
-                    f"   (You can reject at most {remaining_rejections} more case(s); total rejection cap is {max_rejections}).\n\n"
-                    f"Current candidate code:\n{json.dumps(candidate, indent=2)}"
+                    + "You may:\n"
+                    + "1. Fix the candidate implementation to satisfy the test expectations.\n"
+                    + "2. Only if a self-test case directly contradicts the task specification, reject it by providing:\n"
+                    + '   "reject_cases": [{"id": "<case_id>", "reason": "<specific specification clause>"}]\n'
+                    + f"   (You can reject at most {remaining_rejections} more case(s); total rejection cap is {max_rejections}; rejecting cases without modifying code will NOT pass).\n\n"
+                    + 'Return ONLY a JSON object with keys: "declaration", "implementation", "supporting_objects", and optionally "reject_cases". '
+                    + 'Even if you reject test cases, you MUST still return the full "declaration", "implementation", and "supporting_objects".'
                 )
 
                 sim_repair_messages = [
                     {"role": "developer", "content": coder_developer},
                     {"role": "user", "content": coder_user},
+                    {"role": "assistant", "content": json.dumps(candidate, ensure_ascii=False, indent=2)},
                     {"role": "user", "content": sim_repair_prompt},
                 ]
 
@@ -835,9 +885,8 @@ def run_harness(
                     pass
 
                 next_cases = [c for c in valid_cases if c["id"] not in rejected_case_ids]
-                if next_cases != active_cases:
-                    # Scores from different test sets are not comparable.
-                    best_score = (True, best_score[1], -1)
+                cases_rejected_in_prev_step = next_cases != active_cases
+                if cases_rejected_in_prev_step:
                     best_was_simulated = False
                 active_cases = next_cases
 
@@ -846,6 +895,7 @@ def run_harness(
                     new_candidate = parse_candidate(reply_text)
                 except Exception:
                     candidate = best_candidate
+                    result["ratchet_rollbacks"] += 1
                     continue
 
                 if is_timed_out():
@@ -862,8 +912,9 @@ def run_harness(
                     result["status"], result["reason"] = comp_res.status, comp_res.infrastructure_error
                     break
                 if not comp_res.success:
-                    # Ratchet rejects uncompiled code (False, 0, 0) < best_score (True, ...)
+                    # Ratchet rejects uncompiled code (False, ...) < best_score (True, ...)
                     candidate = best_candidate
+                    result["ratchet_rollbacks"] += 1
                     continue
 
                 candidate = new_candidate

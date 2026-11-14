@@ -106,6 +106,8 @@ def verify_candidate(
     engine: str = "auto",
     bmc_bound: int = 25,
     include_expected_observer: bool = True,
+    use_observer_smv: bool = True,
+    extra_assertions: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Export verification bundle, compile ST->SMV, and run NuSMV/nuXmv on candidate ST."""
     from .st_verifier import verify_candidate_st
@@ -122,6 +124,8 @@ def verify_candidate(
         engine=engine,
         bmc_bound=bmc_bound,
         include_expected_observer=include_expected_observer,
+        use_observer_smv=use_observer_smv,
+        extra_assertions=extra_assertions,
     )
 
     if result.get("smv_path"):

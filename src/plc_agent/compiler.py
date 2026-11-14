@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import time
@@ -50,6 +51,114 @@ def normalize_candidate(source):
     if not isinstance(result["supporting_objects"], list):
         raise ValueError("supporting_objects must be a list")
     return result
+
+
+def _normalize_st_type(raw_type: str) -> str:
+    norm = re.sub(r"\s+", "", raw_type.upper())
+    return re.sub(r"^STRING\[(\d+)\]$", r"STRING(\1)", norm)
+
+
+def verify_interface_signature(candidate: dict | str, interface: list[dict] | None) -> list[dict]:
+    """Verify candidate VAR_INPUT/VAR_OUTPUT/VAR_IN_OUT match task interface specification.
+
+    Skips validation when the declaration is a minimal synthetic unit-test stub
+    containing no VAR_INPUT/VAR_OUTPUT/VAR_IN_OUT blocks.
+    """
+    if not interface:
+        return []
+    cand_norm = normalize_candidate(candidate)
+    decl_text = cand_norm.get("declaration", "")
+    clean_decl = re.sub(r"\(\*.*?\*\)", " ", decl_text, flags=re.S)
+    clean_decl = re.sub(r"//[^\n]*", "", clean_decl)
+    if not re.search(r"\bVAR_(?:INPUT|OUTPUT|IN_OUT)\b", clean_decl, re.I):
+        return []
+
+    actual_ports: dict[str, tuple[str, str, str, str]] = {}
+    sec_pattern = re.compile(
+        r"\b(VAR_INPUT|VAR_OUTPUT|VAR_IN_OUT)\b(?:\s+(?:CONSTANT|RETAIN|NON_RETAIN|PERSISTENT))*\s*(.*?)\bEND_VAR\b",
+        re.I | re.S,
+    )
+    for m_sec in sec_pattern.finditer(clean_decl):
+        sec_dir = m_sec.group(1).upper()
+        body = m_sec.group(2)
+        for stmt in body.split(";"):
+            if ":" not in stmt:
+                continue
+            lhs, rhs = stmt.split(":", 1)
+            type_part = rhs.split(":=", 1)[0].strip()
+            if not type_part:
+                continue
+            norm_type = _normalize_st_type(type_part)
+            for raw_var in lhs.split(","):
+                tokens = raw_var.strip().split()
+                if not tokens:
+                    continue
+                vname = tokens[0]
+                if not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", vname):
+                    continue
+                actual_ports[vname.lower()] = (vname, sec_dir, type_part, norm_type)
+
+    dir_map = {
+        "INPUT": "VAR_INPUT",
+        "OUTPUT": "VAR_OUTPUT",
+        "IN_OUT": "VAR_IN_OUT",
+        "INOUT": "VAR_IN_OUT",
+    }
+    diagnostics: list[dict] = []
+    expected_lower: set[str] = set()
+    for port in interface:
+        if not isinstance(port, dict):
+            continue
+        exp_name = str(port.get("name", "")).strip()
+        exp_dir_raw = str(port.get("direction", "INPUT")).strip().upper()
+        exp_dir = dir_map.get(exp_dir_raw, f"VAR_{exp_dir_raw}")
+        exp_type = str(port.get("type", "")).strip()
+        if not exp_name or not exp_type:
+            continue
+        expected_lower.add(exp_name.lower())
+        exp_norm_type = _normalize_st_type(exp_type)
+        actual = actual_ports.get(exp_name.lower())
+        if actual is None:
+            diagnostics.append(
+                {
+                    "severity": "Error",
+                    "code": "INTERFACE_VIOLATION",
+                    "text": f"INTERFACE_VIOLATION: Missing required {exp_dir} variable '{exp_name}' of type {exp_type}.",
+                }
+            )
+            continue
+        _, act_dir, act_raw_type, act_norm_type = actual
+        if act_dir != exp_dir:
+            diagnostics.append(
+                {
+                    "severity": "Error",
+                    "code": "INTERFACE_VIOLATION",
+                    "text": f"INTERFACE_VIOLATION: Variable '{exp_name}' expected in {exp_dir}, found in {act_dir}.",
+                }
+            )
+        elif act_norm_type != exp_norm_type:
+            diagnostics.append(
+                {
+                    "severity": "Error",
+                    "code": "INTERFACE_VIOLATION",
+                    "text": (
+                        f"INTERFACE_VIOLATION: Variable '{exp_name}' expected type {exp_type} "
+                        f"in {exp_dir}, found {act_raw_type}."
+                    ),
+                }
+            )
+
+    for act_lower, (act_name, act_dir, _, _) in actual_ports.items():
+        if act_lower not in expected_lower:
+            diagnostics.append(
+                {
+                    "severity": "Error",
+                    "code": "INTERFACE_VIOLATION",
+                    "text": f"INTERFACE_VIOLATION: Unexpected extra interface variable '{act_name}' in {act_dir}.",
+                }
+            )
+
+    return diagnostics
 
 
 def final_compile_attempt(row, candidate=None):
@@ -223,6 +332,14 @@ def _compile_st(task, source_code, workspace, settings=None):
     if missing:
         result.infrastructure_error = "Missing compiler configuration: " + ", ".join(missing)
     else:
+        iface_diags = verify_interface_signature(candidate, task.get("interface"))
+        if iface_diags:
+            result.status = "COMPILE_FAIL"
+            result.success = False
+            result.diagnostics = iface_diags
+            result.elapsed_seconds = time.monotonic() - started
+            write_json(workspace / "compile_result.json", asdict(result))
+            return result
         script_path = ROOT / "codesys/scripts/build.py"
         template_path = Path(cfg.codesys_template)
         exec_ws, staged_script, staged_template = stage_ascii_workspace(

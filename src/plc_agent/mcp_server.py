@@ -11,8 +11,8 @@ import sys
 from dataclasses import asdict, is_dataclass
 from pathlib import Path
 
-from .common import read_json, write_json
-from .compiler import compile_st
+from .common import digest, read_json, write_json
+from .compiler import compile_st, normalize_candidate
 from .config import Settings
 from .formal_verify import verify_candidate
 from .selftest import validate_self_tests
@@ -46,7 +46,14 @@ SIMULATE_SCHEMA = {
 
 VERIFY_SCHEMA = {
     "type": "object",
-    "properties": {"source": CANDIDATE_SCHEMA},
+    "properties": {
+        "source": CANDIDATE_SCHEMA,
+        "assertions": {
+            "type": "array",
+            "items": {"type": "object"},
+            "description": "Optional temporal/invariant assertions ({id, formula}) over declared port names.",
+        },
+    },
     "required": ["source"],
     "additionalProperties": False,
 }
@@ -143,6 +150,62 @@ def dispatch(message: dict, task: dict, trusted: Path, settings: Settings, backe
             run_dir = trusted / f"sim_{len(records):02d}"
             run_dir.mkdir(parents=True, exist_ok=True)
             source = args.get("source")
+
+            # Quota parity (Scheme A): pre-compile uncompiled/edited source inside run_dir
+            # without touching trusted/compile_* so compile_st quota is never consumed.
+            try:
+                cand_digest = digest(normalize_candidate(source))
+            except Exception:
+                cand_digest = digest(str(source))
+
+            already_compiled = False
+            for comp_file in sorted(trusted.glob("compile_*/compile_result.json")):
+                try:
+                    comp_data = read_json(comp_file)
+                    if not comp_data.get("success"):
+                        continue
+                    cand_file = comp_file.parent / "candidate.json"
+                    cand_data = read_json(cand_file) if cand_file.is_file() else None
+                    if comp_data.get("source_sha256") == cand_digest or (
+                        isinstance(cand_data, dict) and digest(normalize_candidate(cand_data)) == cand_digest
+                    ):
+                        already_compiled = True
+                        break
+                except Exception:
+                    pass
+            if not already_compiled:
+                for pre_file in sorted(trusted.glob("sim_*/precompile_ok.json")):
+                    try:
+                        if read_json(pre_file).get("source_sha256") == cand_digest:
+                            already_compiled = True
+                            break
+                    except Exception:
+                        pass
+
+            if not already_compiled:
+                pre_dir = run_dir / "precompile"
+                if backend is not None:
+                    pre_comp = backend.compile(task, source, pre_dir)
+                else:
+                    pre_comp = compile_st(task, source, pre_dir, settings)
+                pre_dict = asdict(pre_comp) if is_dataclass(pre_comp) else pre_comp
+                if not pre_dict.get("success"):
+                    fail_payload = {
+                        "status": pre_dict.get("status", "COMPILE_FAIL"),
+                        "success": False,
+                        "passed_cases": 0,
+                        "evaluated_cases": 0,
+                        "failures": [],
+                        "diagnostics": pre_dict.get("diagnostics", []),
+                        "infrastructure_error": pre_dict.get("infrastructure_error"),
+                    }
+                    write_json(run_dir / "simulation_result.json", fail_payload)
+                    return {
+                        "content": [{"type": "text", "text": json.dumps(fail_payload)}],
+                        "isError": False,
+                    }
+                write_json(run_dir / "precompile_ok.json", {"source_sha256": cand_digest})
+
             if backend is not None:
                 res = backend.simulate(task, source, valid_cases, run_dir)
             else:
@@ -166,11 +229,16 @@ def dispatch(message: dict, task: dict, trusted: Path, settings: Settings, backe
                 }
             run_dir = trusted / f"verify_{len(records):02d}"
             source = args.get("source")
+            spec_vis = getattr(settings, "spec_visible", True)
+            view = agent_view(task, spec_visible=spec_vis)
+            extra_assertions = args.get("assertions") if isinstance(args.get("assertions"), list) else None
             full_res = verify_candidate(
-                task=task,
+                task=view,
                 candidate=source,
                 out_dir=run_dir,
                 include_expected_observer=False,
+                use_observer_smv=False,
+                extra_assertions=extra_assertions,
             )
             # Zero-leakage response returned to the agent: strip observer_vars and internal file paths
             ver_status = full_res.get("status")

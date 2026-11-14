@@ -7,12 +7,12 @@ testing via FakeBackend with failure truncation to the first diverging scan step
 from __future__ import annotations
 
 import copy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Protocol, runtime_checkable
 
 from .common import digest, read_json
-from .compiler import CompileResult, compile_st, normalize_candidate
+from .compiler import CompileResult, compile_st, normalize_candidate, verify_interface_signature
 from .config import Settings
 from .functional import equal, outputs_equal
 from .normalized_spec import reference_step
@@ -28,6 +28,7 @@ class SimCaseFailure:
     expected: object
     observed: object
     inputs_prefix: list[dict]
+    step_window: list[dict] = field(default_factory=list)
 
 
 @dataclass
@@ -224,6 +225,22 @@ class CodesysBackend:
                     obs_val = None
 
             inputs_prefix = [copy.deepcopy(s["inputs"]) for s in steps[: first_bad_step + 1]]
+            win_start = max(0, first_bad_step - 2)
+            win_end = min(len(steps), first_bad_step + 2)
+            step_window = [
+                {
+                    "step": w_idx,
+                    "dt_ms": steps[w_idx].get("dt_ms"),
+                    "inputs": copy.deepcopy(steps[w_idx].get("inputs", {})),
+                    "expected": copy.deepcopy(steps[w_idx].get("expected", {})),
+                    "observed": (
+                        copy.deepcopy(obs_steps[w_idx].get("outputs", {}))
+                        if w_idx < len(obs_steps) and isinstance(obs_steps[w_idx], dict)
+                        else None
+                    ),
+                }
+                for w_idx in range(win_start, win_end)
+            ]
             failures.append(
                 SimCaseFailure(
                     case_id=case_id,
@@ -232,6 +249,7 @@ class CodesysBackend:
                     expected=exp_val,
                     observed=obs_val,
                     inputs_prefix=inputs_prefix,
+                    step_window=step_window,
                 )
             )
 
@@ -258,16 +276,25 @@ class FakeBackend:
 
     def compile(self, task: dict, candidate: dict | str, workspace: Path) -> CompileResult:
         ws = Path(workspace)
-        if self.compile_fn is not None:
-            return _call_compile_fn(self.compile_fn, task, candidate, ws)
-
         source_hash = ""
         if candidate:
             try:
                 cand_norm = normalize_candidate(candidate)
                 source_hash = digest(cand_norm)
+                iface_diags = verify_interface_signature(cand_norm, task.get("interface"))
+                if iface_diags:
+                    return CompileResult(
+                        status="COMPILE_FAIL",
+                        success=False,
+                        backend="FAKE",
+                        diagnostics=iface_diags,
+                        source_sha256=source_hash,
+                    )
             except Exception:
                 source_hash = ""
+
+        if self.compile_fn is not None:
+            return _call_compile_fn(self.compile_fn, task, candidate, ws)
 
         return CompileResult(
             status="PASS",
@@ -315,6 +342,7 @@ class FakeBackend:
                 self.step_fn.reset()
 
             case_failed = False
+            observed_history: list[Any] = []
             for step_idx, step in enumerate(steps):
                 inputs = step.get("inputs", {})
                 dt_ms = step.get("dt_ms")
@@ -324,6 +352,7 @@ class FakeBackend:
                     observed = reference_step(task, contract, inputs, dt_ms)
                 else:
                     observed = _call_step_fn(self.step_fn, inputs, dt_ms)
+                observed_history.append(observed)
 
                 if not outputs_equal(task, observed, expected, inputs):
                     case_failed = True
@@ -336,6 +365,17 @@ class FakeBackend:
                         obs_val = observed.get(field_name) if isinstance(observed, dict) else observed
 
                     inputs_prefix = [copy.deepcopy(s["inputs"]) for s in steps[: step_idx + 1]]
+                    win_start = max(0, step_idx - 2)
+                    step_window = [
+                        {
+                            "step": w_idx,
+                            "dt_ms": steps[w_idx].get("dt_ms"),
+                            "inputs": copy.deepcopy(steps[w_idx].get("inputs", {})),
+                            "expected": copy.deepcopy(steps[w_idx].get("expected", {})),
+                            "observed": copy.deepcopy(observed_history[w_idx]),
+                        }
+                        for w_idx in range(win_start, step_idx + 1)
+                    ]
                     failures.append(
                         SimCaseFailure(
                             case_id=case_id,
@@ -344,6 +384,7 @@ class FakeBackend:
                             expected=exp_val,
                             observed=obs_val,
                             inputs_prefix=inputs_prefix,
+                            step_window=step_window,
                         )
                     )
                     # Truncate at the first diverging step: do not execute subsequent steps

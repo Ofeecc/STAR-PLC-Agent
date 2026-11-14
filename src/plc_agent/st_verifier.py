@@ -8,6 +8,7 @@ actionable diagnostics and WebUI-compatible waveforms.
 
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -2748,17 +2749,413 @@ def _ast_needs_unbounded_integers(program: STProgram) -> bool:
     return _stmts_need_unbounded_integers(program.statements, program)
 
 
+_SMV_EXPR_OPERATORS = frozenset(
+    {
+        "G",
+        "F",
+        "X",
+        "U",
+        "V",
+        "W",
+        "Y",
+        "Z",
+        "H",
+        "O",
+        "S",
+        "T",
+        "TRUE",
+        "FALSE",
+        "mod",
+        "xor",
+        "xnor",
+        "in",
+        "toint",
+        "toreal",
+        "floor",
+        "abs",
+        "max",
+        "min",
+        "count",
+        "uwconst",
+        "swconst",
+        "case",
+        "esac",
+    }
+)
+
+
+def _translate_st_ltl_to_smv(expr_text: str) -> str:
+    """Translate lightweight ST/LTL boolean connectives into SMV syntax."""
+    s = expr_text.strip()
+    s = s.replace("<>", "!=")
+    s = re.sub(r"\bAND\b", "&", s, flags=re.IGNORECASE)
+    s = re.sub(r"\bOR\b", "|", s, flags=re.IGNORECASE)
+    s = re.sub(r"\bNOT\b", "!", s, flags=re.IGNORECASE)
+    s = re.sub(r"\btrue\b", "TRUE", s, flags=re.IGNORECASE)
+    s = re.sub(r"\bfalse\b", "FALSE", s, flags=re.IGNORECASE)
+    return s
+
+
+def _is_valid_standalone_smv_expr(raw_text: str, translated: str, known_symbols: set[str]) -> bool:
+    """Return True iff *translated* uses only declared SMV symbols and valid basic syntax."""
+    if not translated or "\n" in translated or ";" in translated:
+        return False
+    forbidden_substrings = ("I[", "O[", "Sref", "Spre", "Spost", "reference", "sum(", "for ", "..", "[", "]")
+    if any(tok in raw_text or tok in translated for tok in forbidden_substrings):
+        return False
+    depth = 0
+    for ch in translated:
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+            if depth < 0:
+                return False
+    if depth != 0:
+        return False
+    ident_tokens = re.findall(r"(?<![A-Za-z0-9_])[A-Za-z_][A-Za-z0-9_]*", translated)
+    if not ident_tokens:
+        return False
+    for tok in ident_tokens:
+        if tok not in known_symbols and tok not in _SMV_EXPR_OPERATORS:
+            return False
+    for m_adj in re.finditer(
+        r"(?<![A-Za-z0-9_])([A-Za-z_][A-Za-z0-9_]*)\s+([A-Za-z_][A-Za-z0-9_]*)(?![A-Za-z0-9_])",
+        translated,
+    ):
+        left_tok, right_tok = m_adj.group(1), m_adj.group(2)
+        if left_tok not in _SMV_EXPR_OPERATORS and right_tok not in _SMV_EXPR_OPERATORS:
+            return False
+    return True
+
+
+def _format_standalone_init_val(
+    raw_val: Any,
+    st_type: STType,
+    sort: str,
+    compiler: _STToSMVCompiler,
+    init_expr: Any,
+) -> str:
+    if raw_val is not None:
+        if sort == "bool" and isinstance(raw_val, bool):
+            return "TRUE" if raw_val else "FALSE"
+        if sort in ("int", "subrange") and isinstance(raw_val, int) and not isinstance(raw_val, bool):
+            return str(int(raw_val))
+        if sort == "real" and isinstance(raw_val, (int, float)) and not isinstance(raw_val, bool):
+            return repr(float(raw_val))
+        if sort.startswith("word[") and isinstance(raw_val, int) and not isinstance(raw_val, bool):
+            bits = int(sort[5:-1])
+            return f"0ud{bits}_{int(raw_val)}"
+    return compiler._default_smv_literal(st_type, sort, init_expr).code
+
+
+def _extract_internal_var_smv_names(program: STProgram, var_decls: list[str]) -> list[str]:
+    """Return SMV symbol names belonging to candidate's internal VAR / FB state."""
+    internal_roots = {d.name.lower() for d in program.decls if d.section in ("VAR", "") and d.st_type.kind != "FB"}
+    fb_roots = {
+        d.name.lower() for d in program.decls if d.st_type.kind == "FB" and d.section not in ("INPUT", "CONSTANT")
+    }
+    names: list[str] = []
+    for line in var_decls:
+        sym = line.split(":", 1)[0].strip()
+        sym_l = sym.lower()
+        if sym_l.startswith("cand_state_"):
+            suffix = sym_l[len("cand_state_") :]
+            if any(suffix == r or suffix.startswith(f"{r}_") for r in internal_roots):
+                names.append(sym)
+        elif sym_l.startswith("cand_fb_"):
+            suffix = sym_l[len("cand_fb_") :]
+            if any(suffix == r or suffix.startswith(f"{r}_") for r in fb_roots):
+                names.append(sym)
+    return names
+
+
+def _compile_st_to_smv_standalone(
+    program: STProgram,
+    task: dict[str, Any],
+    extra_assertions: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Compile ST directly into a standalone SMV module without reading observer SMV files."""
+    task_id = str(task.get("id") or "")
+    iface_list = [item for item in task.get("interface", []) if isinstance(item, dict) and item.get("name")]
+    iface_inputs = {
+        str(item["name"]).lower(): str(item["name"]) for item in iface_list if item.get("direction") == "INPUT"
+    }
+    iface_outputs = {
+        str(item["name"]).lower(): str(item["name"]) for item in iface_list if item.get("direction") == "OUTPUT"
+    }
+
+    has_timer_fb = any(
+        d.st_type.kind == "FB" and (d.st_type.fb_type or "").upper() in ("TON", "TOF", "TP")
+        for d in program.decls
+        if d.section not in ("CONSTANT",)
+    )
+    cand_needs_int_smt = bool(
+        has_timer_fb
+        or _ast_needs_unbounded_integers(program)
+        or any(
+            d.st_type.kind in ("REAL", "TIME", "WORD")
+            or (d.st_type.kind == "FB" and (d.st_type.fb_type or "").upper() in ("TON", "TOF", "TP", "CTU", "CTD"))
+            for d in program.decls
+            if d.section not in ("CONSTANT",)
+        )
+    )
+
+    dummy_compiler = _STToSMVCompiler(program=program, force_smt_integers=cand_needs_int_smt)
+    mapped_inputs: dict[str, tuple[str, str]] = {}
+    standalone_var_decls: list[str] = []
+    known_symbols: set[str] = set()
+    declared_lower: set[str] = set()
+    input_names: list[str] = []
+
+    for decl in program.decls:
+        if decl.section != "INPUT":
+            continue
+        if decl.st_type.kind in ("STRUCT", "ARRAY", "FB"):
+            continue
+        smv_type_str, sort = dummy_compiler._smv_type_str(decl.st_type)
+        canonical_name = iface_inputs.get(decl.name.lower(), decl.name)
+        mapped_inputs[decl.name.lower()] = (sort, canonical_name)
+        standalone_var_decls.append(f"  {canonical_name} : {smv_type_str};")
+        known_symbols.add(canonical_name)
+        declared_lower.add(canonical_name.lower())
+        input_names.append(canonical_name)
+
+    standalone_init: list[str] = []
+    standalone_invar: list[str] = []
+    standalone_assign: list[str] = []
+    standalone_define: list[str] = []
+
+    obs_clk_symbols: tuple[str, str, str] | None = None
+    if has_timer_fb:
+        obs_clk_symbols = ("dt_ms", "first_scan", "clk_now")
+        standalone_var_decls.extend(
+            [
+                "  dt_ms : integer;",
+                "  first_scan : boolean;",
+                "  clk : integer;",
+            ]
+        )
+        standalone_init.extend(["first_scan", "clk = 0"])
+        standalone_invar.extend(["dt_ms >= 0", "clk >= 0"])
+        standalone_assign.extend(
+            [
+                "  next(first_scan) := FALSE;",
+                "  next(clk) := clk_now;",
+            ]
+        )
+        standalone_define.append("  clk_now := first_scan ? 0 : clk + dt_ms;")
+        known_symbols.update({"dt_ms", "first_scan"})
+        declared_lower.update({"dt_ms", "first_scan", "clk", "clk_now"})
+
+    compiler = _STToSMVCompiler(
+        program=program,
+        force_smt_integers=cand_needs_int_smt,
+        observer_clk_symbols=obs_clk_symbols,
+        mapped_inputs=mapped_inputs,
+    )
+    compiled = compiler.compile(unmapped_input_strategy="declare", external_out_prefix="cand_out_")
+    emitted_post = compiled["post_exprs"]
+
+    expected_outputs: set[str] = set(iface_outputs.values())
+    for expected_out in sorted(expected_outputs):
+        if expected_out.lower() not in emitted_post:
+            raise UnsupportedSTConstructError(f"Candidate ST FUNCTION_BLOCK missing expected OUTPUT {expected_out}")
+
+    if "first" not in declared_lower:
+        standalone_var_decls.append("  first : boolean;")
+        standalone_assign.extend(["  init(first) := TRUE;", "  next(first) := FALSE;"])
+        known_symbols.add("first")
+        declared_lower.add("first")
+
+    init_conds = task.get("initial_conditions") if isinstance(task.get("initial_conditions"), dict) else {}
+    init_conds_lower = {str(k).lower(): v for k, v in init_conds.items()}
+
+    output_names: set[str] = set()
+    scalar_outputs_by_lower: dict[str, tuple[str, str]] = {}
+    for decl in program.decls:
+        if decl.section not in ("OUTPUT", "IN_OUT") or decl.st_type.kind in ("STRUCT", "ARRAY", "FB"):
+            continue
+        out_name = iface_outputs.get(decl.name.lower(), decl.name)
+        post_expr = emitted_post.get(decl.name.lower())
+        if post_expr is None:
+            continue
+        output_names.add(out_name)
+        if out_name.lower() not in declared_lower:
+            standalone_define.append(f"  {out_name} := {post_expr.code};")
+            declared_lower.add(out_name.lower())
+        known_symbols.add(out_name)
+
+        q_name = f"q{out_name}"
+        smv_type_str, sort = compiler._smv_type_str(decl.st_type)
+        if q_name.lower() not in declared_lower:
+            init_lit = _format_standalone_init_val(
+                init_conds_lower.get(out_name.lower()),
+                decl.st_type,
+                sort,
+                compiler,
+                decl.init_expr,
+            )
+            standalone_var_decls.append(f"  {q_name} : {smv_type_str};")
+            standalone_assign.extend([f"  init({q_name}) := {init_lit};", f"  next({q_name}) := {post_expr.code};"])
+            declared_lower.add(q_name.lower())
+            known_symbols.add(q_name)
+        scalar_outputs_by_lower[out_name.lower()] = (out_name, q_name)
+
+    # Lower structured / safe public atomic propositions (never reading models/*.smv or CompleteBehavior)
+    ap_dict = task.get("atomic_propositions") if isinstance(task.get("atomic_propositions"), dict) else {}
+    pending_ap_exprs: list[tuple[str, str]] = []
+    for ap_name, ap_val in ap_dict.items():
+        if not ap_name or " " in ap_name or ap_name in ("CompleteBehavior", "init"):
+            continue
+        if ap_name.lower() in declared_lower:
+            continue
+        parsed_obj: dict[str, Any] | None = None
+        if isinstance(ap_val, dict):
+            parsed_obj = ap_val
+        elif isinstance(ap_val, str) and ap_val.strip().startswith("{"):
+            try:
+                maybe = json.loads(ap_val)
+                if isinstance(maybe, dict):
+                    parsed_obj = maybe
+            except json.JSONDecodeError:
+                parsed_obj = None
+        if parsed_obj is not None:
+            if parsed_obj.get("kind") == "previous_observed_output":
+                source = str(parsed_obj.get("source", ""))
+                m_src = re.match(r"^O\[k-1\]\.([A-Za-z_][A-Za-z0-9_]*)$", source)
+                if m_src:
+                    out_info = scalar_outputs_by_lower.get(m_src.group(1).lower())
+                    if out_info and ap_name != out_info[1]:
+                        standalone_define.append(f"  {ap_name} := {out_info[1]};")
+                        known_symbols.add(ap_name)
+                        declared_lower.add(ap_name.lower())
+            continue
+        if isinstance(ap_val, str):
+            raw_ap = ap_val.strip().rstrip(".").strip()
+            pending_ap_exprs.append((ap_name, raw_ap))
+
+    # Multi-pass AP lowering so AP definitions can depend on earlier public AP definitions
+    for _ in range(len(pending_ap_exprs) + 1):
+        progressed = False
+        next_pending: list[tuple[str, str]] = []
+        for ap_name, raw_ap in pending_ap_exprs:
+            translated_ap = _translate_st_ltl_to_smv(raw_ap)
+            if _is_valid_standalone_smv_expr(raw_ap, translated_ap, known_symbols):
+                standalone_define.append(f"  {ap_name} := ({translated_ap});")
+                known_symbols.add(ap_name)
+                declared_lower.add(ap_name.lower())
+                progressed = True
+            else:
+                next_pending.append((ap_name, raw_ap))
+        pending_ap_exprs = next_pending
+        if not progressed:
+            break
+
+    # Lower public LTL / INVAR specifications + agent/planner formal_assertions
+    warnings: list[str] = []
+    lowered_specs: list[str] = []
+    lowered_spec_ids: list[str] = []
+    skipped_spec_ids: list[str] = []
+    used_snames: set[str] = set()
+
+    spec_items = list(task.get("ltl") or []) + list(extra_assertions or [])
+    for idx, item in enumerate(spec_items, start=1):
+        if not isinstance(item, dict):
+            continue
+        raw_id = str(item.get("id") or f"A{idx}")
+        formula = str(item.get("formula") or "").strip()
+        if raw_id.endswith(".COMPLETE") or "CompleteBehavior" in formula:
+            continue
+        if formula.lower() == "init":
+            # Checked directly on ST declarations via check_st_initial_instance()
+            continue
+        translated = _translate_st_ltl_to_smv(formula)
+        if not _is_valid_standalone_smv_expr(formula, translated, known_symbols):
+            skipped_spec_ids.append(raw_id)
+            warnings.append(f"Skipped non-standalone spec '{raw_id}': unlowered symbols or prose predicates.")
+            continue
+        short_name = raw_id.split(".")[-1]
+        sname = re.sub(r"[^A-Za-z0-9_]", "_", short_name)
+        if not sname or not (sname[0].isalpha() or sname[0] == "_"):
+            sname = f"SPEC_{idx}"
+        while sname in used_snames:
+            sname = f"{sname}_{idx}"
+        used_snames.add(sname)
+        kind_kw = "INVARSPEC" if str(item.get("kind", "")).lower() == "invar" else "LTLSPEC"
+        lowered_specs.append(f"{kind_kw} NAME {sname} := {translated};")
+        lowered_spec_ids.append(raw_id)
+
+    if not lowered_specs:
+        lowered_specs.append("INVARSPEC NAME P_compile_sanity := TRUE;")
+        lowered_spec_ids.append("P_compile_sanity")
+        warnings.append("No standalone temporal formulas could be lowered; checked model sanity only.")
+
+    lines: list[str] = [
+        f"-- Generated by self-developed ST->SMV Formal Verifier (standalone mode) for task {task_id}",
+        "MODULE main",
+        "VAR",
+        *standalone_var_decls,
+        *compiled["var_decls"],
+    ]
+
+    all_inits = standalone_init + list(compiled["init_clauses"])
+    if all_inits:
+        lines.extend(["", "INIT " + " & ".join(f"({c})" for c in all_inits) + ";"])
+
+    all_invars = standalone_invar + list(compiled["invar_clauses"])
+    if all_invars:
+        lines.extend(["", "INVAR " + " & ".join(f"({c})" for c in all_invars) + ";"])
+
+    all_assigns = standalone_assign + list(compiled["assign_clauses"])
+    if all_assigns:
+        lines.extend(["", "ASSIGN", *(f"  {a.lstrip()}" for a in all_assigns)])
+
+    all_defines = standalone_define + list(compiled["define_clauses"])
+    if all_defines:
+        lines.extend(["", "DEFINE", *(f"  {d.lstrip()}" for d in all_defines)])
+
+    lines.extend(["", *lowered_specs])
+    smv_text = "\n".join(lines) + "\n"
+
+    all_input_names = sorted(
+        set(input_names)
+        | {item["name"] for item in iface_list if item.get("direction") in ("INPUT", "IN_OUT") and item.get("name")}
+    )
+    return {
+        "smv_text": smv_text,
+        "observer_smv": None,
+        "input_names": all_input_names,
+        "output_names": sorted(output_names | expected_outputs),
+        "candidate_state_names": _extract_internal_var_smv_names(program, compiled["var_decls"]),
+        "expected_spec_count": len(lowered_specs),
+        "spec_id_map": lowered_spec_ids,
+        "skipped_spec_ids": skipped_spec_ids,
+        "warnings": warnings,
+        "uses_smt": bool(cand_needs_int_smt or compiled["uses_smt"]),
+        "program": program,
+    }
+
+
 def compile_st_to_smv(
     candidate: dict[str, Any] | str,
     task: dict[str, Any],
     observer_smv_path: Path | None = None,
+    *,
+    use_observer_smv: bool = True,
+    extra_assertions: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Compile an ST FUNCTION_BLOCK candidate into a verifiable SMV model.
 
-    If an observer SMV exists for the task, rewrites its output DEFINEs to read
-    directly from the symbolically compiled ST candidate scan transition.
+    When ``use_observer_smv=True`` (post-hoc benchmark evaluation), binds the
+    candidate onto the task's observer SMV model. When ``use_observer_smv=False``
+    (in-the-loop Agent verification), compiles standalone from public task
+    specifications and Agent-supplied assertions without reading ``models/*.smv``.
     """
     program = parse_st_function_block(candidate)
+    if not use_observer_smv:
+        return _compile_st_to_smv_standalone(program, task, extra_assertions=extra_assertions)
+
     task_id = str(task.get("id") or "")
     if observer_smv_path is None and task_id:
         observer_smv_path = discover_observer_smv(task_id)
@@ -2889,11 +3286,7 @@ def compile_st_to_smv(
             }
         ),
         "output_names": sorted(expected_outputs),
-        "candidate_state_names": [
-            line.split(":")[0].strip()
-            for line in compiled["var_decls"]
-            if line.split(":")[0].strip().startswith("cand_")
-        ],
+        "candidate_state_names": _extract_internal_var_smv_names(program, compiled["var_decls"]),
         "expected_spec_count": len(obs.spec_stmts),
         "uses_smt": bool(cand_needs_int_smt or compiled["uses_smt"]),
         "program": program,
@@ -2993,7 +3386,10 @@ def parse_counterexamples(
                 obs_extra = {
                     k: v
                     for k, v in current_vars.items()
-                    if k not in inputs_snap and k not in outputs_snap and k not in states_snap
+                    if k not in inputs_snap
+                    and k not in outputs_snap
+                    and k not in states_snap
+                    and not k.startswith("cand_")
                 }
                 if obs_extra:
                     step_entry["observer_vars"] = obs_extra
@@ -3012,18 +3408,24 @@ def parse_counterexamples(
 
 
 def sanitize_counterexamples_for_agent(counterexamples: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Strip reference/observer internals before returning counterexamples to an LLM agent."""
+    """Strip reference/observer internals before returning counterexamples to an LLM agent.
+
+    Preserves the candidate's own non-empty internal VAR/FB state (white-box info)
+    while omitting observer_vars so the agent never sees expected-observer secrets.
+    """
     sanitized: list[dict[str, Any]] = []
     for ce in counterexamples[:4]:
         sanitized_trace = []
         for step in ce.get("trace", [])[:10]:
-            sanitized_trace.append(
-                {
-                    "step": step.get("step"),
-                    "inputs": step.get("inputs", {}),
-                    "observed": step.get("observed", {}),
-                }
-            )
+            clean_step: dict[str, Any] = {
+                "step": step.get("step"),
+                "inputs": step.get("inputs", {}),
+                "observed": step.get("observed", {}),
+            }
+            internal_state = step.get("internal_state")
+            if isinstance(internal_state, dict) and internal_state:
+                clean_step["internal_state"] = dict(internal_state)
+            sanitized_trace.append(clean_step)
         sanitized.append(
             {
                 "property": ce.get("property"),
@@ -3248,19 +3650,28 @@ def _run_conjunction_smt_verification(
     }
 
 
-def _map_ltl_ids(task: dict[str, Any], prop_results: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _map_ltl_ids(
+    task: dict[str, Any],
+    prop_results: list[dict[str, Any]],
+    spec_id_map: list[str] | None = None,
+) -> list[dict[str, Any]]:
     """Annotate checked SMV property results with human-readable LTL IDs from task['ltl']."""
     ltl_by_id = {str(p.get("id", "")): p for p in task.get("ltl", []) if isinstance(p, dict) and p.get("id")}
+    task_id = str(task.get("id") or "")
     enriched: list[dict[str, Any]] = []
     for idx, pr in enumerate(prop_results):
         expr = str(pr.get("expression", ""))
         raw_holds = pr.get("holds")
         holds = True if raw_holds is True else (False if raw_holds is False else None)
-        matched_id = f"SMV_{idx + 1}"
+        matched_id = spec_id_map[idx] if (spec_id_map and idx < len(spec_id_map)) else f"SMV_{idx + 1}"
         # Check NAME P1_... / PUB001.P1 / SELF001.COMPLETE / legacy V2_* prefix match
         m_ltl_id = re.search(r"\b((?:(?:PUB|SELF)\d+\.)?(?:P\d+|P_init|COMPLETE)|V2_[A-Za-z0-9_]+)\b", expr)
-        if m_ltl_id and m_ltl_id.group(1) in ltl_by_id:
-            matched_id = m_ltl_id.group(1)
+        if m_ltl_id:
+            cand_id = m_ltl_id.group(1)
+            if cand_id in ltl_by_id:
+                matched_id = cand_id
+            elif task_id and f"{task_id}.{cand_id}" in ltl_by_id:
+                matched_id = f"{task_id}.{cand_id}"
         item = {
             "id": matched_id,
             "expression": expr,
@@ -3283,6 +3694,8 @@ def verify_candidate_st(
     engine: str = "auto",
     bmc_bound: int = 25,
     include_expected_observer: bool = True,
+    use_observer_smv: bool = True,
+    extra_assertions: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Compile candidate ST into SMV, run NuSMV/nuXmv, and return structured formal verification evidence.
 
@@ -3298,9 +3711,14 @@ def verify_candidate_st(
     out.mkdir(parents=True, exist_ok=True)
     task_id = str(task.get("id") or "")
 
-    # 1. Compile candidate ST into coupled SMV and check INITIAL_INSTANCE pre-scan conditions
+    # 1. Compile candidate ST into SMV (coupled or standalone) and check INITIAL_INSTANCE pre-scan conditions
     try:
-        compiled = compile_st_to_smv(candidate=candidate, task=task)
+        compiled = compile_st_to_smv(
+            candidate=candidate,
+            task=task,
+            use_observer_smv=use_observer_smv,
+            extra_assertions=extra_assertions,
+        )
         smv_path = out / "candidate_coupled.smv"
         smv_path.write_text(compiled["smv_text"], encoding="utf-8")
         init_failures = check_st_initial_instance(compiled["program"], task)
@@ -3394,7 +3812,11 @@ def verify_candidate_st(
         if conj_mc is not None:
             mc = conj_mc
 
-    prop_results = _map_ltl_ids(task, mc.get("property_results") or [])
+    prop_results = _map_ltl_ids(
+        task,
+        mc.get("property_results") or [],
+        spec_id_map=compiled.get("spec_id_map"),
+    )
     total_props = int(mc.get("expected_properties") or len(prop_results) or 0) + (1 if init_failures else 0)
     passed_props = sum(1 for pr in prop_results if pr.get("holds") is True)
     failed_props = sum(1 for pr in prop_results if pr.get("holds") is False) + len(init_failures)
@@ -3483,10 +3905,12 @@ def verify_candidate_st(
     result = {
         "task_id": task_id,
         "verifier": "self_developed_st_to_smv",
+        "standalone_mode": not use_observer_smv,
         "status": status,
         "verified": verified,
         "candidate_st_verified": verified,
         "observer_smv": compiled["observer_smv"],
+        "warnings": compiled.get("warnings", []),
         "smv_path": str(smv_path),
         "smv_sha256": mc.get("model_sha256") or digest(compiled["smv_text"]),
         "tool": mc.get("tool"),
