@@ -1,0 +1,13 @@
+{
+  "request_id": "b17cea745c5f4a2495ac2226569c3e68",
+  "source_sha256": "1ede29be92500b235f12fd4bbf71cbf635b807748dfe25c9ad5d81cdd9d0ba3b",
+  "task_id": "PUB014",
+  "project": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\c19f0e1ad71f7bdc\\task.project",
+  "candidate": {
+    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    ipText : STRING(254);\nEND_VAR\nVAR_OUTPUT\n    ipValue : UDINT := UDINT#0;\nEND_VAR\nVAR\n    snapshot : STRING(254);\n    index : INT;\n    byteValue : BYTE;\n    digit : UINT;\n    octet : UINT;\n    periodCount : UINT;\n    segmentNonempty : BOOL;\n    valid : BOOL;\n    candidate : UDINT;\n    selectedResult : UDINT;\nEND_VAR",
+    "implementation": "snapshot := ipText;\ncandidate := UDINT#0;\noctet := UINT#0;\nperiodCount := UINT#0;\nsegmentNonempty := FALSE;\nvalid := TRUE;\nselectedResult := UDINT#0;\n\nFOR index := 0 TO 253 DO\n    byteValue := snapshot[index];\n    IF byteValue = BYTE#0 THEN\n        EXIT;\n    ELSIF (byteValue >= BYTE#48) AND (byteValue <= BYTE#57) THEN\n        digit := BYTE_TO_UINT(byteValue) - UINT#48;\n        IF (octet > UINT#25) OR ((octet = UINT#25) AND (digit > UINT#5)) THEN\n            valid := FALSE;\n            EXIT;\n        END_IF;\n        octet := octet * UINT#10 + digit;\n        segmentNonempty := TRUE;\n    ELSIF byteValue = BYTE#46 THEN\n        IF (NOT segmentNonempty) OR (periodCount >= UINT#3) THEN\n            valid := FALSE;\n            EXIT;\n        END_IF;\n        candidate := candidate * UDINT#256 + UINT_TO_UDINT(octet);\n        periodCount := periodCount + UINT#1;\n        octet := UINT#0;\n        segmentNonempty := FALSE;\n    ELSE\n        valid := FALSE;\n        EXIT;\n    END_IF;\nEND_FOR;\n\nIF valid AND (periodCount = UINT#3) AND segmentNonempty THEN\n    selectedResult := candidate * UDINT#256 + UINT_TO_UDINT(octet);\nEND_IF;\n\nipValue := selectedResult;",
+    "supporting_objects": []
+  },
+  "result_path": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\c19f0e1ad71f7bdc\\codesys_evidence.json",
+  "started_utc": "2026-11-14T11:28:36.360439+00:00"
+}

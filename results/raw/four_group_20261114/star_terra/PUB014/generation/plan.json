@@ -1,0 +1,124 @@
+{
+  "state_machine": [
+    {
+      "state": "START",
+      "actions": [
+        "Snapshot ipText and reset per-call parsing variables.",
+        "Treat the visible text as the bytes before the first NUL. Read at most 254 bytes using platform-supported, bounds-checked STRING access."
+      ],
+      "transitions": [
+        "START -> READ"
+      ]
+    },
+    {
+      "state": "READ",
+      "actions": [
+        "Process each visible byte once. Accept only ASCII digits and periods.",
+        "For a digit d, reject if octet > 25 or octet = 25 and d > 5; otherwise set octet := octet * 10 + d and mark the segment nonempty.",
+        "For a period, reject if the segment is empty or three periods have already occurred. Otherwise append the octet to candidate, increment the period count, and reset octet and the nonempty flag.",
+        "Append an octet using candidate := candidate * 256 + UDINT(octet). At each append the operation fits in UDINT."
+      ],
+      "transitions": [
+        "READ -> REJECT on an invalid byte, invalid period, or out-of-range octet.",
+        "READ -> FINALIZE at the end of visible text."
+      ]
+    },
+    {
+      "state": "FINALIZE",
+      "transitions": [
+        "FINALIZE -> ACCEPT if there are exactly three periods and the final segment is nonempty; append its octet to candidate.",
+        "FINALIZE -> REJECT otherwise."
+      ]
+    },
+    {
+      "state": "ACCEPT",
+      "actions": [
+        "Select candidate as the result."
+      ],
+      "transitions": [
+        "ACCEPT -> COMMIT in the same invocation."
+      ]
+    },
+    {
+      "state": "REJECT",
+      "actions": [
+        "Select zero as the result."
+      ],
+      "transitions": [
+        "REJECT -> COMMIT in the same invocation."
+      ]
+    },
+    {
+      "state": "COMMIT",
+      "actions": [
+        "Assign the selected result to ipValue in the unified output stage."
+      ],
+      "transitions": [
+        "COMMIT -> START on the next invocation; no parsing state is retained."
+      ]
+    }
+  ],
+  "timer_plan": [],
+  "priorities": [
+    "Malformed, non-ASCII, incomplete, or out-of-range visible text selects zero in the same invocation, overriding any previous output.",
+    "Valid text produces the four octets in network byte order; 0.0.0.0 legitimately produces zero.",
+    "Allow arbitrary leading zeros within the 254-byte capacity; do not enforce a 15-character visible-length limit.",
+    "The input interface or its ingress adapter must enforce the 254-byte capacity before NUL truncation. An already silently truncated over-capacity source cannot be detected reliably by this function block."
+  ],
+  "initial_values": {
+    "ipValue": 0,
+    "per_invocation": {
+      "candidate": 0,
+      "octet": 0,
+      "periodCount": 0,
+      "segmentNonempty": false,
+      "selectedResult": 0
+    },
+    "retained_parsing_state": "None"
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "Edge sampling",
+      "actions": [
+        "Snapshot ipText at invocation; no edge detection is required."
+      ]
+    },
+    {
+      "stage": 2,
+      "name": "Safety/reset priority and state transitions",
+      "actions": [
+        "Reset per-call variables, then complete the bounded parse and select either candidate or zero.",
+        "All conceptual parsing transitions complete in this invocation; invalidity overrides the candidate."
+      ]
+    },
+    {
+      "stage": 3,
+      "name": "Unconditional top-level timer FB calls outside CASE/IF",
+      "actions": [
+        "No timer FBs are required or called."
+      ]
+    },
+    {
+      "stage": 4,
+      "name": "Unified output assignments",
+      "actions": [
+        "Assign ipValue := selectedResult exactly once."
+      ]
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G(valid(ipText) -> ipValue = packed(ipText))"
+    },
+    {
+      "id": "A2",
+      "formula": "G(!valid(ipText) -> ipValue = 0)"
+    },
+    {
+      "id": "A3",
+      "formula": "G(ipText = X(ipText) -> ipValue = X(ipValue))"
+    }
+  ]
+}

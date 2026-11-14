@@ -1,0 +1,38 @@
+-- Formal verification specification for Task PUB004
+-- Generated: 2026-11-14T09:24:33.580232+00:00
+
+-- Property: PUB004.P_init
+-- Description: Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
+LTLSPEC NAME PUB004.P_init := init;
+
+-- Property: PUB004.P1
+-- Description: The run output follows the qualified permissive.
+LTLSPEC NAME PUB004.P1 := G(VFD_RUN <-> (permit & qualified));
+
+-- Property: PUB004.P2
+-- Description: Raw loss or E-stop stops immediately.
+LTLSPEC NAME PUB004.P2 := G(!permit -> !VFD_RUN);
+
+-- Property: PUB004.P3
+-- Description: A lost permissive clears qualification history; future qualification must be rebuilt.
+LTLSPEC NAME PUB004.P3 := G((!permit) -> X(!qualified));
+
+-- Property: PUB004.P4
+-- Description: Only enabled intervals are accumulated in a long time type.
+LTLSPEC NAME PUB004.P4 := G(VFD_RUN -> accNext=accPrev+TIME_TO_LTIME(CycleTime));
+
+-- Property: PUB004.P5
+-- Description: Stopping retains accumulated service time.
+LTLSPEC NAME PUB004.P5 := G(!VFD_RUN -> accNext=accPrev);
+
+-- Property: PUB004.P6
+-- Description: Maintenance threshold is 500 hours.
+LTLSPEC NAME PUB004.P6 := G(PUMP_MAINT_DUE <-> accNext>=LTIME#500h);
+
+-- Property: PUB004.P7
+-- Description: A continuously permitted demand eventually starts under advancing time. Explicit non-Zeno environment premise: physical elapsed time crosses infinitely many 1ms boundaries.
+LTLSPEC NAME PUB004.P7 := (G(F(TimeTick))) -> (G((G(permit) & DebounceTime>TIME#0ms) -> F(VFD_RUN)));
+
+-- Property: PUB004.COMPLETE
+-- Description: Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
+LTLSPEC NAME PUB004.COMPLETE := G(CompleteBehavior);

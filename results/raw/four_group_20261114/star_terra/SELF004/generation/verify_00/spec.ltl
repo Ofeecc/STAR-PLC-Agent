@@ -1,0 +1,42 @@
+-- Formal verification specification for Task SELF004
+-- Generated: 2026-11-14T11:44:10.730095+00:00
+
+-- Property: SELF004.P_init
+-- Description: Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
+LTLSPEC NAME SELF004.P_init := init;
+
+-- Property: SELF004.P1
+-- Description: Jam wins over Reset and Start.
+LTLSPEC NAME SELF004.P1 := G(Jam -> (Fault & !Belt & !Complete));
+
+-- Property: SELF004.P2
+-- Description: Fault requires an explicit clear operation.
+LTLSPEC NAME SELF004.P2 := G((qFault & !Reset) -> Fault);
+
+-- Property: SELF004.P3
+-- Description: A cleared-jam reset returns IDLE.
+LTLSPEC NAME SELF004.P3 := G((!Jam & Reset) -> (!Belt & !Complete & !Fault));
+
+-- Property: SELF004.P4
+-- Description: A valid idle start moves the pallet.
+LTLSPEC NAME SELF004.P4 := G((qIdle & !Jam & !Reset & !Stop & Start & !AtExit) -> Belt);
+
+-- Property: SELF004.P5
+-- Description: Exit arrival stops indexing in the same scan.
+LTLSPEC NAME SELF004.P5 := G((qMoving & AtExit & !Jam & !Reset & !Stop) -> (Complete & !Belt));
+
+-- Property: SELF004.P6
+-- Description: Movement excludes completion and fault outputs.
+LTLSPEC NAME SELF004.P6 := G(!(Belt & (Complete | Fault)));
+
+-- Property: SELF004.P7
+-- Description: A latched jam remains until a cleared-jam reset, or forever if no such reset occurs; this does not assume eventual reset.
+LTLSPEC NAME SELF004.P7 := G(Fault -> (G Fault | (Fault U (!Jam & Reset))));
+
+-- Property: SELF004.P8
+-- Description: Prevents degenerate implementations that refuse to stop or drop MOVING/COMPLETE prematurely.
+LTLSPEC NAME SELF004.P8 := G((!Jam & !Reset & !qFault & Stop -> (!Belt & !Complete & !Fault)) & (qIdle & !Jam & !Reset & (!Start | AtExit) -> (!Belt & !Complete & !Fault)) & (qMoving & !Jam & !Reset & !Stop & !AtExit -> (Belt & !Complete & !Fault)) & (qComplete & !Jam & !Reset & !Stop -> (Complete & !Belt & !Fault)));
+
+-- Property: SELF004.P9
+-- Description: Eliminates remaining false-positive satisfaction paths on P1..P8.
+LTLSPEC NAME SELF004.P9 := G(!(Belt & Complete) & (!(Jam | qFault) -> !Fault) & ((qIdle | qFault | Stop | Reset) -> !Complete));

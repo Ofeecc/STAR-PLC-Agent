@@ -1,0 +1,283 @@
+{
+  "state_machine": [
+    {
+      "state": "IDLE",
+      "transitions": [
+        {
+          "priority": 1,
+          "condition": "Reset && !Fault && !Start",
+          "next": "IDLE",
+          "actions": [
+            "attempt_count := 0",
+            "free_scans := 0"
+          ]
+        },
+        {
+          "priority": 3,
+          "condition": "Stop",
+          "next": "IDLE",
+          "actions": [
+            "free_scans := 0",
+            "preserve attempt_count"
+          ]
+        },
+        {
+          "priority": 6,
+          "condition": "Start && !Fault",
+          "next": "RUNNING",
+          "actions": [
+            "free_scans := 0",
+            "preserve attempt_count"
+          ]
+        },
+        {
+          "priority": 99,
+          "condition": "otherwise",
+          "next": "IDLE",
+          "actions": [
+            "free_scans := 0",
+            "preserve attempt_count"
+          ]
+        }
+      ]
+    },
+    {
+      "state": "RUNNING",
+      "transitions": [
+        {
+          "priority": 1,
+          "condition": "Reset && !Fault && !Start",
+          "next": "IDLE",
+          "actions": [
+            "attempt_count := 0",
+            "free_scans := 0"
+          ]
+        },
+        {
+          "priority": 3,
+          "condition": "Stop",
+          "next": "IDLE",
+          "actions": [
+            "free_scans := 0",
+            "preserve attempt_count"
+          ]
+        },
+        {
+          "priority": 4,
+          "condition": "Fault && attempt_count >= 2",
+          "next": "LOCKED",
+          "actions": [
+            "free_scans := 0",
+            "preserve attempt_count"
+          ]
+        },
+        {
+          "priority": 5,
+          "condition": "Fault && attempt_count < 2",
+          "next": "WAIT",
+          "actions": [
+            "free_scans := 0",
+            "preserve attempt_count"
+          ]
+        },
+        {
+          "priority": 99,
+          "condition": "otherwise",
+          "next": "RUNNING",
+          "actions": [
+            "free_scans := 0",
+            "preserve attempt_count"
+          ]
+        }
+      ]
+    },
+    {
+      "state": "WAIT",
+      "transitions": [
+        {
+          "priority": 1,
+          "condition": "Reset && !Fault && !Start",
+          "next": "IDLE",
+          "actions": [
+            "attempt_count := 0",
+            "free_scans := 0"
+          ]
+        },
+        {
+          "priority": 3,
+          "condition": "Stop",
+          "next": "IDLE",
+          "actions": [
+            "free_scans := 0",
+            "preserve attempt_count"
+          ]
+        },
+        {
+          "priority": 5,
+          "condition": "Fault",
+          "next": "WAIT",
+          "actions": [
+            "free_scans := 0",
+            "preserve attempt_count"
+          ]
+        },
+        {
+          "priority": 6,
+          "condition": "!Fault && (free_scans + 1) >= 2",
+          "next": "RUNNING",
+          "actions": [
+            "attempt_count := MIN(attempt_count + 1, 2)",
+            "free_scans := 0"
+          ]
+        },
+        {
+          "priority": 7,
+          "condition": "!Fault && (free_scans + 1) < 2",
+          "next": "WAIT",
+          "actions": [
+            "free_scans := free_scans + 1",
+            "preserve attempt_count"
+          ]
+        }
+      ]
+    },
+    {
+      "state": "LOCKED",
+      "transitions": [
+        {
+          "priority": 1,
+          "condition": "Reset && !Fault && !Start",
+          "next": "IDLE",
+          "actions": [
+            "attempt_count := 0",
+            "free_scans := 0"
+          ]
+        },
+        {
+          "priority": 2,
+          "condition": "otherwise",
+          "next": "LOCKED",
+          "actions": [
+            "free_scans := 0",
+            "preserve attempt_count"
+          ]
+        }
+      ]
+    }
+  ],
+  "timer_plan": {
+    "timers_required": [],
+    "scan_dwell": {
+      "name": "free_scans",
+      "type": "scan-count dwell, no IEC TON/TOF",
+      "PT": "2 fault-free scan invocations while in WAIT",
+      "counting_rule": "In WAIT, on a scan with Fault FALSE and no higher-priority reset/stop, increment free_scans. When the incremented value reaches 2, issue one retry: attempt_count := MIN(attempt_count + 1, 2), free_scans := 0, next state RUNNING.",
+      "reset_conditions": [
+        "accepted Reset",
+        "entry to WAIT",
+        "Fault TRUE while in WAIT",
+        "Stop TRUE",
+        "successful retry completion",
+        "entry to IDLE, RUNNING, or LOCKED"
+      ]
+    },
+    "timer_fb_calls": "None. Stage 3 remains an unconditional top-level hook, but contains no timer FB calls for this task."
+  },
+  "priorities": {
+    "order": [
+      "Valid reset: Reset && !Fault && !Start clears mode to IDLE and clears attempt_count and free_scans.",
+      "Latched lockout: LOCKED persists unless valid reset.",
+      "Stop: if not LOCKED, forces IDLE and clears free_scans while preserving attempt_count.",
+      "Running fault: in RUNNING, Fault TRUE enters LOCKED if attempt_count >= 2, otherwise WAIT with free_scans := 0.",
+      "Recovery dwell: in WAIT, Fault TRUE clears free_scans; fault-free scans increment free_scans and retry at 2.",
+      "Idle start: in IDLE, Start TRUE && Fault FALSE enters RUNNING while preserving attempt_count."
+    ],
+    "operational_exclusions": [
+      "Run and Locked must never be TRUE simultaneously.",
+      "Fault TRUE must never produce Run TRUE.",
+      "Attempts output must remain in the range 0..2.",
+      "Only accepted Reset restores the automatic retry budget."
+    ]
+  },
+  "initial_values": {
+    "mode": "IDLE",
+    "attempt_count": 0,
+    "free_scans": 0,
+    "Run": false,
+    "Locked": false,
+    "Attempts": 0
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "edge sampling",
+      "actions": [
+        "Sample Start, Stop, Fault, and Reset exactly once into scan-local values.",
+        "Derive validReset := Reset && !Fault && !Start.",
+        "No rising-edge qualification is used for Start, Stop, Fault, or Reset; all requirements are level/scan-count based."
+      ]
+    },
+    {
+      "stage": 2,
+      "name": "safety/reset priority and state transitions",
+      "actions": [
+        "Using retained pre-state q[k], apply exactly one transition according to priority order.",
+        "Valid reset overrides all states, including LOCKED.",
+        "LOCKED remains latched absent valid reset; Stop has priority over fault processing only when not LOCKED.",
+        "Compute next mode, attempt_count, and free_scans for q[k+1]. Do not assign final outputs here."
+      ]
+    },
+    {
+      "stage": 3,
+      "name": "unconditional top-level timer FB calls outside CASE/IF",
+      "actions": [
+        "No TON/TOF or other timer FB calls are required.",
+        "Keep this stage outside CASE/IF as the single unconditional timer hook location; it is empty for SELF012 because the recovery dwell is scan-count based."
+      ]
+    },
+    {
+      "stage": 4,
+      "name": "unified output assignments",
+      "actions": [
+        "Assign outputs exactly once from the post-transition state.",
+        "Run := (mode = RUNNING).",
+        "Locked := (mode = LOCKED).",
+        "Attempts := attempt_count."
+      ]
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G(Fault -> !Run)"
+    },
+    {
+      "id": "A2",
+      "formula": "G((Attempts >= 0) & (Attempts <= 2))"
+    },
+    {
+      "id": "A3",
+      "formula": "G((Reset & !Fault & !Start) -> (!Run & !Locked & (Attempts = 0)))"
+    },
+    {
+      "id": "A4",
+      "formula": "G(!(Run & Locked))"
+    },
+    {
+      "id": "A5",
+      "formula": "G(Locked -> !Run)"
+    },
+    {
+      "id": "A6",
+      "formula": "G((Stop & !Locked) -> !Run)"
+    },
+    {
+      "id": "A7",
+      "formula": "G((Reset & !Fault & !Start) -> X(!Locked))"
+    },
+    {
+      "id": "A8",
+      "formula": "G((Locked & !(Reset & !Fault & !Start)) -> X(Locked | (Reset & !Fault & !Start)))"
+    }
+  ]
+}

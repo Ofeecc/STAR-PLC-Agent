@@ -1,0 +1,191 @@
+{
+  "state_machine": [
+    {
+      "state": "IDLE",
+      "outputs": {
+        "Belt": false,
+        "Complete": false,
+        "Fault": false
+      },
+      "transitions": [
+        {
+          "priority": 1,
+          "condition": "Jam",
+          "next": "FAULT"
+        },
+        {
+          "priority": 2,
+          "condition": "!Jam && Reset",
+          "next": "IDLE"
+        },
+        {
+          "priority": 3,
+          "condition": "!Jam && !Reset && Stop",
+          "next": "IDLE"
+        },
+        {
+          "priority": 4,
+          "condition": "!Jam && !Reset && !Stop && Start && !AtExit",
+          "next": "MOVING"
+        },
+        {
+          "priority": 5,
+          "condition": "otherwise",
+          "next": "IDLE",
+          "note": "hold"
+        }
+      ]
+    },
+    {
+      "state": "MOVING",
+      "outputs": {
+        "Belt": true,
+        "Complete": false,
+        "Fault": false
+      },
+      "transitions": [
+        {
+          "priority": 1,
+          "condition": "Jam",
+          "next": "FAULT"
+        },
+        {
+          "priority": 2,
+          "condition": "!Jam && Reset",
+          "next": "IDLE"
+        },
+        {
+          "priority": 3,
+          "condition": "!Jam && !Reset && Stop",
+          "next": "IDLE"
+        },
+        {
+          "priority": 4,
+          "condition": "!Jam && !Reset && !Stop && AtExit",
+          "next": "COMPLETE"
+        },
+        {
+          "priority": 5,
+          "condition": "otherwise",
+          "next": "MOVING",
+          "note": "hold before exit"
+        }
+      ]
+    },
+    {
+      "state": "COMPLETE",
+      "outputs": {
+        "Belt": false,
+        "Complete": true,
+        "Fault": false
+      },
+      "transitions": [
+        {
+          "priority": 1,
+          "condition": "Jam",
+          "next": "FAULT"
+        },
+        {
+          "priority": 2,
+          "condition": "!Jam && Reset",
+          "next": "IDLE"
+        },
+        {
+          "priority": 3,
+          "condition": "!Jam && !Reset && Stop",
+          "next": "IDLE"
+        },
+        {
+          "priority": 4,
+          "condition": "otherwise",
+          "next": "COMPLETE",
+          "note": "hold until stop, reset, or jam"
+        }
+      ]
+    },
+    {
+      "state": "FAULT",
+      "outputs": {
+        "Belt": false,
+        "Complete": false,
+        "Fault": true
+      },
+      "transitions": [
+        {
+          "priority": 1,
+          "condition": "Jam",
+          "next": "FAULT",
+          "note": "jam wins over reset and stop"
+        },
+        {
+          "priority": 2,
+          "condition": "!Jam && Reset",
+          "next": "IDLE",
+          "note": "explicit cleared-jam reset"
+        },
+        {
+          "priority": 3,
+          "condition": "!Jam && !Reset",
+          "next": "FAULT",
+          "note": "latched fault; stop is ignored until cleared by reset with jam false"
+        }
+      ]
+    }
+  ],
+  "timer_plan": [],
+  "priorities": [
+    "1. Jam: if Jam is TRUE, transition to FAULT regardless of Reset, Stop, or current state.",
+    "2. Reset clear: if Jam is FALSE and Reset is TRUE, transition to IDLE.",
+    "3. Latched fault: while in FAULT with no Jam and no Reset, remain in FAULT; Stop cannot clear a fault.",
+    "4. Stop: if no higher priority applies, Stop TRUE transitions non-FAULT states to IDLE.",
+    "5. Normal operation: MOVING with AtExit transitions to COMPLETE; IDLE with Start and no AtExit transitions to MOVING; otherwise hold state.",
+    "6. Outputs must be assigned from post-transition state so Belt, Complete, and Fault reflect the same scan transition and at most one is active."
+  ],
+  "initial_values": {
+    "state": "IDLE",
+    "Start": false,
+    "Stop": false,
+    "AtExit": false,
+    "Jam": false,
+    "Reset": false,
+    "Belt": false,
+    "Complete": false,
+    "Fault": false
+  },
+  "scan_execution_order": [
+    "1. Edge sampling: sample all inputs once at scan start into the scan image; logic is level-sensitive, so no edge-dependent transition is used.",
+    "2. Safety/reset priority and state transitions: evaluate the priority ladder against retained pre-state and sampled inputs; execute at most one state transition to produce the post-transition state.",
+    "3. Unconditional top-level timer FB calls outside CASE/IF: none required for this task; if timers existed, all timer calls would be placed here unconditionally.",
+    "4. Unified output assignments: after transition logic, assign Belt := (state = MOVING), Complete := (state = COMPLETE), Fault := (state = FAULT) in one unconditional output section."
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G(!(Belt && Complete))"
+    },
+    {
+      "id": "A2",
+      "formula": "G(!(Belt && Fault))"
+    },
+    {
+      "id": "A3",
+      "formula": "G(!(Complete && Fault))"
+    },
+    {
+      "id": "A4",
+      "formula": "G(Jam -> (Fault && !Belt && !Complete))"
+    },
+    {
+      "id": "A5",
+      "formula": "G((!Jam && Reset) -> (!Belt && !Complete && !Fault))"
+    },
+    {
+      "id": "A6",
+      "formula": "G(!(Belt && (Complete || Fault)))"
+    },
+    {
+      "id": "A7",
+      "formula": "G(Fault -> (G Fault || (Fault U (!Jam && Reset))))"
+    }
+  ]
+}

@@ -1,0 +1,124 @@
+{
+  "state_machine": [
+    {
+      "state": "INHIBITED",
+      "meaning": "The signal is invalid; no hold is armed.",
+      "transitions": [
+        "Invalid signal: remain INHIBITED.",
+        "Valid signal without a valid-fault rising edge: go to READY.",
+        "Valid-fault rising edge: go to TRACKING and toggle timer selection."
+      ]
+    },
+    {
+      "state": "READY",
+      "meaning": "The signal is valid and no fault has triggered since the last invalid scan.",
+      "transitions": [
+        "Invalid signal: go to INHIBITED.",
+        "Valid-fault rising edge: go to TRACKING and toggle timer selection.",
+        "Otherwise: remain READY."
+      ]
+    },
+    {
+      "state": "TRACKING",
+      "meaning": "A fault has triggered since the last invalid scan. The selected timer may be running or expired.",
+      "transitions": [
+        "Invalid signal: go to INHIBITED.",
+        "Valid-fault rising edge: remain TRACKING and toggle timer selection, restarting the hold.",
+        "Otherwise: remain TRACKING; timer expiry alone does not change state."
+      ]
+    }
+  ],
+  "timer_plan": {
+    "timers": [
+      {
+        "name": "HoldA",
+        "type": "TON",
+        "PT": "T#500ms",
+        "IN": "THICKNESS_SIGNAL_VALID AND state = TRACKING AND select_A",
+        "reset": "IN is FALSE, including on invalid signal or selection of HoldB."
+      },
+      {
+        "name": "HoldB",
+        "type": "TON",
+        "PT": "T#500ms",
+        "IN": "THICKNESS_SIGNAL_VALID AND state = TRACKING AND NOT select_A",
+        "reset": "IN is FALSE, including on invalid signal or selection of HoldA."
+      }
+    ],
+    "operation": "Toggle select_A on every valid-fault rising edge. The newly selected timer was disabled on the preceding scan, so its unconditional call starts at elapsed zero on the trigger scan. Alternation permits a fresh edge to restart the hold without calling a timer twice. Hold is active when TRACKING and the selected timer's Q is FALSE; it ends at 500 ms, unless invalidity cancels it sooner. Use elapsed timer time, not CycleTime, for the hold."
+  },
+  "priorities": [
+    "Signal invalidity immediately suppresses the alarm, cancels the hold, and prevents recording and runtime accumulation; existing statistics are preserved.",
+    "With a valid signal, a persistent fault keeps the alarm on regardless of timer expiry.",
+    "Every valid-fault rising edge records an occurrence and restarts the minimum hold.",
+    "Statistics and history are observational only and never affect cutting permissives. Expose history as read-only to callers.",
+    "UINT counter and LTIME runtime overflow are outside the bounded cases; establish a separate deployment policy."
+  ],
+  "initial_values": {
+    "pre_invocation_outputs": {
+      "THICKNESS_ALARM": false,
+      "Slab_Fault_Counter": 0,
+      "Slab_Runtime_Accumulator": "LTIME#0ns",
+      "Slab_Fault_History": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "internal": {
+      "state": "INHIBITED",
+      "previous_valid_fault": false,
+      "select_A": false,
+      "statistics_registers": "Zero counter, runtime, and all five history elements.",
+      "timers": "Both TON instances initialized reset: Q = FALSE and ET = T#0ms."
+    },
+    "note": "Initialization occurs before the first invocation; do not reinitialize statistics on the first scan or on signal loss."
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "Edge sampling",
+      "actions": [
+        "Sample all inputs. Compute valid_fault = THICKNESS_SIGNAL_VALID AND THICKNESS_FAULT and rise = valid_fault AND NOT previous_valid_fault.",
+        "Set previous_valid_fault = valid_fault each scan, including invalid scans. Thus a fault present when validity returns is a new occurrence."
+      ]
+    },
+    {
+      "stage": 2,
+      "name": "Safety/reset priority and state transitions",
+      "actions": [
+        "Apply invalidity first: enter INHIBITED and cancel the logical hold. Otherwise apply the state transitions and toggle select_A on rise.",
+        "On rise, increment the internal counter once; shift history from index 3 to 4 down through index 0 to 1, then write the sampled FaultTimestamp to index 0.",
+        "When CUTTING_RUN AND THICKNESS_SIGNAL_VALID AND NOT THICKNESS_FAULT, add the current positive CycleTime to internal runtime after an exact widening to LTIME. Otherwise preserve runtime. This includes a qualifying first invocation."
+      ]
+    },
+    {
+      "stage": 3,
+      "name": "Unconditional top-level timer FB calls",
+      "actions": [
+        "Call HoldA and HoldB exactly once each scan, outside CASE and IF, using their specified IN expressions and PT values.",
+        "Read the selected timer's updated Q for this scan; timer expiry must affect the same observed scan."
+      ]
+    },
+    {
+      "stage": 4,
+      "name": "Unified output assignments",
+      "actions": [
+        "Assign THICKNESS_ALARM = THICKNESS_SIGNAL_VALID AND (THICKNESS_FAULT OR (state = TRACKING AND NOT selected_timer.Q)).",
+        "Assign the counter, runtime and history outputs from their internal registers in one output section."
+      ]
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G(!THICKNESS_SIGNAL_VALID -> !THICKNESS_ALARM)"
+    },
+    {
+      "id": "A2",
+      "formula": "G((THICKNESS_SIGNAL_VALID & THICKNESS_FAULT) -> THICKNESS_ALARM)"
+    }
+  ]
+}

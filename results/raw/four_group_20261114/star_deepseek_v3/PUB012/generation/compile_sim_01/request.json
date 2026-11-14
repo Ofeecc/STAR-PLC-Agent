@@ -1,0 +1,20 @@
+{
+  "request_id": "a5ecd00ca54747458cb8b217214540e6",
+  "source_sha256": "bc8c6986158d92aabc9cf801548e3f8fc1dbdb82248a5d341f533352018e7ea5",
+  "task_id": "PUB012",
+  "project": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\218eddbc97b1a0a7\\task.project",
+  "candidate": {
+    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    THICKNESS_FAULT : BOOL;\n    THICKNESS_SIGNAL_VALID : BOOL;\n    CUTTING_RUN : BOOL;\n    FaultTimestamp : DINT;\n    CycleTime : TIME;\nEND_VAR\nVAR_OUTPUT\n    THICKNESS_ALARM : BOOL := FALSE;\n    Slab_Fault_Counter : UINT := 0;\n    Slab_Runtime_Accumulator : LTIME := LTIME#0ns;\n    Slab_Fault_History : ARRAY[0..4] OF DINT := [0,0,0,0,0];\nEND_VAR\nVAR\n    prevValidFault : BOOL := FALSE;\n    holdActive : BOOL := FALSE;\n    holdRestart : BOOL := FALSE;\n    validFault : BOOL := FALSE;\n    validFaultRise : BOOL := FALSE;\n    FaultCounter_Int : UINT := 0;\n    RuntimeAccumulator_Int : LTIME := LTIME#0ns;\n    FaultHistory_Int : ARRAY[0..4] OF DINT := [0,0,0,0,0];\n    AlarmHoldTimer : TON;\n    holdBase : TIME := T#0ms;\n    holdElapsed : TIME;\n    timeConv : U_TIME_MS;\n    i : INT;\nEND_VAR",
+    "implementation": "// Stage 1: edge sampling\nholdRestart := FALSE;\nvalidFault := THICKNESS_SIGNAL_VALID AND THICKNESS_FAULT;\nvalidFaultRise := validFault AND NOT prevValidFault;\n\n// Stage 2: safety/reset priority and state transitions\nIF NOT THICKNESS_SIGNAL_VALID THEN\n    holdActive := FALSE;\n    holdRestart := FALSE;\n    prevValidFault := FALSE;\n    // Statistics and history are preserved.\nELSE\n    IF validFaultRise THEN\n        FaultCounter_Int := FaultCounter_Int + 1;\n        FaultHistory_Int[4] := FaultHistory_Int[3];\n        FaultHistory_Int[3] := FaultHistory_Int[2];\n        FaultHistory_Int[2] := FaultHistory_Int[1];\n        FaultHistory_Int[1] := FaultHistory_Int[0];\n        FaultHistory_Int[0] := FaultTimestamp;\n        holdActive := TRUE;\n        holdRestart := TRUE;\n    END_IF;\n\n    IF (NOT THICKNESS_FAULT) AND CUTTING_RUN THEN\n        timeConv.t := CycleTime;\n        RuntimeAccumulator_Int := RuntimeAccumulator_Int + (LTIME#1ms * timeConv.ms);\n    END_IF;\n\n    prevValidFault := validFault;\nEND_IF;\n\n// Stage 3: unconditional timer call\nAlarmHoldTimer(IN := THICKNESS_SIGNAL_VALID AND holdActive, PT := T#49d);\n\n// Stage 4: hold restart and expiration handling\nIF holdRestart THEN\n    holdBase := AlarmHoldTimer.ET;\n    holdRestart := FALSE;\nEND_IF;\n\nIF holdActive THEN\n    holdElapsed := AlarmHoldTimer.ET - holdBase;\n    IF holdElapsed >= T#500ms THEN\n        holdActive := FALSE;\n    END_IF;\nEND_IF;\n\n// Stage 5: unified outputs\nTHICKNESS_ALARM := THICKNESS_SIGNAL_VALID AND (THICKNESS_FAULT OR holdActive);\nSlab_Fault_Counter := FaultCounter_Int;\nSlab_Runtime_Accumulator := RuntimeAccumulator_Int;\nFOR i := 0 TO 4 DO\n    Slab_Fault_History[i] := FaultHistory_Int[i];\nEND_FOR;",
+    "supporting_objects": [
+      {
+        "name": "U_TIME_MS",
+        "kind": "DUT",
+        "declaration": "TYPE U_TIME_MS :\nUNION\n    t : TIME;\n    ms : UDINT;\nEND_UNION\nEND_TYPE",
+        "implementation": ""
+      }
+    ]
+  },
+  "result_path": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\218eddbc97b1a0a7\\codesys_evidence.json",
+  "started_utc": "2026-11-14T09:55:51.110739+00:00"
+}

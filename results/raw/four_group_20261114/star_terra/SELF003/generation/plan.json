@@ -1,0 +1,143 @@
+{
+  "state_machine": [
+    {
+      "state": "INHIBITED",
+      "outputs": {
+        "Run": false,
+        "ResetRequired": true
+      },
+      "transitions": [
+        {
+          "guard": "!EStopNC",
+          "next": "INHIBITED"
+        },
+        {
+          "guard": "EStopNC AND Reset AND !Start AND !Stop",
+          "next": "READY"
+        },
+        {
+          "guard": "EStopNC AND !(Reset AND !Start AND !Stop)",
+          "next": "INHIBITED"
+        }
+      ]
+    },
+    {
+      "state": "READY",
+      "outputs": {
+        "Run": false,
+        "ResetRequired": false
+      },
+      "transitions": [
+        {
+          "guard": "!EStopNC",
+          "next": "INHIBITED"
+        },
+        {
+          "guard": "EStopNC AND Stop",
+          "next": "READY"
+        },
+        {
+          "guard": "EStopNC AND !Stop AND Start",
+          "next": "RUNNING"
+        },
+        {
+          "guard": "EStopNC AND !Stop AND !Start",
+          "next": "READY"
+        }
+      ]
+    },
+    {
+      "state": "RUNNING",
+      "outputs": {
+        "Run": true,
+        "ResetRequired": false
+      },
+      "transitions": [
+        {
+          "guard": "!EStopNC",
+          "next": "INHIBITED"
+        },
+        {
+          "guard": "EStopNC AND Stop",
+          "next": "READY"
+        },
+        {
+          "guard": "EStopNC AND !Stop",
+          "next": "RUNNING"
+        }
+      ]
+    }
+  ],
+  "timer_plan": {
+    "timers": [],
+    "PT_durations": "None",
+    "reset_conditions": "None",
+    "rationale": "All requirements are evaluated per invocation; no timing delay is specified."
+  },
+  "priorities": [
+    "E-stop overrides every request and transitions to INHIBITED in the same scan.",
+    "While inhibited, Run remains false; reset is accepted only when EStopNC and Reset are true and both Start and Stop are false.",
+    "After reset acceptance, the motor remains stopped for that scan. A later permitted Start scan is required.",
+    "When enabled, Stop overrides Start; with neither asserted, the run state is retained.",
+    "Start and Reset are level-sensitive; Reset is ignored when already enabled.",
+    "Implement the physical emergency-stop safety function using an appropriately rated independent safety circuit; standard PLC scan logic alone does not provide instantaneous physical isolation."
+  ],
+  "initial_values": {
+    "state": "INHIBITED",
+    "Run": false,
+    "ResetRequired": true,
+    "initialization": "Apply these as the fresh pre-invocation state, including on power-up; scan 0 executes normally. Do not restore a retained running state."
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "Edge sampling",
+      "action": "Sample all four input levels once. No edge detectors are required; use the sampled levels throughout the scan."
+    },
+    {
+      "stage": 2,
+      "name": "Safety/reset priority and state transitions",
+      "action": "Read the pre-scan state and select exactly one next state using the listed guards and priority. E-stop is evaluated first."
+    },
+    {
+      "stage": 3,
+      "name": "Unconditional top-level timer FB calls outside CASE/IF",
+      "action": "No timer FB instances are required, so this stage performs no calls."
+    },
+    {
+      "stage": 4,
+      "name": "Unified output assignments",
+      "action": "Assign Run and ResetRequired once from the selected next state's output mapping, then retain that state for the next invocation."
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G(!EStopNC -> (!Run & ResetRequired))"
+    },
+    {
+      "id": "A2",
+      "formula": "G(ResetRequired -> !Run)"
+    },
+    {
+      "id": "A3",
+      "formula": "G(Stop -> !Run)"
+    },
+    {
+      "id": "A4",
+      "formula": "G((ResetRequired & X(EStopNC & Reset & !Start & !Stop)) -> X(!ResetRequired & !Run))"
+    },
+    {
+      "id": "A5",
+      "formula": "G((ResetRequired & X(!(EStopNC & Reset & !Start & !Stop))) -> X(ResetRequired & !Run))"
+    },
+    {
+      "id": "A6",
+      "formula": "G((!ResetRequired & X(EStopNC & !Stop & Start)) -> X(!ResetRequired & Run))"
+    },
+    {
+      "id": "A7",
+      "formula": "G((!ResetRequired & X(EStopNC & !Stop & !Start)) -> (Run <-> X(Run)))"
+    }
+  ]
+}

@@ -1,0 +1,82 @@
+{
+  "task_id": "PUB012",
+  "source_sha256": "93aa15555250d5215a9092ec3d66a7bde6c9acd1e8b5529bba47eaecdd33d10d",
+  "st_path": "candidate.st",
+  "ltl_path": "spec.ltl",
+  "properties": [
+    {
+      "id": "PUB012.P_init",
+      "formula": "init",
+      "description": "Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope)."
+    },
+    {
+      "id": "PUB012.P1",
+      "formula": "G(!valid -> !alarm)",
+      "description": "Invalid signal cancels alarm immediately."
+    },
+    {
+      "id": "PUB012.P2",
+      "formula": "G(valid & (fault | hold) -> alarm)",
+      "description": "The alarm persists during fault and hold."
+    },
+    {
+      "id": "PUB012.P3",
+      "formula": "G(rise -> record)",
+      "description": "Each valid rising fault shifts the bounded history."
+    },
+    {
+      "id": "PUB012.P4",
+      "formula": "G(!rise -> same_stats)",
+      "description": "Held faults and invalid inputs do not create records."
+    },
+    {
+      "id": "PUB012.P5",
+      "formula": "G((normal -> add) & (!normal -> same_time))",
+      "description": "Normal runtime counts only eligible intervals."
+    },
+    {
+      "id": "PUB012.P6",
+      "formula": "G(valid & !fault & !hold -> !alarm)",
+      "description": "Alarm releases when neither fault nor hold remains."
+    },
+    {
+      "id": "PUB012.COMPLETE",
+      "formula": "G(CompleteBehavior)",
+      "description": "Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed."
+    }
+  ],
+  "atomic_propositions": {
+    "valid": "THICKNESS_SIGNAL_VALID",
+    "fault": "THICKNESS_FAULT",
+    "alarm": "THICKNESS_ALARM",
+    "rise": "valid AND fault AND NOT previous(valid AND fault)",
+    "record": "count=pre-count+1; history[0]=FaultTimestamp; history[j]=pre-history[j-1] for j=1..4",
+    "same_stats": "count and history equal pre-scan values",
+    "hold": "Internal hold timer active (<500ms since last valid rising fault edge) while THICKNESS_SIGNAL_VALID is TRUE.",
+    "normal": "valid AND NOT fault AND CUTTING_RUN",
+    "add": "runtime=pre-runtime+CycleTime",
+    "same_time": "runtime=pre-runtime",
+    "CompleteBehavior": "令(Sref[k+1], E[k])=T_PUB012(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\nvalidFault=VALID & FAULT，其新上升沿count加1，历史=[FaultTimestamp]+旧历史前4项，并记录hold起点。无效清hold；alarm=valid & (fault或hold年龄<500ms)。valid & !fault & CUTTING_RUN时runtime加CycleTime（约定与dt_ms一致），否则保持。初始count/runtime=0、历史五个0、previousValidFault=FALSE。计数/累计不得溢出，FaultTimestamp为DINT。",
+    "THICKNESS_FAULT": "I[k].THICKNESS_FAULT: sampled input (BOOL).",
+    "THICKNESS_SIGNAL_VALID": "I[k].THICKNESS_SIGNAL_VALID: sampled input (BOOL).",
+    "CUTTING_RUN": "I[k].CUTTING_RUN: sampled input (BOOL).",
+    "FaultTimestamp": "I[k].FaultTimestamp: sampled input (DINT).",
+    "CycleTime": "I[k].CycleTime: sampled input (TIME).",
+    "THICKNESS_ALARM": "O[k].THICKNESS_ALARM: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "Slab_Fault_Counter": "O[k].Slab_Fault_Counter: independently observed post-scan candidate value (UINT); never defined as expected output.",
+    "Slab_Runtime_Accumulator": "O[k].Slab_Runtime_Accumulator: independently observed post-scan candidate value (LTIME); never defined as expected output.",
+    "Slab_Fault_History": "O[k].Slab_Fault_History: independently observed post-scan candidate value (ARRAY[0..4] OF DINT); never defined as expected output.",
+    "count": "O[k].Slab_Fault_Counter",
+    "history": "O[k].Slab_Fault_History",
+    "runtime": "O[k].Slab_Runtime_Accumulator",
+    "timing": "Internal hold start Sref.timed_contract.since records the most recent valid THICKNESS_FAULT rising-edge timestamp; a fresh rising edge during an active 500ms hold restarts the 500ms timer. Invalid input clears hold immediately.",
+    "init": "At the separate pre-invocation initial observation before scan k=0: O_init.THICKNESS_ALARM=false, O_init.Slab_Fault_Counter=0, O_init.Slab_Runtime_Accumulator=\"LTIME#0ns\", O_init.Slab_Fault_History=[0, 0, 0, 0, 0]."
+  },
+  "tools_supported": [],
+  "encoding_complete": false,
+  "task_sha256": "761ba5d4e4cab8bbcf2e8c675d990b4b27b4707ff72e4893710ed8639917c3bf",
+  "bundle_status": "UNSUPPORTED_ST",
+  "created_utc": "2026-11-14T11:24:33.837913+00:00",
+  "verification_status": "UNSUPPORTED_ST",
+  "reason": "Candidate input CycleTime has no observer binding"
+}

@@ -1,0 +1,142 @@
+{
+  "state_machine": [
+    {
+      "phase": 0,
+      "name": "IDLE",
+      "output": "all outputs FALSE",
+      "transitions": [
+        {
+          "condition": "bottleSensor",
+          "next_phase": 1
+        },
+        {
+          "condition": "!bottleSensor",
+          "next_phase": 0
+        }
+      ]
+    },
+    {
+      "phase": 1,
+      "name": "CLEANING",
+      "output": "Pump_Motor",
+      "transitions": [
+        {
+          "condition": "cleaningConfirmButton",
+          "next_phase": 2
+        },
+        {
+          "condition": "!cleaningConfirmButton",
+          "next_phase": 1
+        }
+      ]
+    },
+    {
+      "phase": 2,
+      "name": "FILLING",
+      "output": "Filling_Valve",
+      "transitions": [
+        {
+          "condition": "fillingConfirmButton",
+          "next_phase": 3
+        },
+        {
+          "condition": "!fillingConfirmButton",
+          "next_phase": 2
+        }
+      ]
+    },
+    {
+      "phase": 3,
+      "name": "CAPPING",
+      "output": "Capping_Machine",
+      "transitions": [
+        {
+          "condition": "cappingConfirmButton",
+          "next_phase": 4
+        },
+        {
+          "condition": "!cappingConfirmButton",
+          "next_phase": 3
+        }
+      ]
+    },
+    {
+      "phase": 4,
+      "name": "PACKING",
+      "output": "Packing_Machine",
+      "transitions": [
+        {
+          "condition": "packingConfirmButton",
+          "next_phase": 5
+        },
+        {
+          "condition": "!packingConfirmButton",
+          "next_phase": 4
+        }
+      ]
+    },
+    {
+      "phase": 5,
+      "name": "COMPLETE",
+      "output": "Completion_Light",
+      "transitions": [
+        {
+          "condition": "finishedButton",
+          "next_phase": 0
+        },
+        {
+          "condition": "!finishedButton",
+          "next_phase": 5
+        }
+      ]
+    }
+  ],
+  "timer_plan": {
+    "timers_required": [],
+    "PT_durations": "None",
+    "reset_conditions": "None; phases wait indefinitely for their matching confirmation."
+  },
+  "priorities": [
+    "Only the confirmation for the pre-scan phase is accepted; all others are ignored.",
+    "Execute at most one phase transition per scan. Confirmations are level sampled, so a held confirmation may be accepted on a later scan.",
+    "finishedButton resets only COMPLETE. A bottle still detected can start another cycle on the following idle scan.",
+    "Only the output associated with the updated phase is TRUE. Loss of bottleSensor does not stop an active phase.",
+    "No safety-stop input is specified. Provide any risk-assessed emergency stop and protective interlocks independently; do not claim this sequence controller implements them."
+  ],
+  "initial_values": {
+    "phase": 0,
+    "Pump_Motor": false,
+    "Filling_Valve": false,
+    "Capping_Machine": false,
+    "Packing_Machine": false,
+    "Completion_Light": false
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "edge sampling",
+      "action": "Sample all six inputs once. No edge detectors are required: bottle detection and confirmations use sampled levels."
+    },
+    {
+      "stage": 2,
+      "name": "safety/reset priority and state transitions",
+      "action": "Evaluate exactly one transition from the pre-scan phase using the sampled inputs. Apply finishedButton only in COMPLETE. If phase is invalid, recover to IDLE with outputs off; do not start a cycle until a subsequent scan."
+    },
+    {
+      "stage": 3,
+      "name": "unconditional top-level timer FB calls outside CASE/IF",
+      "action": "No timer FBs are required, so there are no calls in this stage."
+    },
+    {
+      "stage": 4,
+      "name": "unified output assignments",
+      "action": "Assign every output once from the updated phase: Pump_Motor=(phase=1), Filling_Valve=(phase=2), Capping_Machine=(phase=3), Packing_Machine=(phase=4), Completion_Light=(phase=5). Transitions therefore affect outputs in the same scan."
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G((Pump_Motor -> (!Filling_Valve & !Capping_Machine & !Packing_Machine & !Completion_Light)) & (Filling_Valve -> (!Capping_Machine & !Packing_Machine & !Completion_Light)) & (Capping_Machine -> (!Packing_Machine & !Completion_Light)) & (Packing_Machine -> !Completion_Light))"
+    }
+  ]
+}

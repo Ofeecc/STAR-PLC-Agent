@@ -1,0 +1,22 @@
+[
+  {
+    "id": "inout_struct_array",
+    "title": "VAR_IN_OUT Structures and Arrays In-Place Access",
+    "body": "// VAR_IN_OUT structures and arrays modify caller storage directly\nVAR_IN_OUT\n    recipe : ST_Recipe;\n    records : ARRAY[1..10] OF INT;\nEND_VAR\nrecipe.status := 1;\nrecords[1] := records[1] + 1;\n// Note: VAR_IN_OUT parameters cannot specify default initializers"
+  },
+  {
+    "id": "var_length_array",
+    "title": "Variable-Length Arrays (ARRAY[*] OF <type>) with Bounds",
+    "body": "// Variable-length array ARRAY[*] OF <type> with LOWER_BOUND/UPPER_BOUND\nVAR_IN_OUT\n    arr : ARRAY[*] OF INT;\nEND_VAR\nVAR\n    lb, ub, i : DINT;\nEND_VAR\nlb := LOWER_BOUND(arr, 1);\nub := UPPER_BOUND(arr, 1);\nFOR i := lb TO ub DO\n    arr[i] := arr[i] + 1;\nEND_FOR;"
+  },
+  {
+    "id": "ton_timer",
+    "title": "Standard IEC TON Timer Block Invocation",
+    "body": "// Standard IEC TON timer: MUST invoke unconditionally OUTSIDE CASE/IF every scan!\nVAR\n    timer : TON;\n    runTimer : BOOL;\nEND_VAR\n// Control via boolean IN flag (never put timer(...) only inside an IF/CASE arm):\nrunTimer := (state = 1) AND NOT resetCmd;\ntimer(IN := runTimer, PT := T#2s);\nIF timer.Q THEN\n    // Timer expired; timer.ET holds elapsed time\nEND_IF;"
+  },
+  {
+    "id": "case_state_machine",
+    "title": "Explicit CASE State Machine Transitions",
+    "body": "// 4-Stage Scan Order: 1) Edge sample 2) Reset/priority & CASE state transition\n// 3) Unconditional top-level TON/R_TRIG calls 4) Unified output assignments\nVAR\n    state : INT := 0; // 0=IDLE, 1=RUN, 2=FAULT\nEND_VAR\nIF emergencyStop THEN state := 2; END_IF;\nCASE state OF\n    0: IF startCmd AND NOT fault THEN state := 1; END_IF;\n    1: IF faultCmd THEN state := 2; ELSIF stopCmd THEN state := 0; END_IF;\n    2: IF resetCmd THEN state := 0; END_IF;\n    ELSE state := 0;\nEND_CASE;\noutActive := (state = 1); // Assign outputs unconditionally from current state"
+  }
+]

@@ -1,0 +1,13 @@
+{
+  "request_id": "4d4f9b69b4994e6a88c701bc606575fd",
+  "source_sha256": "9b343e0ca9c774ef7dc17b3f59b33c688dc7e0cbf95c099dace4ca87b699aee2",
+  "task_id": "PUB006",
+  "project": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\9b05ab17a7f80e1c\\task.project",
+  "candidate": {
+    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    DO_LOW : BOOL;\n    AERATION_E_STOP_NC : BOOL;\nEND_VAR\nVAR_OUTPUT\n    BLOWER_RUN : BOOL := FALSE;\n    AERATION_BLOWER_CYCLE_COUNT : UINT := 0;\nEND_VAR\nVAR\n    StartDelay : TON;\n    State : INT := 0;\n    RunPrev : BOOL := FALSE;\n    Permit : BOOL := FALSE;\nEND_VAR",
+    "implementation": "// 1) Sample inputs and retained previous output state\nRunPrev := BLOWER_RUN;\nPermit := DO_LOW AND AERATION_E_STOP_NC;\n\n// 2) Safety/reset priority and state transitions\nIF NOT Permit THEN\n    State := 0;\nELSE\n    CASE State OF\n        0:\n            State := 1;\n        1:\n            IF StartDelay.Q THEN\n                State := 2;\n            END_IF;\n        2:\n            State := 2;\n    ELSE\n        State := 0;\n    END_CASE;\nEND_IF;\n\n// 3) Unconditional top-level TON call outside CASE/IF\nStartDelay(IN := (State = 1) AND Permit, PT := T#5s);\n\n// 4) Unified output assignments and cycle counting\nBLOWER_RUN := Permit AND ((State = 2) OR ((State = 1) AND StartDelay.Q));\n\nIF (NOT RunPrev) AND BLOWER_RUN THEN\n    AERATION_BLOWER_CYCLE_COUNT := AERATION_BLOWER_CYCLE_COUNT + 1;\nEND_IF;",
+    "supporting_objects": []
+  },
+  "result_path": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\9b05ab17a7f80e1c\\codesys_evidence.json",
+  "started_utc": "2026-11-14T09:37:28.807391+00:00"
+}

@@ -1,0 +1,13 @@
+{
+  "request_id": "4eaf1d9c8bbd484c9706bc115069f38b",
+  "source_sha256": "3cce1133041eb984f3ed884b8f375b67628365cb3401cca35e44186a5c6642fc",
+  "task_id": "PUB004",
+  "project": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\6a90d85962f8735c\\task.project",
+  "candidate": {
+    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    VISCOSITY_OK : BOOL;\n    PASTE_E_STOP_NC : BOOL;\n    DebounceTime : TIME;\n    CycleTime : TIME;\nEND_VAR\nVAR_OUTPUT\n    VFD_RUN : BOOL := FALSE;\n    PUMP_MAINT_DUE : BOOL := FALSE;\n    PUMP_RUNTIME_ACC : LTIME := LTIME#0ns;\nEND_VAR\nVAR\n    permitted : BOOL := FALSE;\n    wasPermitted : BOOL := FALSE;\n    debounceElapsed : LTIME := LTIME#0ns;\n    debounceLimit : LTIME := LTIME#0ns;\n    runNext : BOOL := FALSE;\n    accNext : LTIME := LTIME#0ns;\nEND_VAR",
+    "implementation": "permitted := PASTE_E_STOP_NC AND VISCOSITY_OK;\ndebounceLimit := TIME_TO_LTIME(DebounceTime);\n\nIF NOT permitted THEN\n    debounceElapsed := LTIME#0ns;\n    wasPermitted := FALSE;\nELSIF NOT wasPermitted THEN\n    debounceElapsed := LTIME#0ns;\n    wasPermitted := TRUE;\nELSIF debounceElapsed < debounceLimit THEN\n    debounceElapsed := debounceElapsed + TIME_TO_LTIME(CycleTime);\n    IF debounceElapsed > debounceLimit THEN\n        debounceElapsed := debounceLimit;\n    END_IF;\nEND_IF;\n\nrunNext := permitted AND (debounceElapsed >= debounceLimit);\naccNext := PUMP_RUNTIME_ACC;\nIF runNext THEN\n    accNext := accNext + TIME_TO_LTIME(CycleTime);\nEND_IF;\n\nVFD_RUN := runNext;\nPUMP_RUNTIME_ACC := accNext;\nPUMP_MAINT_DUE := accNext >= LTIME#500h;",
+    "supporting_objects": []
+  },
+  "result_path": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\6a90d85962f8735c\\codesys_evidence.json",
+  "started_utc": "2026-11-14T11:12:39.878779+00:00"
+}

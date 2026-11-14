@@ -1,0 +1,135 @@
+{
+  "state_machine": [
+    {
+      "machine": "High alarm",
+      "states": [
+        "HI_OFF",
+        "HI_ON"
+      ],
+      "initial_state": "HI_OFF",
+      "transitions": [
+        {
+          "from": "HI_OFF",
+          "to": "HI_ON",
+          "guard": "valid AND Value > hiLevel"
+        },
+        {
+          "from": "HI_ON",
+          "to": "HI_OFF",
+          "guard": "valid AND Value < real32(hiLevel - hystWindow)"
+        },
+        {
+          "from": "HI_OFF",
+          "to": "HI_OFF",
+          "guard": "otherwise"
+        },
+        {
+          "from": "HI_ON",
+          "to": "HI_ON",
+          "guard": "otherwise"
+        }
+      ]
+    },
+    {
+      "machine": "Low alarm",
+      "states": [
+        "LO_OFF",
+        "LO_ON"
+      ],
+      "initial_state": "LO_OFF",
+      "transitions": [
+        {
+          "from": "LO_OFF",
+          "to": "LO_ON",
+          "guard": "valid AND Value < loLevel"
+        },
+        {
+          "from": "LO_ON",
+          "to": "LO_OFF",
+          "guard": "valid AND Value > real32(loLevel + hystWindow)"
+        },
+        {
+          "from": "LO_OFF",
+          "to": "LO_OFF",
+          "guard": "otherwise"
+        },
+        {
+          "from": "LO_ON",
+          "to": "LO_ON",
+          "guard": "otherwise"
+        }
+      ]
+    }
+  ],
+  "timer_plan": [],
+  "priorities": [
+    "Evaluate loLevel >= hiLevel first: set error to TRUE and status to 16#8001.",
+    "Otherwise, if hystWindow >= real32(hiLevel - loLevel), set error to TRUE and status to 16#8002.",
+    "On either invalid configuration, preserve both alarm states. Skip alarm evaluation, but complete the timer and output stages.",
+    "On valid configuration, clear error and status and evaluate the two alarm machines independently. Strict comparisons preserve the corresponding alarm at either hysteresis boundary.",
+    "Assume nonnegative hystWindow and finite inputs and intermediate results. Use IEEE 754 binary32 rounding to nearest, ties to even, for the span and release thresholds; negative hystWindow is outside the defined domain."
+  ],
+  "initial_values": {
+    "hiAlarm": false,
+    "loAlarm": false,
+    "error": false,
+    "status": "16#0000",
+    "qHi": false,
+    "qLo": false,
+    "diagError": false,
+    "diagStatus": "16#0000",
+    "inputs": "Externally supplied; no initial input values specified."
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "Edge sampling",
+      "action": "Snapshot Value, hiLevel, loLevel and hystWindow once for the scan. No edge detectors are required."
+    },
+    {
+      "stage": 2,
+      "name": "Safety/reset priority and state transitions",
+      "action": "Apply the configuration checks in priority order and set diagError and diagStatus every scan. On invalid configuration, retain qHi and qLo. Otherwise set diagError to FALSE and diagStatus to 16#0000, then update qHi and qLo independently using the state-machine transitions. There is no reset input."
+    },
+    {
+      "stage": 3,
+      "name": "Unconditional top-level timer FB calls outside CASE/IF",
+      "action": "No timer FBs are required; this stage contains no calls."
+    },
+    {
+      "stage": 4,
+      "name": "Unified output assignments",
+      "action": "Assign hiAlarm := qHi, loAlarm := qLo, error := diagError, and status := diagStatus."
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G((loLevel >= hiLevel) -> (error & status = 16#8001))"
+    },
+    {
+      "id": "A2",
+      "formula": "G(((loLevel < hiLevel) & (hystWindow >= real32(hiLevel - loLevel))) -> (error & status = 16#8002))"
+    },
+    {
+      "id": "A3",
+      "formula": "G(((loLevel < hiLevel) & (hystWindow >= 0.0) & (hystWindow < real32(hiLevel - loLevel))) -> (!error & status = 16#0000))"
+    },
+    {
+      "id": "A4",
+      "formula": "G(((loLevel < hiLevel) & (hystWindow >= 0.0) & (hystWindow < real32(hiLevel - loLevel)) & (Value > hiLevel)) -> hiAlarm)"
+    },
+    {
+      "id": "A5",
+      "formula": "G(((loLevel < hiLevel) & (hystWindow >= 0.0) & (hystWindow < real32(hiLevel - loLevel)) & (Value < real32(hiLevel - hystWindow))) -> !hiAlarm)"
+    },
+    {
+      "id": "A6",
+      "formula": "G(((loLevel < hiLevel) & (hystWindow >= 0.0) & (hystWindow < real32(hiLevel - loLevel)) & (Value < loLevel)) -> loAlarm)"
+    },
+    {
+      "id": "A7",
+      "formula": "G(((loLevel < hiLevel) & (hystWindow >= 0.0) & (hystWindow < real32(hiLevel - loLevel)) & (Value > real32(loLevel + hystWindow))) -> !loAlarm)"
+    }
+  ]
+}

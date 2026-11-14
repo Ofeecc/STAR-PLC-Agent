@@ -1,0 +1,126 @@
+{
+  "state_machine": [
+    {
+      "state": "STOPPED",
+      "initial": true,
+      "entry_actions": [
+        "VFD_RUN := FALSE",
+        "debounce qualification invalid",
+        "TON_ViscosityDebounce reset via IN = FALSE"
+      ],
+      "transitions": [
+        {
+          "to": "DEBOUNCING",
+          "condition": "VISCOSITY_OK AND PASTE_E_STOP_NC AND DebounceTime > TIME#0ms"
+        }
+      ]
+    },
+    {
+      "state": "DEBOUNCING",
+      "entry_actions": [
+        "VFD_RUN := FALSE unless refreshed TON Q is TRUE in output stage",
+        "accumulate runtime only if end-of-scan VFD_RUN is TRUE"
+      ],
+      "transitions": [
+        {
+          "to": "STOPPED",
+          "condition": "NOT (VISCOSITY_OK AND PASTE_E_STOP_NC)"
+        },
+        {
+          "to": "RUNNING",
+          "condition": "retained TON_ViscosityDebounce.Q is TRUE"
+        }
+      ]
+    },
+    {
+      "state": "RUNNING",
+      "entry_actions": [
+        "VFD_RUN may be TRUE",
+        "continue runtime accumulation"
+      ],
+      "transitions": [
+        {
+          "to": "STOPPED",
+          "condition": "NOT (VISCOSITY_OK AND PASTE_E_STOP_NC)"
+        }
+      ]
+    }
+  ],
+  "timer_plan": [
+    {
+      "name": "TON_ViscosityDebounce",
+      "type": "TON",
+      "PT": "DebounceTime",
+      "IN": "VISCOSITY_OK AND PASTE_E_STOP_NC",
+      "reset_conditions": [
+        "IN = FALSE",
+        "PASTE_E_STOP_NC = FALSE",
+        "VISCOSITY_OK = FALSE",
+        "power-up/initialization",
+        "any loss of permit requires full new DebounceTime qualification"
+      ],
+      "notes": "Call unconditionally outside CASE/IF. Elapsed is zero on the first eligible TRUE sample and Q becomes TRUE at elapsed >= DebounceTime."
+    },
+    {
+      "name": "RuntimeAccumulator",
+      "type": "LTIME arithmetic, not a timer FB",
+      "PT": "N/A; increment by TIME_TO_LTIME(CycleTime) only when end-of-scan VFD_RUN is TRUE",
+      "reset_conditions": [
+        "power-up/initialization only"
+      ],
+      "notes": "PUMP_MAINT_DUE is the level comparison PUMP_RUNTIME_ACC >= LTIME#500h and is informational only."
+    }
+  ],
+  "priorities": [
+    "Safety priority 1: PASTE_E_STOP_NC FALSE immediately forces VFD_RUN FALSE, clears debounce qualification, and resets incomplete debounce timing.",
+    "Safety priority 2: raw VISCOSITY_OK FALSE invalidates the viscosity condition immediately and forces VFD_RUN FALSE.",
+    "Operational priority 1: VFD_RUN may be TRUE only when PASTE_E_STOP_NC is TRUE, VISCOSITY_OK is TRUE, and the debounced viscosity qualification is valid.",
+    "Operational priority 2: any loss of permit requires a full new continuous DebounceTime qualification before VFD_RUN can be TRUE again.",
+    "Operational priority 3: accumulate PUMP_RUNTIME_ACC with CycleTime only while end-of-scan VFD_RUN is TRUE; preserve accumulated runtime while stopped.",
+    "Operational priority 4: PUMP_MAINT_DUE does not inhibit or override VFD_RUN or any safety permissive.",
+    "Execution priority: output assignments are unified after safety/state/timer processing; E-stop and raw viscosity gates are applied at the final output write."
+  ],
+  "initial_values": {
+    "VFD_RUN": false,
+    "PUMP_MAINT_DUE": false,
+    "PUMP_RUNTIME_ACC": "LTIME#0ns",
+    "debounceElapsed_ms": 0,
+    "State": "STOPPED",
+    "TON_ViscosityDebounce.IN": false,
+    "TON_ViscosityDebounce.PT": "TIME#0ms",
+    "TON_ViscosityDebounce.Q": false,
+    "TON_ViscosityDebounce.ET": "TIME#0ms",
+    "PrevViscosityOK": false,
+    "PrevPermit": false,
+    "RiseViscosityOK": false,
+    "FallViscosityOK": false
+  },
+  "scan_execution_order": [
+    "1. Edge sampling: sample VISCOSITY_OK, PASTE_E_STOP_NC, DebounceTime, and CycleTime once; update edge flags and previous-sample values without changing outputs.",
+    "2. Safety/reset priority and state transitions: first apply PASTE_E_STOP_NC FALSE or VISCOSITY_OK FALSE to force STOPPED and clear debounce qualification; then evaluate STOPPED/DEBOUNCING/RUNNING transitions using current sampled inputs and retained TON Q.",
+    "3. Unconditional top-level timer FB calls outside CASE/IF: call TON_ViscosityDebounce with IN := VISCOSITY_OK AND PASTE_E_STOP_NC and PT := DebounceTime; reset occurs automatically whenever IN is FALSE.",
+    "4. Unified output assignments: VFD_RUN := (State = RUNNING OR (State = DEBOUNCING AND TON_ViscosityDebounce.Q)) AND VISCOSITY_OK AND PASTE_E_STOP_NC; IF VFD_RUN THEN PUMP_RUNTIME_ACC := PUMP_RUNTIME_ACC + TIME_TO_LTIME(CycleTime); END_IF; PUMP_MAINT_DUE := PUMP_RUNTIME_ACC >= LTIME#500h; write all outputs once."
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G(!PASTE_E_STOP_NC -> !VFD_RUN)"
+    },
+    {
+      "id": "A2",
+      "formula": "G(!VISCOSITY_OK -> !VFD_RUN)"
+    },
+    {
+      "id": "A3",
+      "formula": "G(VFD_RUN -> (VISCOSITY_OK & PASTE_E_STOP_NC))"
+    },
+    {
+      "id": "A4",
+      "formula": "G(PUMP_MAINT_DUE <-> (PUMP_RUNTIME_ACC >= LTIME#500h))"
+    },
+    {
+      "id": "A5",
+      "formula": "G(PUMP_RUNTIME_ACC >= LTIME#0ns)"
+    }
+  ]
+}

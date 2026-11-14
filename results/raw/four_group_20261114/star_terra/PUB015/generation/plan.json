@@ -1,0 +1,147 @@
+{
+  "state_machine": [
+    {
+      "state": "IDLE",
+      "automatic_output": "none",
+      "transitions": [
+        {
+          "condition": "opeMode AND rising(autoStart)",
+          "next": "FILL_A",
+          "action": "Latch processMode as batchMode."
+        }
+      ]
+    },
+    {
+      "state": "FILL_A",
+      "automatic_output": "valveARun",
+      "transitions": [
+        {
+          "condition": "levelSensor >= 50",
+          "next": "FILL_B"
+        }
+      ]
+    },
+    {
+      "state": "FILL_B",
+      "automatic_output": "valveBRun",
+      "transitions": [
+        {
+          "condition": "levelSensor >= 80 AND NOT batchMode",
+          "next": "MIX"
+        },
+        {
+          "condition": "levelSensor >= 80 AND batchMode",
+          "next": "FILL_C"
+        }
+      ]
+    },
+    {
+      "state": "FILL_C",
+      "automatic_output": "valveCRun",
+      "transitions": [
+        {
+          "condition": "levelSensor >= 100",
+          "next": "MIX"
+        }
+      ]
+    },
+    {
+      "state": "MIX",
+      "automatic_output": "mixMotorRun",
+      "transitions": [
+        {
+          "condition": "mixMotorComplete",
+          "next": "DRAIN"
+        }
+      ]
+    },
+    {
+      "state": "DRAIN",
+      "automatic_output": "valveDRun",
+      "transitions": [
+        {
+          "condition": "rising(autoStart)",
+          "next": "FILL_A",
+          "action": "Latch processMode as batchMode for the new batch."
+        }
+      ]
+    }
+  ],
+  "timer_plan": {
+    "timers": [],
+    "PT_durations": "None required.",
+    "reset_conditions": "Not applicable; no timer instances are used."
+  },
+  "priorities": [
+    "First, estop=FALSE clears all manual latches, phase to IDLE, and batchMode; all outputs are FALSE in the observed scan. Use an independent safety-rated E-stop path for physical de-energization; ordinary PLC scan logic alone cannot guarantee an immediate physical stop.",
+    "Second, a change of opeMode after the first invocation clears all manual latches, phase to IDLE, and batchMode, and suppresses all commands for that invocation. Mode and button histories still update, including during E-stop.",
+    "On the first invocation, establish the selected mode without treating it as a mode change; execute commands normally. Button histories initially FALSE mean a button already TRUE on that invocation produces a rising edge.",
+    "In manual mode, each of the five button rising edges independently toggles its corresponding latch; multiple manual outputs may coexist. Edges sampled during E-stop or a mode-change scan are consumed, not deferred.",
+    "In automatic mode, accept autoStart rising edges only in IDLE or DRAIN. Ignore other start edges. Execute at most one phase transition per invocation using the pre-transition phase; drive the resulting phase output in the same observed scan.",
+    "Use mixMotorComplete as a level in the pre-transition MIX phase. DRAIN remains active until E-stop, a mode change, or a fresh accepted autoStart edge.",
+    "No discharge-complete, tank-empty, sensor-fault, or timeout input is provided. A new batch may start from DRAIN without verifying an empty tank; address this limitation in the installation risk assessment."
+  ],
+  "initial_values": {
+    "outputs": {
+      "valveARun": false,
+      "valveBRun": false,
+      "valveCRun": false,
+      "valveDRun": false,
+      "mixMotorRun": false
+    },
+    "phase": "IDLE",
+    "batchMode": false,
+    "manual_latches": {
+      "A": false,
+      "B": false,
+      "C": false,
+      "D": false,
+      "Mix": false
+    },
+    "button_previous_values": {
+      "valveAStart": false,
+      "valveBStart": false,
+      "valveCStart": false,
+      "valveDStart": false,
+      "mixMotorStart": false,
+      "autoStart": false
+    },
+    "modeSeen": false,
+    "previousOpeMode": false,
+    "transient_edge_flags": false,
+    "modeChanged": false,
+    "inputs": "Externally supplied; not initialized by the program."
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "Edge sampling",
+      "actions": "Sample inputs. Compute rising edges for all five manual buttons and autoStart from their previous values, then update every button history unconditionally."
+    },
+    {
+      "stage": 2,
+      "name": "Safety/reset priority and state transitions",
+      "actions": "Compute modeChanged from modeSeen and previousOpeMode, then update mode history unconditionally. Apply E-stop reset first and mode-change reset second. Otherwise, in manual mode toggle each latch independently and keep phase IDLE; in automatic mode evaluate exactly one transition from the pre-transition phase. Latch processMode on an accepted autoStart."
+    },
+    {
+      "stage": 3,
+      "name": "Unconditional top-level timer FB calls outside CASE/IF",
+      "actions": "No timer FBs are required; this stage is a no-op. Any future timer FB calls must be unconditional and at top level."
+    },
+    {
+      "stage": 4,
+      "name": "Unified output assignments",
+      "actions": "Assign every output once. Force all FALSE if NOT estop or modeChanged; otherwise select the manual latches when NOT opeMode, or the one-hot output of the resulting automatic phase when opeMode."
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G(!estop -> (!valveARun & !valveBRun & !valveCRun & !valveDRun & !mixMotorRun))"
+    },
+    {
+      "id": "A2",
+      "formula": "G(opeMode -> (!(valveARun & (valveBRun | valveCRun | valveDRun | mixMotorRun)) & !(valveBRun & (valveCRun | valveDRun | mixMotorRun)) & !(valveCRun & (valveDRun | mixMotorRun)) & !(valveDRun & mixMotorRun)))"
+    }
+  ]
+}

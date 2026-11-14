@@ -1,0 +1,240 @@
+{
+  "request_id": "c60c75ef729f40f09d27b1c7185e082e",
+  "mode": "IDE_SIMULATION_ONLY",
+  "no_physical_connection": true,
+  "workspace": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\d6ce7bd5d350f848",
+  "project": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\d6ce7bd5d350f848\\simulation.project",
+  "template": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\d6ce7bd5d350f848\\benchmark.project",
+  "task_id": "PUB014",
+  "task_sha256": "f30490ef7c9746b8158688b086aa4f2f35632bb360a76ba5bbff0bad803fb33f",
+  "source_sha256": "1e6b0ecaed10b0af819868c246019ef6e7d7a58b4a0443fef149bb70e5f1c187",
+  "candidate": {
+    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    ipText : STRING(254);\nEND_VAR\nVAR_OUTPUT\n    ipValue : UDINT;\nEND_VAR\nVAR\n    visibleLen : INT;\n    i : INT;\n    c : BYTE;\n    parseOk : BOOL;\n    valid : BOOL;\n    segCount : INT;\n    segValue : UDINT;\n    digitSeen : BOOL;\n    octets : ARRAY[0..3] OF UDINT;\n    pendingValue : UDINT;\nEND_VAR",
+    "implementation": "// Stage 1: sample visible text and reset per-invocation parse state\nvisibleLen := LEN(ipText);\nparseOk := TRUE;\nvalid := FALSE;\nsegCount := 0;\nsegValue := UDINT#0;\ndigitSeen := FALSE;\noctets[0] := UDINT#0;\noctets[1] := UDINT#0;\noctets[2] := UDINT#0;\noctets[3] := UDINT#0;\npendingValue := UDINT#0;\n\n// Capacity / visible length check\nIF (visibleLen <= 0) OR (visibleLen > 254) THEN\n    parseOk := FALSE;\nEND_IF;\n\n// Stage 2: strict dotted-decimal IPv4 parse\nIF parseOk THEN\n    FOR i := 1 TO visibleLen DO\n        c := ipText[i];\n        IF (c >= BYTE#48) AND (c <= BYTE#57) THEN\n            digitSeen := TRUE;\n            segValue := segValue * UDINT#10 + (TO_UDINT(c) - UDINT#48);\n            IF segValue > UDINT#255 THEN\n                parseOk := FALSE;\n                EXIT;\n            END_IF;\n        ELSIF c = BYTE#46 THEN\n            IF (NOT digitSeen) OR (segCount >= 3) THEN\n                parseOk := FALSE;\n                EXIT;\n            END_IF;\n            octets[segCount] := segValue;\n            segCount := segCount + 1;\n            segValue := UDINT#0;\n            digitSeen := FALSE;\n        ELSE\n            parseOk := FALSE;\n            EXIT;\n        END_IF;\n    END_FOR;\nEND_IF;\n\n// Finalize exactly four nonempty segments\nIF parseOk AND digitSeen AND (segCount = 3) THEN\n    octets[3] := segValue;\n    valid := TRUE;\n    pendingValue := octets[0] * UDINT#16777216\n                  + octets[1] * UDINT#65536\n                  + octets[2] * UDINT#256\n                  + octets[3];\nELSE\n    valid := FALSE;\n    pendingValue := UDINT#0;\nEND_IF;\n\n// Stage 4: unified output, invalid input forces zero in the same invocation\nIF valid THEN\n    ipValue := pendingValue;\nELSE\n    ipValue := UDINT#0;\nEND_IF;",
+    "supporting_objects": []
+  },
+  "program": {
+    "declaration": "PROGRAM PLC_PRG\nVAR\n BenchStep : UDINT := 0;\n BenchCalls : UDINT := 0;\n BenchDone : BOOL := FALSE;\n BenchUut0 : FB_Task;\n BenchUut1 : FB_Task;\n TraceIn_ipText : ARRAY[0..6] OF STRING(254);\n TraceOut_ipValue : ARRAY[0..6] OF UDINT;\nEND_VAR",
+    "implementation": "IF NOT BenchDone THEN\n CASE BenchStep OF\n 0:\n   BenchUut0.ipText := '192.168.1.10';\n   TraceIn_ipText[0] := BenchUut0.ipText;\n   BenchUut0();\n   TraceOut_ipValue[0] := BenchUut0.ipValue;\n   BenchCalls := BenchCalls + 1;\n 1:\n   BenchUut0.ipText := '192.168.1.10';\n   TraceIn_ipText[1] := BenchUut0.ipText;\n   BenchUut0();\n   TraceOut_ipValue[1] := BenchUut0.ipValue;\n   BenchCalls := BenchCalls + 1;\n 2:\n   BenchUut1.ipText := '255.255.255.255';\n   TraceIn_ipText[2] := BenchUut1.ipText;\n   BenchUut1();\n   TraceOut_ipValue[2] := BenchUut1.ipValue;\n   BenchCalls := BenchCalls + 1;\n 3:\n   BenchUut1.ipText := '0.0.0.0';\n   TraceIn_ipText[3] := BenchUut1.ipText;\n   BenchUut1();\n   TraceOut_ipValue[3] := BenchUut1.ipValue;\n   BenchCalls := BenchCalls + 1;\n 4:\n   BenchUut1.ipText := '001.002.003.004';\n   TraceIn_ipText[4] := BenchUut1.ipText;\n   BenchUut1();\n   TraceOut_ipValue[4] := BenchUut1.ipValue;\n   BenchCalls := BenchCalls + 1;\n 5:\n   BenchUut1.ipText := '256.0.0.1';\n   TraceIn_ipText[5] := BenchUut1.ipText;\n   BenchUut1();\n   TraceOut_ipValue[5] := BenchUut1.ipValue;\n   BenchCalls := BenchCalls + 1;\n 6:\n   BenchUut1.ipText := '1.2.3';\n   TraceIn_ipText[6] := BenchUut1.ipText;\n   BenchUut1();\n   TraceOut_ipValue[6] := BenchUut1.ipValue;\n   BenchCalls := BenchCalls + 1;\n END_CASE;\n BenchStep := BenchStep + 1;\n IF BenchStep >= 7 THEN BenchDone := TRUE; END_IF;\nEND_IF;",
+    "step_count": 7,
+    "steps": [
+      {
+        "index": 0,
+        "case_id": "case_1",
+        "case_step": 0,
+        "dt_ms": 0
+      },
+      {
+        "index": 1,
+        "case_id": "case_1",
+        "case_step": 1,
+        "dt_ms": 0
+      },
+      {
+        "index": 2,
+        "case_id": "case_2",
+        "case_step": 0,
+        "dt_ms": 0
+      },
+      {
+        "index": 3,
+        "case_id": "case_2",
+        "case_step": 1,
+        "dt_ms": 0
+      },
+      {
+        "index": 4,
+        "case_id": "case_2",
+        "case_step": 2,
+        "dt_ms": 0
+      },
+      {
+        "index": 5,
+        "case_id": "case_2",
+        "case_step": 3,
+        "dt_ms": 0
+      },
+      {
+        "index": 6,
+        "case_id": "case_2",
+        "case_step": 4,
+        "dt_ms": 0
+      }
+    ],
+    "inputs": [
+      {
+        "direction": "INPUT",
+        "name": "ipText",
+        "type": "STRING(254)",
+        "description": "IPv4 text to parse, with a capacity of 254 characters. A valid dotted-decimal address requires at most 15 characters."
+      }
+    ],
+    "outputs": [
+      {
+        "direction": "OUTPUT",
+        "name": "ipValue",
+        "type": "UDINT",
+        "description": "32-bit address in network byte order; zero for invalid input."
+      }
+    ],
+    "trace_expressions": [
+      "PLC_PRG.TraceIn_ipText[0]",
+      "PLC_PRG.TraceOut_ipValue[0]",
+      "PLC_PRG.TraceIn_ipText[1]",
+      "PLC_PRG.TraceOut_ipValue[1]",
+      "PLC_PRG.TraceIn_ipText[2]",
+      "PLC_PRG.TraceOut_ipValue[2]",
+      "PLC_PRG.TraceIn_ipText[3]",
+      "PLC_PRG.TraceOut_ipValue[3]",
+      "PLC_PRG.TraceIn_ipText[4]",
+      "PLC_PRG.TraceOut_ipValue[4]",
+      "PLC_PRG.TraceIn_ipText[5]",
+      "PLC_PRG.TraceOut_ipValue[5]",
+      "PLC_PRG.TraceIn_ipText[6]",
+      "PLC_PRG.TraceOut_ipValue[6]"
+    ],
+    "trace_mapping": [
+      {
+        "step_index": 0,
+        "case_id": "case_1",
+        "case_step": 0,
+        "dt_expr": null,
+        "inputs": {
+          "ipText": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ipText[0]",
+            "type": "STRING(254)"
+          }
+        },
+        "outputs": {
+          "ipValue": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_ipValue[0]",
+            "type": "UDINT"
+          }
+        }
+      },
+      {
+        "step_index": 1,
+        "case_id": "case_1",
+        "case_step": 1,
+        "dt_expr": null,
+        "inputs": {
+          "ipText": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ipText[1]",
+            "type": "STRING(254)"
+          }
+        },
+        "outputs": {
+          "ipValue": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_ipValue[1]",
+            "type": "UDINT"
+          }
+        }
+      },
+      {
+        "step_index": 2,
+        "case_id": "case_2",
+        "case_step": 0,
+        "dt_expr": null,
+        "inputs": {
+          "ipText": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ipText[2]",
+            "type": "STRING(254)"
+          }
+        },
+        "outputs": {
+          "ipValue": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_ipValue[2]",
+            "type": "UDINT"
+          }
+        }
+      },
+      {
+        "step_index": 3,
+        "case_id": "case_2",
+        "case_step": 1,
+        "dt_expr": null,
+        "inputs": {
+          "ipText": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ipText[3]",
+            "type": "STRING(254)"
+          }
+        },
+        "outputs": {
+          "ipValue": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_ipValue[3]",
+            "type": "UDINT"
+          }
+        }
+      },
+      {
+        "step_index": 4,
+        "case_id": "case_2",
+        "case_step": 2,
+        "dt_expr": null,
+        "inputs": {
+          "ipText": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ipText[4]",
+            "type": "STRING(254)"
+          }
+        },
+        "outputs": {
+          "ipValue": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_ipValue[4]",
+            "type": "UDINT"
+          }
+        }
+      },
+      {
+        "step_index": 5,
+        "case_id": "case_2",
+        "case_step": 3,
+        "dt_expr": null,
+        "inputs": {
+          "ipText": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ipText[5]",
+            "type": "STRING(254)"
+          }
+        },
+        "outputs": {
+          "ipValue": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_ipValue[5]",
+            "type": "UDINT"
+          }
+        }
+      },
+      {
+        "step_index": 6,
+        "case_id": "case_2",
+        "case_step": 4,
+        "dt_expr": null,
+        "inputs": {
+          "ipText": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ipText[6]",
+            "type": "STRING(254)"
+          }
+        },
+        "outputs": {
+          "ipValue": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_ipValue[6]",
+            "type": "UDINT"
+          }
+        }
+      }
+    ]
+  },
+  "result_path": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\d6ce7bd5d350f848\\simulation_evidence.json"
+}

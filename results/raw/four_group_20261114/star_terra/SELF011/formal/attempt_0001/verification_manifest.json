@@ -1,0 +1,111 @@
+{
+  "task_id": "SELF011",
+  "source_sha256": "bb1a4803a726d534c9ca5e012d7f7ba1912e046e9486009c7e0ccfe821c4ee55",
+  "st_path": "candidate.st",
+  "ltl_path": "spec.ltl",
+  "properties": [
+    {
+      "id": "SELF011.P_init",
+      "formula": "init",
+      "description": "Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope)."
+    },
+    {
+      "id": "SELF011.P1",
+      "formula": "G(oneAction)",
+      "description": "Action commands never overlap."
+    },
+    {
+      "id": "SELF011.P2",
+      "formula": "G((Stop | Reset) -> (!Busy & !Done & !Extend & !Clamp & !Release & !Retract))",
+      "description": "Abort clears every command immediately."
+    },
+    {
+      "id": "SELF011.P3",
+      "formula": "G((normal & qIdle & Start & RetractDone) -> Extend)",
+      "description": "Home-qualified Start enters only the first action."
+    },
+    {
+      "id": "SELF011.P4",
+      "formula": "G((normal & qExtend & ExtendDone) -> Clamp)",
+      "description": "Extension completion enters clamp."
+    },
+    {
+      "id": "SELF011.P5",
+      "formula": "G((normal & qClamp & ClampDone) -> Release)",
+      "description": "Clamp completion enters release."
+    },
+    {
+      "id": "SELF011.P6",
+      "formula": "G((normal & qRelease & ReleaseDone) -> Retract)",
+      "description": "Release completion enters retract."
+    },
+    {
+      "id": "SELF011.P7",
+      "formula": "G((normal & qRetract & RetractDone) -> Done)",
+      "description": "Home arrival completes the cycle."
+    },
+    {
+      "id": "SELF011.P8",
+      "formula": "G((normal & qDone) -> Done)",
+      "description": "A completed cycle cannot restart without an explicit clear."
+    },
+    {
+      "id": "SELF011.P9",
+      "formula": "G((normal & qExtend & !ExtendDone) -> Extend)",
+      "description": "The fixture waits for an extension handshake rather than assuming completion."
+    },
+    {
+      "id": "SELF011.P10",
+      "formula": "G((Busy <-> (Extend | Clamp | Release | Retract)) & (!(Busy & Done)))",
+      "description": "Previously Busy had no positive constraint during active stages."
+    },
+    {
+      "id": "SELF011.P11",
+      "formula": "G(((normal & qIdle & !(Start & RetractDone)) -> (!Busy & !Done)) & ((normal & qClamp & !ClampDone) -> Clamp) & ((normal & qRelease & !ReleaseDone) -> Release) & ((normal & qRetract & !RetractDone) -> Retract))",
+      "description": "Completes stage-hold symmetry alongside existing P9 (EXTEND hold)."
+    },
+    {
+      "id": "SELF011.COMPLETE",
+      "formula": "G(CompleteBehavior)",
+      "description": "Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed."
+    }
+  ],
+  "atomic_propositions": {
+    "Start": "I[k].Start: sampled input (BOOL).",
+    "Stop": "I[k].Stop: sampled input (BOOL).",
+    "Reset": "I[k].Reset: sampled input (BOOL).",
+    "ExtendDone": "I[k].ExtendDone: sampled input (BOOL).",
+    "ClampDone": "I[k].ClampDone: sampled input (BOOL).",
+    "ReleaseDone": "I[k].ReleaseDone: sampled input (BOOL).",
+    "RetractDone": "I[k].RetractDone: sampled input (BOOL).",
+    "Extend": "O[k].Extend: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "Clamp": "O[k].Clamp: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "Release": "O[k].Release: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "Retract": "O[k].Retract: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "Busy": "O[k].Busy: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "Done": "O[k].Done: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "first": "k=0; first invocation, not the pre-invocation observation",
+    "qIdle": "Spre.reference.state.mode=0",
+    "qExtend": "Spre.reference.state.mode=1",
+    "qClamp": "Spre.reference.state.mode=2",
+    "qRelease": "Spre.reference.state.mode=3",
+    "qRetract": "Spre.reference.state.mode=4",
+    "qDone": "Spre.reference.state.mode=5",
+    "normal": "!Stop & !Reset.",
+    "oneAction": "int(O[k].Extend)+int(O[k].Clamp)+int(O[k].Release)+int(O[k].Retract)<=1",
+    "CompleteBehavior": "令(Sref[k+1], E[k])=T_SELF011(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\nmode初值IDLE。Stop或Reset优先回IDLE；IDLE且Start & RetractDone进EXTEND；EXTEND/CLAMP/RELEASE/RETRACT仅各自匹配完成信号推进一阶；DONE保持。四动作输出分别等价于转移后对应阶段，Busy等价于阶段1..4，Done等价于阶段5。",
+    "init": "At the separate pre-invocation initial observation before scan k=0: Spre.mode=IDLE, O_init.Extend=false, O_init.Clamp=false, O_init.Release=false, O_init.Retract=false, O_init.Busy=false, O_init.Done=false."
+  },
+  "tools_supported": [
+    "NuSMV"
+  ],
+  "encoding_complete": true,
+  "task_sha256": "ac55f38427bf0d17ca925845c8f2140ca351d5106a19aa9585ff88fd797a7b4d",
+  "bundle_status": "PASS",
+  "created_utc": "2026-11-14T11:52:19.078089+00:00",
+  "smv_path": "D:\\张景颢\\学习\\大三上\\课件\\GenAI赋能工业编程\\仓库审阅\\STAR-PLC-Agent_github_5853e54\\results\\raw\\four_group_20261114\\star_terra\\SELF011\\formal\\attempt_0001\\candidate_coupled.smv",
+  "observer_smv": "D:\\张景颢\\学习\\大三上\\课件\\GenAI赋能工业编程\\仓库审阅\\STAR-PLC-Agent_github_5853e54\\models\\SELF011_reference.smv",
+  "verification_status": "PASS",
+  "candidate_st_verified": true,
+  "property_pass_ratio": 1.0
+}

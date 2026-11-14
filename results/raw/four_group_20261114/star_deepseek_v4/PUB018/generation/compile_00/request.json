@@ -1,0 +1,21 @@
+{
+  "request_id": "34a5478450d94aed9244165a123c2928",
+  "source_sha256": "dc2502f790ff49614fa8ffe398b0263f5dce861a06e1a40057b4798962a7e683",
+  "task_id": "PUB018",
+  "project": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\550cf9c1bba3b03f\\task.project",
+  "candidate": {
+    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    enqueue : BOOL;\n    dequeue : BOOL;\n    reset : BOOL;\nEND_VAR\nVAR_OUTPUT\n    elementCount : DINT := 0;\n    {attribute 'analysis' := '-27'}\n    status : WORD := 16#0000;\nEND_VAR\nVAR_IN_OUT\n    item : VARIANT;\n    buffer : VARIANT;\nEND_VAR\nVAR\n    initialized : BOOL := FALSE;\n    capacity : DINT := 0;\n    head : DINT := 0;\n    tail : DINT := 0;\n    internalCount : DINT := 0;\n    enqueuePrev : BOOL := FALSE;\n    dequeuePrev : BOOL := FALSE;\n    enqueueRise : BOOL;\n    dequeueRise : BOOL;\n    bufferInfo : __SYSTEM.VAR_INFO;\n    itemInfo : __SYSTEM.VAR_INFO;\n    elementSize : UDINT;\n    pBuffer : POINTER TO BYTE;\n    pItem : POINTER TO BYTE;\n    pElem : POINTER TO BYTE;\n    idx : DINT;\n    offset : UDINT;\nEND_VAR",
+    "implementation": "bufferInfo := __VARINFO(buffer);\nitemInfo := __VARINFO(item);\n\nIF NOT initialized THEN\n    elementSize := itemInfo.Size;\n    IF elementSize > 0 THEN\n        capacity := UDINT_TO_DINT(bufferInfo.Size / elementSize);\n    ELSE\n        capacity := 0;\n    END_IF;\n    IF capacity < 0 THEN\n        capacity := 0;\n    END_IF;\n    head := 0;\n    tail := 0;\n    internalCount := 0;\n    status := 16#0000;\n    initialized := TRUE;\nEND_IF;\n\npBuffer := bufferInfo.pAddress;\npItem := itemInfo.pAddress;\n\nenqueueRise := enqueue AND NOT enqueuePrev;\ndequeueRise := dequeue AND NOT dequeuePrev;\nenqueuePrev := enqueue;\ndequeuePrev := dequeue;\n\nIF reset THEN\n    internalCount := 0;\n    head := 0;\n    tail := 0;\n    status := 16#0000;\nELSIF enqueueRise AND dequeueRise THEN\n    status := 16#0000;\nELSIF enqueueRise THEN\n    IF internalCount >= capacity THEN\n        status := 16#8002;\n    ELSE\n        idx := tail;\n        offset := DINT_TO_UDINT(idx) * elementSize;\n        pElem := pBuffer + offset;\n        FIFO_CopyBytes(dest := pElem, src := pItem, size := elementSize);\n        tail := (tail + 1) MOD capacity;\n        internalCount := internalCount + 1;\n        status := 16#0000;\n    END_IF;\nELSIF dequeueRise THEN\n    IF internalCount <= 0 THEN\n        status := 16#8001;\n    ELSE\n        idx := head;\n        offset := DINT_TO_UDINT(idx) * elementSize;\n        pElem := pBuffer + offset;\n        FIFO_CopyBytes(dest := pItem, src := pElem, size := elementSize);\n        head := (head + 1) MOD capacity;\n        internalCount := internalCount - 1;\n        status := 16#0000;\n    END_IF;\nELSE\n    status := 16#0000;\nEND_IF;\n\nelementCount := internalCount;",
+    "supporting_objects": [
+      {
+        "name": "FIFO_CopyBytes",
+        "kind": "FUNCTION",
+        "return_type": "BOOL",
+        "declaration": "FUNCTION FIFO_CopyBytes : BOOL\nVAR_INPUT\n    dest : POINTER TO BYTE;\n    src : POINTER TO BYTE;\n    size : UDINT;\nEND_VAR\nVAR\n    i : UDINT;\n    pD : POINTER TO BYTE;\n    pS : POINTER TO BYTE;\nEND_VAR",
+        "implementation": "FIFO_CopyBytes := FALSE;\nIF size > 0 THEN\n    pD := dest;\n    pS := src;\n    FOR i := 0 TO size - 1 DO\n        pD^ := pS^;\n        pD := pD + 1;\n        pS := pS + 1;\n    END_FOR;\nEND_IF;\nFIFO_CopyBytes := TRUE;"
+      }
+    ]
+  },
+  "result_path": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\550cf9c1bba3b03f\\codesys_evidence.json",
+  "started_utc": "2026-11-14T10:25:15.979009+00:00"
+}

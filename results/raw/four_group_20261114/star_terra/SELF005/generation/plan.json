@@ -1,0 +1,139 @@
+{
+  "state_machine": [
+    {
+      "state": "RED",
+      "phase": 0,
+      "elapsed_ticks_range": "0..1",
+      "transitions": [
+        {
+          "guard": "!Enable",
+          "next": "RED",
+          "action": "elapsed_ticks := 0"
+        },
+        {
+          "guard": "Enable & !Tick",
+          "next": "RED",
+          "action": "hold elapsed_ticks"
+        },
+        {
+          "guard": "Enable & Tick & elapsed_ticks = 0",
+          "next": "RED",
+          "action": "elapsed_ticks := 1"
+        },
+        {
+          "guard": "Enable & Tick & elapsed_ticks = 1",
+          "next": "GREEN",
+          "action": "elapsed_ticks := 0"
+        }
+      ]
+    },
+    {
+      "state": "GREEN",
+      "phase": 1,
+      "elapsed_ticks_range": "0..2",
+      "transitions": [
+        {
+          "guard": "!Enable",
+          "next": "RED",
+          "action": "elapsed_ticks := 0"
+        },
+        {
+          "guard": "Enable & !Tick",
+          "next": "GREEN",
+          "action": "hold elapsed_ticks"
+        },
+        {
+          "guard": "Enable & Tick & elapsed_ticks < 2",
+          "next": "GREEN",
+          "action": "elapsed_ticks := elapsed_ticks + 1"
+        },
+        {
+          "guard": "Enable & Tick & elapsed_ticks = 2",
+          "next": "AMBER",
+          "action": "elapsed_ticks := 0"
+        }
+      ]
+    },
+    {
+      "state": "AMBER",
+      "phase": 2,
+      "elapsed_ticks_range": "0",
+      "transitions": [
+        {
+          "guard": "!Enable",
+          "next": "RED",
+          "action": "elapsed_ticks := 0"
+        },
+        {
+          "guard": "Enable & !Tick",
+          "next": "AMBER",
+          "action": "hold elapsed_ticks"
+        },
+        {
+          "guard": "Enable & Tick",
+          "next": "RED",
+          "action": "elapsed_ticks := 0"
+        }
+      ]
+    }
+  ],
+  "timer_plan": {
+    "timers_required": [],
+    "PT_durations": "Not applicable: durations are logical invocation counts, not wall-clock time.",
+    "reset_conditions": "No timer FBs exist. The elapsed tick counter resets on disable and on every phase transition."
+  },
+  "priorities": [
+    "Disable has highest priority: immediately reset phase and elapsed_ticks to zero, regardless of Tick.",
+    "Otherwise, count one tick on every scan with Tick TRUE, including consecutive TRUE scans; do not use a rising-edge detector.",
+    "When enabled and Tick is FALSE, retain phase and elapsed_ticks.",
+    "Each scan performs at most one phase transition and publishes the resulting phase in the same scan."
+  ],
+  "initial_values": {
+    "phase": 0,
+    "elapsed_ticks": 0,
+    "Red": true,
+    "Green": false,
+    "Amber": false,
+    "Phase": 0
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "Edge sampling",
+      "action": "Sample Enable and Tick once into scan-local values. Tick is used as a level, not edge-detected."
+    },
+    {
+      "stage": 2,
+      "name": "Safety/reset priority and state transitions",
+      "action": "Apply disable reset first; otherwise execute the applicable state transition using retained pre-scan phase and elapsed_ticks. Scan 0 executes normally."
+    },
+    {
+      "stage": 3,
+      "name": "Unconditional top-level timer FB calls outside CASE/IF",
+      "action": "No calls: this design requires no timer FBs."
+    },
+    {
+      "stage": 4,
+      "name": "Unified output assignments",
+      "action": "Assign Phase := phase; Red := (phase = 0); Green := (phase = 1); Amber := (phase = 2), using post-transition state."
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G((Phase >= 0 & Phase <= 2) & (Red <-> Phase = 0) & (Green <-> Phase = 1) & (Amber <-> Phase = 2))"
+    },
+    {
+      "id": "A2",
+      "formula": "G(!Enable -> (Red & !Green & !Amber & Phase = 0))"
+    },
+    {
+      "id": "A3",
+      "formula": "G(X (Enable & !Tick) -> ((Red -> X Red) & (Green -> X Green) & (Amber -> X Amber)))"
+    },
+    {
+      "id": "A4",
+      "formula": "G((Amber & X (Enable & Tick)) -> X Red)"
+    }
+  ]
+}

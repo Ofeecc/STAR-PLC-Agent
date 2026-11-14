@@ -1,0 +1,63 @@
+{
+  "task_id": "PUB005",
+  "source_sha256": "5da5992255a9ce7bcbcc6f647fdd4b6304504cac254112246b06f92dc8cc9f5c",
+  "st_path": "candidate.st",
+  "ltl_path": "spec.ltl",
+  "properties": [
+    {
+      "id": "PUB005.P_init",
+      "formula": "init",
+      "description": "Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope)."
+    },
+    {
+      "id": "PUB005.P1",
+      "formula": "G(Weld_Soft_Start_Active <-> startup)",
+      "description": "Soft-start output means only the startup monitoring inhibition interval."
+    },
+    {
+      "id": "PUB005.P2",
+      "formula": "G((startup | !Weld_E_Stop_NC | !Gap_Exceeded) -> !Operator_Alert)",
+      "description": "Startup, E-stop or no gap forces the alarm off."
+    },
+    {
+      "id": "PUB005.P3",
+      "formula": "G(Operator_Alert <-> (!startup & Weld_E_Stop_NC & Gap_Exceeded & gapQualified))",
+      "description": "Alarm requires post-startup continuous qualified gap."
+    },
+    {
+      "id": "PUB005.P4",
+      "formula": "G((startup | !Weld_E_Stop_NC | !Gap_Exceeded) -> X(!gapQualified))",
+      "description": "Each suppressing condition clears or blocks gap qualification."
+    },
+    {
+      "id": "PUB005.P5",
+      "formula": "(G(F(TimeTick))) -> (G((G(Weld_E_Stop_NC & Gap_Exceeded)) -> F(Operator_Alert)))",
+      "description": "Persistent gap eventually alarms after startup and debounce, assuming advancing time. Explicit non-Zeno environment premise: physical elapsed time crosses infinitely many 1ms boundaries."
+    },
+    {
+      "id": "PUB005.COMPLETE",
+      "formula": "G(CompleteBehavior)",
+      "description": "Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed."
+    }
+  ],
+  "atomic_propositions": {
+    "startup": "Elapsed time since the first invocation is less than 5 seconds.",
+    "gapQualified": "Gap_Exceeded has remained TRUE with Weld_E_Stop_NC TRUE and !startup for at least DebounceTime, measured from first eligible invocation.",
+    "interface names": "Identically named sampled input or observed output.",
+    "CompleteBehavior": "令(Sref[k+1], E[k])=T_PUB005(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\n首拍时钟0；startup=clock<5s，急停不重启此时钟。gapPermit=!startup & Gap_Exceeded & Weld_E_Stop_NC；首次gapPermit真年龄0，假清起点；alarm=gapPermit且年龄>=固定正DebounceTime。两个期望输出为alarm、startup。",
+    "TimeTick": "Boolean: floor(t[k]/1ms)>floor(t[k-1]/1ms), with t[0]=0, TimeTick[0]=FALSE, t[k]=sum(dt_ms[1..k]). G(F(TimeTick)) states unbounded physical time progress; merely positive dt is insufficient.",
+    "Gap_Exceeded": "I[k].Gap_Exceeded: sampled input (BOOL).",
+    "Weld_E_Stop_NC": "I[k].Weld_E_Stop_NC: sampled input (BOOL).",
+    "DebounceTime": "I[k].DebounceTime: sampled input (TIME).",
+    "Operator_Alert": "O[k].Operator_Alert: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "Weld_Soft_Start_Active": "O[k].Weld_Soft_Start_Active: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "init": "At the separate pre-invocation initial observation before scan k=0: O_init.Operator_Alert=false, O_init.Weld_Soft_Start_Active=true."
+  },
+  "tools_supported": [],
+  "encoding_complete": false,
+  "task_sha256": "104016bcc9a6b6567d1b2dbefdc9b16012f7c20c197c907769facb8f0486a9c9",
+  "bundle_status": "UNSUPPORTED_ST",
+  "created_utc": "2026-11-14T11:19:33.204135+00:00",
+  "verification_status": "UNSUPPORTED_ST",
+  "reason": "Candidate input DebounceTime has no observer binding"
+}

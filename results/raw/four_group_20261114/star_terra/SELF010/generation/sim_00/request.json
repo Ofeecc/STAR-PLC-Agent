@@ -1,0 +1,900 @@
+{
+  "request_id": "2143b73f1c9f43d98882795d96d2702b",
+  "mode": "IDE_SIMULATION_ONLY",
+  "no_physical_connection": true,
+  "workspace": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\0b8bd28ef3b550ce",
+  "project": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\0b8bd28ef3b550ce\\simulation.project",
+  "template": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\0b8bd28ef3b550ce\\benchmark.project",
+  "task_id": "SELF010",
+  "task_sha256": "4f721a469906cf8ca63df406936c70aa317d62db56b87d35b25548d496e6fecb",
+  "source_sha256": "db3c2256a85daa1dfdb3ebb08f1bd529ee2d5bc1c07eb4da38401d09bb9aa58f",
+  "candidate": {
+    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    Fault : BOOL;\n    Ack : BOOL;\n    Reset : BOOL;\nEND_VAR\nVAR_OUTPUT\n    Alarm : BOOL := FALSE;\n    Acknowledged : BOOL := FALSE;\n    Horn : BOOL := FALSE;\nEND_VAR\nVAR\n    state : USINT := 0;\n    previous_fault : BOOL := FALSE;\n    fault_rise : BOOL := FALSE;\n    sampled_fault : BOOL;\n    sampled_ack : BOOL;\n    sampled_reset : BOOL;\nEND_VAR\nVAR CONSTANT\n    ST_IDLE : USINT := 0;\n    ST_UNACK : USINT := 1;\n    ST_ACKED : USINT := 2;\nEND_VAR",
+    "implementation": "sampled_fault := Fault;\nsampled_ack := Ack;\nsampled_reset := Reset;\n\nfault_rise := sampled_fault AND NOT previous_fault;\nprevious_fault := sampled_fault;\n\nCASE state OF\n    ST_IDLE:\n        IF sampled_reset AND NOT sampled_fault THEN\n            state := ST_IDLE;\n        ELSIF fault_rise THEN\n            state := ST_UNACK;\n        ELSIF sampled_fault AND sampled_ack THEN\n            state := ST_ACKED;\n        ELSIF sampled_fault THEN\n            state := ST_UNACK;\n        END_IF;\n\n    ST_UNACK:\n        IF sampled_reset AND NOT sampled_fault THEN\n            state := ST_IDLE;\n        ELSIF fault_rise THEN\n            state := ST_UNACK;\n        ELSIF sampled_ack THEN\n            state := ST_ACKED;\n        END_IF;\n\n    ST_ACKED:\n        IF sampled_reset AND NOT sampled_fault THEN\n            state := ST_IDLE;\n        ELSIF fault_rise THEN\n            state := ST_UNACK;\n        END_IF;\n\n    ELSE\n        state := ST_IDLE;\nEND_CASE;\n\nAlarm := state <> ST_IDLE;\nAcknowledged := state = ST_ACKED;\nHorn := Alarm AND NOT Acknowledged;",
+    "supporting_objects": []
+  },
+  "program": {
+    "declaration": "PROGRAM PLC_PRG\nVAR\n BenchStep : UDINT := 0;\n BenchCalls : UDINT := 0;\n BenchDone : BOOL := FALSE;\n BenchUut0 : FB_Task;\n BenchUut1 : FB_Task;\n TraceIn_Fault : ARRAY[0..15] OF BOOL;\n TraceIn_Ack : ARRAY[0..15] OF BOOL;\n TraceIn_Reset : ARRAY[0..15] OF BOOL;\n TraceOut_Alarm : ARRAY[0..15] OF BOOL;\n TraceOut_Acknowledged : ARRAY[0..15] OF BOOL;\n TraceOut_Horn : ARRAY[0..15] OF BOOL;\nEND_VAR",
+    "implementation": "IF NOT BenchDone THEN\n CASE BenchStep OF\n 0:\n   BenchUut0.Fault := FALSE;\n   BenchUut0.Ack := TRUE;\n   BenchUut0.Reset := FALSE;\n   TraceIn_Fault[0] := BenchUut0.Fault;\n   TraceIn_Ack[0] := BenchUut0.Ack;\n   TraceIn_Reset[0] := BenchUut0.Reset;\n   BenchUut0();\n   TraceOut_Alarm[0] := BenchUut0.Alarm;\n   TraceOut_Acknowledged[0] := BenchUut0.Acknowledged;\n   TraceOut_Horn[0] := BenchUut0.Horn;\n   BenchCalls := BenchCalls + 1;\n 1:\n   BenchUut0.Fault := TRUE;\n   BenchUut0.Ack := FALSE;\n   BenchUut0.Reset := FALSE;\n   TraceIn_Fault[1] := BenchUut0.Fault;\n   TraceIn_Ack[1] := BenchUut0.Ack;\n   TraceIn_Reset[1] := BenchUut0.Reset;\n   BenchUut0();\n   TraceOut_Alarm[1] := BenchUut0.Alarm;\n   TraceOut_Acknowledged[1] := BenchUut0.Acknowledged;\n   TraceOut_Horn[1] := BenchUut0.Horn;\n   BenchCalls := BenchCalls + 1;\n 2:\n   BenchUut0.Fault := FALSE;\n   BenchUut0.Ack := FALSE;\n   BenchUut0.Reset := FALSE;\n   TraceIn_Fault[2] := BenchUut0.Fault;\n   TraceIn_Ack[2] := BenchUut0.Ack;\n   TraceIn_Reset[2] := BenchUut0.Reset;\n   BenchUut0();\n   TraceOut_Alarm[2] := BenchUut0.Alarm;\n   TraceOut_Acknowledged[2] := BenchUut0.Acknowledged;\n   TraceOut_Horn[2] := BenchUut0.Horn;\n   BenchCalls := BenchCalls + 1;\n 3:\n   BenchUut0.Fault := FALSE;\n   BenchUut0.Ack := TRUE;\n   BenchUut0.Reset := FALSE;\n   TraceIn_Fault[3] := BenchUut0.Fault;\n   TraceIn_Ack[3] := BenchUut0.Ack;\n   TraceIn_Reset[3] := BenchUut0.Reset;\n   BenchUut0();\n   TraceOut_Alarm[3] := BenchUut0.Alarm;\n   TraceOut_Acknowledged[3] := BenchUut0.Acknowledged;\n   TraceOut_Horn[3] := BenchUut0.Horn;\n   BenchCalls := BenchCalls + 1;\n 4:\n   BenchUut0.Fault := FALSE;\n   BenchUut0.Ack := FALSE;\n   BenchUut0.Reset := FALSE;\n   TraceIn_Fault[4] := BenchUut0.Fault;\n   TraceIn_Ack[4] := BenchUut0.Ack;\n   TraceIn_Reset[4] := BenchUut0.Reset;\n   BenchUut0();\n   TraceOut_Alarm[4] := BenchUut0.Alarm;\n   TraceOut_Acknowledged[4] := BenchUut0.Acknowledged;\n   TraceOut_Horn[4] := BenchUut0.Horn;\n   BenchCalls := BenchCalls + 1;\n 5:\n   BenchUut0.Fault := TRUE;\n   BenchUut0.Ack := FALSE;\n   BenchUut0.Reset := FALSE;\n   TraceIn_Fault[5] := BenchUut0.Fault;\n   TraceIn_Ack[5] := BenchUut0.Ack;\n   TraceIn_Reset[5] := BenchUut0.Reset;\n   BenchUut0();\n   TraceOut_Alarm[5] := BenchUut0.Alarm;\n   TraceOut_Acknowledged[5] := BenchUut0.Acknowledged;\n   TraceOut_Horn[5] := BenchUut0.Horn;\n   BenchCalls := BenchCalls + 1;\n 6:\n   BenchUut0.Fault := TRUE;\n   BenchUut0.Ack := TRUE;\n   BenchUut0.Reset := FALSE;\n   TraceIn_Fault[6] := BenchUut0.Fault;\n   TraceIn_Ack[6] := BenchUut0.Ack;\n   TraceIn_Reset[6] := BenchUut0.Reset;\n   BenchUut0();\n   TraceOut_Alarm[6] := BenchUut0.Alarm;\n   TraceOut_Acknowledged[6] := BenchUut0.Acknowledged;\n   TraceOut_Horn[6] := BenchUut0.Horn;\n   BenchCalls := BenchCalls + 1;\n 7:\n   BenchUut0.Fault := FALSE;\n   BenchUut0.Ack := TRUE;\n   BenchUut0.Reset := TRUE;\n   TraceIn_Fault[7] := BenchUut0.Fault;\n   TraceIn_Ack[7] := BenchUut0.Ack;\n   TraceIn_Reset[7] := BenchUut0.Reset;\n   BenchUut0();\n   TraceOut_Alarm[7] := BenchUut0.Alarm;\n   TraceOut_Acknowledged[7] := BenchUut0.Acknowledged;\n   TraceOut_Horn[7] := BenchUut0.Horn;\n   BenchCalls := BenchCalls + 1;\n 8:\n   BenchUut1.Fault := TRUE;\n   BenchUut1.Ack := TRUE;\n   BenchUut1.Reset := TRUE;\n   TraceIn_Fault[8] := BenchUut1.Fault;\n   TraceIn_Ack[8] := BenchUut1.Ack;\n   TraceIn_Reset[8] := BenchUut1.Reset;\n   BenchUut1();\n   TraceOut_Alarm[8] := BenchUut1.Alarm;\n   TraceOut_Acknowledged[8] := BenchUut1.Acknowledged;\n   TraceOut_Horn[8] := BenchUut1.Horn;\n   BenchCalls := BenchCalls + 1;\n 9:\n   BenchUut1.Fault := TRUE;\n   BenchUut1.Ack := TRUE;\n   BenchUut1.Reset := TRUE;\n   TraceIn_Fault[9] := BenchUut1.Fault;\n   TraceIn_Ack[9] := BenchUut1.Ack;\n   TraceIn_Reset[9] := BenchUut1.Reset;\n   BenchUut1();\n   TraceOut_Alarm[9] := BenchUut1.Alarm;\n   TraceOut_Acknowledged[9] := BenchUut1.Acknowledged;\n   TraceOut_Horn[9] := BenchUut1.Horn;\n   BenchCalls := BenchCalls + 1;\n 10:\n   BenchUut1.Fault := FALSE;\n   BenchUut1.Ack := TRUE;\n   BenchUut1.Reset := TRUE;\n   TraceIn_Fault[10] := BenchUut1.Fault;\n   TraceIn_Ack[10] := BenchUut1.Ack;\n   TraceIn_Reset[10] := BenchUut1.Reset;\n   BenchUut1();\n   TraceOut_Alarm[10] := BenchUut1.Alarm;\n   TraceOut_Acknowledged[10] := BenchUut1.Acknowledged;\n   TraceOut_Horn[10] := BenchUut1.Horn;\n   BenchCalls := BenchCalls + 1;\n 11:\n   BenchUut1.Fault := TRUE;\n   BenchUut1.Ack := TRUE;\n   BenchUut1.Reset := TRUE;\n   TraceIn_Fault[11] := BenchUut1.Fault;\n   TraceIn_Ack[11] := BenchUut1.Ack;\n   TraceIn_Reset[11] := BenchUut1.Reset;\n   BenchUut1();\n   TraceOut_Alarm[11] := BenchUut1.Alarm;\n   TraceOut_Acknowledged[11] := BenchUut1.Acknowledged;\n   TraceOut_Horn[11] := BenchUut1.Horn;\n   BenchCalls := BenchCalls + 1;\n 12:\n   BenchUut1.Fault := TRUE;\n   BenchUut1.Ack := TRUE;\n   BenchUut1.Reset := TRUE;\n   TraceIn_Fault[12] := BenchUut1.Fault;\n   TraceIn_Ack[12] := BenchUut1.Ack;\n   TraceIn_Reset[12] := BenchUut1.Reset;\n   BenchUut1();\n   TraceOut_Alarm[12] := BenchUut1.Alarm;\n   TraceOut_Acknowledged[12] := BenchUut1.Acknowledged;\n   TraceOut_Horn[12] := BenchUut1.Horn;\n   BenchCalls := BenchCalls + 1;\n 13:\n   BenchUut1.Fault := TRUE;\n   BenchUut1.Ack := FALSE;\n   BenchUut1.Reset := TRUE;\n   TraceIn_Fault[13] := BenchUut1.Fault;\n   TraceIn_Ack[13] := BenchUut1.Ack;\n   TraceIn_Reset[13] := BenchUut1.Reset;\n   BenchUut1();\n   TraceOut_Alarm[13] := BenchUut1.Alarm;\n   TraceOut_Acknowledged[13] := BenchUut1.Acknowledged;\n   TraceOut_Horn[13] := BenchUut1.Horn;\n   BenchCalls := BenchCalls + 1;\n 14:\n   BenchUut1.Fault := FALSE;\n   BenchUut1.Ack := FALSE;\n   BenchUut1.Reset := FALSE;\n   TraceIn_Fault[14] := BenchUut1.Fault;\n   TraceIn_Ack[14] := BenchUut1.Ack;\n   TraceIn_Reset[14] := BenchUut1.Reset;\n   BenchUut1();\n   TraceOut_Alarm[14] := BenchUut1.Alarm;\n   TraceOut_Acknowledged[14] := BenchUut1.Acknowledged;\n   TraceOut_Horn[14] := BenchUut1.Horn;\n   BenchCalls := BenchCalls + 1;\n 15:\n   BenchUut1.Fault := TRUE;\n   BenchUut1.Ack := TRUE;\n   BenchUut1.Reset := TRUE;\n   TraceIn_Fault[15] := BenchUut1.Fault;\n   TraceIn_Ack[15] := BenchUut1.Ack;\n   TraceIn_Reset[15] := BenchUut1.Reset;\n   BenchUut1();\n   TraceOut_Alarm[15] := BenchUut1.Alarm;\n   TraceOut_Acknowledged[15] := BenchUut1.Acknowledged;\n   TraceOut_Horn[15] := BenchUut1.Horn;\n   BenchCalls := BenchCalls + 1;\n END_CASE;\n BenchStep := BenchStep + 1;\n IF BenchStep >= 16 THEN BenchDone := TRUE; END_IF;\nEND_IF;",
+    "step_count": 16,
+    "steps": [
+      {
+        "index": 0,
+        "case_id": "case_1",
+        "case_step": 0,
+        "dt_ms": 0
+      },
+      {
+        "index": 1,
+        "case_id": "case_1",
+        "case_step": 1,
+        "dt_ms": 0
+      },
+      {
+        "index": 2,
+        "case_id": "case_1",
+        "case_step": 2,
+        "dt_ms": 0
+      },
+      {
+        "index": 3,
+        "case_id": "case_1",
+        "case_step": 3,
+        "dt_ms": 0
+      },
+      {
+        "index": 4,
+        "case_id": "case_1",
+        "case_step": 4,
+        "dt_ms": 0
+      },
+      {
+        "index": 5,
+        "case_id": "case_1",
+        "case_step": 5,
+        "dt_ms": 0
+      },
+      {
+        "index": 6,
+        "case_id": "case_1",
+        "case_step": 6,
+        "dt_ms": 0
+      },
+      {
+        "index": 7,
+        "case_id": "case_1",
+        "case_step": 7,
+        "dt_ms": 0
+      },
+      {
+        "index": 8,
+        "case_id": "case_2",
+        "case_step": 0,
+        "dt_ms": 0
+      },
+      {
+        "index": 9,
+        "case_id": "case_2",
+        "case_step": 1,
+        "dt_ms": 0
+      },
+      {
+        "index": 10,
+        "case_id": "case_2",
+        "case_step": 2,
+        "dt_ms": 0
+      },
+      {
+        "index": 11,
+        "case_id": "case_2",
+        "case_step": 3,
+        "dt_ms": 0
+      },
+      {
+        "index": 12,
+        "case_id": "case_2",
+        "case_step": 4,
+        "dt_ms": 0
+      },
+      {
+        "index": 13,
+        "case_id": "case_2",
+        "case_step": 5,
+        "dt_ms": 0
+      },
+      {
+        "index": 14,
+        "case_id": "case_2",
+        "case_step": 6,
+        "dt_ms": 0
+      },
+      {
+        "index": 15,
+        "case_id": "case_2",
+        "case_step": 7,
+        "dt_ms": 0
+      }
+    ],
+    "inputs": [
+      {
+        "direction": "INPUT",
+        "name": "Fault",
+        "type": "BOOL",
+        "description": "Current fault condition"
+      },
+      {
+        "direction": "INPUT",
+        "name": "Ack",
+        "type": "BOOL",
+        "description": "Acknowledge horn"
+      },
+      {
+        "direction": "INPUT",
+        "name": "Reset",
+        "type": "BOOL",
+        "description": "Clear a removed fault"
+      }
+    ],
+    "outputs": [
+      {
+        "direction": "OUTPUT",
+        "name": "Alarm",
+        "type": "BOOL",
+        "description": "Latched visible alarm"
+      },
+      {
+        "direction": "OUTPUT",
+        "name": "Acknowledged",
+        "type": "BOOL",
+        "description": "Alarm acknowledged"
+      },
+      {
+        "direction": "OUTPUT",
+        "name": "Horn",
+        "type": "BOOL",
+        "description": "Unacknowledged alarm horn"
+      }
+    ],
+    "trace_expressions": [
+      "PLC_PRG.TraceIn_Fault[0]",
+      "PLC_PRG.TraceIn_Ack[0]",
+      "PLC_PRG.TraceIn_Reset[0]",
+      "PLC_PRG.TraceOut_Alarm[0]",
+      "PLC_PRG.TraceOut_Acknowledged[0]",
+      "PLC_PRG.TraceOut_Horn[0]",
+      "PLC_PRG.TraceIn_Fault[1]",
+      "PLC_PRG.TraceIn_Ack[1]",
+      "PLC_PRG.TraceIn_Reset[1]",
+      "PLC_PRG.TraceOut_Alarm[1]",
+      "PLC_PRG.TraceOut_Acknowledged[1]",
+      "PLC_PRG.TraceOut_Horn[1]",
+      "PLC_PRG.TraceIn_Fault[2]",
+      "PLC_PRG.TraceIn_Ack[2]",
+      "PLC_PRG.TraceIn_Reset[2]",
+      "PLC_PRG.TraceOut_Alarm[2]",
+      "PLC_PRG.TraceOut_Acknowledged[2]",
+      "PLC_PRG.TraceOut_Horn[2]",
+      "PLC_PRG.TraceIn_Fault[3]",
+      "PLC_PRG.TraceIn_Ack[3]",
+      "PLC_PRG.TraceIn_Reset[3]",
+      "PLC_PRG.TraceOut_Alarm[3]",
+      "PLC_PRG.TraceOut_Acknowledged[3]",
+      "PLC_PRG.TraceOut_Horn[3]",
+      "PLC_PRG.TraceIn_Fault[4]",
+      "PLC_PRG.TraceIn_Ack[4]",
+      "PLC_PRG.TraceIn_Reset[4]",
+      "PLC_PRG.TraceOut_Alarm[4]",
+      "PLC_PRG.TraceOut_Acknowledged[4]",
+      "PLC_PRG.TraceOut_Horn[4]",
+      "PLC_PRG.TraceIn_Fault[5]",
+      "PLC_PRG.TraceIn_Ack[5]",
+      "PLC_PRG.TraceIn_Reset[5]",
+      "PLC_PRG.TraceOut_Alarm[5]",
+      "PLC_PRG.TraceOut_Acknowledged[5]",
+      "PLC_PRG.TraceOut_Horn[5]",
+      "PLC_PRG.TraceIn_Fault[6]",
+      "PLC_PRG.TraceIn_Ack[6]",
+      "PLC_PRG.TraceIn_Reset[6]",
+      "PLC_PRG.TraceOut_Alarm[6]",
+      "PLC_PRG.TraceOut_Acknowledged[6]",
+      "PLC_PRG.TraceOut_Horn[6]",
+      "PLC_PRG.TraceIn_Fault[7]",
+      "PLC_PRG.TraceIn_Ack[7]",
+      "PLC_PRG.TraceIn_Reset[7]",
+      "PLC_PRG.TraceOut_Alarm[7]",
+      "PLC_PRG.TraceOut_Acknowledged[7]",
+      "PLC_PRG.TraceOut_Horn[7]",
+      "PLC_PRG.TraceIn_Fault[8]",
+      "PLC_PRG.TraceIn_Ack[8]",
+      "PLC_PRG.TraceIn_Reset[8]",
+      "PLC_PRG.TraceOut_Alarm[8]",
+      "PLC_PRG.TraceOut_Acknowledged[8]",
+      "PLC_PRG.TraceOut_Horn[8]",
+      "PLC_PRG.TraceIn_Fault[9]",
+      "PLC_PRG.TraceIn_Ack[9]",
+      "PLC_PRG.TraceIn_Reset[9]",
+      "PLC_PRG.TraceOut_Alarm[9]",
+      "PLC_PRG.TraceOut_Acknowledged[9]",
+      "PLC_PRG.TraceOut_Horn[9]",
+      "PLC_PRG.TraceIn_Fault[10]",
+      "PLC_PRG.TraceIn_Ack[10]",
+      "PLC_PRG.TraceIn_Reset[10]",
+      "PLC_PRG.TraceOut_Alarm[10]",
+      "PLC_PRG.TraceOut_Acknowledged[10]",
+      "PLC_PRG.TraceOut_Horn[10]",
+      "PLC_PRG.TraceIn_Fault[11]",
+      "PLC_PRG.TraceIn_Ack[11]",
+      "PLC_PRG.TraceIn_Reset[11]",
+      "PLC_PRG.TraceOut_Alarm[11]",
+      "PLC_PRG.TraceOut_Acknowledged[11]",
+      "PLC_PRG.TraceOut_Horn[11]",
+      "PLC_PRG.TraceIn_Fault[12]",
+      "PLC_PRG.TraceIn_Ack[12]",
+      "PLC_PRG.TraceIn_Reset[12]",
+      "PLC_PRG.TraceOut_Alarm[12]",
+      "PLC_PRG.TraceOut_Acknowledged[12]",
+      "PLC_PRG.TraceOut_Horn[12]",
+      "PLC_PRG.TraceIn_Fault[13]",
+      "PLC_PRG.TraceIn_Ack[13]",
+      "PLC_PRG.TraceIn_Reset[13]",
+      "PLC_PRG.TraceOut_Alarm[13]",
+      "PLC_PRG.TraceOut_Acknowledged[13]",
+      "PLC_PRG.TraceOut_Horn[13]",
+      "PLC_PRG.TraceIn_Fault[14]",
+      "PLC_PRG.TraceIn_Ack[14]",
+      "PLC_PRG.TraceIn_Reset[14]",
+      "PLC_PRG.TraceOut_Alarm[14]",
+      "PLC_PRG.TraceOut_Acknowledged[14]",
+      "PLC_PRG.TraceOut_Horn[14]",
+      "PLC_PRG.TraceIn_Fault[15]",
+      "PLC_PRG.TraceIn_Ack[15]",
+      "PLC_PRG.TraceIn_Reset[15]",
+      "PLC_PRG.TraceOut_Alarm[15]",
+      "PLC_PRG.TraceOut_Acknowledged[15]",
+      "PLC_PRG.TraceOut_Horn[15]"
+    ],
+    "trace_mapping": [
+      {
+        "step_index": 0,
+        "case_id": "case_1",
+        "case_step": 0,
+        "dt_expr": null,
+        "inputs": {
+          "Fault": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Fault[0]",
+            "type": "BOOL"
+          },
+          "Ack": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Ack[0]",
+            "type": "BOOL"
+          },
+          "Reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Reset[0]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "Alarm": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Alarm[0]",
+            "type": "BOOL"
+          },
+          "Acknowledged": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Acknowledged[0]",
+            "type": "BOOL"
+          },
+          "Horn": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Horn[0]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 1,
+        "case_id": "case_1",
+        "case_step": 1,
+        "dt_expr": null,
+        "inputs": {
+          "Fault": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Fault[1]",
+            "type": "BOOL"
+          },
+          "Ack": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Ack[1]",
+            "type": "BOOL"
+          },
+          "Reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Reset[1]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "Alarm": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Alarm[1]",
+            "type": "BOOL"
+          },
+          "Acknowledged": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Acknowledged[1]",
+            "type": "BOOL"
+          },
+          "Horn": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Horn[1]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 2,
+        "case_id": "case_1",
+        "case_step": 2,
+        "dt_expr": null,
+        "inputs": {
+          "Fault": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Fault[2]",
+            "type": "BOOL"
+          },
+          "Ack": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Ack[2]",
+            "type": "BOOL"
+          },
+          "Reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Reset[2]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "Alarm": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Alarm[2]",
+            "type": "BOOL"
+          },
+          "Acknowledged": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Acknowledged[2]",
+            "type": "BOOL"
+          },
+          "Horn": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Horn[2]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 3,
+        "case_id": "case_1",
+        "case_step": 3,
+        "dt_expr": null,
+        "inputs": {
+          "Fault": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Fault[3]",
+            "type": "BOOL"
+          },
+          "Ack": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Ack[3]",
+            "type": "BOOL"
+          },
+          "Reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Reset[3]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "Alarm": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Alarm[3]",
+            "type": "BOOL"
+          },
+          "Acknowledged": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Acknowledged[3]",
+            "type": "BOOL"
+          },
+          "Horn": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Horn[3]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 4,
+        "case_id": "case_1",
+        "case_step": 4,
+        "dt_expr": null,
+        "inputs": {
+          "Fault": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Fault[4]",
+            "type": "BOOL"
+          },
+          "Ack": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Ack[4]",
+            "type": "BOOL"
+          },
+          "Reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Reset[4]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "Alarm": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Alarm[4]",
+            "type": "BOOL"
+          },
+          "Acknowledged": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Acknowledged[4]",
+            "type": "BOOL"
+          },
+          "Horn": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Horn[4]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 5,
+        "case_id": "case_1",
+        "case_step": 5,
+        "dt_expr": null,
+        "inputs": {
+          "Fault": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Fault[5]",
+            "type": "BOOL"
+          },
+          "Ack": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Ack[5]",
+            "type": "BOOL"
+          },
+          "Reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Reset[5]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "Alarm": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Alarm[5]",
+            "type": "BOOL"
+          },
+          "Acknowledged": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Acknowledged[5]",
+            "type": "BOOL"
+          },
+          "Horn": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Horn[5]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 6,
+        "case_id": "case_1",
+        "case_step": 6,
+        "dt_expr": null,
+        "inputs": {
+          "Fault": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Fault[6]",
+            "type": "BOOL"
+          },
+          "Ack": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Ack[6]",
+            "type": "BOOL"
+          },
+          "Reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Reset[6]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "Alarm": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Alarm[6]",
+            "type": "BOOL"
+          },
+          "Acknowledged": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Acknowledged[6]",
+            "type": "BOOL"
+          },
+          "Horn": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Horn[6]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 7,
+        "case_id": "case_1",
+        "case_step": 7,
+        "dt_expr": null,
+        "inputs": {
+          "Fault": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Fault[7]",
+            "type": "BOOL"
+          },
+          "Ack": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Ack[7]",
+            "type": "BOOL"
+          },
+          "Reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Reset[7]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "Alarm": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Alarm[7]",
+            "type": "BOOL"
+          },
+          "Acknowledged": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Acknowledged[7]",
+            "type": "BOOL"
+          },
+          "Horn": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Horn[7]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 8,
+        "case_id": "case_2",
+        "case_step": 0,
+        "dt_expr": null,
+        "inputs": {
+          "Fault": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Fault[8]",
+            "type": "BOOL"
+          },
+          "Ack": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Ack[8]",
+            "type": "BOOL"
+          },
+          "Reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Reset[8]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "Alarm": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Alarm[8]",
+            "type": "BOOL"
+          },
+          "Acknowledged": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Acknowledged[8]",
+            "type": "BOOL"
+          },
+          "Horn": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Horn[8]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 9,
+        "case_id": "case_2",
+        "case_step": 1,
+        "dt_expr": null,
+        "inputs": {
+          "Fault": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Fault[9]",
+            "type": "BOOL"
+          },
+          "Ack": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Ack[9]",
+            "type": "BOOL"
+          },
+          "Reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Reset[9]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "Alarm": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Alarm[9]",
+            "type": "BOOL"
+          },
+          "Acknowledged": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Acknowledged[9]",
+            "type": "BOOL"
+          },
+          "Horn": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Horn[9]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 10,
+        "case_id": "case_2",
+        "case_step": 2,
+        "dt_expr": null,
+        "inputs": {
+          "Fault": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Fault[10]",
+            "type": "BOOL"
+          },
+          "Ack": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Ack[10]",
+            "type": "BOOL"
+          },
+          "Reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Reset[10]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "Alarm": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Alarm[10]",
+            "type": "BOOL"
+          },
+          "Acknowledged": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Acknowledged[10]",
+            "type": "BOOL"
+          },
+          "Horn": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Horn[10]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 11,
+        "case_id": "case_2",
+        "case_step": 3,
+        "dt_expr": null,
+        "inputs": {
+          "Fault": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Fault[11]",
+            "type": "BOOL"
+          },
+          "Ack": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Ack[11]",
+            "type": "BOOL"
+          },
+          "Reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Reset[11]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "Alarm": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Alarm[11]",
+            "type": "BOOL"
+          },
+          "Acknowledged": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Acknowledged[11]",
+            "type": "BOOL"
+          },
+          "Horn": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Horn[11]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 12,
+        "case_id": "case_2",
+        "case_step": 4,
+        "dt_expr": null,
+        "inputs": {
+          "Fault": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Fault[12]",
+            "type": "BOOL"
+          },
+          "Ack": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Ack[12]",
+            "type": "BOOL"
+          },
+          "Reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Reset[12]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "Alarm": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Alarm[12]",
+            "type": "BOOL"
+          },
+          "Acknowledged": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Acknowledged[12]",
+            "type": "BOOL"
+          },
+          "Horn": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Horn[12]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 13,
+        "case_id": "case_2",
+        "case_step": 5,
+        "dt_expr": null,
+        "inputs": {
+          "Fault": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Fault[13]",
+            "type": "BOOL"
+          },
+          "Ack": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Ack[13]",
+            "type": "BOOL"
+          },
+          "Reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Reset[13]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "Alarm": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Alarm[13]",
+            "type": "BOOL"
+          },
+          "Acknowledged": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Acknowledged[13]",
+            "type": "BOOL"
+          },
+          "Horn": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Horn[13]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 14,
+        "case_id": "case_2",
+        "case_step": 6,
+        "dt_expr": null,
+        "inputs": {
+          "Fault": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Fault[14]",
+            "type": "BOOL"
+          },
+          "Ack": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Ack[14]",
+            "type": "BOOL"
+          },
+          "Reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Reset[14]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "Alarm": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Alarm[14]",
+            "type": "BOOL"
+          },
+          "Acknowledged": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Acknowledged[14]",
+            "type": "BOOL"
+          },
+          "Horn": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Horn[14]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 15,
+        "case_id": "case_2",
+        "case_step": 7,
+        "dt_expr": null,
+        "inputs": {
+          "Fault": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Fault[15]",
+            "type": "BOOL"
+          },
+          "Ack": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Ack[15]",
+            "type": "BOOL"
+          },
+          "Reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Reset[15]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "Alarm": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Alarm[15]",
+            "type": "BOOL"
+          },
+          "Acknowledged": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Acknowledged[15]",
+            "type": "BOOL"
+          },
+          "Horn": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Horn[15]",
+            "type": "BOOL"
+          }
+        }
+      }
+    ]
+  },
+  "result_path": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\0b8bd28ef3b550ce\\simulation_evidence.json"
+}

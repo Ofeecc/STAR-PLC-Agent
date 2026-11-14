@@ -1,0 +1,143 @@
+{
+  "state_machine": [
+    {
+      "name": "IDLE",
+      "description": "Fresh invocation point. Output is forced to zero until parsing proves a valid IPv4 string in this invocation.",
+      "transitions": [
+        "IDLE -> SEG_START on invocation start; reset parse accumulators and set valid := false",
+        "IDLE -> INVALID if visible string length is zero or NUL is not found within STRING capacity"
+      ]
+    },
+    {
+      "name": "SEG_START",
+      "description": "Beginning of a decimal segment. The segment must be nonempty.",
+      "transitions": [
+        "SEG_START -> SEG_DIGITS on ASCII character '0'..'9'",
+        "SEG_START -> INVALID on '.', NUL, whitespace, sign, or any nondigit"
+      ]
+    },
+    {
+      "name": "SEG_DIGITS",
+      "description": "Accumulate decimal digits for the current octet; leading zeros are allowed. Any accumulated value >255 is invalid.",
+      "transitions": [
+        "SEG_DIGITS -> SEG_DIGITS on ASCII digit if currentValue <=255",
+        "SEG_DIGITS -> INVALID on ASCII digit if currentValue >255",
+        "SEG_DIGITS -> AFTER_PERIOD on '.' when digitSeen, currentValue <=255, and segmentCount < 3",
+        "SEG_DIGITS -> COMPLETE on NUL when digitSeen, currentValue <=255, and segmentCount = 3",
+        "SEG_DIGITS -> INVALID on NUL before four segments, extra period, empty segment, or nondigit"
+      ]
+    },
+    {
+      "name": "AFTER_PERIOD",
+      "description": "A period has completed a segment; the next character must begin the next nonempty segment.",
+      "transitions": [
+        "AFTER_PERIOD -> SEG_DIGITS on ASCII digit",
+        "AFTER_PERIOD -> INVALID on '.', NUL, whitespace, sign, or nondigit"
+      ]
+    },
+    {
+      "name": "COMPLETE",
+      "description": "Exactly four nonempty decimal segments have been parsed, each 0..255. Pack octets in network byte order.",
+      "transitions": [
+        "COMPLETE -> DONE after computing ((oct0*256 + oct1)*256 + oct2)*256 + oct3"
+      ]
+    },
+    {
+      "name": "INVALID",
+      "description": "Malformed text, nondigit segment, wrong segment count, capacity issue, or out-of-range segment. Pending output is zero.",
+      "transitions": [
+        "INVALID -> DONE with ipValue := 0"
+      ]
+    },
+    {
+      "name": "DONE",
+      "description": "End of the current invocation. No parse state is retained for the next scan; the next invocation restarts at IDLE.",
+      "transitions": [
+        "DONE -> IDLE on next invocation"
+      ]
+    }
+  ],
+  "timer_plan": {
+    "timers": [],
+    "pt_durations": [],
+    "reset_conditions": "No timers. Parsing is combinational within one invocation and has no timed state.",
+    "notes": "No TON, TOF, or TP function blocks are used. Stage 3 contains no timer calls."
+  },
+  "priorities": [
+    "Safety first: check STRING capacity and visible NUL-terminated text before truncation; reject any nondigit, sign, whitespace, hexadecimal, embedded nondigit, empty segment, wrong segment count, or segment value >255.",
+    "Any invalid condition forces ipValue := 0 in the same invocation. A previous nonzero ipValue must never be preserved.",
+    "Valid input packs octets in network byte order: first segment is the most significant byte and fourth segment is the least significant byte.",
+    "Leading zeros are allowed within STRING capacity. The valid address 0.0.0.0 and all invalid inputs both produce ipValue = 0.",
+    "Parsing is deterministic and stateless with respect to inputs: identical ipText across invocations produces identical ipValue.",
+    "Validate all data before writing the final output; the unified output stage is the only writer of ipValue."
+  ],
+  "initial_values": {
+    "ipValue": 0,
+    "state": "IDLE",
+    "valid": false,
+    "visibleLen": 0,
+    "charIndex": 0,
+    "segmentCount": 0,
+    "currentValue": 0,
+    "digitSeen": false,
+    "octets": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "pendingValue": 0
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "edge sampling",
+      "actions": [
+        "Sample ipText once at invocation into a local current-text buffer.",
+        "Determine visible length up to the first NUL and verify it is within STRING(254) capacity before truncating.",
+        "Optional previous-text copy may be maintained only for diagnostics; no output decision may depend on previous scan state."
+      ]
+    },
+    {
+      "stage": 2,
+      "name": "safety/reset priority and state transitions",
+      "actions": [
+        "Reset parse accumulators: visibleLen, charIndex, segmentCount, currentValue, digitSeen, valid, octets, pendingValue.",
+        "Run the state machine: capacity/NUL check, four nonempty decimal-digit segments, each 0..255, exact segment count, and no invalid characters.",
+        "Safety priority: on any violation set valid := false and pendingValue := 0 immediately.",
+        "On valid input, finalize four octets and compute pendingValue := first*16777216 + second*65536 + third*256 + fourth."
+      ]
+    },
+    {
+      "stage": 3,
+      "name": "unconditional top-level timer FB calls outside CASE/IF",
+      "actions": [
+        "No timer function blocks are required or called.",
+        "This stage is intentionally empty; no timer can affect parsing or output."
+      ]
+    },
+    {
+      "stage": 4,
+      "name": "unified output assignments",
+      "actions": [
+        "Single assignment point: ipValue := pendingValue when valid is true; otherwise ipValue := 0.",
+        "Because pendingValue is already zeroed for invalid input, ipValue := pendingValue is also safe, but the safety form is explicit.",
+        "No other stage writes ipValue."
+      ]
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G(valid(ipText) -> ipValue = pack(ipText))"
+    },
+    {
+      "id": "A2",
+      "formula": "G(!valid(ipText) -> ipValue = 0)"
+    },
+    {
+      "id": "A3",
+      "formula": "G((ipValue = 0) -> (!valid(ipText) OR pack(ipText) = 0))"
+    }
+  ]
+}

@@ -1,0 +1,141 @@
+{
+  "state_machine": [
+    {
+      "state": "READY",
+      "description": "The only retained control state. Each valid request is evaluated and completed in the same invocation; all transitions return to READY.",
+      "transitions": [
+        {
+          "trigger": "No request rising edge",
+          "action": "No database change; clear success indicators, error and status."
+        },
+        {
+          "trigger": "queryRecipe rising edge",
+          "action": "If the nonzero ID exists, retain its complete pre-scan record as recipeQueryResult; otherwise set error and status to 16#8001."
+        },
+        {
+          "trigger": "addRecipe rising edge",
+          "action": "If the ID exists, set error and status to 16#8002. Otherwise, if no empty slot exists, set error and status to 16#8003. Otherwise insert recipeIn into the lowest-index empty slot and pulse recipeAdded."
+        },
+        {
+          "trigger": "deleteRecipe rising edge",
+          "action": "If the nonzero ID is absent, set error and status to 16#8004. Otherwise set only the matching slot's recipeID to zero and pulse recipeDeleted."
+        },
+        {
+          "trigger": "modifyRecipe rising edge",
+          "action": "If the nonzero ID is absent, set error and status to 16#8005. Otherwise replace the matching slot with recipeIn and pulse recipeModified."
+        }
+      ]
+    }
+  ],
+  "timer_plan": {
+    "timers": [],
+    "reason": "Operations complete in one invocation; no PT durations or timer reset conditions are required."
+  },
+  "priorities": [
+    "There are no safety or reset input ports; validation and database integrity have priority over operational requests.",
+    "At the interface boundary, reject simultaneous request rising edges and an add rising edge with recipeIn.recipeID=0 using ValueError before executing or changing retained edge memory. These inputs are outside the valid PLC invocation domain.",
+    "Nonzero INT recipe IDs, including negative IDs, are valid. ID zero denotes an empty slot and is absent for query, delete and modify.",
+    "For add, duplicate detection precedes the full-database check; successful insertion uses the lowest-index empty slot.",
+    "Failed requests never mutate recipe. Each success indicator is a one-invocation pulse; error and status clear on an idle invocation.",
+    "The caller owns recipe, initializes it once, and provides exclusive access during each invocation. If the caller changes it between invocations, the caller must preserve uniqueness of nonzero IDs.",
+    "For assertions, I.recipe is the caller array sampled before the invocation and O.recipe is the array after it. Other input names denote sampled values and output names denote post-invocation values. rising(x) compares the sampled input with its previous valid invocation, initially FALSE. Record and array REAL comparisons use absolute tolerance 1e-5."
+  ],
+  "initial_values": {
+    "state": "READY",
+    "previous_request_inputs": {
+      "addRecipe": false,
+      "deleteRecipe": false,
+      "modifyRecipe": false,
+      "queryRecipe": false
+    },
+    "recipe": "Caller initializes all 10 slots once to {recipeID: 0, ingredientType: 0, ingredientRatio: 0.0, productionTemperature: 0.0}; do not reinitialize per scan.",
+    "recipeAdded": false,
+    "recipeDeleted": false,
+    "recipeModified": false,
+    "recipeQueryResult": {
+      "recipeID": 0,
+      "ingredientType": 0,
+      "ingredientRatio": 0.0,
+      "productionTemperature": 0.0
+    },
+    "error": false,
+    "status": "16#0000",
+    "temporary_values": "Initialize per invocation: no match, no empty slot, no pending write, success indicators FALSE, error FALSE and status 16#0000."
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "Edge sampling",
+      "action": "Sample request inputs, recipeIn and the caller-owned recipe array. Compute rising edges from retained previous inputs. Apply boundary validation before accepting the invocation; for an accepted invocation, update the previous-input memories."
+    },
+    {
+      "stage": 2,
+      "name": "Safety/reset priority and state transitions",
+      "action": "There is no reset input. Default this invocation's indicators and status to clear. Scan sampled slots 1 through 10 for a matching nonzero ID and the first empty slot. Apply validation and operation priorities, calculate the pending single-slot write or query-result update, and return the control state to READY without an extra scan."
+    },
+    {
+      "stage": 3,
+      "name": "Unconditional top-level timer FB calls outside CASE/IF",
+      "action": "No timer FB instances are required, so this stage has no calls. Any future timer FB must be called here unconditionally, outside CASE and IF."
+    },
+    {
+      "stage": 4,
+      "name": "Unified output assignments",
+      "action": "Commit at most one pending recipe slot write and assign recipeAdded, recipeDeleted, recipeModified, error and status once from the calculated outcome. Update recipeQueryResult only on successful query; otherwise retain it. Delete writes only recipeID, preserving the sampled remaining fields. All unselected slots remain unchanged."
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G(error -> (O.recipe = I.recipe AND NOT recipeAdded AND NOT recipeDeleted AND NOT recipeModified AND status != 16#0000))"
+    },
+    {
+      "id": "A2",
+      "formula": "G((NOT rising(addRecipe) AND NOT rising(deleteRecipe) AND NOT rising(modifyRecipe) AND NOT rising(queryRecipe)) -> (O.recipe = I.recipe AND NOT error AND status = 16#0000 AND NOT recipeAdded AND NOT recipeDeleted AND NOT recipeModified))"
+    },
+    {
+      "id": "A3",
+      "formula": "G(forall i,j in 1..10: (i != j AND O.recipe[i].recipeID != 0 AND O.recipe[j].recipeID != 0) -> O.recipe[i].recipeID != O.recipe[j].recipeID)"
+    },
+    {
+      "id": "A4",
+      "formula": "G((recipeAdded OR recipeDeleted OR recipeModified) -> (NOT error AND status = 16#0000 AND NOT (recipeAdded AND recipeDeleted) AND NOT (recipeAdded AND recipeModified) AND NOT (recipeDeleted AND recipeModified)))"
+    },
+    {
+      "id": "A5",
+      "formula": "G((rising(addRecipe) AND exists i in 1..10: I.recipe[i].recipeID = recipeIn.recipeID) -> (error AND status = 16#8002))"
+    },
+    {
+      "id": "A6",
+      "formula": "G((rising(addRecipe) AND recipeIn.recipeID != 0 AND (forall i in 1..10: I.recipe[i].recipeID != recipeIn.recipeID) AND (exists i in 1..10: I.recipe[i].recipeID = 0)) -> (recipeAdded AND NOT error AND status = 16#0000 AND exists i in 1..10: (I.recipe[i].recipeID = 0 AND (forall j in 1..i-1: I.recipe[j].recipeID != 0) AND O.recipe[i] = recipeIn AND (forall j in 1..10: j != i -> O.recipe[j] = I.recipe[j]))))"
+    },
+    {
+      "id": "A7",
+      "formula": "G((rising(addRecipe) AND (forall i in 1..10: I.recipe[i].recipeID != recipeIn.recipeID AND I.recipe[i].recipeID != 0)) -> (error AND status = 16#8003))"
+    },
+    {
+      "id": "A8",
+      "formula": "G((rising(queryRecipe) AND recipeIn.recipeID != 0 AND exists i in 1..10: I.recipe[i].recipeID = recipeIn.recipeID) -> (NOT error AND status = 16#0000 AND exists i in 1..10: (I.recipe[i].recipeID = recipeIn.recipeID AND recipeQueryResult = I.recipe[i])))"
+    },
+    {
+      "id": "A9",
+      "formula": "G((rising(queryRecipe) AND (recipeIn.recipeID = 0 OR (forall i in 1..10: I.recipe[i].recipeID != recipeIn.recipeID))) -> (error AND status = 16#8001))"
+    },
+    {
+      "id": "A10",
+      "formula": "G((rising(deleteRecipe) AND (recipeIn.recipeID = 0 OR (forall i in 1..10: I.recipe[i].recipeID != recipeIn.recipeID))) -> (error AND status = 16#8004))"
+    },
+    {
+      "id": "A11",
+      "formula": "G((rising(modifyRecipe) AND (recipeIn.recipeID = 0 OR (forall i in 1..10: I.recipe[i].recipeID != recipeIn.recipeID))) -> (error AND status = 16#8005))"
+    },
+    {
+      "id": "A12",
+      "formula": "G((rising(deleteRecipe) AND recipeIn.recipeID != 0 AND exists i in 1..10: I.recipe[i].recipeID = recipeIn.recipeID) -> (recipeDeleted AND NOT error AND status = 16#0000 AND exists i in 1..10: (I.recipe[i].recipeID = recipeIn.recipeID AND O.recipe[i].recipeID = 0 AND (forall j in 1..10: j != i -> O.recipe[j] = I.recipe[j]))))"
+    },
+    {
+      "id": "A13",
+      "formula": "G((rising(modifyRecipe) AND recipeIn.recipeID != 0 AND exists i in 1..10: I.recipe[i].recipeID = recipeIn.recipeID) -> (recipeModified AND NOT error AND status = 16#0000 AND exists i in 1..10: (I.recipe[i].recipeID = recipeIn.recipeID AND O.recipe[i] = recipeIn AND (forall j in 1..10: j != i -> O.recipe[j] = I.recipe[j]))))"
+    }
+  ]
+}

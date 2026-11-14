@@ -1,0 +1,1255 @@
+{
+  "request_id": "01477803a21742c8b790487c67a01c11",
+  "mode": "IDE_SIMULATION_ONLY",
+  "no_physical_connection": true,
+  "workspace": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\50f69180867f3e97",
+  "project": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\50f69180867f3e97\\simulation.project",
+  "template": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\50f69180867f3e97\\benchmark.project",
+  "task_id": "PUB011",
+  "task_sha256": "8c1673f94473730e394c8e0971f1cb4b347b1d234c7ff2b08dae5b935e04c54c",
+  "source_sha256": "eff4cc824da840f621780ca57a2ebbaedaac18a1f12aeb99c980510214e602dd",
+  "candidate": {
+    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    {attribute 'analysis' := '-27'}\n    Mode : BOOL;\n    ForwardButton : BOOL;\n    ReverseButton : BOOL;\n    SensorA : BOOL;\n    SensorB : BOOL;\n    SensorC : BOOL;\n    ButtonA : BOOL;\n    ButtonB : BOOL;\n    ButtonC : BOOL;\nEND_VAR\nVAR_OUTPUT\n    MotorForward : BOOL := FALSE;\n    MotorReverse : BOOL := FALSE;\n    CompletionLight : BOOL := FALSE;\nEND_VAR\nVAR\n    phase : E_Phase := E_Phase.WAIT_A;\nEND_VAR",
+    "implementation": "// Stage 1/2: mode reset and at most one automatic phase transition per scan\nIF NOT Mode THEN\n    phase := E_Phase.MANUAL;\nELSIF phase = E_Phase.MANUAL THEN\n    phase := E_Phase.WAIT_A;\nELSE\n    CASE phase OF\n        E_Phase.WAIT_A:\n            IF SensorA AND ButtonA THEN\n                phase := E_Phase.MOVE_AB;\n            END_IF;\n        E_Phase.MOVE_AB:\n            IF SensorB THEN\n                phase := E_Phase.WAIT_B;\n            END_IF;\n        E_Phase.WAIT_B:\n            IF SensorB AND ButtonB THEN\n                phase := E_Phase.MOVE_BC;\n            END_IF;\n        E_Phase.MOVE_BC:\n            IF SensorC THEN\n                phase := E_Phase.WAIT_C;\n            END_IF;\n        E_Phase.WAIT_C:\n            IF SensorC AND ButtonC THEN\n                phase := E_Phase.DONE;\n            END_IF;\n        E_Phase.DONE:\n            IF NOT SensorC THEN\n                phase := E_Phase.WAIT_A;\n            END_IF;\n        ELSE\n            phase := E_Phase.WAIT_A;\n    END_CASE;\nEND_IF\n\n// Stage 4: unified output assignment from post-transition state\nMotorForward := FALSE;\nMotorReverse := FALSE;\nCompletionLight := FALSE;\n\nIF NOT Mode THEN\n    IF ForwardButton AND NOT ReverseButton THEN\n        MotorForward := TRUE;\n    ELSIF ReverseButton AND NOT ForwardButton THEN\n        MotorReverse := TRUE;\n    END_IF;\nELSE\n    CASE phase OF\n        E_Phase.MOVE_AB:\n            MotorForward := TRUE;\n        E_Phase.MOVE_BC:\n            MotorForward := TRUE;\n        E_Phase.DONE:\n            CompletionLight := SensorC;\n    END_CASE;\nEND_IF\n\n// Safety interlocks: no forward in automatic mode while SensorC is present;\n// forward and reverse must never be active together.\nIF Mode AND SensorC THEN\n    MotorForward := FALSE;\nEND_IF\nIF MotorForward AND MotorReverse THEN\n    MotorForward := FALSE;\n    MotorReverse := FALSE;\nEND_IF",
+    "supporting_objects": [
+      {
+        "name": "E_Phase",
+        "kind": "DUT",
+        "declaration": "TYPE E_Phase :\n(\n    MANUAL := 0,\n    WAIT_A := 1,\n    MOVE_AB := 2,\n    WAIT_B := 3,\n    MOVE_BC := 4,\n    WAIT_C := 5,\n    DONE := 6\n);\nEND_TYPE",
+        "implementation": ""
+      }
+    ]
+  },
+  "program": {
+    "declaration": "PROGRAM PLC_PRG\nVAR\n BenchStep : UDINT := 0;\n BenchCalls : UDINT := 0;\n BenchDone : BOOL := FALSE;\n BenchUut0 : FB_Task;\n BenchUut1 : FB_Task;\n TraceIn_Mode : ARRAY[0..12] OF BOOL;\n TraceIn_ForwardButton : ARRAY[0..12] OF BOOL;\n TraceIn_ReverseButton : ARRAY[0..12] OF BOOL;\n TraceIn_SensorA : ARRAY[0..12] OF BOOL;\n TraceIn_SensorB : ARRAY[0..12] OF BOOL;\n TraceIn_SensorC : ARRAY[0..12] OF BOOL;\n TraceIn_ButtonA : ARRAY[0..12] OF BOOL;\n TraceIn_ButtonB : ARRAY[0..12] OF BOOL;\n TraceIn_ButtonC : ARRAY[0..12] OF BOOL;\n TraceOut_MotorForward : ARRAY[0..12] OF BOOL;\n TraceOut_MotorReverse : ARRAY[0..12] OF BOOL;\n TraceOut_CompletionLight : ARRAY[0..12] OF BOOL;\nEND_VAR",
+    "implementation": "IF NOT BenchDone THEN\n CASE BenchStep OF\n 0:\n   BenchUut0.Mode := TRUE;\n   BenchUut0.ForwardButton := FALSE;\n   BenchUut0.ReverseButton := FALSE;\n   BenchUut0.SensorA := TRUE;\n   BenchUut0.SensorB := FALSE;\n   BenchUut0.SensorC := FALSE;\n   BenchUut0.ButtonA := TRUE;\n   BenchUut0.ButtonB := FALSE;\n   BenchUut0.ButtonC := FALSE;\n   TraceIn_Mode[0] := BenchUut0.Mode;\n   TraceIn_ForwardButton[0] := BenchUut0.ForwardButton;\n   TraceIn_ReverseButton[0] := BenchUut0.ReverseButton;\n   TraceIn_SensorA[0] := BenchUut0.SensorA;\n   TraceIn_SensorB[0] := BenchUut0.SensorB;\n   TraceIn_SensorC[0] := BenchUut0.SensorC;\n   TraceIn_ButtonA[0] := BenchUut0.ButtonA;\n   TraceIn_ButtonB[0] := BenchUut0.ButtonB;\n   TraceIn_ButtonC[0] := BenchUut0.ButtonC;\n   BenchUut0();\n   TraceOut_MotorForward[0] := BenchUut0.MotorForward;\n   TraceOut_MotorReverse[0] := BenchUut0.MotorReverse;\n   TraceOut_CompletionLight[0] := BenchUut0.CompletionLight;\n   BenchCalls := BenchCalls + 1;\n 1:\n   BenchUut0.Mode := TRUE;\n   BenchUut0.ForwardButton := FALSE;\n   BenchUut0.ReverseButton := FALSE;\n   BenchUut0.SensorA := FALSE;\n   BenchUut0.SensorB := FALSE;\n   BenchUut0.SensorC := FALSE;\n   BenchUut0.ButtonA := FALSE;\n   BenchUut0.ButtonB := FALSE;\n   BenchUut0.ButtonC := FALSE;\n   TraceIn_Mode[1] := BenchUut0.Mode;\n   TraceIn_ForwardButton[1] := BenchUut0.ForwardButton;\n   TraceIn_ReverseButton[1] := BenchUut0.ReverseButton;\n   TraceIn_SensorA[1] := BenchUut0.SensorA;\n   TraceIn_SensorB[1] := BenchUut0.SensorB;\n   TraceIn_SensorC[1] := BenchUut0.SensorC;\n   TraceIn_ButtonA[1] := BenchUut0.ButtonA;\n   TraceIn_ButtonB[1] := BenchUut0.ButtonB;\n   TraceIn_ButtonC[1] := BenchUut0.ButtonC;\n   BenchUut0();\n   TraceOut_MotorForward[1] := BenchUut0.MotorForward;\n   TraceOut_MotorReverse[1] := BenchUut0.MotorReverse;\n   TraceOut_CompletionLight[1] := BenchUut0.CompletionLight;\n   BenchCalls := BenchCalls + 1;\n 2:\n   BenchUut0.Mode := TRUE;\n   BenchUut0.ForwardButton := FALSE;\n   BenchUut0.ReverseButton := FALSE;\n   BenchUut0.SensorA := FALSE;\n   BenchUut0.SensorB := TRUE;\n   BenchUut0.SensorC := FALSE;\n   BenchUut0.ButtonA := FALSE;\n   BenchUut0.ButtonB := FALSE;\n   BenchUut0.ButtonC := FALSE;\n   TraceIn_Mode[2] := BenchUut0.Mode;\n   TraceIn_ForwardButton[2] := BenchUut0.ForwardButton;\n   TraceIn_ReverseButton[2] := BenchUut0.ReverseButton;\n   TraceIn_SensorA[2] := BenchUut0.SensorA;\n   TraceIn_SensorB[2] := BenchUut0.SensorB;\n   TraceIn_SensorC[2] := BenchUut0.SensorC;\n   TraceIn_ButtonA[2] := BenchUut0.ButtonA;\n   TraceIn_ButtonB[2] := BenchUut0.ButtonB;\n   TraceIn_ButtonC[2] := BenchUut0.ButtonC;\n   BenchUut0();\n   TraceOut_MotorForward[2] := BenchUut0.MotorForward;\n   TraceOut_MotorReverse[2] := BenchUut0.MotorReverse;\n   TraceOut_CompletionLight[2] := BenchUut0.CompletionLight;\n   BenchCalls := BenchCalls + 1;\n 3:\n   BenchUut0.Mode := TRUE;\n   BenchUut0.ForwardButton := FALSE;\n   BenchUut0.ReverseButton := FALSE;\n   BenchUut0.SensorA := FALSE;\n   BenchUut0.SensorB := TRUE;\n   BenchUut0.SensorC := FALSE;\n   BenchUut0.ButtonA := FALSE;\n   BenchUut0.ButtonB := TRUE;\n   BenchUut0.ButtonC := FALSE;\n   TraceIn_Mode[3] := BenchUut0.Mode;\n   TraceIn_ForwardButton[3] := BenchUut0.ForwardButton;\n   TraceIn_ReverseButton[3] := BenchUut0.ReverseButton;\n   TraceIn_SensorA[3] := BenchUut0.SensorA;\n   TraceIn_SensorB[3] := BenchUut0.SensorB;\n   TraceIn_SensorC[3] := BenchUut0.SensorC;\n   TraceIn_ButtonA[3] := BenchUut0.ButtonA;\n   TraceIn_ButtonB[3] := BenchUut0.ButtonB;\n   TraceIn_ButtonC[3] := BenchUut0.ButtonC;\n   BenchUut0();\n   TraceOut_MotorForward[3] := BenchUut0.MotorForward;\n   TraceOut_MotorReverse[3] := BenchUut0.MotorReverse;\n   TraceOut_CompletionLight[3] := BenchUut0.CompletionLight;\n   BenchCalls := BenchCalls + 1;\n 4:\n   BenchUut0.Mode := TRUE;\n   BenchUut0.ForwardButton := FALSE;\n   BenchUut0.ReverseButton := FALSE;\n   BenchUut0.SensorA := FALSE;\n   BenchUut0.SensorB := FALSE;\n   BenchUut0.SensorC := FALSE;\n   BenchUut0.ButtonA := FALSE;\n   BenchUut0.ButtonB := FALSE;\n   BenchUut0.ButtonC := FALSE;\n   TraceIn_Mode[4] := BenchUut0.Mode;\n   TraceIn_ForwardButton[4] := BenchUut0.ForwardButton;\n   TraceIn_ReverseButton[4] := BenchUut0.ReverseButton;\n   TraceIn_SensorA[4] := BenchUut0.SensorA;\n   TraceIn_SensorB[4] := BenchUut0.SensorB;\n   TraceIn_SensorC[4] := BenchUut0.SensorC;\n   TraceIn_ButtonA[4] := BenchUut0.ButtonA;\n   TraceIn_ButtonB[4] := BenchUut0.ButtonB;\n   TraceIn_ButtonC[4] := BenchUut0.ButtonC;\n   BenchUut0();\n   TraceOut_MotorForward[4] := BenchUut0.MotorForward;\n   TraceOut_MotorReverse[4] := BenchUut0.MotorReverse;\n   TraceOut_CompletionLight[4] := BenchUut0.CompletionLight;\n   BenchCalls := BenchCalls + 1;\n 5:\n   BenchUut0.Mode := TRUE;\n   BenchUut0.ForwardButton := FALSE;\n   BenchUut0.ReverseButton := FALSE;\n   BenchUut0.SensorA := FALSE;\n   BenchUut0.SensorB := FALSE;\n   BenchUut0.SensorC := TRUE;\n   BenchUut0.ButtonA := FALSE;\n   BenchUut0.ButtonB := FALSE;\n   BenchUut0.ButtonC := FALSE;\n   TraceIn_Mode[5] := BenchUut0.Mode;\n   TraceIn_ForwardButton[5] := BenchUut0.ForwardButton;\n   TraceIn_ReverseButton[5] := BenchUut0.ReverseButton;\n   TraceIn_SensorA[5] := BenchUut0.SensorA;\n   TraceIn_SensorB[5] := BenchUut0.SensorB;\n   TraceIn_SensorC[5] := BenchUut0.SensorC;\n   TraceIn_ButtonA[5] := BenchUut0.ButtonA;\n   TraceIn_ButtonB[5] := BenchUut0.ButtonB;\n   TraceIn_ButtonC[5] := BenchUut0.ButtonC;\n   BenchUut0();\n   TraceOut_MotorForward[5] := BenchUut0.MotorForward;\n   TraceOut_MotorReverse[5] := BenchUut0.MotorReverse;\n   TraceOut_CompletionLight[5] := BenchUut0.CompletionLight;\n   BenchCalls := BenchCalls + 1;\n 6:\n   BenchUut0.Mode := TRUE;\n   BenchUut0.ForwardButton := FALSE;\n   BenchUut0.ReverseButton := FALSE;\n   BenchUut0.SensorA := FALSE;\n   BenchUut0.SensorB := FALSE;\n   BenchUut0.SensorC := TRUE;\n   BenchUut0.ButtonA := FALSE;\n   BenchUut0.ButtonB := FALSE;\n   BenchUut0.ButtonC := TRUE;\n   TraceIn_Mode[6] := BenchUut0.Mode;\n   TraceIn_ForwardButton[6] := BenchUut0.ForwardButton;\n   TraceIn_ReverseButton[6] := BenchUut0.ReverseButton;\n   TraceIn_SensorA[6] := BenchUut0.SensorA;\n   TraceIn_SensorB[6] := BenchUut0.SensorB;\n   TraceIn_SensorC[6] := BenchUut0.SensorC;\n   TraceIn_ButtonA[6] := BenchUut0.ButtonA;\n   TraceIn_ButtonB[6] := BenchUut0.ButtonB;\n   TraceIn_ButtonC[6] := BenchUut0.ButtonC;\n   BenchUut0();\n   TraceOut_MotorForward[6] := BenchUut0.MotorForward;\n   TraceOut_MotorReverse[6] := BenchUut0.MotorReverse;\n   TraceOut_CompletionLight[6] := BenchUut0.CompletionLight;\n   BenchCalls := BenchCalls + 1;\n 7:\n   BenchUut0.Mode := TRUE;\n   BenchUut0.ForwardButton := FALSE;\n   BenchUut0.ReverseButton := FALSE;\n   BenchUut0.SensorA := FALSE;\n   BenchUut0.SensorB := FALSE;\n   BenchUut0.SensorC := FALSE;\n   BenchUut0.ButtonA := FALSE;\n   BenchUut0.ButtonB := FALSE;\n   BenchUut0.ButtonC := FALSE;\n   TraceIn_Mode[7] := BenchUut0.Mode;\n   TraceIn_ForwardButton[7] := BenchUut0.ForwardButton;\n   TraceIn_ReverseButton[7] := BenchUut0.ReverseButton;\n   TraceIn_SensorA[7] := BenchUut0.SensorA;\n   TraceIn_SensorB[7] := BenchUut0.SensorB;\n   TraceIn_SensorC[7] := BenchUut0.SensorC;\n   TraceIn_ButtonA[7] := BenchUut0.ButtonA;\n   TraceIn_ButtonB[7] := BenchUut0.ButtonB;\n   TraceIn_ButtonC[7] := BenchUut0.ButtonC;\n   BenchUut0();\n   TraceOut_MotorForward[7] := BenchUut0.MotorForward;\n   TraceOut_MotorReverse[7] := BenchUut0.MotorReverse;\n   TraceOut_CompletionLight[7] := BenchUut0.CompletionLight;\n   BenchCalls := BenchCalls + 1;\n 8:\n   BenchUut1.Mode := FALSE;\n   BenchUut1.ForwardButton := TRUE;\n   BenchUut1.ReverseButton := TRUE;\n   BenchUut1.SensorA := FALSE;\n   BenchUut1.SensorB := FALSE;\n   BenchUut1.SensorC := FALSE;\n   BenchUut1.ButtonA := FALSE;\n   BenchUut1.ButtonB := FALSE;\n   BenchUut1.ButtonC := FALSE;\n   TraceIn_Mode[8] := BenchUut1.Mode;\n   TraceIn_ForwardButton[8] := BenchUut1.ForwardButton;\n   TraceIn_ReverseButton[8] := BenchUut1.ReverseButton;\n   TraceIn_SensorA[8] := BenchUut1.SensorA;\n   TraceIn_SensorB[8] := BenchUut1.SensorB;\n   TraceIn_SensorC[8] := BenchUut1.SensorC;\n   TraceIn_ButtonA[8] := BenchUut1.ButtonA;\n   TraceIn_ButtonB[8] := BenchUut1.ButtonB;\n   TraceIn_ButtonC[8] := BenchUut1.ButtonC;\n   BenchUut1();\n   TraceOut_MotorForward[8] := BenchUut1.MotorForward;\n   TraceOut_MotorReverse[8] := BenchUut1.MotorReverse;\n   TraceOut_CompletionLight[8] := BenchUut1.CompletionLight;\n   BenchCalls := BenchCalls + 1;\n 9:\n   BenchUut1.Mode := FALSE;\n   BenchUut1.ForwardButton := TRUE;\n   BenchUut1.ReverseButton := FALSE;\n   BenchUut1.SensorA := FALSE;\n   BenchUut1.SensorB := FALSE;\n   BenchUut1.SensorC := FALSE;\n   BenchUut1.ButtonA := FALSE;\n   BenchUut1.ButtonB := FALSE;\n   BenchUut1.ButtonC := FALSE;\n   TraceIn_Mode[9] := BenchUut1.Mode;\n   TraceIn_ForwardButton[9] := BenchUut1.ForwardButton;\n   TraceIn_ReverseButton[9] := BenchUut1.ReverseButton;\n   TraceIn_SensorA[9] := BenchUut1.SensorA;\n   TraceIn_SensorB[9] := BenchUut1.SensorB;\n   TraceIn_SensorC[9] := BenchUut1.SensorC;\n   TraceIn_ButtonA[9] := BenchUut1.ButtonA;\n   TraceIn_ButtonB[9] := BenchUut1.ButtonB;\n   TraceIn_ButtonC[9] := BenchUut1.ButtonC;\n   BenchUut1();\n   TraceOut_MotorForward[9] := BenchUut1.MotorForward;\n   TraceOut_MotorReverse[9] := BenchUut1.MotorReverse;\n   TraceOut_CompletionLight[9] := BenchUut1.CompletionLight;\n   BenchCalls := BenchCalls + 1;\n 10:\n   BenchUut1.Mode := FALSE;\n   BenchUut1.ForwardButton := FALSE;\n   BenchUut1.ReverseButton := TRUE;\n   BenchUut1.SensorA := FALSE;\n   BenchUut1.SensorB := FALSE;\n   BenchUut1.SensorC := FALSE;\n   BenchUut1.ButtonA := FALSE;\n   BenchUut1.ButtonB := FALSE;\n   BenchUut1.ButtonC := FALSE;\n   TraceIn_Mode[10] := BenchUut1.Mode;\n   TraceIn_ForwardButton[10] := BenchUut1.ForwardButton;\n   TraceIn_ReverseButton[10] := BenchUut1.ReverseButton;\n   TraceIn_SensorA[10] := BenchUut1.SensorA;\n   TraceIn_SensorB[10] := BenchUut1.SensorB;\n   TraceIn_SensorC[10] := BenchUut1.SensorC;\n   TraceIn_ButtonA[10] := BenchUut1.ButtonA;\n   TraceIn_ButtonB[10] := BenchUut1.ButtonB;\n   TraceIn_ButtonC[10] := BenchUut1.ButtonC;\n   BenchUut1();\n   TraceOut_MotorForward[10] := BenchUut1.MotorForward;\n   TraceOut_MotorReverse[10] := BenchUut1.MotorReverse;\n   TraceOut_CompletionLight[10] := BenchUut1.CompletionLight;\n   BenchCalls := BenchCalls + 1;\n 11:\n   BenchUut1.Mode := TRUE;\n   BenchUut1.ForwardButton := TRUE;\n   BenchUut1.ReverseButton := TRUE;\n   BenchUut1.SensorA := FALSE;\n   BenchUut1.SensorB := FALSE;\n   BenchUut1.SensorC := FALSE;\n   BenchUut1.ButtonA := FALSE;\n   BenchUut1.ButtonB := FALSE;\n   BenchUut1.ButtonC := FALSE;\n   TraceIn_Mode[11] := BenchUut1.Mode;\n   TraceIn_ForwardButton[11] := BenchUut1.ForwardButton;\n   TraceIn_ReverseButton[11] := BenchUut1.ReverseButton;\n   TraceIn_SensorA[11] := BenchUut1.SensorA;\n   TraceIn_SensorB[11] := BenchUut1.SensorB;\n   TraceIn_SensorC[11] := BenchUut1.SensorC;\n   TraceIn_ButtonA[11] := BenchUut1.ButtonA;\n   TraceIn_ButtonB[11] := BenchUut1.ButtonB;\n   TraceIn_ButtonC[11] := BenchUut1.ButtonC;\n   BenchUut1();\n   TraceOut_MotorForward[11] := BenchUut1.MotorForward;\n   TraceOut_MotorReverse[11] := BenchUut1.MotorReverse;\n   TraceOut_CompletionLight[11] := BenchUut1.CompletionLight;\n   BenchCalls := BenchCalls + 1;\n 12:\n   BenchUut1.Mode := TRUE;\n   BenchUut1.ForwardButton := TRUE;\n   BenchUut1.ReverseButton := TRUE;\n   BenchUut1.SensorA := TRUE;\n   BenchUut1.SensorB := FALSE;\n   BenchUut1.SensorC := FALSE;\n   BenchUut1.ButtonA := TRUE;\n   BenchUut1.ButtonB := FALSE;\n   BenchUut1.ButtonC := FALSE;\n   TraceIn_Mode[12] := BenchUut1.Mode;\n   TraceIn_ForwardButton[12] := BenchUut1.ForwardButton;\n   TraceIn_ReverseButton[12] := BenchUut1.ReverseButton;\n   TraceIn_SensorA[12] := BenchUut1.SensorA;\n   TraceIn_SensorB[12] := BenchUut1.SensorB;\n   TraceIn_SensorC[12] := BenchUut1.SensorC;\n   TraceIn_ButtonA[12] := BenchUut1.ButtonA;\n   TraceIn_ButtonB[12] := BenchUut1.ButtonB;\n   TraceIn_ButtonC[12] := BenchUut1.ButtonC;\n   BenchUut1();\n   TraceOut_MotorForward[12] := BenchUut1.MotorForward;\n   TraceOut_MotorReverse[12] := BenchUut1.MotorReverse;\n   TraceOut_CompletionLight[12] := BenchUut1.CompletionLight;\n   BenchCalls := BenchCalls + 1;\n END_CASE;\n BenchStep := BenchStep + 1;\n IF BenchStep >= 13 THEN BenchDone := TRUE; END_IF;\nEND_IF;",
+    "step_count": 13,
+    "steps": [
+      {
+        "index": 0,
+        "case_id": "case_1",
+        "case_step": 0,
+        "dt_ms": 0
+      },
+      {
+        "index": 1,
+        "case_id": "case_1",
+        "case_step": 1,
+        "dt_ms": 0
+      },
+      {
+        "index": 2,
+        "case_id": "case_1",
+        "case_step": 2,
+        "dt_ms": 0
+      },
+      {
+        "index": 3,
+        "case_id": "case_1",
+        "case_step": 3,
+        "dt_ms": 0
+      },
+      {
+        "index": 4,
+        "case_id": "case_1",
+        "case_step": 4,
+        "dt_ms": 0
+      },
+      {
+        "index": 5,
+        "case_id": "case_1",
+        "case_step": 5,
+        "dt_ms": 0
+      },
+      {
+        "index": 6,
+        "case_id": "case_1",
+        "case_step": 6,
+        "dt_ms": 0
+      },
+      {
+        "index": 7,
+        "case_id": "case_1",
+        "case_step": 7,
+        "dt_ms": 0
+      },
+      {
+        "index": 8,
+        "case_id": "case_2",
+        "case_step": 0,
+        "dt_ms": 0
+      },
+      {
+        "index": 9,
+        "case_id": "case_2",
+        "case_step": 1,
+        "dt_ms": 0
+      },
+      {
+        "index": 10,
+        "case_id": "case_2",
+        "case_step": 2,
+        "dt_ms": 0
+      },
+      {
+        "index": 11,
+        "case_id": "case_2",
+        "case_step": 3,
+        "dt_ms": 0
+      },
+      {
+        "index": 12,
+        "case_id": "case_2",
+        "case_step": 4,
+        "dt_ms": 0
+      }
+    ],
+    "inputs": [
+      {
+        "direction": "INPUT",
+        "name": "Mode",
+        "type": "BOOL",
+        "description": "Used to switch the production line between manual and automatic modes, 0=manual mode, 1=automatic mode"
+      },
+      {
+        "direction": "INPUT",
+        "name": "ForwardButton",
+        "type": "BOOL",
+        "description": "Forward rotation button"
+      },
+      {
+        "direction": "INPUT",
+        "name": "ReverseButton",
+        "type": "BOOL",
+        "description": "Reverse rotation button"
+      },
+      {
+        "direction": "INPUT",
+        "name": "SensorA",
+        "type": "BOOL",
+        "description": "Sensor A"
+      },
+      {
+        "direction": "INPUT",
+        "name": "SensorB",
+        "type": "BOOL",
+        "description": "Sensor B"
+      },
+      {
+        "direction": "INPUT",
+        "name": "SensorC",
+        "type": "BOOL",
+        "description": "Sensor C"
+      },
+      {
+        "direction": "INPUT",
+        "name": "ButtonA",
+        "type": "BOOL",
+        "description": "Button A"
+      },
+      {
+        "direction": "INPUT",
+        "name": "ButtonB",
+        "type": "BOOL",
+        "description": "Button B"
+      },
+      {
+        "direction": "INPUT",
+        "name": "ButtonC",
+        "type": "BOOL",
+        "description": "Button C"
+      }
+    ],
+    "outputs": [
+      {
+        "direction": "OUTPUT",
+        "name": "MotorForward",
+        "type": "BOOL",
+        "description": "Motor forward rotation output"
+      },
+      {
+        "direction": "OUTPUT",
+        "name": "MotorReverse",
+        "type": "BOOL",
+        "description": "Motor reverse rotation output"
+      },
+      {
+        "direction": "OUTPUT",
+        "name": "CompletionLight",
+        "type": "BOOL",
+        "description": "Indicator light for product processing completion"
+      }
+    ],
+    "trace_expressions": [
+      "PLC_PRG.TraceIn_Mode[0]",
+      "PLC_PRG.TraceIn_ForwardButton[0]",
+      "PLC_PRG.TraceIn_ReverseButton[0]",
+      "PLC_PRG.TraceIn_SensorA[0]",
+      "PLC_PRG.TraceIn_SensorB[0]",
+      "PLC_PRG.TraceIn_SensorC[0]",
+      "PLC_PRG.TraceIn_ButtonA[0]",
+      "PLC_PRG.TraceIn_ButtonB[0]",
+      "PLC_PRG.TraceIn_ButtonC[0]",
+      "PLC_PRG.TraceOut_MotorForward[0]",
+      "PLC_PRG.TraceOut_MotorReverse[0]",
+      "PLC_PRG.TraceOut_CompletionLight[0]",
+      "PLC_PRG.TraceIn_Mode[1]",
+      "PLC_PRG.TraceIn_ForwardButton[1]",
+      "PLC_PRG.TraceIn_ReverseButton[1]",
+      "PLC_PRG.TraceIn_SensorA[1]",
+      "PLC_PRG.TraceIn_SensorB[1]",
+      "PLC_PRG.TraceIn_SensorC[1]",
+      "PLC_PRG.TraceIn_ButtonA[1]",
+      "PLC_PRG.TraceIn_ButtonB[1]",
+      "PLC_PRG.TraceIn_ButtonC[1]",
+      "PLC_PRG.TraceOut_MotorForward[1]",
+      "PLC_PRG.TraceOut_MotorReverse[1]",
+      "PLC_PRG.TraceOut_CompletionLight[1]",
+      "PLC_PRG.TraceIn_Mode[2]",
+      "PLC_PRG.TraceIn_ForwardButton[2]",
+      "PLC_PRG.TraceIn_ReverseButton[2]",
+      "PLC_PRG.TraceIn_SensorA[2]",
+      "PLC_PRG.TraceIn_SensorB[2]",
+      "PLC_PRG.TraceIn_SensorC[2]",
+      "PLC_PRG.TraceIn_ButtonA[2]",
+      "PLC_PRG.TraceIn_ButtonB[2]",
+      "PLC_PRG.TraceIn_ButtonC[2]",
+      "PLC_PRG.TraceOut_MotorForward[2]",
+      "PLC_PRG.TraceOut_MotorReverse[2]",
+      "PLC_PRG.TraceOut_CompletionLight[2]",
+      "PLC_PRG.TraceIn_Mode[3]",
+      "PLC_PRG.TraceIn_ForwardButton[3]",
+      "PLC_PRG.TraceIn_ReverseButton[3]",
+      "PLC_PRG.TraceIn_SensorA[3]",
+      "PLC_PRG.TraceIn_SensorB[3]",
+      "PLC_PRG.TraceIn_SensorC[3]",
+      "PLC_PRG.TraceIn_ButtonA[3]",
+      "PLC_PRG.TraceIn_ButtonB[3]",
+      "PLC_PRG.TraceIn_ButtonC[3]",
+      "PLC_PRG.TraceOut_MotorForward[3]",
+      "PLC_PRG.TraceOut_MotorReverse[3]",
+      "PLC_PRG.TraceOut_CompletionLight[3]",
+      "PLC_PRG.TraceIn_Mode[4]",
+      "PLC_PRG.TraceIn_ForwardButton[4]",
+      "PLC_PRG.TraceIn_ReverseButton[4]",
+      "PLC_PRG.TraceIn_SensorA[4]",
+      "PLC_PRG.TraceIn_SensorB[4]",
+      "PLC_PRG.TraceIn_SensorC[4]",
+      "PLC_PRG.TraceIn_ButtonA[4]",
+      "PLC_PRG.TraceIn_ButtonB[4]",
+      "PLC_PRG.TraceIn_ButtonC[4]",
+      "PLC_PRG.TraceOut_MotorForward[4]",
+      "PLC_PRG.TraceOut_MotorReverse[4]",
+      "PLC_PRG.TraceOut_CompletionLight[4]",
+      "PLC_PRG.TraceIn_Mode[5]",
+      "PLC_PRG.TraceIn_ForwardButton[5]",
+      "PLC_PRG.TraceIn_ReverseButton[5]",
+      "PLC_PRG.TraceIn_SensorA[5]",
+      "PLC_PRG.TraceIn_SensorB[5]",
+      "PLC_PRG.TraceIn_SensorC[5]",
+      "PLC_PRG.TraceIn_ButtonA[5]",
+      "PLC_PRG.TraceIn_ButtonB[5]",
+      "PLC_PRG.TraceIn_ButtonC[5]",
+      "PLC_PRG.TraceOut_MotorForward[5]",
+      "PLC_PRG.TraceOut_MotorReverse[5]",
+      "PLC_PRG.TraceOut_CompletionLight[5]",
+      "PLC_PRG.TraceIn_Mode[6]",
+      "PLC_PRG.TraceIn_ForwardButton[6]",
+      "PLC_PRG.TraceIn_ReverseButton[6]",
+      "PLC_PRG.TraceIn_SensorA[6]",
+      "PLC_PRG.TraceIn_SensorB[6]",
+      "PLC_PRG.TraceIn_SensorC[6]",
+      "PLC_PRG.TraceIn_ButtonA[6]",
+      "PLC_PRG.TraceIn_ButtonB[6]",
+      "PLC_PRG.TraceIn_ButtonC[6]",
+      "PLC_PRG.TraceOut_MotorForward[6]",
+      "PLC_PRG.TraceOut_MotorReverse[6]",
+      "PLC_PRG.TraceOut_CompletionLight[6]",
+      "PLC_PRG.TraceIn_Mode[7]",
+      "PLC_PRG.TraceIn_ForwardButton[7]",
+      "PLC_PRG.TraceIn_ReverseButton[7]",
+      "PLC_PRG.TraceIn_SensorA[7]",
+      "PLC_PRG.TraceIn_SensorB[7]",
+      "PLC_PRG.TraceIn_SensorC[7]",
+      "PLC_PRG.TraceIn_ButtonA[7]",
+      "PLC_PRG.TraceIn_ButtonB[7]",
+      "PLC_PRG.TraceIn_ButtonC[7]",
+      "PLC_PRG.TraceOut_MotorForward[7]",
+      "PLC_PRG.TraceOut_MotorReverse[7]",
+      "PLC_PRG.TraceOut_CompletionLight[7]",
+      "PLC_PRG.TraceIn_Mode[8]",
+      "PLC_PRG.TraceIn_ForwardButton[8]",
+      "PLC_PRG.TraceIn_ReverseButton[8]",
+      "PLC_PRG.TraceIn_SensorA[8]",
+      "PLC_PRG.TraceIn_SensorB[8]",
+      "PLC_PRG.TraceIn_SensorC[8]",
+      "PLC_PRG.TraceIn_ButtonA[8]",
+      "PLC_PRG.TraceIn_ButtonB[8]",
+      "PLC_PRG.TraceIn_ButtonC[8]",
+      "PLC_PRG.TraceOut_MotorForward[8]",
+      "PLC_PRG.TraceOut_MotorReverse[8]",
+      "PLC_PRG.TraceOut_CompletionLight[8]",
+      "PLC_PRG.TraceIn_Mode[9]",
+      "PLC_PRG.TraceIn_ForwardButton[9]",
+      "PLC_PRG.TraceIn_ReverseButton[9]",
+      "PLC_PRG.TraceIn_SensorA[9]",
+      "PLC_PRG.TraceIn_SensorB[9]",
+      "PLC_PRG.TraceIn_SensorC[9]",
+      "PLC_PRG.TraceIn_ButtonA[9]",
+      "PLC_PRG.TraceIn_ButtonB[9]",
+      "PLC_PRG.TraceIn_ButtonC[9]",
+      "PLC_PRG.TraceOut_MotorForward[9]",
+      "PLC_PRG.TraceOut_MotorReverse[9]",
+      "PLC_PRG.TraceOut_CompletionLight[9]",
+      "PLC_PRG.TraceIn_Mode[10]",
+      "PLC_PRG.TraceIn_ForwardButton[10]",
+      "PLC_PRG.TraceIn_ReverseButton[10]",
+      "PLC_PRG.TraceIn_SensorA[10]",
+      "PLC_PRG.TraceIn_SensorB[10]",
+      "PLC_PRG.TraceIn_SensorC[10]",
+      "PLC_PRG.TraceIn_ButtonA[10]",
+      "PLC_PRG.TraceIn_ButtonB[10]",
+      "PLC_PRG.TraceIn_ButtonC[10]",
+      "PLC_PRG.TraceOut_MotorForward[10]",
+      "PLC_PRG.TraceOut_MotorReverse[10]",
+      "PLC_PRG.TraceOut_CompletionLight[10]",
+      "PLC_PRG.TraceIn_Mode[11]",
+      "PLC_PRG.TraceIn_ForwardButton[11]",
+      "PLC_PRG.TraceIn_ReverseButton[11]",
+      "PLC_PRG.TraceIn_SensorA[11]",
+      "PLC_PRG.TraceIn_SensorB[11]",
+      "PLC_PRG.TraceIn_SensorC[11]",
+      "PLC_PRG.TraceIn_ButtonA[11]",
+      "PLC_PRG.TraceIn_ButtonB[11]",
+      "PLC_PRG.TraceIn_ButtonC[11]",
+      "PLC_PRG.TraceOut_MotorForward[11]",
+      "PLC_PRG.TraceOut_MotorReverse[11]",
+      "PLC_PRG.TraceOut_CompletionLight[11]",
+      "PLC_PRG.TraceIn_Mode[12]",
+      "PLC_PRG.TraceIn_ForwardButton[12]",
+      "PLC_PRG.TraceIn_ReverseButton[12]",
+      "PLC_PRG.TraceIn_SensorA[12]",
+      "PLC_PRG.TraceIn_SensorB[12]",
+      "PLC_PRG.TraceIn_SensorC[12]",
+      "PLC_PRG.TraceIn_ButtonA[12]",
+      "PLC_PRG.TraceIn_ButtonB[12]",
+      "PLC_PRG.TraceIn_ButtonC[12]",
+      "PLC_PRG.TraceOut_MotorForward[12]",
+      "PLC_PRG.TraceOut_MotorReverse[12]",
+      "PLC_PRG.TraceOut_CompletionLight[12]"
+    ],
+    "trace_mapping": [
+      {
+        "step_index": 0,
+        "case_id": "case_1",
+        "case_step": 0,
+        "dt_expr": null,
+        "inputs": {
+          "Mode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Mode[0]",
+            "type": "BOOL"
+          },
+          "ForwardButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ForwardButton[0]",
+            "type": "BOOL"
+          },
+          "ReverseButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReverseButton[0]",
+            "type": "BOOL"
+          },
+          "SensorA": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SensorA[0]",
+            "type": "BOOL"
+          },
+          "SensorB": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SensorB[0]",
+            "type": "BOOL"
+          },
+          "SensorC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SensorC[0]",
+            "type": "BOOL"
+          },
+          "ButtonA": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ButtonA[0]",
+            "type": "BOOL"
+          },
+          "ButtonB": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ButtonB[0]",
+            "type": "BOOL"
+          },
+          "ButtonC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ButtonC[0]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "MotorForward": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MotorForward[0]",
+            "type": "BOOL"
+          },
+          "MotorReverse": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MotorReverse[0]",
+            "type": "BOOL"
+          },
+          "CompletionLight": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_CompletionLight[0]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 1,
+        "case_id": "case_1",
+        "case_step": 1,
+        "dt_expr": null,
+        "inputs": {
+          "Mode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Mode[1]",
+            "type": "BOOL"
+          },
+          "ForwardButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ForwardButton[1]",
+            "type": "BOOL"
+          },
+          "ReverseButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReverseButton[1]",
+            "type": "BOOL"
+          },
+          "SensorA": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SensorA[1]",
+            "type": "BOOL"
+          },
+          "SensorB": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SensorB[1]",
+            "type": "BOOL"
+          },
+          "SensorC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SensorC[1]",
+            "type": "BOOL"
+          },
+          "ButtonA": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ButtonA[1]",
+            "type": "BOOL"
+          },
+          "ButtonB": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ButtonB[1]",
+            "type": "BOOL"
+          },
+          "ButtonC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ButtonC[1]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "MotorForward": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MotorForward[1]",
+            "type": "BOOL"
+          },
+          "MotorReverse": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MotorReverse[1]",
+            "type": "BOOL"
+          },
+          "CompletionLight": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_CompletionLight[1]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 2,
+        "case_id": "case_1",
+        "case_step": 2,
+        "dt_expr": null,
+        "inputs": {
+          "Mode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Mode[2]",
+            "type": "BOOL"
+          },
+          "ForwardButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ForwardButton[2]",
+            "type": "BOOL"
+          },
+          "ReverseButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReverseButton[2]",
+            "type": "BOOL"
+          },
+          "SensorA": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SensorA[2]",
+            "type": "BOOL"
+          },
+          "SensorB": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SensorB[2]",
+            "type": "BOOL"
+          },
+          "SensorC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SensorC[2]",
+            "type": "BOOL"
+          },
+          "ButtonA": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ButtonA[2]",
+            "type": "BOOL"
+          },
+          "ButtonB": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ButtonB[2]",
+            "type": "BOOL"
+          },
+          "ButtonC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ButtonC[2]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "MotorForward": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MotorForward[2]",
+            "type": "BOOL"
+          },
+          "MotorReverse": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MotorReverse[2]",
+            "type": "BOOL"
+          },
+          "CompletionLight": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_CompletionLight[2]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 3,
+        "case_id": "case_1",
+        "case_step": 3,
+        "dt_expr": null,
+        "inputs": {
+          "Mode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Mode[3]",
+            "type": "BOOL"
+          },
+          "ForwardButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ForwardButton[3]",
+            "type": "BOOL"
+          },
+          "ReverseButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReverseButton[3]",
+            "type": "BOOL"
+          },
+          "SensorA": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SensorA[3]",
+            "type": "BOOL"
+          },
+          "SensorB": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SensorB[3]",
+            "type": "BOOL"
+          },
+          "SensorC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SensorC[3]",
+            "type": "BOOL"
+          },
+          "ButtonA": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ButtonA[3]",
+            "type": "BOOL"
+          },
+          "ButtonB": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ButtonB[3]",
+            "type": "BOOL"
+          },
+          "ButtonC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ButtonC[3]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "MotorForward": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MotorForward[3]",
+            "type": "BOOL"
+          },
+          "MotorReverse": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MotorReverse[3]",
+            "type": "BOOL"
+          },
+          "CompletionLight": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_CompletionLight[3]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 4,
+        "case_id": "case_1",
+        "case_step": 4,
+        "dt_expr": null,
+        "inputs": {
+          "Mode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Mode[4]",
+            "type": "BOOL"
+          },
+          "ForwardButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ForwardButton[4]",
+            "type": "BOOL"
+          },
+          "ReverseButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReverseButton[4]",
+            "type": "BOOL"
+          },
+          "SensorA": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SensorA[4]",
+            "type": "BOOL"
+          },
+          "SensorB": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SensorB[4]",
+            "type": "BOOL"
+          },
+          "SensorC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SensorC[4]",
+            "type": "BOOL"
+          },
+          "ButtonA": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ButtonA[4]",
+            "type": "BOOL"
+          },
+          "ButtonB": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ButtonB[4]",
+            "type": "BOOL"
+          },
+          "ButtonC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ButtonC[4]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "MotorForward": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MotorForward[4]",
+            "type": "BOOL"
+          },
+          "MotorReverse": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MotorReverse[4]",
+            "type": "BOOL"
+          },
+          "CompletionLight": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_CompletionLight[4]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 5,
+        "case_id": "case_1",
+        "case_step": 5,
+        "dt_expr": null,
+        "inputs": {
+          "Mode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Mode[5]",
+            "type": "BOOL"
+          },
+          "ForwardButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ForwardButton[5]",
+            "type": "BOOL"
+          },
+          "ReverseButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReverseButton[5]",
+            "type": "BOOL"
+          },
+          "SensorA": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SensorA[5]",
+            "type": "BOOL"
+          },
+          "SensorB": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SensorB[5]",
+            "type": "BOOL"
+          },
+          "SensorC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SensorC[5]",
+            "type": "BOOL"
+          },
+          "ButtonA": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ButtonA[5]",
+            "type": "BOOL"
+          },
+          "ButtonB": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ButtonB[5]",
+            "type": "BOOL"
+          },
+          "ButtonC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ButtonC[5]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "MotorForward": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MotorForward[5]",
+            "type": "BOOL"
+          },
+          "MotorReverse": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MotorReverse[5]",
+            "type": "BOOL"
+          },
+          "CompletionLight": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_CompletionLight[5]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 6,
+        "case_id": "case_1",
+        "case_step": 6,
+        "dt_expr": null,
+        "inputs": {
+          "Mode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Mode[6]",
+            "type": "BOOL"
+          },
+          "ForwardButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ForwardButton[6]",
+            "type": "BOOL"
+          },
+          "ReverseButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReverseButton[6]",
+            "type": "BOOL"
+          },
+          "SensorA": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SensorA[6]",
+            "type": "BOOL"
+          },
+          "SensorB": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SensorB[6]",
+            "type": "BOOL"
+          },
+          "SensorC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SensorC[6]",
+            "type": "BOOL"
+          },
+          "ButtonA": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ButtonA[6]",
+            "type": "BOOL"
+          },
+          "ButtonB": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ButtonB[6]",
+            "type": "BOOL"
+          },
+          "ButtonC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ButtonC[6]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "MotorForward": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MotorForward[6]",
+            "type": "BOOL"
+          },
+          "MotorReverse": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MotorReverse[6]",
+            "type": "BOOL"
+          },
+          "CompletionLight": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_CompletionLight[6]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 7,
+        "case_id": "case_1",
+        "case_step": 7,
+        "dt_expr": null,
+        "inputs": {
+          "Mode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Mode[7]",
+            "type": "BOOL"
+          },
+          "ForwardButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ForwardButton[7]",
+            "type": "BOOL"
+          },
+          "ReverseButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReverseButton[7]",
+            "type": "BOOL"
+          },
+          "SensorA": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SensorA[7]",
+            "type": "BOOL"
+          },
+          "SensorB": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SensorB[7]",
+            "type": "BOOL"
+          },
+          "SensorC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SensorC[7]",
+            "type": "BOOL"
+          },
+          "ButtonA": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ButtonA[7]",
+            "type": "BOOL"
+          },
+          "ButtonB": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ButtonB[7]",
+            "type": "BOOL"
+          },
+          "ButtonC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ButtonC[7]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "MotorForward": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MotorForward[7]",
+            "type": "BOOL"
+          },
+          "MotorReverse": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MotorReverse[7]",
+            "type": "BOOL"
+          },
+          "CompletionLight": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_CompletionLight[7]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 8,
+        "case_id": "case_2",
+        "case_step": 0,
+        "dt_expr": null,
+        "inputs": {
+          "Mode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Mode[8]",
+            "type": "BOOL"
+          },
+          "ForwardButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ForwardButton[8]",
+            "type": "BOOL"
+          },
+          "ReverseButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReverseButton[8]",
+            "type": "BOOL"
+          },
+          "SensorA": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SensorA[8]",
+            "type": "BOOL"
+          },
+          "SensorB": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SensorB[8]",
+            "type": "BOOL"
+          },
+          "SensorC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SensorC[8]",
+            "type": "BOOL"
+          },
+          "ButtonA": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ButtonA[8]",
+            "type": "BOOL"
+          },
+          "ButtonB": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ButtonB[8]",
+            "type": "BOOL"
+          },
+          "ButtonC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ButtonC[8]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "MotorForward": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MotorForward[8]",
+            "type": "BOOL"
+          },
+          "MotorReverse": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MotorReverse[8]",
+            "type": "BOOL"
+          },
+          "CompletionLight": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_CompletionLight[8]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 9,
+        "case_id": "case_2",
+        "case_step": 1,
+        "dt_expr": null,
+        "inputs": {
+          "Mode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Mode[9]",
+            "type": "BOOL"
+          },
+          "ForwardButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ForwardButton[9]",
+            "type": "BOOL"
+          },
+          "ReverseButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReverseButton[9]",
+            "type": "BOOL"
+          },
+          "SensorA": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SensorA[9]",
+            "type": "BOOL"
+          },
+          "SensorB": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SensorB[9]",
+            "type": "BOOL"
+          },
+          "SensorC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SensorC[9]",
+            "type": "BOOL"
+          },
+          "ButtonA": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ButtonA[9]",
+            "type": "BOOL"
+          },
+          "ButtonB": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ButtonB[9]",
+            "type": "BOOL"
+          },
+          "ButtonC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ButtonC[9]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "MotorForward": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MotorForward[9]",
+            "type": "BOOL"
+          },
+          "MotorReverse": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MotorReverse[9]",
+            "type": "BOOL"
+          },
+          "CompletionLight": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_CompletionLight[9]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 10,
+        "case_id": "case_2",
+        "case_step": 2,
+        "dt_expr": null,
+        "inputs": {
+          "Mode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Mode[10]",
+            "type": "BOOL"
+          },
+          "ForwardButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ForwardButton[10]",
+            "type": "BOOL"
+          },
+          "ReverseButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReverseButton[10]",
+            "type": "BOOL"
+          },
+          "SensorA": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SensorA[10]",
+            "type": "BOOL"
+          },
+          "SensorB": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SensorB[10]",
+            "type": "BOOL"
+          },
+          "SensorC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SensorC[10]",
+            "type": "BOOL"
+          },
+          "ButtonA": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ButtonA[10]",
+            "type": "BOOL"
+          },
+          "ButtonB": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ButtonB[10]",
+            "type": "BOOL"
+          },
+          "ButtonC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ButtonC[10]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "MotorForward": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MotorForward[10]",
+            "type": "BOOL"
+          },
+          "MotorReverse": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MotorReverse[10]",
+            "type": "BOOL"
+          },
+          "CompletionLight": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_CompletionLight[10]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 11,
+        "case_id": "case_2",
+        "case_step": 3,
+        "dt_expr": null,
+        "inputs": {
+          "Mode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Mode[11]",
+            "type": "BOOL"
+          },
+          "ForwardButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ForwardButton[11]",
+            "type": "BOOL"
+          },
+          "ReverseButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReverseButton[11]",
+            "type": "BOOL"
+          },
+          "SensorA": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SensorA[11]",
+            "type": "BOOL"
+          },
+          "SensorB": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SensorB[11]",
+            "type": "BOOL"
+          },
+          "SensorC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SensorC[11]",
+            "type": "BOOL"
+          },
+          "ButtonA": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ButtonA[11]",
+            "type": "BOOL"
+          },
+          "ButtonB": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ButtonB[11]",
+            "type": "BOOL"
+          },
+          "ButtonC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ButtonC[11]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "MotorForward": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MotorForward[11]",
+            "type": "BOOL"
+          },
+          "MotorReverse": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MotorReverse[11]",
+            "type": "BOOL"
+          },
+          "CompletionLight": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_CompletionLight[11]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 12,
+        "case_id": "case_2",
+        "case_step": 4,
+        "dt_expr": null,
+        "inputs": {
+          "Mode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Mode[12]",
+            "type": "BOOL"
+          },
+          "ForwardButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ForwardButton[12]",
+            "type": "BOOL"
+          },
+          "ReverseButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReverseButton[12]",
+            "type": "BOOL"
+          },
+          "SensorA": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SensorA[12]",
+            "type": "BOOL"
+          },
+          "SensorB": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SensorB[12]",
+            "type": "BOOL"
+          },
+          "SensorC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SensorC[12]",
+            "type": "BOOL"
+          },
+          "ButtonA": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ButtonA[12]",
+            "type": "BOOL"
+          },
+          "ButtonB": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ButtonB[12]",
+            "type": "BOOL"
+          },
+          "ButtonC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ButtonC[12]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "MotorForward": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MotorForward[12]",
+            "type": "BOOL"
+          },
+          "MotorReverse": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MotorReverse[12]",
+            "type": "BOOL"
+          },
+          "CompletionLight": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_CompletionLight[12]",
+            "type": "BOOL"
+          }
+        }
+      }
+    ]
+  },
+  "result_path": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\50f69180867f3e97\\simulation_evidence.json"
+}

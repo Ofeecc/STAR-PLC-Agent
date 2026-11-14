@@ -1,0 +1,121 @@
+{
+  "state_machine": [
+    {
+      "state": "IDLE",
+      "representation": "previous_demand = FALSE",
+      "transitions": [
+        {
+          "condition": "Demand = FALSE",
+          "next_state": "IDLE",
+          "action": "Keep preference; clear episode_served; command both pumps off."
+        },
+        {
+          "condition": "Demand = TRUE",
+          "next_state": "ACTIVE",
+          "action": "Select a healthy pump using the current preference; set episode_served if a pump is selected."
+        }
+      ]
+    },
+    {
+      "state": "ACTIVE",
+      "representation": "previous_demand = TRUE",
+      "transitions": [
+        {
+          "condition": "Demand = TRUE",
+          "next_state": "ACTIVE",
+          "action": "Reselect immediately from current faults; retain episode_served once set."
+        },
+        {
+          "condition": "Demand = FALSE",
+          "next_state": "IDLE",
+          "action": "Toggle preference if episode_served was TRUE; clear episode_served; command both pumps off."
+        }
+      ]
+    }
+  ],
+  "timer_plan": [],
+  "priorities": [
+    "A faulted pump must never be commanded on.",
+    "No demand commands both pumps off.",
+    "With demand, select the healthy preferred pump, otherwise the healthy standby; select neither if both are faulted.",
+    "On a served episode's falling edge, toggle preference once, regardless of which pump served it. Unserved episodes do not toggle.",
+    "Fault changes take effect in the current scan; no transfer delay or fault latch is specified."
+  ],
+  "initial_values": {
+    "LeadA": true,
+    "lead_pref": true,
+    "previous_demand": false,
+    "episode_served": false,
+    "PumpA": false,
+    "PumpB": false,
+    "sampled_demand": false,
+    "sampled_fault_a": false,
+    "sampled_fault_b": false,
+    "falling_demand": false,
+    "candidate_a": false,
+    "candidate_b": false,
+    "note": "These are instance values before the first invocation. Inputs are externally supplied; scratch values are overwritten on each scan."
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "Edge sampling",
+      "actions": [
+        "Sample Demand, FaultA and FaultB once into sampled_demand, sampled_fault_a and sampled_fault_b.",
+        "Compute falling_demand := previous_demand AND NOT sampled_demand using the retained pre-scan value."
+      ]
+    },
+    {
+      "stage": 2,
+      "name": "Safety/reset priority and state transitions",
+      "actions": [
+        "If falling_demand AND episode_served, set lead_pref := NOT lead_pref; otherwise retain lead_pref.",
+        "Compute candidate_a := sampled_demand AND NOT sampled_fault_a AND (lead_pref OR sampled_fault_b).",
+        "Compute candidate_b := sampled_demand AND NOT sampled_fault_b AND (NOT lead_pref OR sampled_fault_a).",
+        "If sampled_demand is FALSE, set episode_served := FALSE; otherwise set episode_served := episode_served OR candidate_a OR candidate_b.",
+        "Set previous_demand := sampled_demand. There is no external reset input; instance initialization supplies the reset values."
+      ]
+    },
+    {
+      "stage": 3,
+      "name": "Unconditional top-level timer FB calls outside CASE/IF",
+      "actions": [
+        "No timer FBs or timer calls are required."
+      ]
+    },
+    {
+      "stage": 4,
+      "name": "Unified output assignments",
+      "actions": [
+        "Assign PumpA := candidate_a, PumpB := candidate_b and LeadA := lead_pref exactly once.",
+        "Observe these post-transition outputs at the end of the same scan."
+      ]
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G(!(PumpA & PumpB))"
+    },
+    {
+      "id": "A2",
+      "formula": "G(PumpA <-> (Demand & !FaultA & (LeadA | FaultB)))"
+    },
+    {
+      "id": "A3",
+      "formula": "G(PumpB <-> (Demand & !FaultB & (!LeadA | FaultA)))"
+    },
+    {
+      "id": "A4",
+      "formula": "G(X Demand -> (LeadA <-> X LeadA))"
+    },
+    {
+      "id": "A5",
+      "formula": "G(((PumpA | PumpB) & X !Demand) -> (X LeadA <-> !LeadA))"
+    },
+    {
+      "id": "A6",
+      "formula": "G((!Demand & X !Demand) -> (LeadA <-> X LeadA))"
+    }
+  ]
+}

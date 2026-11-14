@@ -1,0 +1,1026 @@
+{
+  "request_id": "7580bc8ea4864886a1860121adf6379b",
+  "mode": "IDE_SIMULATION_ONLY",
+  "no_physical_connection": true,
+  "workspace": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\d97a50deeaec380c",
+  "project": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\d97a50deeaec380c\\simulation.project",
+  "template": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\d97a50deeaec380c\\benchmark.project",
+  "task_id": "PUB010",
+  "task_sha256": "382e41b39b4a64880c1335315c586b48c3207ef0b436b8d128cf0070f6d4a6f0",
+  "source_sha256": "17c419b0afcf1884908f4477e05d9dbb98e534bf0a436f20cd2594535d939728",
+  "candidate": {
+    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    TemperatureSensorInput : REAL;\n    SetTemperature : REAL;\nEND_VAR\nVAR_OUTPUT\n    CurrentTemperature : REAL := 0.0;\n    SetTempDisplay : REAL := 0.0;\n    HeaterStatus : BOOL := FALSE;\n    OverheatProtection : BOOL := FALSE;\n    HeaterOutput : BOOL := FALSE;\nEND_VAR\nVAR\n    state : INT := 0; (* 0: idle, 1: heating, 2: protected *)\n    heatDemand : BOOL := FALSE;\n    sensorFault : BOOL := FALSE;\n    sampledTemperature : REAL;\n    sampledSetTemperature : REAL;\n    now_ms : UDINT := 0;\n    heatStart_ms : UDINT := 0;\n    protectionStart_ms : UDINT := 0;\n    heatElapsed_ms : UDINT := 0;\n    cooldownElapsed_ms : UDINT := 0;\n    elapsed_ms : UDINT := 0;\n    HeatTON : TON;\n    CooldownTON : TON;\nEND_VAR",
+    "implementation": "sampledTemperature := TemperatureSensorInput;\nsampledSetTemperature := SetTemperature;\n(* TIME() is the CODESYS millisecond system clock. Elapsed-time arithmetic\n   handles one clock wrap; the task must execute at least once per wrap. *)\nnow_ms := TIME_TO_UDINT(TIME());\n\nsensorFault := (sampledTemperature < 0.0) OR (sampledTemperature > 100.0);\nIF NOT sensorFault THEN\n    IF sampledTemperature < sampledSetTemperature THEN\n        heatDemand := TRUE;\n    ELSIF sampledTemperature > sampledSetTemperature THEN\n        heatDemand := FALSE;\n    END_IF;\nEND_IF;\n\nCASE state OF\n    0:\n        heatElapsed_ms := 0;\n        cooldownElapsed_ms := 0;\n        IF NOT sensorFault AND heatDemand THEN\n            heatStart_ms := now_ms;\n            state := 1;\n        END_IF;\n\n    1:\n        elapsed_ms := F_TaskElapsedMs(nowValue := now_ms, startValue := heatStart_ms);\n        IF elapsed_ms >= 5000 THEN\n            heatElapsed_ms := 0;\n            cooldownElapsed_ms := 0;\n            protectionStart_ms := now_ms;\n            state := 2;\n        ELSIF sensorFault OR NOT heatDemand THEN\n            heatElapsed_ms := 0;\n            state := 0;\n        ELSE\n            heatElapsed_ms := elapsed_ms;\n        END_IF;\n\n    2:\n        heatElapsed_ms := 0;\n        elapsed_ms := F_TaskElapsedMs(nowValue := now_ms, startValue := protectionStart_ms);\n        IF elapsed_ms >= 3000 THEN\n            cooldownElapsed_ms := 0;\n            IF NOT sensorFault AND heatDemand THEN\n                heatStart_ms := now_ms;\n                state := 1;\n            ELSE\n                state := 0;\n            END_IF;\n        ELSE\n            cooldownElapsed_ms := elapsed_ms;\n        END_IF;\n\n    ELSE\n        state := 0;\n        heatElapsed_ms := 0;\n        cooldownElapsed_ms := 0;\nEND_CASE;\n\nHeatTON(IN := (state = 1), PT := T#5s);\nCooldownTON(IN := (state = 2), PT := T#3s);\n\nCurrentTemperature := sampledTemperature;\nSetTempDisplay := sampledSetTemperature;\nOverheatProtection := (state = 2);\nHeaterOutput := (state = 1);\nHeaterStatus := HeaterOutput;",
+    "supporting_objects": [
+      {
+        "name": "F_TaskElapsedMs",
+        "kind": "FUNCTION",
+        "return_type": "UDINT",
+        "declaration": "FUNCTION F_TaskElapsedMs : UDINT\nVAR_INPUT\n    nowValue : UDINT;\n    startValue : UDINT;\nEND_VAR",
+        "implementation": "IF nowValue >= startValue THEN\n    F_TaskElapsedMs := nowValue - startValue;\nELSE\n    F_TaskElapsedMs := (UDINT#16#FFFFFFFF - startValue) + nowValue + UDINT#1;\nEND_IF;"
+      }
+    ]
+  },
+  "program": {
+    "declaration": "PROGRAM PLC_PRG\nVAR\n BenchStep : UDINT := 0;\n BenchCalls : UDINT := 0;\n BenchDone : BOOL := FALSE;\n BenchLastTime : TIME := T#0ms;\n BenchClockReady : BOOL := FALSE;\n BenchCurrentTime : TIME := T#0ms;\n TraceDt : ARRAY[0..15] OF UDINT;\n BenchUut0 : FB_Task;\n BenchUut1 : FB_Task;\n TraceIn_TemperatureSensorInput : ARRAY[0..15] OF REAL;\n TraceIn_SetTemperature : ARRAY[0..15] OF REAL;\n TraceOut_CurrentTemperature : ARRAY[0..15] OF REAL;\n TraceOut_SetTempDisplay : ARRAY[0..15] OF REAL;\n TraceOut_HeaterStatus : ARRAY[0..15] OF BOOL;\n TraceOut_OverheatProtection : ARRAY[0..15] OF BOOL;\n TraceOut_HeaterOutput : ARRAY[0..15] OF BOOL;\nEND_VAR",
+    "implementation": "IF NOT BenchDone THEN\n BenchCurrentTime := TIME();\n IF NOT BenchClockReady THEN\n  BenchLastTime := BenchCurrentTime;\n  BenchClockReady := TRUE;\n ELSE\n CASE BenchStep OF\n 0:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(0) THEN\n   TraceDt[0] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut0.TemperatureSensorInput := REAL#25.0;\n   BenchUut0.SetTemperature := REAL#20.0;\n   TraceIn_TemperatureSensorInput[0] := BenchUut0.TemperatureSensorInput;\n   TraceIn_SetTemperature[0] := BenchUut0.SetTemperature;\n   BenchUut0();\n   TraceOut_CurrentTemperature[0] := BenchUut0.CurrentTemperature;\n   TraceOut_SetTempDisplay[0] := BenchUut0.SetTempDisplay;\n   TraceOut_HeaterStatus[0] := BenchUut0.HeaterStatus;\n   TraceOut_OverheatProtection[0] := BenchUut0.OverheatProtection;\n   TraceOut_HeaterOutput[0] := BenchUut0.HeaterOutput;\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 1:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(100) THEN\n   TraceDt[1] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut0.TemperatureSensorInput := REAL#19.0;\n   BenchUut0.SetTemperature := REAL#20.0;\n   TraceIn_TemperatureSensorInput[1] := BenchUut0.TemperatureSensorInput;\n   TraceIn_SetTemperature[1] := BenchUut0.SetTemperature;\n   BenchUut0();\n   TraceOut_CurrentTemperature[1] := BenchUut0.CurrentTemperature;\n   TraceOut_SetTempDisplay[1] := BenchUut0.SetTempDisplay;\n   TraceOut_HeaterStatus[1] := BenchUut0.HeaterStatus;\n   TraceOut_OverheatProtection[1] := BenchUut0.OverheatProtection;\n   TraceOut_HeaterOutput[1] := BenchUut0.HeaterOutput;\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 2:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(4999) THEN\n   TraceDt[2] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut0.TemperatureSensorInput := REAL#20.0;\n   BenchUut0.SetTemperature := REAL#20.0;\n   TraceIn_TemperatureSensorInput[2] := BenchUut0.TemperatureSensorInput;\n   TraceIn_SetTemperature[2] := BenchUut0.SetTemperature;\n   BenchUut0();\n   TraceOut_CurrentTemperature[2] := BenchUut0.CurrentTemperature;\n   TraceOut_SetTempDisplay[2] := BenchUut0.SetTempDisplay;\n   TraceOut_HeaterStatus[2] := BenchUut0.HeaterStatus;\n   TraceOut_OverheatProtection[2] := BenchUut0.OverheatProtection;\n   TraceOut_HeaterOutput[2] := BenchUut0.HeaterOutput;\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 3:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(1) THEN\n   TraceDt[3] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut0.TemperatureSensorInput := REAL#20.0;\n   BenchUut0.SetTemperature := REAL#20.0;\n   TraceIn_TemperatureSensorInput[3] := BenchUut0.TemperatureSensorInput;\n   TraceIn_SetTemperature[3] := BenchUut0.SetTemperature;\n   BenchUut0();\n   TraceOut_CurrentTemperature[3] := BenchUut0.CurrentTemperature;\n   TraceOut_SetTempDisplay[3] := BenchUut0.SetTempDisplay;\n   TraceOut_HeaterStatus[3] := BenchUut0.HeaterStatus;\n   TraceOut_OverheatProtection[3] := BenchUut0.OverheatProtection;\n   TraceOut_HeaterOutput[3] := BenchUut0.HeaterOutput;\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 4:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(2999) THEN\n   TraceDt[4] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut0.TemperatureSensorInput := REAL#20.0;\n   BenchUut0.SetTemperature := REAL#20.0;\n   TraceIn_TemperatureSensorInput[4] := BenchUut0.TemperatureSensorInput;\n   TraceIn_SetTemperature[4] := BenchUut0.SetTemperature;\n   BenchUut0();\n   TraceOut_CurrentTemperature[4] := BenchUut0.CurrentTemperature;\n   TraceOut_SetTempDisplay[4] := BenchUut0.SetTempDisplay;\n   TraceOut_HeaterStatus[4] := BenchUut0.HeaterStatus;\n   TraceOut_OverheatProtection[4] := BenchUut0.OverheatProtection;\n   TraceOut_HeaterOutput[4] := BenchUut0.HeaterOutput;\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 5:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(1) THEN\n   TraceDt[5] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut0.TemperatureSensorInput := REAL#20.0;\n   BenchUut0.SetTemperature := REAL#20.0;\n   TraceIn_TemperatureSensorInput[5] := BenchUut0.TemperatureSensorInput;\n   TraceIn_SetTemperature[5] := BenchUut0.SetTemperature;\n   BenchUut0();\n   TraceOut_CurrentTemperature[5] := BenchUut0.CurrentTemperature;\n   TraceOut_SetTempDisplay[5] := BenchUut0.SetTempDisplay;\n   TraceOut_HeaterStatus[5] := BenchUut0.HeaterStatus;\n   TraceOut_OverheatProtection[5] := BenchUut0.OverheatProtection;\n   TraceOut_HeaterOutput[5] := BenchUut0.HeaterOutput;\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 6:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(100) THEN\n   TraceDt[6] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut0.TemperatureSensorInput := REAL#21.0;\n   BenchUut0.SetTemperature := REAL#20.0;\n   TraceIn_TemperatureSensorInput[6] := BenchUut0.TemperatureSensorInput;\n   TraceIn_SetTemperature[6] := BenchUut0.SetTemperature;\n   BenchUut0();\n   TraceOut_CurrentTemperature[6] := BenchUut0.CurrentTemperature;\n   TraceOut_SetTempDisplay[6] := BenchUut0.SetTempDisplay;\n   TraceOut_HeaterStatus[6] := BenchUut0.HeaterStatus;\n   TraceOut_OverheatProtection[6] := BenchUut0.OverheatProtection;\n   TraceOut_HeaterOutput[6] := BenchUut0.HeaterOutput;\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 7:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(100) THEN\n   TraceDt[7] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut0.TemperatureSensorInput := REAL#20.0;\n   BenchUut0.SetTemperature := REAL#20.0;\n   TraceIn_TemperatureSensorInput[7] := BenchUut0.TemperatureSensorInput;\n   TraceIn_SetTemperature[7] := BenchUut0.SetTemperature;\n   BenchUut0();\n   TraceOut_CurrentTemperature[7] := BenchUut0.CurrentTemperature;\n   TraceOut_SetTempDisplay[7] := BenchUut0.SetTempDisplay;\n   TraceOut_HeaterStatus[7] := BenchUut0.HeaterStatus;\n   TraceOut_OverheatProtection[7] := BenchUut0.OverheatProtection;\n   TraceOut_HeaterOutput[7] := BenchUut0.HeaterOutput;\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 8:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(0) THEN\n   TraceDt[8] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut1.TemperatureSensorInput := REAL#0.0;\n   BenchUut1.SetTemperature := REAL#0.0;\n   TraceIn_TemperatureSensorInput[8] := BenchUut1.TemperatureSensorInput;\n   TraceIn_SetTemperature[8] := BenchUut1.SetTemperature;\n   BenchUut1();\n   TraceOut_CurrentTemperature[8] := BenchUut1.CurrentTemperature;\n   TraceOut_SetTempDisplay[8] := BenchUut1.SetTempDisplay;\n   TraceOut_HeaterStatus[8] := BenchUut1.HeaterStatus;\n   TraceOut_OverheatProtection[8] := BenchUut1.OverheatProtection;\n   TraceOut_HeaterOutput[8] := BenchUut1.HeaterOutput;\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 9:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(100) THEN\n   TraceDt[9] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut1.TemperatureSensorInput := REAL#0.0;\n   BenchUut1.SetTemperature := REAL#1.0;\n   TraceIn_TemperatureSensorInput[9] := BenchUut1.TemperatureSensorInput;\n   TraceIn_SetTemperature[9] := BenchUut1.SetTemperature;\n   BenchUut1();\n   TraceOut_CurrentTemperature[9] := BenchUut1.CurrentTemperature;\n   TraceOut_SetTempDisplay[9] := BenchUut1.SetTempDisplay;\n   TraceOut_HeaterStatus[9] := BenchUut1.HeaterStatus;\n   TraceOut_OverheatProtection[9] := BenchUut1.OverheatProtection;\n   TraceOut_HeaterOutput[9] := BenchUut1.HeaterOutput;\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 10:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(4999) THEN\n   TraceDt[10] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut1.TemperatureSensorInput := REAL#-0.01;\n   BenchUut1.SetTemperature := REAL#-1.0;\n   TraceIn_TemperatureSensorInput[10] := BenchUut1.TemperatureSensorInput;\n   TraceIn_SetTemperature[10] := BenchUut1.SetTemperature;\n   BenchUut1();\n   TraceOut_CurrentTemperature[10] := BenchUut1.CurrentTemperature;\n   TraceOut_SetTempDisplay[10] := BenchUut1.SetTempDisplay;\n   TraceOut_HeaterStatus[10] := BenchUut1.HeaterStatus;\n   TraceOut_OverheatProtection[10] := BenchUut1.OverheatProtection;\n   TraceOut_HeaterOutput[10] := BenchUut1.HeaterOutput;\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 11:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(1) THEN\n   TraceDt[11] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut1.TemperatureSensorInput := REAL#0.0;\n   BenchUut1.SetTemperature := REAL#0.0;\n   TraceIn_TemperatureSensorInput[11] := BenchUut1.TemperatureSensorInput;\n   TraceIn_SetTemperature[11] := BenchUut1.SetTemperature;\n   BenchUut1();\n   TraceOut_CurrentTemperature[11] := BenchUut1.CurrentTemperature;\n   TraceOut_SetTempDisplay[11] := BenchUut1.SetTempDisplay;\n   TraceOut_HeaterStatus[11] := BenchUut1.HeaterStatus;\n   TraceOut_OverheatProtection[11] := BenchUut1.OverheatProtection;\n   TraceOut_HeaterOutput[11] := BenchUut1.HeaterOutput;\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 12:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(4999) THEN\n   TraceDt[12] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut1.TemperatureSensorInput := REAL#100.0;\n   BenchUut1.SetTemperature := REAL#100.0;\n   TraceIn_TemperatureSensorInput[12] := BenchUut1.TemperatureSensorInput;\n   TraceIn_SetTemperature[12] := BenchUut1.SetTemperature;\n   BenchUut1();\n   TraceOut_CurrentTemperature[12] := BenchUut1.CurrentTemperature;\n   TraceOut_SetTempDisplay[12] := BenchUut1.SetTempDisplay;\n   TraceOut_HeaterStatus[12] := BenchUut1.HeaterStatus;\n   TraceOut_OverheatProtection[12] := BenchUut1.OverheatProtection;\n   TraceOut_HeaterOutput[12] := BenchUut1.HeaterOutput;\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 13:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(0) THEN\n   TraceDt[13] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut1.TemperatureSensorInput := REAL#100.0;\n   BenchUut1.SetTemperature := REAL#99.0;\n   TraceIn_TemperatureSensorInput[13] := BenchUut1.TemperatureSensorInput;\n   TraceIn_SetTemperature[13] := BenchUut1.SetTemperature;\n   BenchUut1();\n   TraceOut_CurrentTemperature[13] := BenchUut1.CurrentTemperature;\n   TraceOut_SetTempDisplay[13] := BenchUut1.SetTempDisplay;\n   TraceOut_HeaterStatus[13] := BenchUut1.HeaterStatus;\n   TraceOut_OverheatProtection[13] := BenchUut1.OverheatProtection;\n   TraceOut_HeaterOutput[13] := BenchUut1.HeaterOutput;\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 14:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(100) THEN\n   TraceDt[14] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut1.TemperatureSensorInput := REAL#100.01;\n   BenchUut1.SetTemperature := REAL#101.0;\n   TraceIn_TemperatureSensorInput[14] := BenchUut1.TemperatureSensorInput;\n   TraceIn_SetTemperature[14] := BenchUut1.SetTemperature;\n   BenchUut1();\n   TraceOut_CurrentTemperature[14] := BenchUut1.CurrentTemperature;\n   TraceOut_SetTempDisplay[14] := BenchUut1.SetTempDisplay;\n   TraceOut_HeaterStatus[14] := BenchUut1.HeaterStatus;\n   TraceOut_OverheatProtection[14] := BenchUut1.OverheatProtection;\n   TraceOut_HeaterOutput[14] := BenchUut1.HeaterOutput;\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 15:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(100) THEN\n   TraceDt[15] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut1.TemperatureSensorInput := REAL#100.0;\n   BenchUut1.SetTemperature := REAL#100.0;\n   TraceIn_TemperatureSensorInput[15] := BenchUut1.TemperatureSensorInput;\n   TraceIn_SetTemperature[15] := BenchUut1.SetTemperature;\n   BenchUut1();\n   TraceOut_CurrentTemperature[15] := BenchUut1.CurrentTemperature;\n   TraceOut_SetTempDisplay[15] := BenchUut1.SetTempDisplay;\n   TraceOut_HeaterStatus[15] := BenchUut1.HeaterStatus;\n   TraceOut_OverheatProtection[15] := BenchUut1.OverheatProtection;\n   TraceOut_HeaterOutput[15] := BenchUut1.HeaterOutput;\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n END_CASE;\n END_IF;\n IF BenchStep >= 16 THEN BenchDone := TRUE; END_IF;\nEND_IF;",
+    "step_count": 16,
+    "steps": [
+      {
+        "index": 0,
+        "case_id": "normal_trip_and_recovery",
+        "case_step": 0,
+        "dt_ms": 0
+      },
+      {
+        "index": 1,
+        "case_id": "normal_trip_and_recovery",
+        "case_step": 1,
+        "dt_ms": 100
+      },
+      {
+        "index": 2,
+        "case_id": "normal_trip_and_recovery",
+        "case_step": 2,
+        "dt_ms": 4999
+      },
+      {
+        "index": 3,
+        "case_id": "normal_trip_and_recovery",
+        "case_step": 3,
+        "dt_ms": 1
+      },
+      {
+        "index": 4,
+        "case_id": "normal_trip_and_recovery",
+        "case_step": 4,
+        "dt_ms": 2999
+      },
+      {
+        "index": 5,
+        "case_id": "normal_trip_and_recovery",
+        "case_step": 5,
+        "dt_ms": 1
+      },
+      {
+        "index": 6,
+        "case_id": "normal_trip_and_recovery",
+        "case_step": 6,
+        "dt_ms": 100
+      },
+      {
+        "index": 7,
+        "case_id": "normal_trip_and_recovery",
+        "case_step": 7,
+        "dt_ms": 100
+      },
+      {
+        "index": 8,
+        "case_id": "sensor_boundaries_and_frozen_demand",
+        "case_step": 0,
+        "dt_ms": 0
+      },
+      {
+        "index": 9,
+        "case_id": "sensor_boundaries_and_frozen_demand",
+        "case_step": 1,
+        "dt_ms": 100
+      },
+      {
+        "index": 10,
+        "case_id": "sensor_boundaries_and_frozen_demand",
+        "case_step": 2,
+        "dt_ms": 4999
+      },
+      {
+        "index": 11,
+        "case_id": "sensor_boundaries_and_frozen_demand",
+        "case_step": 3,
+        "dt_ms": 1
+      },
+      {
+        "index": 12,
+        "case_id": "sensor_boundaries_and_frozen_demand",
+        "case_step": 4,
+        "dt_ms": 4999
+      },
+      {
+        "index": 13,
+        "case_id": "sensor_boundaries_and_frozen_demand",
+        "case_step": 5,
+        "dt_ms": 0
+      },
+      {
+        "index": 14,
+        "case_id": "sensor_boundaries_and_frozen_demand",
+        "case_step": 6,
+        "dt_ms": 100
+      },
+      {
+        "index": 15,
+        "case_id": "sensor_boundaries_and_frozen_demand",
+        "case_step": 7,
+        "dt_ms": 100
+      }
+    ],
+    "inputs": [
+      {
+        "direction": "INPUT",
+        "name": "TemperatureSensorInput",
+        "type": "REAL",
+        "description": "The input value of the temperature sensor, i.e., the actual temperature"
+      },
+      {
+        "direction": "INPUT",
+        "name": "SetTemperature",
+        "type": "REAL",
+        "description": "The set temperature value"
+      }
+    ],
+    "outputs": [
+      {
+        "direction": "OUTPUT",
+        "name": "CurrentTemperature",
+        "type": "REAL",
+        "description": "Display of the current temperature"
+      },
+      {
+        "direction": "OUTPUT",
+        "name": "SetTempDisplay",
+        "type": "REAL",
+        "description": "Display of the set temperature"
+      },
+      {
+        "direction": "OUTPUT",
+        "name": "HeaterStatus",
+        "type": "BOOL",
+        "description": "Display of the heater status"
+      },
+      {
+        "direction": "OUTPUT",
+        "name": "OverheatProtection",
+        "type": "BOOL",
+        "description": "Display of the overheating protection status"
+      },
+      {
+        "direction": "OUTPUT",
+        "name": "HeaterOutput",
+        "type": "BOOL",
+        "description": "The control output of the heater"
+      }
+    ],
+    "trace_expressions": [
+      "PLC_PRG.TraceDt[0]",
+      "PLC_PRG.TraceIn_TemperatureSensorInput[0]",
+      "PLC_PRG.TraceIn_SetTemperature[0]",
+      "PLC_PRG.TraceOut_CurrentTemperature[0]",
+      "PLC_PRG.TraceOut_SetTempDisplay[0]",
+      "PLC_PRG.TraceOut_HeaterStatus[0]",
+      "PLC_PRG.TraceOut_OverheatProtection[0]",
+      "PLC_PRG.TraceOut_HeaterOutput[0]",
+      "PLC_PRG.TraceDt[1]",
+      "PLC_PRG.TraceIn_TemperatureSensorInput[1]",
+      "PLC_PRG.TraceIn_SetTemperature[1]",
+      "PLC_PRG.TraceOut_CurrentTemperature[1]",
+      "PLC_PRG.TraceOut_SetTempDisplay[1]",
+      "PLC_PRG.TraceOut_HeaterStatus[1]",
+      "PLC_PRG.TraceOut_OverheatProtection[1]",
+      "PLC_PRG.TraceOut_HeaterOutput[1]",
+      "PLC_PRG.TraceDt[2]",
+      "PLC_PRG.TraceIn_TemperatureSensorInput[2]",
+      "PLC_PRG.TraceIn_SetTemperature[2]",
+      "PLC_PRG.TraceOut_CurrentTemperature[2]",
+      "PLC_PRG.TraceOut_SetTempDisplay[2]",
+      "PLC_PRG.TraceOut_HeaterStatus[2]",
+      "PLC_PRG.TraceOut_OverheatProtection[2]",
+      "PLC_PRG.TraceOut_HeaterOutput[2]",
+      "PLC_PRG.TraceDt[3]",
+      "PLC_PRG.TraceIn_TemperatureSensorInput[3]",
+      "PLC_PRG.TraceIn_SetTemperature[3]",
+      "PLC_PRG.TraceOut_CurrentTemperature[3]",
+      "PLC_PRG.TraceOut_SetTempDisplay[3]",
+      "PLC_PRG.TraceOut_HeaterStatus[3]",
+      "PLC_PRG.TraceOut_OverheatProtection[3]",
+      "PLC_PRG.TraceOut_HeaterOutput[3]",
+      "PLC_PRG.TraceDt[4]",
+      "PLC_PRG.TraceIn_TemperatureSensorInput[4]",
+      "PLC_PRG.TraceIn_SetTemperature[4]",
+      "PLC_PRG.TraceOut_CurrentTemperature[4]",
+      "PLC_PRG.TraceOut_SetTempDisplay[4]",
+      "PLC_PRG.TraceOut_HeaterStatus[4]",
+      "PLC_PRG.TraceOut_OverheatProtection[4]",
+      "PLC_PRG.TraceOut_HeaterOutput[4]",
+      "PLC_PRG.TraceDt[5]",
+      "PLC_PRG.TraceIn_TemperatureSensorInput[5]",
+      "PLC_PRG.TraceIn_SetTemperature[5]",
+      "PLC_PRG.TraceOut_CurrentTemperature[5]",
+      "PLC_PRG.TraceOut_SetTempDisplay[5]",
+      "PLC_PRG.TraceOut_HeaterStatus[5]",
+      "PLC_PRG.TraceOut_OverheatProtection[5]",
+      "PLC_PRG.TraceOut_HeaterOutput[5]",
+      "PLC_PRG.TraceDt[6]",
+      "PLC_PRG.TraceIn_TemperatureSensorInput[6]",
+      "PLC_PRG.TraceIn_SetTemperature[6]",
+      "PLC_PRG.TraceOut_CurrentTemperature[6]",
+      "PLC_PRG.TraceOut_SetTempDisplay[6]",
+      "PLC_PRG.TraceOut_HeaterStatus[6]",
+      "PLC_PRG.TraceOut_OverheatProtection[6]",
+      "PLC_PRG.TraceOut_HeaterOutput[6]",
+      "PLC_PRG.TraceDt[7]",
+      "PLC_PRG.TraceIn_TemperatureSensorInput[7]",
+      "PLC_PRG.TraceIn_SetTemperature[7]",
+      "PLC_PRG.TraceOut_CurrentTemperature[7]",
+      "PLC_PRG.TraceOut_SetTempDisplay[7]",
+      "PLC_PRG.TraceOut_HeaterStatus[7]",
+      "PLC_PRG.TraceOut_OverheatProtection[7]",
+      "PLC_PRG.TraceOut_HeaterOutput[7]",
+      "PLC_PRG.TraceDt[8]",
+      "PLC_PRG.TraceIn_TemperatureSensorInput[8]",
+      "PLC_PRG.TraceIn_SetTemperature[8]",
+      "PLC_PRG.TraceOut_CurrentTemperature[8]",
+      "PLC_PRG.TraceOut_SetTempDisplay[8]",
+      "PLC_PRG.TraceOut_HeaterStatus[8]",
+      "PLC_PRG.TraceOut_OverheatProtection[8]",
+      "PLC_PRG.TraceOut_HeaterOutput[8]",
+      "PLC_PRG.TraceDt[9]",
+      "PLC_PRG.TraceIn_TemperatureSensorInput[9]",
+      "PLC_PRG.TraceIn_SetTemperature[9]",
+      "PLC_PRG.TraceOut_CurrentTemperature[9]",
+      "PLC_PRG.TraceOut_SetTempDisplay[9]",
+      "PLC_PRG.TraceOut_HeaterStatus[9]",
+      "PLC_PRG.TraceOut_OverheatProtection[9]",
+      "PLC_PRG.TraceOut_HeaterOutput[9]",
+      "PLC_PRG.TraceDt[10]",
+      "PLC_PRG.TraceIn_TemperatureSensorInput[10]",
+      "PLC_PRG.TraceIn_SetTemperature[10]",
+      "PLC_PRG.TraceOut_CurrentTemperature[10]",
+      "PLC_PRG.TraceOut_SetTempDisplay[10]",
+      "PLC_PRG.TraceOut_HeaterStatus[10]",
+      "PLC_PRG.TraceOut_OverheatProtection[10]",
+      "PLC_PRG.TraceOut_HeaterOutput[10]",
+      "PLC_PRG.TraceDt[11]",
+      "PLC_PRG.TraceIn_TemperatureSensorInput[11]",
+      "PLC_PRG.TraceIn_SetTemperature[11]",
+      "PLC_PRG.TraceOut_CurrentTemperature[11]",
+      "PLC_PRG.TraceOut_SetTempDisplay[11]",
+      "PLC_PRG.TraceOut_HeaterStatus[11]",
+      "PLC_PRG.TraceOut_OverheatProtection[11]",
+      "PLC_PRG.TraceOut_HeaterOutput[11]",
+      "PLC_PRG.TraceDt[12]",
+      "PLC_PRG.TraceIn_TemperatureSensorInput[12]",
+      "PLC_PRG.TraceIn_SetTemperature[12]",
+      "PLC_PRG.TraceOut_CurrentTemperature[12]",
+      "PLC_PRG.TraceOut_SetTempDisplay[12]",
+      "PLC_PRG.TraceOut_HeaterStatus[12]",
+      "PLC_PRG.TraceOut_OverheatProtection[12]",
+      "PLC_PRG.TraceOut_HeaterOutput[12]",
+      "PLC_PRG.TraceDt[13]",
+      "PLC_PRG.TraceIn_TemperatureSensorInput[13]",
+      "PLC_PRG.TraceIn_SetTemperature[13]",
+      "PLC_PRG.TraceOut_CurrentTemperature[13]",
+      "PLC_PRG.TraceOut_SetTempDisplay[13]",
+      "PLC_PRG.TraceOut_HeaterStatus[13]",
+      "PLC_PRG.TraceOut_OverheatProtection[13]",
+      "PLC_PRG.TraceOut_HeaterOutput[13]",
+      "PLC_PRG.TraceDt[14]",
+      "PLC_PRG.TraceIn_TemperatureSensorInput[14]",
+      "PLC_PRG.TraceIn_SetTemperature[14]",
+      "PLC_PRG.TraceOut_CurrentTemperature[14]",
+      "PLC_PRG.TraceOut_SetTempDisplay[14]",
+      "PLC_PRG.TraceOut_HeaterStatus[14]",
+      "PLC_PRG.TraceOut_OverheatProtection[14]",
+      "PLC_PRG.TraceOut_HeaterOutput[14]",
+      "PLC_PRG.TraceDt[15]",
+      "PLC_PRG.TraceIn_TemperatureSensorInput[15]",
+      "PLC_PRG.TraceIn_SetTemperature[15]",
+      "PLC_PRG.TraceOut_CurrentTemperature[15]",
+      "PLC_PRG.TraceOut_SetTempDisplay[15]",
+      "PLC_PRG.TraceOut_HeaterStatus[15]",
+      "PLC_PRG.TraceOut_OverheatProtection[15]",
+      "PLC_PRG.TraceOut_HeaterOutput[15]"
+    ],
+    "trace_mapping": [
+      {
+        "step_index": 0,
+        "case_id": "normal_trip_and_recovery",
+        "case_step": 0,
+        "dt_expr": "PLC_PRG.TraceDt[0]",
+        "inputs": {
+          "TemperatureSensorInput": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_TemperatureSensorInput[0]",
+            "type": "REAL"
+          },
+          "SetTemperature": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SetTemperature[0]",
+            "type": "REAL"
+          }
+        },
+        "outputs": {
+          "CurrentTemperature": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_CurrentTemperature[0]",
+            "type": "REAL"
+          },
+          "SetTempDisplay": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_SetTempDisplay[0]",
+            "type": "REAL"
+          },
+          "HeaterStatus": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_HeaterStatus[0]",
+            "type": "BOOL"
+          },
+          "OverheatProtection": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_OverheatProtection[0]",
+            "type": "BOOL"
+          },
+          "HeaterOutput": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_HeaterOutput[0]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 1,
+        "case_id": "normal_trip_and_recovery",
+        "case_step": 1,
+        "dt_expr": "PLC_PRG.TraceDt[1]",
+        "inputs": {
+          "TemperatureSensorInput": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_TemperatureSensorInput[1]",
+            "type": "REAL"
+          },
+          "SetTemperature": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SetTemperature[1]",
+            "type": "REAL"
+          }
+        },
+        "outputs": {
+          "CurrentTemperature": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_CurrentTemperature[1]",
+            "type": "REAL"
+          },
+          "SetTempDisplay": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_SetTempDisplay[1]",
+            "type": "REAL"
+          },
+          "HeaterStatus": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_HeaterStatus[1]",
+            "type": "BOOL"
+          },
+          "OverheatProtection": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_OverheatProtection[1]",
+            "type": "BOOL"
+          },
+          "HeaterOutput": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_HeaterOutput[1]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 2,
+        "case_id": "normal_trip_and_recovery",
+        "case_step": 2,
+        "dt_expr": "PLC_PRG.TraceDt[2]",
+        "inputs": {
+          "TemperatureSensorInput": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_TemperatureSensorInput[2]",
+            "type": "REAL"
+          },
+          "SetTemperature": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SetTemperature[2]",
+            "type": "REAL"
+          }
+        },
+        "outputs": {
+          "CurrentTemperature": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_CurrentTemperature[2]",
+            "type": "REAL"
+          },
+          "SetTempDisplay": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_SetTempDisplay[2]",
+            "type": "REAL"
+          },
+          "HeaterStatus": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_HeaterStatus[2]",
+            "type": "BOOL"
+          },
+          "OverheatProtection": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_OverheatProtection[2]",
+            "type": "BOOL"
+          },
+          "HeaterOutput": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_HeaterOutput[2]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 3,
+        "case_id": "normal_trip_and_recovery",
+        "case_step": 3,
+        "dt_expr": "PLC_PRG.TraceDt[3]",
+        "inputs": {
+          "TemperatureSensorInput": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_TemperatureSensorInput[3]",
+            "type": "REAL"
+          },
+          "SetTemperature": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SetTemperature[3]",
+            "type": "REAL"
+          }
+        },
+        "outputs": {
+          "CurrentTemperature": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_CurrentTemperature[3]",
+            "type": "REAL"
+          },
+          "SetTempDisplay": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_SetTempDisplay[3]",
+            "type": "REAL"
+          },
+          "HeaterStatus": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_HeaterStatus[3]",
+            "type": "BOOL"
+          },
+          "OverheatProtection": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_OverheatProtection[3]",
+            "type": "BOOL"
+          },
+          "HeaterOutput": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_HeaterOutput[3]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 4,
+        "case_id": "normal_trip_and_recovery",
+        "case_step": 4,
+        "dt_expr": "PLC_PRG.TraceDt[4]",
+        "inputs": {
+          "TemperatureSensorInput": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_TemperatureSensorInput[4]",
+            "type": "REAL"
+          },
+          "SetTemperature": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SetTemperature[4]",
+            "type": "REAL"
+          }
+        },
+        "outputs": {
+          "CurrentTemperature": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_CurrentTemperature[4]",
+            "type": "REAL"
+          },
+          "SetTempDisplay": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_SetTempDisplay[4]",
+            "type": "REAL"
+          },
+          "HeaterStatus": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_HeaterStatus[4]",
+            "type": "BOOL"
+          },
+          "OverheatProtection": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_OverheatProtection[4]",
+            "type": "BOOL"
+          },
+          "HeaterOutput": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_HeaterOutput[4]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 5,
+        "case_id": "normal_trip_and_recovery",
+        "case_step": 5,
+        "dt_expr": "PLC_PRG.TraceDt[5]",
+        "inputs": {
+          "TemperatureSensorInput": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_TemperatureSensorInput[5]",
+            "type": "REAL"
+          },
+          "SetTemperature": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SetTemperature[5]",
+            "type": "REAL"
+          }
+        },
+        "outputs": {
+          "CurrentTemperature": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_CurrentTemperature[5]",
+            "type": "REAL"
+          },
+          "SetTempDisplay": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_SetTempDisplay[5]",
+            "type": "REAL"
+          },
+          "HeaterStatus": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_HeaterStatus[5]",
+            "type": "BOOL"
+          },
+          "OverheatProtection": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_OverheatProtection[5]",
+            "type": "BOOL"
+          },
+          "HeaterOutput": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_HeaterOutput[5]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 6,
+        "case_id": "normal_trip_and_recovery",
+        "case_step": 6,
+        "dt_expr": "PLC_PRG.TraceDt[6]",
+        "inputs": {
+          "TemperatureSensorInput": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_TemperatureSensorInput[6]",
+            "type": "REAL"
+          },
+          "SetTemperature": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SetTemperature[6]",
+            "type": "REAL"
+          }
+        },
+        "outputs": {
+          "CurrentTemperature": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_CurrentTemperature[6]",
+            "type": "REAL"
+          },
+          "SetTempDisplay": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_SetTempDisplay[6]",
+            "type": "REAL"
+          },
+          "HeaterStatus": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_HeaterStatus[6]",
+            "type": "BOOL"
+          },
+          "OverheatProtection": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_OverheatProtection[6]",
+            "type": "BOOL"
+          },
+          "HeaterOutput": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_HeaterOutput[6]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 7,
+        "case_id": "normal_trip_and_recovery",
+        "case_step": 7,
+        "dt_expr": "PLC_PRG.TraceDt[7]",
+        "inputs": {
+          "TemperatureSensorInput": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_TemperatureSensorInput[7]",
+            "type": "REAL"
+          },
+          "SetTemperature": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SetTemperature[7]",
+            "type": "REAL"
+          }
+        },
+        "outputs": {
+          "CurrentTemperature": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_CurrentTemperature[7]",
+            "type": "REAL"
+          },
+          "SetTempDisplay": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_SetTempDisplay[7]",
+            "type": "REAL"
+          },
+          "HeaterStatus": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_HeaterStatus[7]",
+            "type": "BOOL"
+          },
+          "OverheatProtection": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_OverheatProtection[7]",
+            "type": "BOOL"
+          },
+          "HeaterOutput": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_HeaterOutput[7]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 8,
+        "case_id": "sensor_boundaries_and_frozen_demand",
+        "case_step": 0,
+        "dt_expr": "PLC_PRG.TraceDt[8]",
+        "inputs": {
+          "TemperatureSensorInput": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_TemperatureSensorInput[8]",
+            "type": "REAL"
+          },
+          "SetTemperature": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SetTemperature[8]",
+            "type": "REAL"
+          }
+        },
+        "outputs": {
+          "CurrentTemperature": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_CurrentTemperature[8]",
+            "type": "REAL"
+          },
+          "SetTempDisplay": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_SetTempDisplay[8]",
+            "type": "REAL"
+          },
+          "HeaterStatus": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_HeaterStatus[8]",
+            "type": "BOOL"
+          },
+          "OverheatProtection": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_OverheatProtection[8]",
+            "type": "BOOL"
+          },
+          "HeaterOutput": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_HeaterOutput[8]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 9,
+        "case_id": "sensor_boundaries_and_frozen_demand",
+        "case_step": 1,
+        "dt_expr": "PLC_PRG.TraceDt[9]",
+        "inputs": {
+          "TemperatureSensorInput": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_TemperatureSensorInput[9]",
+            "type": "REAL"
+          },
+          "SetTemperature": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SetTemperature[9]",
+            "type": "REAL"
+          }
+        },
+        "outputs": {
+          "CurrentTemperature": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_CurrentTemperature[9]",
+            "type": "REAL"
+          },
+          "SetTempDisplay": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_SetTempDisplay[9]",
+            "type": "REAL"
+          },
+          "HeaterStatus": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_HeaterStatus[9]",
+            "type": "BOOL"
+          },
+          "OverheatProtection": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_OverheatProtection[9]",
+            "type": "BOOL"
+          },
+          "HeaterOutput": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_HeaterOutput[9]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 10,
+        "case_id": "sensor_boundaries_and_frozen_demand",
+        "case_step": 2,
+        "dt_expr": "PLC_PRG.TraceDt[10]",
+        "inputs": {
+          "TemperatureSensorInput": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_TemperatureSensorInput[10]",
+            "type": "REAL"
+          },
+          "SetTemperature": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SetTemperature[10]",
+            "type": "REAL"
+          }
+        },
+        "outputs": {
+          "CurrentTemperature": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_CurrentTemperature[10]",
+            "type": "REAL"
+          },
+          "SetTempDisplay": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_SetTempDisplay[10]",
+            "type": "REAL"
+          },
+          "HeaterStatus": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_HeaterStatus[10]",
+            "type": "BOOL"
+          },
+          "OverheatProtection": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_OverheatProtection[10]",
+            "type": "BOOL"
+          },
+          "HeaterOutput": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_HeaterOutput[10]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 11,
+        "case_id": "sensor_boundaries_and_frozen_demand",
+        "case_step": 3,
+        "dt_expr": "PLC_PRG.TraceDt[11]",
+        "inputs": {
+          "TemperatureSensorInput": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_TemperatureSensorInput[11]",
+            "type": "REAL"
+          },
+          "SetTemperature": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SetTemperature[11]",
+            "type": "REAL"
+          }
+        },
+        "outputs": {
+          "CurrentTemperature": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_CurrentTemperature[11]",
+            "type": "REAL"
+          },
+          "SetTempDisplay": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_SetTempDisplay[11]",
+            "type": "REAL"
+          },
+          "HeaterStatus": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_HeaterStatus[11]",
+            "type": "BOOL"
+          },
+          "OverheatProtection": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_OverheatProtection[11]",
+            "type": "BOOL"
+          },
+          "HeaterOutput": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_HeaterOutput[11]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 12,
+        "case_id": "sensor_boundaries_and_frozen_demand",
+        "case_step": 4,
+        "dt_expr": "PLC_PRG.TraceDt[12]",
+        "inputs": {
+          "TemperatureSensorInput": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_TemperatureSensorInput[12]",
+            "type": "REAL"
+          },
+          "SetTemperature": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SetTemperature[12]",
+            "type": "REAL"
+          }
+        },
+        "outputs": {
+          "CurrentTemperature": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_CurrentTemperature[12]",
+            "type": "REAL"
+          },
+          "SetTempDisplay": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_SetTempDisplay[12]",
+            "type": "REAL"
+          },
+          "HeaterStatus": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_HeaterStatus[12]",
+            "type": "BOOL"
+          },
+          "OverheatProtection": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_OverheatProtection[12]",
+            "type": "BOOL"
+          },
+          "HeaterOutput": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_HeaterOutput[12]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 13,
+        "case_id": "sensor_boundaries_and_frozen_demand",
+        "case_step": 5,
+        "dt_expr": "PLC_PRG.TraceDt[13]",
+        "inputs": {
+          "TemperatureSensorInput": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_TemperatureSensorInput[13]",
+            "type": "REAL"
+          },
+          "SetTemperature": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SetTemperature[13]",
+            "type": "REAL"
+          }
+        },
+        "outputs": {
+          "CurrentTemperature": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_CurrentTemperature[13]",
+            "type": "REAL"
+          },
+          "SetTempDisplay": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_SetTempDisplay[13]",
+            "type": "REAL"
+          },
+          "HeaterStatus": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_HeaterStatus[13]",
+            "type": "BOOL"
+          },
+          "OverheatProtection": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_OverheatProtection[13]",
+            "type": "BOOL"
+          },
+          "HeaterOutput": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_HeaterOutput[13]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 14,
+        "case_id": "sensor_boundaries_and_frozen_demand",
+        "case_step": 6,
+        "dt_expr": "PLC_PRG.TraceDt[14]",
+        "inputs": {
+          "TemperatureSensorInput": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_TemperatureSensorInput[14]",
+            "type": "REAL"
+          },
+          "SetTemperature": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SetTemperature[14]",
+            "type": "REAL"
+          }
+        },
+        "outputs": {
+          "CurrentTemperature": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_CurrentTemperature[14]",
+            "type": "REAL"
+          },
+          "SetTempDisplay": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_SetTempDisplay[14]",
+            "type": "REAL"
+          },
+          "HeaterStatus": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_HeaterStatus[14]",
+            "type": "BOOL"
+          },
+          "OverheatProtection": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_OverheatProtection[14]",
+            "type": "BOOL"
+          },
+          "HeaterOutput": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_HeaterOutput[14]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 15,
+        "case_id": "sensor_boundaries_and_frozen_demand",
+        "case_step": 7,
+        "dt_expr": "PLC_PRG.TraceDt[15]",
+        "inputs": {
+          "TemperatureSensorInput": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_TemperatureSensorInput[15]",
+            "type": "REAL"
+          },
+          "SetTemperature": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SetTemperature[15]",
+            "type": "REAL"
+          }
+        },
+        "outputs": {
+          "CurrentTemperature": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_CurrentTemperature[15]",
+            "type": "REAL"
+          },
+          "SetTempDisplay": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_SetTempDisplay[15]",
+            "type": "REAL"
+          },
+          "HeaterStatus": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_HeaterStatus[15]",
+            "type": "BOOL"
+          },
+          "OverheatProtection": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_OverheatProtection[15]",
+            "type": "BOOL"
+          },
+          "HeaterOutput": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_HeaterOutput[15]",
+            "type": "BOOL"
+          }
+        }
+      }
+    ]
+  },
+  "result_path": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\d97a50deeaec380c\\simulation_evidence.json"
+}

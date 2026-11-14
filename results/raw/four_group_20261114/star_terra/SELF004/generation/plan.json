@@ -1,0 +1,157 @@
+{
+  "state_machine": [
+    {
+      "state": "IDLE",
+      "transitions": [
+        {
+          "guard": "Jam",
+          "to": "FAULT"
+        },
+        {
+          "guard": "Reset",
+          "to": "IDLE"
+        },
+        {
+          "guard": "Stop",
+          "to": "IDLE"
+        },
+        {
+          "guard": "Start AND NOT AtExit",
+          "to": "MOVING"
+        },
+        {
+          "guard": "otherwise",
+          "to": "IDLE"
+        }
+      ]
+    },
+    {
+      "state": "MOVING",
+      "transitions": [
+        {
+          "guard": "Jam",
+          "to": "FAULT"
+        },
+        {
+          "guard": "Reset",
+          "to": "IDLE"
+        },
+        {
+          "guard": "Stop",
+          "to": "IDLE"
+        },
+        {
+          "guard": "AtExit",
+          "to": "COMPLETE"
+        },
+        {
+          "guard": "otherwise",
+          "to": "MOVING"
+        }
+      ]
+    },
+    {
+      "state": "COMPLETE",
+      "transitions": [
+        {
+          "guard": "Jam",
+          "to": "FAULT"
+        },
+        {
+          "guard": "Reset",
+          "to": "IDLE"
+        },
+        {
+          "guard": "Stop",
+          "to": "IDLE"
+        },
+        {
+          "guard": "otherwise",
+          "to": "COMPLETE"
+        }
+      ]
+    },
+    {
+      "state": "FAULT",
+      "transitions": [
+        {
+          "guard": "Jam",
+          "to": "FAULT"
+        },
+        {
+          "guard": "Reset",
+          "to": "IDLE"
+        },
+        {
+          "guard": "otherwise",
+          "to": "FAULT"
+        }
+      ]
+    }
+  ],
+  "timer_plan": {
+    "required": false,
+    "timers": [],
+    "PT_durations": "None",
+    "reset_conditions": "None"
+  },
+  "priorities": [
+    "Evaluate each state's guards in listed order; only the first matching guard executes.",
+    "Jam overrides every other input, including Reset.",
+    "Reset without Jam returns any state to IDLE.",
+    "An existing FAULT remains latched without an effective Reset; Stop cannot clear it.",
+    "Stop overrides normal transitions; otherwise use the state-specific transition or hold.",
+    "All inputs are level-sensitive. Execute at most one state transition per scan."
+  ],
+  "initial_values": {
+    "state": "IDLE",
+    "Belt": false,
+    "Complete": false,
+    "Fault": false,
+    "scope": "Fresh instance before the first scan; the first scan executes normally."
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "Edge sampling",
+      "action": "Sample Start, Stop, AtExit, Jam and Reset once into scan-local values. Use sampled levels directly; no edge detection is required."
+    },
+    {
+      "stage": 2,
+      "name": "Safety/reset priority and state transitions",
+      "action": "Read the retained pre-state and apply the first matching guard. Commit exactly one resulting state without re-evaluating transitions."
+    },
+    {
+      "stage": 3,
+      "name": "Unconditional top-level timer FB calls outside CASE/IF",
+      "action": "No timer FBs are required, so this stage has no calls."
+    },
+    {
+      "stage": 4,
+      "name": "Unified output assignments",
+      "action": "Assign Belt := (state = MOVING), Complete := (state = COMPLETE), and Fault := (state = FAULT) from the post-transition state."
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G(Jam -> (Fault & !Belt & !Complete))"
+    },
+    {
+      "id": "A2",
+      "formula": "G((!Jam & Reset) -> (!Belt & !Complete & !Fault))"
+    },
+    {
+      "id": "A3",
+      "formula": "G(!(Belt & Complete) & !(Belt & Fault) & !(Complete & Fault))"
+    },
+    {
+      "id": "A4",
+      "formula": "G(Fault -> (G Fault | (Fault U (!Jam & Reset))))"
+    },
+    {
+      "id": "A5",
+      "formula": "G((!Jam & !Reset & Stop) -> (!Belt & !Complete))"
+    }
+  ]
+}

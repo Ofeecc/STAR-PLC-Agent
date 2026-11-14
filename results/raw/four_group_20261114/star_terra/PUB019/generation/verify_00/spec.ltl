@@ -1,0 +1,46 @@
+-- Formal verification specification for Task PUB019
+-- Generated: 2026-11-14T11:37:00.377949+00:00
+
+-- Property: PUB019.P_init
+-- Description: Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
+LTLSPEC NAME PUB019.P_init := init;
+
+-- Property: PUB019.P1
+-- Description: No command survives emergency stop or no mode.
+LTLSPEC NAME PUB019.P1 := G((!safe | no_mode) -> off);
+
+-- Property: PUB019.P2
+-- Description: Opposed actuators are never commanded together.
+LTLSPEC NAME PUB019.P2 := G(exclusive);
+
+-- Property: PUB019.P3
+-- Description: Manual down requires the button and an unreached lower limit.
+LTLSPEC NAME PUB019.P3 := G(safe & !modeChanged & ManualMode -> (down <-> down_manual));
+
+-- Property: PUB019.P4
+-- Description: Every corresponding completion input suppresses its command.
+LTLSPEC NAME PUB019.P4 := G((down_limit -> !down) & (up_limit -> !up) & (left_limit -> !left) & (right_limit -> !right) & (grip_limit -> !grip) & (release_limit -> !release));
+
+-- Property: PUB019.P5
+-- Description: A completed single step waits for another press.
+LTLSPEC NAME PUB019.P5 := G(safe & !modeChanged & (step_done | waiting) -> off);
+
+-- Property: PUB019.P6
+-- Description: A permitted fresh start begins down.
+LTLSPEC NAME PUB019.P6 := G(safe & !modeChanged & start -> started);
+
+-- Property: PUB019.P7
+-- Description: The eight preset actions retain their required order.
+LTLSPEC NAME PUB019.P7 := G(ordered);
+
+-- Property: PUB019.P8
+-- Description: Single-cycle stops; continuous wraps.
+LTLSPEC NAME PUB019.P8 := G((safe & !modeChanged) -> ((cycle_done -> (idle & off)) & (continuous_done -> begin_next)));
+
+-- Property: PUB019.P9
+-- Description: With unchanged safe single-cycle mode and eventual matching feedback, every started sequence eventually returns idle.
+LTLSPEC NAME PUB019.P9 := (G(safe & SingleCycleMode) & G(busy -> F feedback)) -> G(started -> F idle);
+
+-- Property: PUB019.P10
+-- Description: Completes manual-mode and mode-change output coverage beyond MoveDown.
+LTLSPEC NAME PUB019.P10 := G((safe & !modeChanged & ManualMode -> other_manual) & ((safe & modeChanged) -> off));

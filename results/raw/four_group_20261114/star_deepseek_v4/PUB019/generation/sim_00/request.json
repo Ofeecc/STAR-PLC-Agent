@@ -1,0 +1,2256 @@
+{
+  "request_id": "d9aebdf0bfa64f79ad8f7057ca3b9920",
+  "mode": "IDE_SIMULATION_ONLY",
+  "no_physical_connection": true,
+  "workspace": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\72e0bc758994bbe1",
+  "project": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\72e0bc758994bbe1\\simulation.project",
+  "template": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\72e0bc758994bbe1\\benchmark.project",
+  "task_id": "PUB019",
+  "task_sha256": "02676bcea994c663f68c8dbe8261fff2eebbfb8d4144180037a53f33edfb7972",
+  "source_sha256": "5e4de9c1b743ea776f8d0d78b2e4403782e5dfde20886018546dd8f3a1ff19eb",
+  "candidate": {
+    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    ManualMode : BOOL;\n    SingleStepMode : BOOL;\n    SingleCycleMode : BOOL;\n    ContinuousMode : BOOL;\n    EmergencyStop : BOOL;\n    Start : BOOL;\n    DownButton : BOOL;\n    UpButton : BOOL;\n    LeftButton : BOOL;\n    RightButton : BOOL;\n    GripButton : BOOL;\n    ReleaseButton : BOOL;\n    DownLimitSwitch : BOOL;\n    UpLimitSwitch : BOOL;\n    LeftLimitSwitch : BOOL;\n    RightLimitSwitch : BOOL;\n    GripLimitSwitch : BOOL;\n    ReleaseLimitSwitch : BOOL;\nEND_VAR\nVAR_OUTPUT\n    MoveDown : BOOL := FALSE;\n    MoveUp : BOOL := FALSE;\n    MoveLeft : BOOL := FALSE;\n    MoveRight : BOOL := FALSE;\n    ActivateGrip : BOOL := FALSE;\n    ActivateRelease : BOOL := FALSE;\nEND_VAR\nVAR\n    phase : INT := 0;\n    busy : BOOL := FALSE;\n    step_wait : BOOL := FALSE;\n    next_step : INT := 1;\n    start_mem : BOOL := FALSE;\n    mode_prev : INT := 0;\n    first_scan : BOOL := TRUE;\n    arm_mode : INT := 0;\n    mode_changed : BOOL := FALSE;\n    start_rise : BOOL := FALSE;\n    selected_mode : INT := 0;\n    mode_count : INT := 0;\n    invalid_mode : BOOL := FALSE;\n    safe : BOOL := FALSE;\n    reset_active : BOOL := FALSE;\n    cmd_down : BOOL := FALSE;\n    cmd_up : BOOL := FALSE;\n    cmd_left : BOOL := FALSE;\n    cmd_right : BOOL := FALSE;\n    cmd_grip : BOOL := FALSE;\n    cmd_release : BOOL := FALSE;\n    auto_complete : BOOL := FALSE;\n    can_manual : BOOL := FALSE;\nEND_VAR",
+    "implementation": "// Stage 1: edge sampling and mode selection\nselected_mode := 0;\nmode_count := 0;\nIF ManualMode THEN mode_count := mode_count + 1; END_IF;\nIF SingleStepMode THEN mode_count := mode_count + 1; END_IF;\nIF SingleCycleMode THEN mode_count := mode_count + 1; END_IF;\nIF ContinuousMode THEN mode_count := mode_count + 1; END_IF;\ninvalid_mode := (mode_count > 1);\nIF invalid_mode THEN\n    selected_mode := 0;\nELSIF ManualMode THEN\n    selected_mode := 1;\nELSIF SingleStepMode THEN\n    selected_mode := 2;\nELSIF SingleCycleMode THEN\n    selected_mode := 3;\nELSIF ContinuousMode THEN\n    selected_mode := 4;\nELSE\n    selected_mode := 0;\nEND_IF;\nsafe := EmergencyStop;\nstart_rise := Start AND NOT start_mem;\nIF first_scan THEN\n    mode_changed := FALSE;\nELSE\n    mode_changed := (selected_mode <> mode_prev);\nEND_IF;\nstart_mem := Start;\nmode_prev := selected_mode;\nfirst_scan := FALSE;\narm_mode := selected_mode;\n\n// Stage 2: reset priority and state transitions\nreset_active := (NOT safe) OR (selected_mode = 0) OR mode_changed;\nIF reset_active THEN\n    phase := 0;\n    busy := FALSE;\n    step_wait := FALSE;\n    next_step := 1;\nELSIF selected_mode = 1 THEN\n    phase := 0;\n    busy := FALSE;\n    step_wait := FALSE;\n    next_step := 1;\nELSE\n    auto_complete := FALSE;\n    CASE phase OF\n        1: auto_complete := DownLimitSwitch;\n        2: auto_complete := GripLimitSwitch;\n        3: auto_complete := UpLimitSwitch;\n        4: auto_complete := RightLimitSwitch;\n        5: auto_complete := DownLimitSwitch;\n        6: auto_complete := ReleaseLimitSwitch;\n        7: auto_complete := UpLimitSwitch;\n        8: auto_complete := LeftLimitSwitch;\n    ELSE\n        auto_complete := FALSE;\n    END_CASE;\n    IF phase = 0 THEN\n        IF start_rise AND UpLimitSwitch AND LeftLimitSwitch THEN\n            phase := 1;\n            busy := TRUE;\n            step_wait := FALSE;\n            next_step := 2;\n        END_IF;\n    ELSIF phase = 9 THEN\n        IF (selected_mode = 2) AND start_rise AND ((next_step <> 1) OR (UpLimitSwitch AND LeftLimitSwitch)) THEN\n            phase := next_step;\n            busy := TRUE;\n            step_wait := FALSE;\n        END_IF;\n    ELSIF (phase >= 1) AND (phase <= 8) AND busy AND auto_complete THEN\n        IF phase = 8 THEN\n            IF selected_mode = 2 THEN\n                next_step := 1;\n                phase := 9;\n                busy := FALSE;\n                step_wait := TRUE;\n            ELSIF selected_mode = 3 THEN\n                next_step := 1;\n                phase := 0;\n                busy := FALSE;\n                step_wait := FALSE;\n            ELSE\n                next_step := 2;\n                phase := 1;\n                busy := TRUE;\n                step_wait := FALSE;\n            END_IF;\n        ELSE\n            IF selected_mode = 2 THEN\n                next_step := phase + 1;\n                phase := 9;\n                busy := FALSE;\n                step_wait := TRUE;\n            ELSIF selected_mode = 3 THEN\n                next_step := phase + 1;\n                phase := phase + 1;\n                busy := TRUE;\n                step_wait := FALSE;\n            ELSE\n                next_step := phase + 1;\n                phase := phase + 1;\n                busy := TRUE;\n                step_wait := FALSE;\n            END_IF;\n        END_IF;\n    END_IF;\nEND_IF;\n\n// Stage 3: no IEC timers are used.\n\n// Stage 4: unified output assignment with same-scan safety gates\ncmd_down := FALSE;\ncmd_up := FALSE;\ncmd_left := FALSE;\ncmd_right := FALSE;\ncmd_grip := FALSE;\ncmd_release := FALSE;\ncan_manual := FALSE;\nIF safe AND (NOT mode_changed) AND (selected_mode <> 0) THEN\n    IF selected_mode = 1 THEN\n        can_manual := TRUE;\n        cmd_down := DownButton AND NOT UpButton AND NOT DownLimitSwitch;\n        cmd_up := UpButton AND NOT DownButton AND NOT UpLimitSwitch;\n        cmd_left := LeftButton AND NOT RightButton AND NOT LeftLimitSwitch;\n        cmd_right := RightButton AND NOT LeftButton AND NOT RightLimitSwitch;\n        cmd_grip := GripButton AND NOT ReleaseButton AND NOT GripLimitSwitch;\n        cmd_release := ReleaseButton AND NOT GripButton AND NOT ReleaseLimitSwitch;\n    ELSE\n        CASE phase OF\n            1: cmd_down := TRUE;\n            2: cmd_grip := TRUE;\n            3: cmd_up := TRUE;\n            4: cmd_right := TRUE;\n            5: cmd_down := TRUE;\n            6: cmd_release := TRUE;\n            7: cmd_up := TRUE;\n            8: cmd_left := TRUE;\n        ELSE\n            cmd_down := FALSE;\n        END_CASE;\n    END_IF;\nEND_IF;\nIF DownLimitSwitch THEN cmd_down := FALSE; END_IF;\nIF UpLimitSwitch THEN cmd_up := FALSE; END_IF;\nIF LeftLimitSwitch THEN cmd_left := FALSE; END_IF;\nIF RightLimitSwitch THEN cmd_right := FALSE; END_IF;\nIF GripLimitSwitch THEN cmd_grip := FALSE; END_IF;\nIF ReleaseLimitSwitch THEN cmd_release := FALSE; END_IF;\nIF cmd_down AND cmd_up THEN\n    cmd_down := FALSE;\n    cmd_up := FALSE;\nEND_IF;\nIF cmd_left AND cmd_right THEN\n    cmd_left := FALSE;\n    cmd_right := FALSE;\nEND_IF;\nIF cmd_grip AND cmd_release THEN\n    cmd_grip := FALSE;\n    cmd_release := FALSE;\nEND_IF;\nIF (NOT safe) OR mode_changed OR (selected_mode = 0) THEN\n    cmd_down := FALSE;\n    cmd_up := FALSE;\n    cmd_left := FALSE;\n    cmd_right := FALSE;\n    cmd_grip := FALSE;\n    cmd_release := FALSE;\nEND_IF;\nMoveDown := cmd_down;\nMoveUp := cmd_up;\nMoveLeft := cmd_left;\nMoveRight := cmd_right;\nActivateGrip := cmd_grip;\nActivateRelease := cmd_release;",
+    "supporting_objects": []
+  },
+  "program": {
+    "declaration": "PROGRAM PLC_PRG\nVAR\n BenchStep : UDINT := 0;\n BenchCalls : UDINT := 0;\n BenchDone : BOOL := FALSE;\n BenchUut0 : FB_Task;\n BenchUut1 : FB_Task;\n TraceIn_ManualMode : ARRAY[0..12] OF BOOL;\n TraceIn_SingleStepMode : ARRAY[0..12] OF BOOL;\n TraceIn_SingleCycleMode : ARRAY[0..12] OF BOOL;\n TraceIn_ContinuousMode : ARRAY[0..12] OF BOOL;\n TraceIn_EmergencyStop : ARRAY[0..12] OF BOOL;\n TraceIn_Start : ARRAY[0..12] OF BOOL;\n TraceIn_DownButton : ARRAY[0..12] OF BOOL;\n TraceIn_UpButton : ARRAY[0..12] OF BOOL;\n TraceIn_LeftButton : ARRAY[0..12] OF BOOL;\n TraceIn_RightButton : ARRAY[0..12] OF BOOL;\n TraceIn_GripButton : ARRAY[0..12] OF BOOL;\n TraceIn_ReleaseButton : ARRAY[0..12] OF BOOL;\n TraceIn_DownLimitSwitch : ARRAY[0..12] OF BOOL;\n TraceIn_UpLimitSwitch : ARRAY[0..12] OF BOOL;\n TraceIn_LeftLimitSwitch : ARRAY[0..12] OF BOOL;\n TraceIn_RightLimitSwitch : ARRAY[0..12] OF BOOL;\n TraceIn_GripLimitSwitch : ARRAY[0..12] OF BOOL;\n TraceIn_ReleaseLimitSwitch : ARRAY[0..12] OF BOOL;\n TraceOut_MoveDown : ARRAY[0..12] OF BOOL;\n TraceOut_MoveUp : ARRAY[0..12] OF BOOL;\n TraceOut_MoveLeft : ARRAY[0..12] OF BOOL;\n TraceOut_MoveRight : ARRAY[0..12] OF BOOL;\n TraceOut_ActivateGrip : ARRAY[0..12] OF BOOL;\n TraceOut_ActivateRelease : ARRAY[0..12] OF BOOL;\nEND_VAR",
+    "implementation": "IF NOT BenchDone THEN\n CASE BenchStep OF\n 0:\n   BenchUut0.ManualMode := TRUE;\n   BenchUut0.SingleStepMode := FALSE;\n   BenchUut0.SingleCycleMode := FALSE;\n   BenchUut0.ContinuousMode := FALSE;\n   BenchUut0.EmergencyStop := TRUE;\n   BenchUut0.Start := FALSE;\n   BenchUut0.DownButton := TRUE;\n   BenchUut0.UpButton := FALSE;\n   BenchUut0.LeftButton := FALSE;\n   BenchUut0.RightButton := FALSE;\n   BenchUut0.GripButton := FALSE;\n   BenchUut0.ReleaseButton := FALSE;\n   BenchUut0.DownLimitSwitch := FALSE;\n   BenchUut0.UpLimitSwitch := TRUE;\n   BenchUut0.LeftLimitSwitch := TRUE;\n   BenchUut0.RightLimitSwitch := FALSE;\n   BenchUut0.GripLimitSwitch := FALSE;\n   BenchUut0.ReleaseLimitSwitch := FALSE;\n   TraceIn_ManualMode[0] := BenchUut0.ManualMode;\n   TraceIn_SingleStepMode[0] := BenchUut0.SingleStepMode;\n   TraceIn_SingleCycleMode[0] := BenchUut0.SingleCycleMode;\n   TraceIn_ContinuousMode[0] := BenchUut0.ContinuousMode;\n   TraceIn_EmergencyStop[0] := BenchUut0.EmergencyStop;\n   TraceIn_Start[0] := BenchUut0.Start;\n   TraceIn_DownButton[0] := BenchUut0.DownButton;\n   TraceIn_UpButton[0] := BenchUut0.UpButton;\n   TraceIn_LeftButton[0] := BenchUut0.LeftButton;\n   TraceIn_RightButton[0] := BenchUut0.RightButton;\n   TraceIn_GripButton[0] := BenchUut0.GripButton;\n   TraceIn_ReleaseButton[0] := BenchUut0.ReleaseButton;\n   TraceIn_DownLimitSwitch[0] := BenchUut0.DownLimitSwitch;\n   TraceIn_UpLimitSwitch[0] := BenchUut0.UpLimitSwitch;\n   TraceIn_LeftLimitSwitch[0] := BenchUut0.LeftLimitSwitch;\n   TraceIn_RightLimitSwitch[0] := BenchUut0.RightLimitSwitch;\n   TraceIn_GripLimitSwitch[0] := BenchUut0.GripLimitSwitch;\n   TraceIn_ReleaseLimitSwitch[0] := BenchUut0.ReleaseLimitSwitch;\n   BenchUut0();\n   TraceOut_MoveDown[0] := BenchUut0.MoveDown;\n   TraceOut_MoveUp[0] := BenchUut0.MoveUp;\n   TraceOut_MoveLeft[0] := BenchUut0.MoveLeft;\n   TraceOut_MoveRight[0] := BenchUut0.MoveRight;\n   TraceOut_ActivateGrip[0] := BenchUut0.ActivateGrip;\n   TraceOut_ActivateRelease[0] := BenchUut0.ActivateRelease;\n   BenchCalls := BenchCalls + 1;\n 1:\n   BenchUut0.ManualMode := TRUE;\n   BenchUut0.SingleStepMode := FALSE;\n   BenchUut0.SingleCycleMode := FALSE;\n   BenchUut0.ContinuousMode := FALSE;\n   BenchUut0.EmergencyStop := TRUE;\n   BenchUut0.Start := FALSE;\n   BenchUut0.DownButton := TRUE;\n   BenchUut0.UpButton := FALSE;\n   BenchUut0.LeftButton := FALSE;\n   BenchUut0.RightButton := FALSE;\n   BenchUut0.GripButton := FALSE;\n   BenchUut0.ReleaseButton := FALSE;\n   BenchUut0.DownLimitSwitch := TRUE;\n   BenchUut0.UpLimitSwitch := FALSE;\n   BenchUut0.LeftLimitSwitch := TRUE;\n   BenchUut0.RightLimitSwitch := FALSE;\n   BenchUut0.GripLimitSwitch := FALSE;\n   BenchUut0.ReleaseLimitSwitch := FALSE;\n   TraceIn_ManualMode[1] := BenchUut0.ManualMode;\n   TraceIn_SingleStepMode[1] := BenchUut0.SingleStepMode;\n   TraceIn_SingleCycleMode[1] := BenchUut0.SingleCycleMode;\n   TraceIn_ContinuousMode[1] := BenchUut0.ContinuousMode;\n   TraceIn_EmergencyStop[1] := BenchUut0.EmergencyStop;\n   TraceIn_Start[1] := BenchUut0.Start;\n   TraceIn_DownButton[1] := BenchUut0.DownButton;\n   TraceIn_UpButton[1] := BenchUut0.UpButton;\n   TraceIn_LeftButton[1] := BenchUut0.LeftButton;\n   TraceIn_RightButton[1] := BenchUut0.RightButton;\n   TraceIn_GripButton[1] := BenchUut0.GripButton;\n   TraceIn_ReleaseButton[1] := BenchUut0.ReleaseButton;\n   TraceIn_DownLimitSwitch[1] := BenchUut0.DownLimitSwitch;\n   TraceIn_UpLimitSwitch[1] := BenchUut0.UpLimitSwitch;\n   TraceIn_LeftLimitSwitch[1] := BenchUut0.LeftLimitSwitch;\n   TraceIn_RightLimitSwitch[1] := BenchUut0.RightLimitSwitch;\n   TraceIn_GripLimitSwitch[1] := BenchUut0.GripLimitSwitch;\n   TraceIn_ReleaseLimitSwitch[1] := BenchUut0.ReleaseLimitSwitch;\n   BenchUut0();\n   TraceOut_MoveDown[1] := BenchUut0.MoveDown;\n   TraceOut_MoveUp[1] := BenchUut0.MoveUp;\n   TraceOut_MoveLeft[1] := BenchUut0.MoveLeft;\n   TraceOut_MoveRight[1] := BenchUut0.MoveRight;\n   TraceOut_ActivateGrip[1] := BenchUut0.ActivateGrip;\n   TraceOut_ActivateRelease[1] := BenchUut0.ActivateRelease;\n   BenchCalls := BenchCalls + 1;\n 2:\n   BenchUut0.ManualMode := TRUE;\n   BenchUut0.SingleStepMode := FALSE;\n   BenchUut0.SingleCycleMode := FALSE;\n   BenchUut0.ContinuousMode := FALSE;\n   BenchUut0.EmergencyStop := FALSE;\n   BenchUut0.Start := FALSE;\n   BenchUut0.DownButton := TRUE;\n   BenchUut0.UpButton := FALSE;\n   BenchUut0.LeftButton := FALSE;\n   BenchUut0.RightButton := FALSE;\n   BenchUut0.GripButton := FALSE;\n   BenchUut0.ReleaseButton := FALSE;\n   BenchUut0.DownLimitSwitch := FALSE;\n   BenchUut0.UpLimitSwitch := TRUE;\n   BenchUut0.LeftLimitSwitch := TRUE;\n   BenchUut0.RightLimitSwitch := FALSE;\n   BenchUut0.GripLimitSwitch := FALSE;\n   BenchUut0.ReleaseLimitSwitch := FALSE;\n   TraceIn_ManualMode[2] := BenchUut0.ManualMode;\n   TraceIn_SingleStepMode[2] := BenchUut0.SingleStepMode;\n   TraceIn_SingleCycleMode[2] := BenchUut0.SingleCycleMode;\n   TraceIn_ContinuousMode[2] := BenchUut0.ContinuousMode;\n   TraceIn_EmergencyStop[2] := BenchUut0.EmergencyStop;\n   TraceIn_Start[2] := BenchUut0.Start;\n   TraceIn_DownButton[2] := BenchUut0.DownButton;\n   TraceIn_UpButton[2] := BenchUut0.UpButton;\n   TraceIn_LeftButton[2] := BenchUut0.LeftButton;\n   TraceIn_RightButton[2] := BenchUut0.RightButton;\n   TraceIn_GripButton[2] := BenchUut0.GripButton;\n   TraceIn_ReleaseButton[2] := BenchUut0.ReleaseButton;\n   TraceIn_DownLimitSwitch[2] := BenchUut0.DownLimitSwitch;\n   TraceIn_UpLimitSwitch[2] := BenchUut0.UpLimitSwitch;\n   TraceIn_LeftLimitSwitch[2] := BenchUut0.LeftLimitSwitch;\n   TraceIn_RightLimitSwitch[2] := BenchUut0.RightLimitSwitch;\n   TraceIn_GripLimitSwitch[2] := BenchUut0.GripLimitSwitch;\n   TraceIn_ReleaseLimitSwitch[2] := BenchUut0.ReleaseLimitSwitch;\n   BenchUut0();\n   TraceOut_MoveDown[2] := BenchUut0.MoveDown;\n   TraceOut_MoveUp[2] := BenchUut0.MoveUp;\n   TraceOut_MoveLeft[2] := BenchUut0.MoveLeft;\n   TraceOut_MoveRight[2] := BenchUut0.MoveRight;\n   TraceOut_ActivateGrip[2] := BenchUut0.ActivateGrip;\n   TraceOut_ActivateRelease[2] := BenchUut0.ActivateRelease;\n   BenchCalls := BenchCalls + 1;\n 3:\n   BenchUut0.ManualMode := TRUE;\n   BenchUut0.SingleStepMode := FALSE;\n   BenchUut0.SingleCycleMode := FALSE;\n   BenchUut0.ContinuousMode := FALSE;\n   BenchUut0.EmergencyStop := TRUE;\n   BenchUut0.Start := FALSE;\n   BenchUut0.DownButton := TRUE;\n   BenchUut0.UpButton := FALSE;\n   BenchUut0.LeftButton := FALSE;\n   BenchUut0.RightButton := FALSE;\n   BenchUut0.GripButton := FALSE;\n   BenchUut0.ReleaseButton := FALSE;\n   BenchUut0.DownLimitSwitch := FALSE;\n   BenchUut0.UpLimitSwitch := TRUE;\n   BenchUut0.LeftLimitSwitch := TRUE;\n   BenchUut0.RightLimitSwitch := FALSE;\n   BenchUut0.GripLimitSwitch := FALSE;\n   BenchUut0.ReleaseLimitSwitch := FALSE;\n   TraceIn_ManualMode[3] := BenchUut0.ManualMode;\n   TraceIn_SingleStepMode[3] := BenchUut0.SingleStepMode;\n   TraceIn_SingleCycleMode[3] := BenchUut0.SingleCycleMode;\n   TraceIn_ContinuousMode[3] := BenchUut0.ContinuousMode;\n   TraceIn_EmergencyStop[3] := BenchUut0.EmergencyStop;\n   TraceIn_Start[3] := BenchUut0.Start;\n   TraceIn_DownButton[3] := BenchUut0.DownButton;\n   TraceIn_UpButton[3] := BenchUut0.UpButton;\n   TraceIn_LeftButton[3] := BenchUut0.LeftButton;\n   TraceIn_RightButton[3] := BenchUut0.RightButton;\n   TraceIn_GripButton[3] := BenchUut0.GripButton;\n   TraceIn_ReleaseButton[3] := BenchUut0.ReleaseButton;\n   TraceIn_DownLimitSwitch[3] := BenchUut0.DownLimitSwitch;\n   TraceIn_UpLimitSwitch[3] := BenchUut0.UpLimitSwitch;\n   TraceIn_LeftLimitSwitch[3] := BenchUut0.LeftLimitSwitch;\n   TraceIn_RightLimitSwitch[3] := BenchUut0.RightLimitSwitch;\n   TraceIn_GripLimitSwitch[3] := BenchUut0.GripLimitSwitch;\n   TraceIn_ReleaseLimitSwitch[3] := BenchUut0.ReleaseLimitSwitch;\n   BenchUut0();\n   TraceOut_MoveDown[3] := BenchUut0.MoveDown;\n   TraceOut_MoveUp[3] := BenchUut0.MoveUp;\n   TraceOut_MoveLeft[3] := BenchUut0.MoveLeft;\n   TraceOut_MoveRight[3] := BenchUut0.MoveRight;\n   TraceOut_ActivateGrip[3] := BenchUut0.ActivateGrip;\n   TraceOut_ActivateRelease[3] := BenchUut0.ActivateRelease;\n   BenchCalls := BenchCalls + 1;\n 4:\n   BenchUut0.ManualMode := TRUE;\n   BenchUut0.SingleStepMode := FALSE;\n   BenchUut0.SingleCycleMode := FALSE;\n   BenchUut0.ContinuousMode := FALSE;\n   BenchUut0.EmergencyStop := TRUE;\n   BenchUut0.Start := FALSE;\n   BenchUut0.DownButton := TRUE;\n   BenchUut0.UpButton := TRUE;\n   BenchUut0.LeftButton := FALSE;\n   BenchUut0.RightButton := FALSE;\n   BenchUut0.GripButton := FALSE;\n   BenchUut0.ReleaseButton := FALSE;\n   BenchUut0.DownLimitSwitch := FALSE;\n   BenchUut0.UpLimitSwitch := FALSE;\n   BenchUut0.LeftLimitSwitch := TRUE;\n   BenchUut0.RightLimitSwitch := FALSE;\n   BenchUut0.GripLimitSwitch := FALSE;\n   BenchUut0.ReleaseLimitSwitch := FALSE;\n   TraceIn_ManualMode[4] := BenchUut0.ManualMode;\n   TraceIn_SingleStepMode[4] := BenchUut0.SingleStepMode;\n   TraceIn_SingleCycleMode[4] := BenchUut0.SingleCycleMode;\n   TraceIn_ContinuousMode[4] := BenchUut0.ContinuousMode;\n   TraceIn_EmergencyStop[4] := BenchUut0.EmergencyStop;\n   TraceIn_Start[4] := BenchUut0.Start;\n   TraceIn_DownButton[4] := BenchUut0.DownButton;\n   TraceIn_UpButton[4] := BenchUut0.UpButton;\n   TraceIn_LeftButton[4] := BenchUut0.LeftButton;\n   TraceIn_RightButton[4] := BenchUut0.RightButton;\n   TraceIn_GripButton[4] := BenchUut0.GripButton;\n   TraceIn_ReleaseButton[4] := BenchUut0.ReleaseButton;\n   TraceIn_DownLimitSwitch[4] := BenchUut0.DownLimitSwitch;\n   TraceIn_UpLimitSwitch[4] := BenchUut0.UpLimitSwitch;\n   TraceIn_LeftLimitSwitch[4] := BenchUut0.LeftLimitSwitch;\n   TraceIn_RightLimitSwitch[4] := BenchUut0.RightLimitSwitch;\n   TraceIn_GripLimitSwitch[4] := BenchUut0.GripLimitSwitch;\n   TraceIn_ReleaseLimitSwitch[4] := BenchUut0.ReleaseLimitSwitch;\n   BenchUut0();\n   TraceOut_MoveDown[4] := BenchUut0.MoveDown;\n   TraceOut_MoveUp[4] := BenchUut0.MoveUp;\n   TraceOut_MoveLeft[4] := BenchUut0.MoveLeft;\n   TraceOut_MoveRight[4] := BenchUut0.MoveRight;\n   TraceOut_ActivateGrip[4] := BenchUut0.ActivateGrip;\n   TraceOut_ActivateRelease[4] := BenchUut0.ActivateRelease;\n   BenchCalls := BenchCalls + 1;\n 5:\n   BenchUut1.ManualMode := FALSE;\n   BenchUut1.SingleStepMode := FALSE;\n   BenchUut1.SingleCycleMode := TRUE;\n   BenchUut1.ContinuousMode := FALSE;\n   BenchUut1.EmergencyStop := TRUE;\n   BenchUut1.Start := TRUE;\n   BenchUut1.DownButton := FALSE;\n   BenchUut1.UpButton := FALSE;\n   BenchUut1.LeftButton := FALSE;\n   BenchUut1.RightButton := FALSE;\n   BenchUut1.GripButton := FALSE;\n   BenchUut1.ReleaseButton := FALSE;\n   BenchUut1.DownLimitSwitch := FALSE;\n   BenchUut1.UpLimitSwitch := TRUE;\n   BenchUut1.LeftLimitSwitch := TRUE;\n   BenchUut1.RightLimitSwitch := FALSE;\n   BenchUut1.GripLimitSwitch := FALSE;\n   BenchUut1.ReleaseLimitSwitch := FALSE;\n   TraceIn_ManualMode[5] := BenchUut1.ManualMode;\n   TraceIn_SingleStepMode[5] := BenchUut1.SingleStepMode;\n   TraceIn_SingleCycleMode[5] := BenchUut1.SingleCycleMode;\n   TraceIn_ContinuousMode[5] := BenchUut1.ContinuousMode;\n   TraceIn_EmergencyStop[5] := BenchUut1.EmergencyStop;\n   TraceIn_Start[5] := BenchUut1.Start;\n   TraceIn_DownButton[5] := BenchUut1.DownButton;\n   TraceIn_UpButton[5] := BenchUut1.UpButton;\n   TraceIn_LeftButton[5] := BenchUut1.LeftButton;\n   TraceIn_RightButton[5] := BenchUut1.RightButton;\n   TraceIn_GripButton[5] := BenchUut1.GripButton;\n   TraceIn_ReleaseButton[5] := BenchUut1.ReleaseButton;\n   TraceIn_DownLimitSwitch[5] := BenchUut1.DownLimitSwitch;\n   TraceIn_UpLimitSwitch[5] := BenchUut1.UpLimitSwitch;\n   TraceIn_LeftLimitSwitch[5] := BenchUut1.LeftLimitSwitch;\n   TraceIn_RightLimitSwitch[5] := BenchUut1.RightLimitSwitch;\n   TraceIn_GripLimitSwitch[5] := BenchUut1.GripLimitSwitch;\n   TraceIn_ReleaseLimitSwitch[5] := BenchUut1.ReleaseLimitSwitch;\n   BenchUut1();\n   TraceOut_MoveDown[5] := BenchUut1.MoveDown;\n   TraceOut_MoveUp[5] := BenchUut1.MoveUp;\n   TraceOut_MoveLeft[5] := BenchUut1.MoveLeft;\n   TraceOut_MoveRight[5] := BenchUut1.MoveRight;\n   TraceOut_ActivateGrip[5] := BenchUut1.ActivateGrip;\n   TraceOut_ActivateRelease[5] := BenchUut1.ActivateRelease;\n   BenchCalls := BenchCalls + 1;\n 6:\n   BenchUut1.ManualMode := FALSE;\n   BenchUut1.SingleStepMode := FALSE;\n   BenchUut1.SingleCycleMode := TRUE;\n   BenchUut1.ContinuousMode := FALSE;\n   BenchUut1.EmergencyStop := TRUE;\n   BenchUut1.Start := FALSE;\n   BenchUut1.DownButton := FALSE;\n   BenchUut1.UpButton := FALSE;\n   BenchUut1.LeftButton := FALSE;\n   BenchUut1.RightButton := FALSE;\n   BenchUut1.GripButton := FALSE;\n   BenchUut1.ReleaseButton := FALSE;\n   BenchUut1.DownLimitSwitch := TRUE;\n   BenchUut1.UpLimitSwitch := FALSE;\n   BenchUut1.LeftLimitSwitch := TRUE;\n   BenchUut1.RightLimitSwitch := FALSE;\n   BenchUut1.GripLimitSwitch := FALSE;\n   BenchUut1.ReleaseLimitSwitch := FALSE;\n   TraceIn_ManualMode[6] := BenchUut1.ManualMode;\n   TraceIn_SingleStepMode[6] := BenchUut1.SingleStepMode;\n   TraceIn_SingleCycleMode[6] := BenchUut1.SingleCycleMode;\n   TraceIn_ContinuousMode[6] := BenchUut1.ContinuousMode;\n   TraceIn_EmergencyStop[6] := BenchUut1.EmergencyStop;\n   TraceIn_Start[6] := BenchUut1.Start;\n   TraceIn_DownButton[6] := BenchUut1.DownButton;\n   TraceIn_UpButton[6] := BenchUut1.UpButton;\n   TraceIn_LeftButton[6] := BenchUut1.LeftButton;\n   TraceIn_RightButton[6] := BenchUut1.RightButton;\n   TraceIn_GripButton[6] := BenchUut1.GripButton;\n   TraceIn_ReleaseButton[6] := BenchUut1.ReleaseButton;\n   TraceIn_DownLimitSwitch[6] := BenchUut1.DownLimitSwitch;\n   TraceIn_UpLimitSwitch[6] := BenchUut1.UpLimitSwitch;\n   TraceIn_LeftLimitSwitch[6] := BenchUut1.LeftLimitSwitch;\n   TraceIn_RightLimitSwitch[6] := BenchUut1.RightLimitSwitch;\n   TraceIn_GripLimitSwitch[6] := BenchUut1.GripLimitSwitch;\n   TraceIn_ReleaseLimitSwitch[6] := BenchUut1.ReleaseLimitSwitch;\n   BenchUut1();\n   TraceOut_MoveDown[6] := BenchUut1.MoveDown;\n   TraceOut_MoveUp[6] := BenchUut1.MoveUp;\n   TraceOut_MoveLeft[6] := BenchUut1.MoveLeft;\n   TraceOut_MoveRight[6] := BenchUut1.MoveRight;\n   TraceOut_ActivateGrip[6] := BenchUut1.ActivateGrip;\n   TraceOut_ActivateRelease[6] := BenchUut1.ActivateRelease;\n   BenchCalls := BenchCalls + 1;\n 7:\n   BenchUut1.ManualMode := FALSE;\n   BenchUut1.SingleStepMode := FALSE;\n   BenchUut1.SingleCycleMode := TRUE;\n   BenchUut1.ContinuousMode := FALSE;\n   BenchUut1.EmergencyStop := TRUE;\n   BenchUut1.Start := FALSE;\n   BenchUut1.DownButton := FALSE;\n   BenchUut1.UpButton := FALSE;\n   BenchUut1.LeftButton := FALSE;\n   BenchUut1.RightButton := FALSE;\n   BenchUut1.GripButton := FALSE;\n   BenchUut1.ReleaseButton := FALSE;\n   BenchUut1.DownLimitSwitch := TRUE;\n   BenchUut1.UpLimitSwitch := FALSE;\n   BenchUut1.LeftLimitSwitch := TRUE;\n   BenchUut1.RightLimitSwitch := FALSE;\n   BenchUut1.GripLimitSwitch := TRUE;\n   BenchUut1.ReleaseLimitSwitch := FALSE;\n   TraceIn_ManualMode[7] := BenchUut1.ManualMode;\n   TraceIn_SingleStepMode[7] := BenchUut1.SingleStepMode;\n   TraceIn_SingleCycleMode[7] := BenchUut1.SingleCycleMode;\n   TraceIn_ContinuousMode[7] := BenchUut1.ContinuousMode;\n   TraceIn_EmergencyStop[7] := BenchUut1.EmergencyStop;\n   TraceIn_Start[7] := BenchUut1.Start;\n   TraceIn_DownButton[7] := BenchUut1.DownButton;\n   TraceIn_UpButton[7] := BenchUut1.UpButton;\n   TraceIn_LeftButton[7] := BenchUut1.LeftButton;\n   TraceIn_RightButton[7] := BenchUut1.RightButton;\n   TraceIn_GripButton[7] := BenchUut1.GripButton;\n   TraceIn_ReleaseButton[7] := BenchUut1.ReleaseButton;\n   TraceIn_DownLimitSwitch[7] := BenchUut1.DownLimitSwitch;\n   TraceIn_UpLimitSwitch[7] := BenchUut1.UpLimitSwitch;\n   TraceIn_LeftLimitSwitch[7] := BenchUut1.LeftLimitSwitch;\n   TraceIn_RightLimitSwitch[7] := BenchUut1.RightLimitSwitch;\n   TraceIn_GripLimitSwitch[7] := BenchUut1.GripLimitSwitch;\n   TraceIn_ReleaseLimitSwitch[7] := BenchUut1.ReleaseLimitSwitch;\n   BenchUut1();\n   TraceOut_MoveDown[7] := BenchUut1.MoveDown;\n   TraceOut_MoveUp[7] := BenchUut1.MoveUp;\n   TraceOut_MoveLeft[7] := BenchUut1.MoveLeft;\n   TraceOut_MoveRight[7] := BenchUut1.MoveRight;\n   TraceOut_ActivateGrip[7] := BenchUut1.ActivateGrip;\n   TraceOut_ActivateRelease[7] := BenchUut1.ActivateRelease;\n   BenchCalls := BenchCalls + 1;\n 8:\n   BenchUut1.ManualMode := FALSE;\n   BenchUut1.SingleStepMode := FALSE;\n   BenchUut1.SingleCycleMode := TRUE;\n   BenchUut1.ContinuousMode := FALSE;\n   BenchUut1.EmergencyStop := TRUE;\n   BenchUut1.Start := FALSE;\n   BenchUut1.DownButton := FALSE;\n   BenchUut1.UpButton := FALSE;\n   BenchUut1.LeftButton := FALSE;\n   BenchUut1.RightButton := FALSE;\n   BenchUut1.GripButton := FALSE;\n   BenchUut1.ReleaseButton := FALSE;\n   BenchUut1.DownLimitSwitch := FALSE;\n   BenchUut1.UpLimitSwitch := TRUE;\n   BenchUut1.LeftLimitSwitch := TRUE;\n   BenchUut1.RightLimitSwitch := FALSE;\n   BenchUut1.GripLimitSwitch := TRUE;\n   BenchUut1.ReleaseLimitSwitch := FALSE;\n   TraceIn_ManualMode[8] := BenchUut1.ManualMode;\n   TraceIn_SingleStepMode[8] := BenchUut1.SingleStepMode;\n   TraceIn_SingleCycleMode[8] := BenchUut1.SingleCycleMode;\n   TraceIn_ContinuousMode[8] := BenchUut1.ContinuousMode;\n   TraceIn_EmergencyStop[8] := BenchUut1.EmergencyStop;\n   TraceIn_Start[8] := BenchUut1.Start;\n   TraceIn_DownButton[8] := BenchUut1.DownButton;\n   TraceIn_UpButton[8] := BenchUut1.UpButton;\n   TraceIn_LeftButton[8] := BenchUut1.LeftButton;\n   TraceIn_RightButton[8] := BenchUut1.RightButton;\n   TraceIn_GripButton[8] := BenchUut1.GripButton;\n   TraceIn_ReleaseButton[8] := BenchUut1.ReleaseButton;\n   TraceIn_DownLimitSwitch[8] := BenchUut1.DownLimitSwitch;\n   TraceIn_UpLimitSwitch[8] := BenchUut1.UpLimitSwitch;\n   TraceIn_LeftLimitSwitch[8] := BenchUut1.LeftLimitSwitch;\n   TraceIn_RightLimitSwitch[8] := BenchUut1.RightLimitSwitch;\n   TraceIn_GripLimitSwitch[8] := BenchUut1.GripLimitSwitch;\n   TraceIn_ReleaseLimitSwitch[8] := BenchUut1.ReleaseLimitSwitch;\n   BenchUut1();\n   TraceOut_MoveDown[8] := BenchUut1.MoveDown;\n   TraceOut_MoveUp[8] := BenchUut1.MoveUp;\n   TraceOut_MoveLeft[8] := BenchUut1.MoveLeft;\n   TraceOut_MoveRight[8] := BenchUut1.MoveRight;\n   TraceOut_ActivateGrip[8] := BenchUut1.ActivateGrip;\n   TraceOut_ActivateRelease[8] := BenchUut1.ActivateRelease;\n   BenchCalls := BenchCalls + 1;\n 9:\n   BenchUut1.ManualMode := FALSE;\n   BenchUut1.SingleStepMode := FALSE;\n   BenchUut1.SingleCycleMode := TRUE;\n   BenchUut1.ContinuousMode := FALSE;\n   BenchUut1.EmergencyStop := TRUE;\n   BenchUut1.Start := FALSE;\n   BenchUut1.DownButton := FALSE;\n   BenchUut1.UpButton := FALSE;\n   BenchUut1.LeftButton := FALSE;\n   BenchUut1.RightButton := FALSE;\n   BenchUut1.GripButton := FALSE;\n   BenchUut1.ReleaseButton := FALSE;\n   BenchUut1.DownLimitSwitch := FALSE;\n   BenchUut1.UpLimitSwitch := TRUE;\n   BenchUut1.LeftLimitSwitch := FALSE;\n   BenchUut1.RightLimitSwitch := TRUE;\n   BenchUut1.GripLimitSwitch := TRUE;\n   BenchUut1.ReleaseLimitSwitch := FALSE;\n   TraceIn_ManualMode[9] := BenchUut1.ManualMode;\n   TraceIn_SingleStepMode[9] := BenchUut1.SingleStepMode;\n   TraceIn_SingleCycleMode[9] := BenchUut1.SingleCycleMode;\n   TraceIn_ContinuousMode[9] := BenchUut1.ContinuousMode;\n   TraceIn_EmergencyStop[9] := BenchUut1.EmergencyStop;\n   TraceIn_Start[9] := BenchUut1.Start;\n   TraceIn_DownButton[9] := BenchUut1.DownButton;\n   TraceIn_UpButton[9] := BenchUut1.UpButton;\n   TraceIn_LeftButton[9] := BenchUut1.LeftButton;\n   TraceIn_RightButton[9] := BenchUut1.RightButton;\n   TraceIn_GripButton[9] := BenchUut1.GripButton;\n   TraceIn_ReleaseButton[9] := BenchUut1.ReleaseButton;\n   TraceIn_DownLimitSwitch[9] := BenchUut1.DownLimitSwitch;\n   TraceIn_UpLimitSwitch[9] := BenchUut1.UpLimitSwitch;\n   TraceIn_LeftLimitSwitch[9] := BenchUut1.LeftLimitSwitch;\n   TraceIn_RightLimitSwitch[9] := BenchUut1.RightLimitSwitch;\n   TraceIn_GripLimitSwitch[9] := BenchUut1.GripLimitSwitch;\n   TraceIn_ReleaseLimitSwitch[9] := BenchUut1.ReleaseLimitSwitch;\n   BenchUut1();\n   TraceOut_MoveDown[9] := BenchUut1.MoveDown;\n   TraceOut_MoveUp[9] := BenchUut1.MoveUp;\n   TraceOut_MoveLeft[9] := BenchUut1.MoveLeft;\n   TraceOut_MoveRight[9] := BenchUut1.MoveRight;\n   TraceOut_ActivateGrip[9] := BenchUut1.ActivateGrip;\n   TraceOut_ActivateRelease[9] := BenchUut1.ActivateRelease;\n   BenchCalls := BenchCalls + 1;\n 10:\n   BenchUut1.ManualMode := FALSE;\n   BenchUut1.SingleStepMode := FALSE;\n   BenchUut1.SingleCycleMode := TRUE;\n   BenchUut1.ContinuousMode := FALSE;\n   BenchUut1.EmergencyStop := TRUE;\n   BenchUut1.Start := FALSE;\n   BenchUut1.DownButton := FALSE;\n   BenchUut1.UpButton := FALSE;\n   BenchUut1.LeftButton := FALSE;\n   BenchUut1.RightButton := FALSE;\n   BenchUut1.GripButton := FALSE;\n   BenchUut1.ReleaseButton := FALSE;\n   BenchUut1.DownLimitSwitch := TRUE;\n   BenchUut1.UpLimitSwitch := FALSE;\n   BenchUut1.LeftLimitSwitch := FALSE;\n   BenchUut1.RightLimitSwitch := TRUE;\n   BenchUut1.GripLimitSwitch := TRUE;\n   BenchUut1.ReleaseLimitSwitch := FALSE;\n   TraceIn_ManualMode[10] := BenchUut1.ManualMode;\n   TraceIn_SingleStepMode[10] := BenchUut1.SingleStepMode;\n   TraceIn_SingleCycleMode[10] := BenchUut1.SingleCycleMode;\n   TraceIn_ContinuousMode[10] := BenchUut1.ContinuousMode;\n   TraceIn_EmergencyStop[10] := BenchUut1.EmergencyStop;\n   TraceIn_Start[10] := BenchUut1.Start;\n   TraceIn_DownButton[10] := BenchUut1.DownButton;\n   TraceIn_UpButton[10] := BenchUut1.UpButton;\n   TraceIn_LeftButton[10] := BenchUut1.LeftButton;\n   TraceIn_RightButton[10] := BenchUut1.RightButton;\n   TraceIn_GripButton[10] := BenchUut1.GripButton;\n   TraceIn_ReleaseButton[10] := BenchUut1.ReleaseButton;\n   TraceIn_DownLimitSwitch[10] := BenchUut1.DownLimitSwitch;\n   TraceIn_UpLimitSwitch[10] := BenchUut1.UpLimitSwitch;\n   TraceIn_LeftLimitSwitch[10] := BenchUut1.LeftLimitSwitch;\n   TraceIn_RightLimitSwitch[10] := BenchUut1.RightLimitSwitch;\n   TraceIn_GripLimitSwitch[10] := BenchUut1.GripLimitSwitch;\n   TraceIn_ReleaseLimitSwitch[10] := BenchUut1.ReleaseLimitSwitch;\n   BenchUut1();\n   TraceOut_MoveDown[10] := BenchUut1.MoveDown;\n   TraceOut_MoveUp[10] := BenchUut1.MoveUp;\n   TraceOut_MoveLeft[10] := BenchUut1.MoveLeft;\n   TraceOut_MoveRight[10] := BenchUut1.MoveRight;\n   TraceOut_ActivateGrip[10] := BenchUut1.ActivateGrip;\n   TraceOut_ActivateRelease[10] := BenchUut1.ActivateRelease;\n   BenchCalls := BenchCalls + 1;\n 11:\n   BenchUut1.ManualMode := FALSE;\n   BenchUut1.SingleStepMode := FALSE;\n   BenchUut1.SingleCycleMode := TRUE;\n   BenchUut1.ContinuousMode := FALSE;\n   BenchUut1.EmergencyStop := TRUE;\n   BenchUut1.Start := FALSE;\n   BenchUut1.DownButton := FALSE;\n   BenchUut1.UpButton := FALSE;\n   BenchUut1.LeftButton := FALSE;\n   BenchUut1.RightButton := FALSE;\n   BenchUut1.GripButton := FALSE;\n   BenchUut1.ReleaseButton := FALSE;\n   BenchUut1.DownLimitSwitch := TRUE;\n   BenchUut1.UpLimitSwitch := FALSE;\n   BenchUut1.LeftLimitSwitch := FALSE;\n   BenchUut1.RightLimitSwitch := TRUE;\n   BenchUut1.GripLimitSwitch := FALSE;\n   BenchUut1.ReleaseLimitSwitch := TRUE;\n   TraceIn_ManualMode[11] := BenchUut1.ManualMode;\n   TraceIn_SingleStepMode[11] := BenchUut1.SingleStepMode;\n   TraceIn_SingleCycleMode[11] := BenchUut1.SingleCycleMode;\n   TraceIn_ContinuousMode[11] := BenchUut1.ContinuousMode;\n   TraceIn_EmergencyStop[11] := BenchUut1.EmergencyStop;\n   TraceIn_Start[11] := BenchUut1.Start;\n   TraceIn_DownButton[11] := BenchUut1.DownButton;\n   TraceIn_UpButton[11] := BenchUut1.UpButton;\n   TraceIn_LeftButton[11] := BenchUut1.LeftButton;\n   TraceIn_RightButton[11] := BenchUut1.RightButton;\n   TraceIn_GripButton[11] := BenchUut1.GripButton;\n   TraceIn_ReleaseButton[11] := BenchUut1.ReleaseButton;\n   TraceIn_DownLimitSwitch[11] := BenchUut1.DownLimitSwitch;\n   TraceIn_UpLimitSwitch[11] := BenchUut1.UpLimitSwitch;\n   TraceIn_LeftLimitSwitch[11] := BenchUut1.LeftLimitSwitch;\n   TraceIn_RightLimitSwitch[11] := BenchUut1.RightLimitSwitch;\n   TraceIn_GripLimitSwitch[11] := BenchUut1.GripLimitSwitch;\n   TraceIn_ReleaseLimitSwitch[11] := BenchUut1.ReleaseLimitSwitch;\n   BenchUut1();\n   TraceOut_MoveDown[11] := BenchUut1.MoveDown;\n   TraceOut_MoveUp[11] := BenchUut1.MoveUp;\n   TraceOut_MoveLeft[11] := BenchUut1.MoveLeft;\n   TraceOut_MoveRight[11] := BenchUut1.MoveRight;\n   TraceOut_ActivateGrip[11] := BenchUut1.ActivateGrip;\n   TraceOut_ActivateRelease[11] := BenchUut1.ActivateRelease;\n   BenchCalls := BenchCalls + 1;\n 12:\n   BenchUut1.ManualMode := FALSE;\n   BenchUut1.SingleStepMode := FALSE;\n   BenchUut1.SingleCycleMode := TRUE;\n   BenchUut1.ContinuousMode := FALSE;\n   BenchUut1.EmergencyStop := TRUE;\n   BenchUut1.Start := FALSE;\n   BenchUut1.DownButton := FALSE;\n   BenchUut1.UpButton := FALSE;\n   BenchUut1.LeftButton := FALSE;\n   BenchUut1.RightButton := FALSE;\n   BenchUut1.GripButton := FALSE;\n   BenchUut1.ReleaseButton := FALSE;\n   BenchUut1.DownLimitSwitch := FALSE;\n   BenchUut1.UpLimitSwitch := TRUE;\n   BenchUut1.LeftLimitSwitch := FALSE;\n   BenchUut1.RightLimitSwitch := TRUE;\n   BenchUut1.GripLimitSwitch := FALSE;\n   BenchUut1.ReleaseLimitSwitch := TRUE;\n   TraceIn_ManualMode[12] := BenchUut1.ManualMode;\n   TraceIn_SingleStepMode[12] := BenchUut1.SingleStepMode;\n   TraceIn_SingleCycleMode[12] := BenchUut1.SingleCycleMode;\n   TraceIn_ContinuousMode[12] := BenchUut1.ContinuousMode;\n   TraceIn_EmergencyStop[12] := BenchUut1.EmergencyStop;\n   TraceIn_Start[12] := BenchUut1.Start;\n   TraceIn_DownButton[12] := BenchUut1.DownButton;\n   TraceIn_UpButton[12] := BenchUut1.UpButton;\n   TraceIn_LeftButton[12] := BenchUut1.LeftButton;\n   TraceIn_RightButton[12] := BenchUut1.RightButton;\n   TraceIn_GripButton[12] := BenchUut1.GripButton;\n   TraceIn_ReleaseButton[12] := BenchUut1.ReleaseButton;\n   TraceIn_DownLimitSwitch[12] := BenchUut1.DownLimitSwitch;\n   TraceIn_UpLimitSwitch[12] := BenchUut1.UpLimitSwitch;\n   TraceIn_LeftLimitSwitch[12] := BenchUut1.LeftLimitSwitch;\n   TraceIn_RightLimitSwitch[12] := BenchUut1.RightLimitSwitch;\n   TraceIn_GripLimitSwitch[12] := BenchUut1.GripLimitSwitch;\n   TraceIn_ReleaseLimitSwitch[12] := BenchUut1.ReleaseLimitSwitch;\n   BenchUut1();\n   TraceOut_MoveDown[12] := BenchUut1.MoveDown;\n   TraceOut_MoveUp[12] := BenchUut1.MoveUp;\n   TraceOut_MoveLeft[12] := BenchUut1.MoveLeft;\n   TraceOut_MoveRight[12] := BenchUut1.MoveRight;\n   TraceOut_ActivateGrip[12] := BenchUut1.ActivateGrip;\n   TraceOut_ActivateRelease[12] := BenchUut1.ActivateRelease;\n   BenchCalls := BenchCalls + 1;\n END_CASE;\n BenchStep := BenchStep + 1;\n IF BenchStep >= 13 THEN BenchDone := TRUE; END_IF;\nEND_IF;",
+    "step_count": 13,
+    "steps": [
+      {
+        "index": 0,
+        "case_id": "case_1",
+        "case_step": 0,
+        "dt_ms": 0
+      },
+      {
+        "index": 1,
+        "case_id": "case_1",
+        "case_step": 1,
+        "dt_ms": 0
+      },
+      {
+        "index": 2,
+        "case_id": "case_1",
+        "case_step": 2,
+        "dt_ms": 0
+      },
+      {
+        "index": 3,
+        "case_id": "case_1",
+        "case_step": 3,
+        "dt_ms": 0
+      },
+      {
+        "index": 4,
+        "case_id": "case_1",
+        "case_step": 4,
+        "dt_ms": 0
+      },
+      {
+        "index": 5,
+        "case_id": "case_2",
+        "case_step": 0,
+        "dt_ms": 0
+      },
+      {
+        "index": 6,
+        "case_id": "case_2",
+        "case_step": 1,
+        "dt_ms": 0
+      },
+      {
+        "index": 7,
+        "case_id": "case_2",
+        "case_step": 2,
+        "dt_ms": 0
+      },
+      {
+        "index": 8,
+        "case_id": "case_2",
+        "case_step": 3,
+        "dt_ms": 0
+      },
+      {
+        "index": 9,
+        "case_id": "case_2",
+        "case_step": 4,
+        "dt_ms": 0
+      },
+      {
+        "index": 10,
+        "case_id": "case_2",
+        "case_step": 5,
+        "dt_ms": 0
+      },
+      {
+        "index": 11,
+        "case_id": "case_2",
+        "case_step": 6,
+        "dt_ms": 0
+      },
+      {
+        "index": 12,
+        "case_id": "case_2",
+        "case_step": 7,
+        "dt_ms": 0
+      }
+    ],
+    "inputs": [
+      {
+        "direction": "INPUT",
+        "name": "ManualMode",
+        "type": "BOOL",
+        "description": "Manual mode"
+      },
+      {
+        "direction": "INPUT",
+        "name": "SingleStepMode",
+        "type": "BOOL",
+        "description": "Single step mode"
+      },
+      {
+        "direction": "INPUT",
+        "name": "SingleCycleMode",
+        "type": "BOOL",
+        "description": "Single cycle mode"
+      },
+      {
+        "direction": "INPUT",
+        "name": "ContinuousMode",
+        "type": "BOOL",
+        "description": "Continuous mode"
+      },
+      {
+        "direction": "INPUT",
+        "name": "EmergencyStop",
+        "type": "BOOL",
+        "description": "Emergency stop signal<br>FALSE: Emergency stop triggered<br>TRUE: No emergency stop triggered"
+      },
+      {
+        "direction": "INPUT",
+        "name": "Start",
+        "type": "BOOL",
+        "description": "Start operation"
+      },
+      {
+        "direction": "INPUT",
+        "name": "DownButton",
+        "type": "BOOL",
+        "description": "Down button"
+      },
+      {
+        "direction": "INPUT",
+        "name": "UpButton",
+        "type": "BOOL",
+        "description": "Up button"
+      },
+      {
+        "direction": "INPUT",
+        "name": "LeftButton",
+        "type": "BOOL",
+        "description": "Left button"
+      },
+      {
+        "direction": "INPUT",
+        "name": "RightButton",
+        "type": "BOOL",
+        "description": "Right button"
+      },
+      {
+        "direction": "INPUT",
+        "name": "GripButton",
+        "type": "BOOL",
+        "description": "Grip button"
+      },
+      {
+        "direction": "INPUT",
+        "name": "ReleaseButton",
+        "type": "BOOL",
+        "description": "Release button"
+      },
+      {
+        "direction": "INPUT",
+        "name": "DownLimitSwitch",
+        "type": "BOOL",
+        "description": "Down position limit switch"
+      },
+      {
+        "direction": "INPUT",
+        "name": "UpLimitSwitch",
+        "type": "BOOL",
+        "description": "Up position limit switch"
+      },
+      {
+        "direction": "INPUT",
+        "name": "LeftLimitSwitch",
+        "type": "BOOL",
+        "description": "Left position limit switch"
+      },
+      {
+        "direction": "INPUT",
+        "name": "RightLimitSwitch",
+        "type": "BOOL",
+        "description": "Right position limit switch"
+      },
+      {
+        "direction": "INPUT",
+        "name": "GripLimitSwitch",
+        "type": "BOOL",
+        "description": "Grip position limit switch"
+      },
+      {
+        "direction": "INPUT",
+        "name": "ReleaseLimitSwitch",
+        "type": "BOOL",
+        "description": "Release position limit switch"
+      }
+    ],
+    "outputs": [
+      {
+        "direction": "OUTPUT",
+        "name": "MoveDown",
+        "type": "BOOL",
+        "description": "Down command"
+      },
+      {
+        "direction": "OUTPUT",
+        "name": "MoveUp",
+        "type": "BOOL",
+        "description": "Up command"
+      },
+      {
+        "direction": "OUTPUT",
+        "name": "MoveLeft",
+        "type": "BOOL",
+        "description": "Left command"
+      },
+      {
+        "direction": "OUTPUT",
+        "name": "MoveRight",
+        "type": "BOOL",
+        "description": "Right command"
+      },
+      {
+        "direction": "OUTPUT",
+        "name": "ActivateGrip",
+        "type": "BOOL",
+        "description": "Grip command"
+      },
+      {
+        "direction": "OUTPUT",
+        "name": "ActivateRelease",
+        "type": "BOOL",
+        "description": "Release command"
+      }
+    ],
+    "trace_expressions": [
+      "PLC_PRG.TraceIn_ManualMode[0]",
+      "PLC_PRG.TraceIn_SingleStepMode[0]",
+      "PLC_PRG.TraceIn_SingleCycleMode[0]",
+      "PLC_PRG.TraceIn_ContinuousMode[0]",
+      "PLC_PRG.TraceIn_EmergencyStop[0]",
+      "PLC_PRG.TraceIn_Start[0]",
+      "PLC_PRG.TraceIn_DownButton[0]",
+      "PLC_PRG.TraceIn_UpButton[0]",
+      "PLC_PRG.TraceIn_LeftButton[0]",
+      "PLC_PRG.TraceIn_RightButton[0]",
+      "PLC_PRG.TraceIn_GripButton[0]",
+      "PLC_PRG.TraceIn_ReleaseButton[0]",
+      "PLC_PRG.TraceIn_DownLimitSwitch[0]",
+      "PLC_PRG.TraceIn_UpLimitSwitch[0]",
+      "PLC_PRG.TraceIn_LeftLimitSwitch[0]",
+      "PLC_PRG.TraceIn_RightLimitSwitch[0]",
+      "PLC_PRG.TraceIn_GripLimitSwitch[0]",
+      "PLC_PRG.TraceIn_ReleaseLimitSwitch[0]",
+      "PLC_PRG.TraceOut_MoveDown[0]",
+      "PLC_PRG.TraceOut_MoveUp[0]",
+      "PLC_PRG.TraceOut_MoveLeft[0]",
+      "PLC_PRG.TraceOut_MoveRight[0]",
+      "PLC_PRG.TraceOut_ActivateGrip[0]",
+      "PLC_PRG.TraceOut_ActivateRelease[0]",
+      "PLC_PRG.TraceIn_ManualMode[1]",
+      "PLC_PRG.TraceIn_SingleStepMode[1]",
+      "PLC_PRG.TraceIn_SingleCycleMode[1]",
+      "PLC_PRG.TraceIn_ContinuousMode[1]",
+      "PLC_PRG.TraceIn_EmergencyStop[1]",
+      "PLC_PRG.TraceIn_Start[1]",
+      "PLC_PRG.TraceIn_DownButton[1]",
+      "PLC_PRG.TraceIn_UpButton[1]",
+      "PLC_PRG.TraceIn_LeftButton[1]",
+      "PLC_PRG.TraceIn_RightButton[1]",
+      "PLC_PRG.TraceIn_GripButton[1]",
+      "PLC_PRG.TraceIn_ReleaseButton[1]",
+      "PLC_PRG.TraceIn_DownLimitSwitch[1]",
+      "PLC_PRG.TraceIn_UpLimitSwitch[1]",
+      "PLC_PRG.TraceIn_LeftLimitSwitch[1]",
+      "PLC_PRG.TraceIn_RightLimitSwitch[1]",
+      "PLC_PRG.TraceIn_GripLimitSwitch[1]",
+      "PLC_PRG.TraceIn_ReleaseLimitSwitch[1]",
+      "PLC_PRG.TraceOut_MoveDown[1]",
+      "PLC_PRG.TraceOut_MoveUp[1]",
+      "PLC_PRG.TraceOut_MoveLeft[1]",
+      "PLC_PRG.TraceOut_MoveRight[1]",
+      "PLC_PRG.TraceOut_ActivateGrip[1]",
+      "PLC_PRG.TraceOut_ActivateRelease[1]",
+      "PLC_PRG.TraceIn_ManualMode[2]",
+      "PLC_PRG.TraceIn_SingleStepMode[2]",
+      "PLC_PRG.TraceIn_SingleCycleMode[2]",
+      "PLC_PRG.TraceIn_ContinuousMode[2]",
+      "PLC_PRG.TraceIn_EmergencyStop[2]",
+      "PLC_PRG.TraceIn_Start[2]",
+      "PLC_PRG.TraceIn_DownButton[2]",
+      "PLC_PRG.TraceIn_UpButton[2]",
+      "PLC_PRG.TraceIn_LeftButton[2]",
+      "PLC_PRG.TraceIn_RightButton[2]",
+      "PLC_PRG.TraceIn_GripButton[2]",
+      "PLC_PRG.TraceIn_ReleaseButton[2]",
+      "PLC_PRG.TraceIn_DownLimitSwitch[2]",
+      "PLC_PRG.TraceIn_UpLimitSwitch[2]",
+      "PLC_PRG.TraceIn_LeftLimitSwitch[2]",
+      "PLC_PRG.TraceIn_RightLimitSwitch[2]",
+      "PLC_PRG.TraceIn_GripLimitSwitch[2]",
+      "PLC_PRG.TraceIn_ReleaseLimitSwitch[2]",
+      "PLC_PRG.TraceOut_MoveDown[2]",
+      "PLC_PRG.TraceOut_MoveUp[2]",
+      "PLC_PRG.TraceOut_MoveLeft[2]",
+      "PLC_PRG.TraceOut_MoveRight[2]",
+      "PLC_PRG.TraceOut_ActivateGrip[2]",
+      "PLC_PRG.TraceOut_ActivateRelease[2]",
+      "PLC_PRG.TraceIn_ManualMode[3]",
+      "PLC_PRG.TraceIn_SingleStepMode[3]",
+      "PLC_PRG.TraceIn_SingleCycleMode[3]",
+      "PLC_PRG.TraceIn_ContinuousMode[3]",
+      "PLC_PRG.TraceIn_EmergencyStop[3]",
+      "PLC_PRG.TraceIn_Start[3]",
+      "PLC_PRG.TraceIn_DownButton[3]",
+      "PLC_PRG.TraceIn_UpButton[3]",
+      "PLC_PRG.TraceIn_LeftButton[3]",
+      "PLC_PRG.TraceIn_RightButton[3]",
+      "PLC_PRG.TraceIn_GripButton[3]",
+      "PLC_PRG.TraceIn_ReleaseButton[3]",
+      "PLC_PRG.TraceIn_DownLimitSwitch[3]",
+      "PLC_PRG.TraceIn_UpLimitSwitch[3]",
+      "PLC_PRG.TraceIn_LeftLimitSwitch[3]",
+      "PLC_PRG.TraceIn_RightLimitSwitch[3]",
+      "PLC_PRG.TraceIn_GripLimitSwitch[3]",
+      "PLC_PRG.TraceIn_ReleaseLimitSwitch[3]",
+      "PLC_PRG.TraceOut_MoveDown[3]",
+      "PLC_PRG.TraceOut_MoveUp[3]",
+      "PLC_PRG.TraceOut_MoveLeft[3]",
+      "PLC_PRG.TraceOut_MoveRight[3]",
+      "PLC_PRG.TraceOut_ActivateGrip[3]",
+      "PLC_PRG.TraceOut_ActivateRelease[3]",
+      "PLC_PRG.TraceIn_ManualMode[4]",
+      "PLC_PRG.TraceIn_SingleStepMode[4]",
+      "PLC_PRG.TraceIn_SingleCycleMode[4]",
+      "PLC_PRG.TraceIn_ContinuousMode[4]",
+      "PLC_PRG.TraceIn_EmergencyStop[4]",
+      "PLC_PRG.TraceIn_Start[4]",
+      "PLC_PRG.TraceIn_DownButton[4]",
+      "PLC_PRG.TraceIn_UpButton[4]",
+      "PLC_PRG.TraceIn_LeftButton[4]",
+      "PLC_PRG.TraceIn_RightButton[4]",
+      "PLC_PRG.TraceIn_GripButton[4]",
+      "PLC_PRG.TraceIn_ReleaseButton[4]",
+      "PLC_PRG.TraceIn_DownLimitSwitch[4]",
+      "PLC_PRG.TraceIn_UpLimitSwitch[4]",
+      "PLC_PRG.TraceIn_LeftLimitSwitch[4]",
+      "PLC_PRG.TraceIn_RightLimitSwitch[4]",
+      "PLC_PRG.TraceIn_GripLimitSwitch[4]",
+      "PLC_PRG.TraceIn_ReleaseLimitSwitch[4]",
+      "PLC_PRG.TraceOut_MoveDown[4]",
+      "PLC_PRG.TraceOut_MoveUp[4]",
+      "PLC_PRG.TraceOut_MoveLeft[4]",
+      "PLC_PRG.TraceOut_MoveRight[4]",
+      "PLC_PRG.TraceOut_ActivateGrip[4]",
+      "PLC_PRG.TraceOut_ActivateRelease[4]",
+      "PLC_PRG.TraceIn_ManualMode[5]",
+      "PLC_PRG.TraceIn_SingleStepMode[5]",
+      "PLC_PRG.TraceIn_SingleCycleMode[5]",
+      "PLC_PRG.TraceIn_ContinuousMode[5]",
+      "PLC_PRG.TraceIn_EmergencyStop[5]",
+      "PLC_PRG.TraceIn_Start[5]",
+      "PLC_PRG.TraceIn_DownButton[5]",
+      "PLC_PRG.TraceIn_UpButton[5]",
+      "PLC_PRG.TraceIn_LeftButton[5]",
+      "PLC_PRG.TraceIn_RightButton[5]",
+      "PLC_PRG.TraceIn_GripButton[5]",
+      "PLC_PRG.TraceIn_ReleaseButton[5]",
+      "PLC_PRG.TraceIn_DownLimitSwitch[5]",
+      "PLC_PRG.TraceIn_UpLimitSwitch[5]",
+      "PLC_PRG.TraceIn_LeftLimitSwitch[5]",
+      "PLC_PRG.TraceIn_RightLimitSwitch[5]",
+      "PLC_PRG.TraceIn_GripLimitSwitch[5]",
+      "PLC_PRG.TraceIn_ReleaseLimitSwitch[5]",
+      "PLC_PRG.TraceOut_MoveDown[5]",
+      "PLC_PRG.TraceOut_MoveUp[5]",
+      "PLC_PRG.TraceOut_MoveLeft[5]",
+      "PLC_PRG.TraceOut_MoveRight[5]",
+      "PLC_PRG.TraceOut_ActivateGrip[5]",
+      "PLC_PRG.TraceOut_ActivateRelease[5]",
+      "PLC_PRG.TraceIn_ManualMode[6]",
+      "PLC_PRG.TraceIn_SingleStepMode[6]",
+      "PLC_PRG.TraceIn_SingleCycleMode[6]",
+      "PLC_PRG.TraceIn_ContinuousMode[6]",
+      "PLC_PRG.TraceIn_EmergencyStop[6]",
+      "PLC_PRG.TraceIn_Start[6]",
+      "PLC_PRG.TraceIn_DownButton[6]",
+      "PLC_PRG.TraceIn_UpButton[6]",
+      "PLC_PRG.TraceIn_LeftButton[6]",
+      "PLC_PRG.TraceIn_RightButton[6]",
+      "PLC_PRG.TraceIn_GripButton[6]",
+      "PLC_PRG.TraceIn_ReleaseButton[6]",
+      "PLC_PRG.TraceIn_DownLimitSwitch[6]",
+      "PLC_PRG.TraceIn_UpLimitSwitch[6]",
+      "PLC_PRG.TraceIn_LeftLimitSwitch[6]",
+      "PLC_PRG.TraceIn_RightLimitSwitch[6]",
+      "PLC_PRG.TraceIn_GripLimitSwitch[6]",
+      "PLC_PRG.TraceIn_ReleaseLimitSwitch[6]",
+      "PLC_PRG.TraceOut_MoveDown[6]",
+      "PLC_PRG.TraceOut_MoveUp[6]",
+      "PLC_PRG.TraceOut_MoveLeft[6]",
+      "PLC_PRG.TraceOut_MoveRight[6]",
+      "PLC_PRG.TraceOut_ActivateGrip[6]",
+      "PLC_PRG.TraceOut_ActivateRelease[6]",
+      "PLC_PRG.TraceIn_ManualMode[7]",
+      "PLC_PRG.TraceIn_SingleStepMode[7]",
+      "PLC_PRG.TraceIn_SingleCycleMode[7]",
+      "PLC_PRG.TraceIn_ContinuousMode[7]",
+      "PLC_PRG.TraceIn_EmergencyStop[7]",
+      "PLC_PRG.TraceIn_Start[7]",
+      "PLC_PRG.TraceIn_DownButton[7]",
+      "PLC_PRG.TraceIn_UpButton[7]",
+      "PLC_PRG.TraceIn_LeftButton[7]",
+      "PLC_PRG.TraceIn_RightButton[7]",
+      "PLC_PRG.TraceIn_GripButton[7]",
+      "PLC_PRG.TraceIn_ReleaseButton[7]",
+      "PLC_PRG.TraceIn_DownLimitSwitch[7]",
+      "PLC_PRG.TraceIn_UpLimitSwitch[7]",
+      "PLC_PRG.TraceIn_LeftLimitSwitch[7]",
+      "PLC_PRG.TraceIn_RightLimitSwitch[7]",
+      "PLC_PRG.TraceIn_GripLimitSwitch[7]",
+      "PLC_PRG.TraceIn_ReleaseLimitSwitch[7]",
+      "PLC_PRG.TraceOut_MoveDown[7]",
+      "PLC_PRG.TraceOut_MoveUp[7]",
+      "PLC_PRG.TraceOut_MoveLeft[7]",
+      "PLC_PRG.TraceOut_MoveRight[7]",
+      "PLC_PRG.TraceOut_ActivateGrip[7]",
+      "PLC_PRG.TraceOut_ActivateRelease[7]",
+      "PLC_PRG.TraceIn_ManualMode[8]",
+      "PLC_PRG.TraceIn_SingleStepMode[8]",
+      "PLC_PRG.TraceIn_SingleCycleMode[8]",
+      "PLC_PRG.TraceIn_ContinuousMode[8]",
+      "PLC_PRG.TraceIn_EmergencyStop[8]",
+      "PLC_PRG.TraceIn_Start[8]",
+      "PLC_PRG.TraceIn_DownButton[8]",
+      "PLC_PRG.TraceIn_UpButton[8]",
+      "PLC_PRG.TraceIn_LeftButton[8]",
+      "PLC_PRG.TraceIn_RightButton[8]",
+      "PLC_PRG.TraceIn_GripButton[8]",
+      "PLC_PRG.TraceIn_ReleaseButton[8]",
+      "PLC_PRG.TraceIn_DownLimitSwitch[8]",
+      "PLC_PRG.TraceIn_UpLimitSwitch[8]",
+      "PLC_PRG.TraceIn_LeftLimitSwitch[8]",
+      "PLC_PRG.TraceIn_RightLimitSwitch[8]",
+      "PLC_PRG.TraceIn_GripLimitSwitch[8]",
+      "PLC_PRG.TraceIn_ReleaseLimitSwitch[8]",
+      "PLC_PRG.TraceOut_MoveDown[8]",
+      "PLC_PRG.TraceOut_MoveUp[8]",
+      "PLC_PRG.TraceOut_MoveLeft[8]",
+      "PLC_PRG.TraceOut_MoveRight[8]",
+      "PLC_PRG.TraceOut_ActivateGrip[8]",
+      "PLC_PRG.TraceOut_ActivateRelease[8]",
+      "PLC_PRG.TraceIn_ManualMode[9]",
+      "PLC_PRG.TraceIn_SingleStepMode[9]",
+      "PLC_PRG.TraceIn_SingleCycleMode[9]",
+      "PLC_PRG.TraceIn_ContinuousMode[9]",
+      "PLC_PRG.TraceIn_EmergencyStop[9]",
+      "PLC_PRG.TraceIn_Start[9]",
+      "PLC_PRG.TraceIn_DownButton[9]",
+      "PLC_PRG.TraceIn_UpButton[9]",
+      "PLC_PRG.TraceIn_LeftButton[9]",
+      "PLC_PRG.TraceIn_RightButton[9]",
+      "PLC_PRG.TraceIn_GripButton[9]",
+      "PLC_PRG.TraceIn_ReleaseButton[9]",
+      "PLC_PRG.TraceIn_DownLimitSwitch[9]",
+      "PLC_PRG.TraceIn_UpLimitSwitch[9]",
+      "PLC_PRG.TraceIn_LeftLimitSwitch[9]",
+      "PLC_PRG.TraceIn_RightLimitSwitch[9]",
+      "PLC_PRG.TraceIn_GripLimitSwitch[9]",
+      "PLC_PRG.TraceIn_ReleaseLimitSwitch[9]",
+      "PLC_PRG.TraceOut_MoveDown[9]",
+      "PLC_PRG.TraceOut_MoveUp[9]",
+      "PLC_PRG.TraceOut_MoveLeft[9]",
+      "PLC_PRG.TraceOut_MoveRight[9]",
+      "PLC_PRG.TraceOut_ActivateGrip[9]",
+      "PLC_PRG.TraceOut_ActivateRelease[9]",
+      "PLC_PRG.TraceIn_ManualMode[10]",
+      "PLC_PRG.TraceIn_SingleStepMode[10]",
+      "PLC_PRG.TraceIn_SingleCycleMode[10]",
+      "PLC_PRG.TraceIn_ContinuousMode[10]",
+      "PLC_PRG.TraceIn_EmergencyStop[10]",
+      "PLC_PRG.TraceIn_Start[10]",
+      "PLC_PRG.TraceIn_DownButton[10]",
+      "PLC_PRG.TraceIn_UpButton[10]",
+      "PLC_PRG.TraceIn_LeftButton[10]",
+      "PLC_PRG.TraceIn_RightButton[10]",
+      "PLC_PRG.TraceIn_GripButton[10]",
+      "PLC_PRG.TraceIn_ReleaseButton[10]",
+      "PLC_PRG.TraceIn_DownLimitSwitch[10]",
+      "PLC_PRG.TraceIn_UpLimitSwitch[10]",
+      "PLC_PRG.TraceIn_LeftLimitSwitch[10]",
+      "PLC_PRG.TraceIn_RightLimitSwitch[10]",
+      "PLC_PRG.TraceIn_GripLimitSwitch[10]",
+      "PLC_PRG.TraceIn_ReleaseLimitSwitch[10]",
+      "PLC_PRG.TraceOut_MoveDown[10]",
+      "PLC_PRG.TraceOut_MoveUp[10]",
+      "PLC_PRG.TraceOut_MoveLeft[10]",
+      "PLC_PRG.TraceOut_MoveRight[10]",
+      "PLC_PRG.TraceOut_ActivateGrip[10]",
+      "PLC_PRG.TraceOut_ActivateRelease[10]",
+      "PLC_PRG.TraceIn_ManualMode[11]",
+      "PLC_PRG.TraceIn_SingleStepMode[11]",
+      "PLC_PRG.TraceIn_SingleCycleMode[11]",
+      "PLC_PRG.TraceIn_ContinuousMode[11]",
+      "PLC_PRG.TraceIn_EmergencyStop[11]",
+      "PLC_PRG.TraceIn_Start[11]",
+      "PLC_PRG.TraceIn_DownButton[11]",
+      "PLC_PRG.TraceIn_UpButton[11]",
+      "PLC_PRG.TraceIn_LeftButton[11]",
+      "PLC_PRG.TraceIn_RightButton[11]",
+      "PLC_PRG.TraceIn_GripButton[11]",
+      "PLC_PRG.TraceIn_ReleaseButton[11]",
+      "PLC_PRG.TraceIn_DownLimitSwitch[11]",
+      "PLC_PRG.TraceIn_UpLimitSwitch[11]",
+      "PLC_PRG.TraceIn_LeftLimitSwitch[11]",
+      "PLC_PRG.TraceIn_RightLimitSwitch[11]",
+      "PLC_PRG.TraceIn_GripLimitSwitch[11]",
+      "PLC_PRG.TraceIn_ReleaseLimitSwitch[11]",
+      "PLC_PRG.TraceOut_MoveDown[11]",
+      "PLC_PRG.TraceOut_MoveUp[11]",
+      "PLC_PRG.TraceOut_MoveLeft[11]",
+      "PLC_PRG.TraceOut_MoveRight[11]",
+      "PLC_PRG.TraceOut_ActivateGrip[11]",
+      "PLC_PRG.TraceOut_ActivateRelease[11]",
+      "PLC_PRG.TraceIn_ManualMode[12]",
+      "PLC_PRG.TraceIn_SingleStepMode[12]",
+      "PLC_PRG.TraceIn_SingleCycleMode[12]",
+      "PLC_PRG.TraceIn_ContinuousMode[12]",
+      "PLC_PRG.TraceIn_EmergencyStop[12]",
+      "PLC_PRG.TraceIn_Start[12]",
+      "PLC_PRG.TraceIn_DownButton[12]",
+      "PLC_PRG.TraceIn_UpButton[12]",
+      "PLC_PRG.TraceIn_LeftButton[12]",
+      "PLC_PRG.TraceIn_RightButton[12]",
+      "PLC_PRG.TraceIn_GripButton[12]",
+      "PLC_PRG.TraceIn_ReleaseButton[12]",
+      "PLC_PRG.TraceIn_DownLimitSwitch[12]",
+      "PLC_PRG.TraceIn_UpLimitSwitch[12]",
+      "PLC_PRG.TraceIn_LeftLimitSwitch[12]",
+      "PLC_PRG.TraceIn_RightLimitSwitch[12]",
+      "PLC_PRG.TraceIn_GripLimitSwitch[12]",
+      "PLC_PRG.TraceIn_ReleaseLimitSwitch[12]",
+      "PLC_PRG.TraceOut_MoveDown[12]",
+      "PLC_PRG.TraceOut_MoveUp[12]",
+      "PLC_PRG.TraceOut_MoveLeft[12]",
+      "PLC_PRG.TraceOut_MoveRight[12]",
+      "PLC_PRG.TraceOut_ActivateGrip[12]",
+      "PLC_PRG.TraceOut_ActivateRelease[12]"
+    ],
+    "trace_mapping": [
+      {
+        "step_index": 0,
+        "case_id": "case_1",
+        "case_step": 0,
+        "dt_expr": null,
+        "inputs": {
+          "ManualMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ManualMode[0]",
+            "type": "BOOL"
+          },
+          "SingleStepMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SingleStepMode[0]",
+            "type": "BOOL"
+          },
+          "SingleCycleMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SingleCycleMode[0]",
+            "type": "BOOL"
+          },
+          "ContinuousMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ContinuousMode[0]",
+            "type": "BOOL"
+          },
+          "EmergencyStop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_EmergencyStop[0]",
+            "type": "BOOL"
+          },
+          "Start": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Start[0]",
+            "type": "BOOL"
+          },
+          "DownButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DownButton[0]",
+            "type": "BOOL"
+          },
+          "UpButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_UpButton[0]",
+            "type": "BOOL"
+          },
+          "LeftButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_LeftButton[0]",
+            "type": "BOOL"
+          },
+          "RightButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_RightButton[0]",
+            "type": "BOOL"
+          },
+          "GripButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_GripButton[0]",
+            "type": "BOOL"
+          },
+          "ReleaseButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReleaseButton[0]",
+            "type": "BOOL"
+          },
+          "DownLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DownLimitSwitch[0]",
+            "type": "BOOL"
+          },
+          "UpLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_UpLimitSwitch[0]",
+            "type": "BOOL"
+          },
+          "LeftLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_LeftLimitSwitch[0]",
+            "type": "BOOL"
+          },
+          "RightLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_RightLimitSwitch[0]",
+            "type": "BOOL"
+          },
+          "GripLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_GripLimitSwitch[0]",
+            "type": "BOOL"
+          },
+          "ReleaseLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReleaseLimitSwitch[0]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "MoveDown": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveDown[0]",
+            "type": "BOOL"
+          },
+          "MoveUp": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveUp[0]",
+            "type": "BOOL"
+          },
+          "MoveLeft": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveLeft[0]",
+            "type": "BOOL"
+          },
+          "MoveRight": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveRight[0]",
+            "type": "BOOL"
+          },
+          "ActivateGrip": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_ActivateGrip[0]",
+            "type": "BOOL"
+          },
+          "ActivateRelease": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_ActivateRelease[0]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 1,
+        "case_id": "case_1",
+        "case_step": 1,
+        "dt_expr": null,
+        "inputs": {
+          "ManualMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ManualMode[1]",
+            "type": "BOOL"
+          },
+          "SingleStepMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SingleStepMode[1]",
+            "type": "BOOL"
+          },
+          "SingleCycleMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SingleCycleMode[1]",
+            "type": "BOOL"
+          },
+          "ContinuousMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ContinuousMode[1]",
+            "type": "BOOL"
+          },
+          "EmergencyStop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_EmergencyStop[1]",
+            "type": "BOOL"
+          },
+          "Start": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Start[1]",
+            "type": "BOOL"
+          },
+          "DownButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DownButton[1]",
+            "type": "BOOL"
+          },
+          "UpButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_UpButton[1]",
+            "type": "BOOL"
+          },
+          "LeftButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_LeftButton[1]",
+            "type": "BOOL"
+          },
+          "RightButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_RightButton[1]",
+            "type": "BOOL"
+          },
+          "GripButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_GripButton[1]",
+            "type": "BOOL"
+          },
+          "ReleaseButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReleaseButton[1]",
+            "type": "BOOL"
+          },
+          "DownLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DownLimitSwitch[1]",
+            "type": "BOOL"
+          },
+          "UpLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_UpLimitSwitch[1]",
+            "type": "BOOL"
+          },
+          "LeftLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_LeftLimitSwitch[1]",
+            "type": "BOOL"
+          },
+          "RightLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_RightLimitSwitch[1]",
+            "type": "BOOL"
+          },
+          "GripLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_GripLimitSwitch[1]",
+            "type": "BOOL"
+          },
+          "ReleaseLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReleaseLimitSwitch[1]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "MoveDown": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveDown[1]",
+            "type": "BOOL"
+          },
+          "MoveUp": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveUp[1]",
+            "type": "BOOL"
+          },
+          "MoveLeft": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveLeft[1]",
+            "type": "BOOL"
+          },
+          "MoveRight": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveRight[1]",
+            "type": "BOOL"
+          },
+          "ActivateGrip": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_ActivateGrip[1]",
+            "type": "BOOL"
+          },
+          "ActivateRelease": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_ActivateRelease[1]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 2,
+        "case_id": "case_1",
+        "case_step": 2,
+        "dt_expr": null,
+        "inputs": {
+          "ManualMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ManualMode[2]",
+            "type": "BOOL"
+          },
+          "SingleStepMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SingleStepMode[2]",
+            "type": "BOOL"
+          },
+          "SingleCycleMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SingleCycleMode[2]",
+            "type": "BOOL"
+          },
+          "ContinuousMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ContinuousMode[2]",
+            "type": "BOOL"
+          },
+          "EmergencyStop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_EmergencyStop[2]",
+            "type": "BOOL"
+          },
+          "Start": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Start[2]",
+            "type": "BOOL"
+          },
+          "DownButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DownButton[2]",
+            "type": "BOOL"
+          },
+          "UpButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_UpButton[2]",
+            "type": "BOOL"
+          },
+          "LeftButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_LeftButton[2]",
+            "type": "BOOL"
+          },
+          "RightButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_RightButton[2]",
+            "type": "BOOL"
+          },
+          "GripButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_GripButton[2]",
+            "type": "BOOL"
+          },
+          "ReleaseButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReleaseButton[2]",
+            "type": "BOOL"
+          },
+          "DownLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DownLimitSwitch[2]",
+            "type": "BOOL"
+          },
+          "UpLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_UpLimitSwitch[2]",
+            "type": "BOOL"
+          },
+          "LeftLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_LeftLimitSwitch[2]",
+            "type": "BOOL"
+          },
+          "RightLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_RightLimitSwitch[2]",
+            "type": "BOOL"
+          },
+          "GripLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_GripLimitSwitch[2]",
+            "type": "BOOL"
+          },
+          "ReleaseLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReleaseLimitSwitch[2]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "MoveDown": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveDown[2]",
+            "type": "BOOL"
+          },
+          "MoveUp": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveUp[2]",
+            "type": "BOOL"
+          },
+          "MoveLeft": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveLeft[2]",
+            "type": "BOOL"
+          },
+          "MoveRight": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveRight[2]",
+            "type": "BOOL"
+          },
+          "ActivateGrip": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_ActivateGrip[2]",
+            "type": "BOOL"
+          },
+          "ActivateRelease": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_ActivateRelease[2]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 3,
+        "case_id": "case_1",
+        "case_step": 3,
+        "dt_expr": null,
+        "inputs": {
+          "ManualMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ManualMode[3]",
+            "type": "BOOL"
+          },
+          "SingleStepMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SingleStepMode[3]",
+            "type": "BOOL"
+          },
+          "SingleCycleMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SingleCycleMode[3]",
+            "type": "BOOL"
+          },
+          "ContinuousMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ContinuousMode[3]",
+            "type": "BOOL"
+          },
+          "EmergencyStop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_EmergencyStop[3]",
+            "type": "BOOL"
+          },
+          "Start": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Start[3]",
+            "type": "BOOL"
+          },
+          "DownButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DownButton[3]",
+            "type": "BOOL"
+          },
+          "UpButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_UpButton[3]",
+            "type": "BOOL"
+          },
+          "LeftButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_LeftButton[3]",
+            "type": "BOOL"
+          },
+          "RightButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_RightButton[3]",
+            "type": "BOOL"
+          },
+          "GripButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_GripButton[3]",
+            "type": "BOOL"
+          },
+          "ReleaseButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReleaseButton[3]",
+            "type": "BOOL"
+          },
+          "DownLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DownLimitSwitch[3]",
+            "type": "BOOL"
+          },
+          "UpLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_UpLimitSwitch[3]",
+            "type": "BOOL"
+          },
+          "LeftLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_LeftLimitSwitch[3]",
+            "type": "BOOL"
+          },
+          "RightLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_RightLimitSwitch[3]",
+            "type": "BOOL"
+          },
+          "GripLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_GripLimitSwitch[3]",
+            "type": "BOOL"
+          },
+          "ReleaseLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReleaseLimitSwitch[3]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "MoveDown": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveDown[3]",
+            "type": "BOOL"
+          },
+          "MoveUp": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveUp[3]",
+            "type": "BOOL"
+          },
+          "MoveLeft": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveLeft[3]",
+            "type": "BOOL"
+          },
+          "MoveRight": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveRight[3]",
+            "type": "BOOL"
+          },
+          "ActivateGrip": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_ActivateGrip[3]",
+            "type": "BOOL"
+          },
+          "ActivateRelease": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_ActivateRelease[3]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 4,
+        "case_id": "case_1",
+        "case_step": 4,
+        "dt_expr": null,
+        "inputs": {
+          "ManualMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ManualMode[4]",
+            "type": "BOOL"
+          },
+          "SingleStepMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SingleStepMode[4]",
+            "type": "BOOL"
+          },
+          "SingleCycleMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SingleCycleMode[4]",
+            "type": "BOOL"
+          },
+          "ContinuousMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ContinuousMode[4]",
+            "type": "BOOL"
+          },
+          "EmergencyStop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_EmergencyStop[4]",
+            "type": "BOOL"
+          },
+          "Start": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Start[4]",
+            "type": "BOOL"
+          },
+          "DownButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DownButton[4]",
+            "type": "BOOL"
+          },
+          "UpButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_UpButton[4]",
+            "type": "BOOL"
+          },
+          "LeftButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_LeftButton[4]",
+            "type": "BOOL"
+          },
+          "RightButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_RightButton[4]",
+            "type": "BOOL"
+          },
+          "GripButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_GripButton[4]",
+            "type": "BOOL"
+          },
+          "ReleaseButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReleaseButton[4]",
+            "type": "BOOL"
+          },
+          "DownLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DownLimitSwitch[4]",
+            "type": "BOOL"
+          },
+          "UpLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_UpLimitSwitch[4]",
+            "type": "BOOL"
+          },
+          "LeftLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_LeftLimitSwitch[4]",
+            "type": "BOOL"
+          },
+          "RightLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_RightLimitSwitch[4]",
+            "type": "BOOL"
+          },
+          "GripLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_GripLimitSwitch[4]",
+            "type": "BOOL"
+          },
+          "ReleaseLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReleaseLimitSwitch[4]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "MoveDown": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveDown[4]",
+            "type": "BOOL"
+          },
+          "MoveUp": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveUp[4]",
+            "type": "BOOL"
+          },
+          "MoveLeft": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveLeft[4]",
+            "type": "BOOL"
+          },
+          "MoveRight": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveRight[4]",
+            "type": "BOOL"
+          },
+          "ActivateGrip": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_ActivateGrip[4]",
+            "type": "BOOL"
+          },
+          "ActivateRelease": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_ActivateRelease[4]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 5,
+        "case_id": "case_2",
+        "case_step": 0,
+        "dt_expr": null,
+        "inputs": {
+          "ManualMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ManualMode[5]",
+            "type": "BOOL"
+          },
+          "SingleStepMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SingleStepMode[5]",
+            "type": "BOOL"
+          },
+          "SingleCycleMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SingleCycleMode[5]",
+            "type": "BOOL"
+          },
+          "ContinuousMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ContinuousMode[5]",
+            "type": "BOOL"
+          },
+          "EmergencyStop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_EmergencyStop[5]",
+            "type": "BOOL"
+          },
+          "Start": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Start[5]",
+            "type": "BOOL"
+          },
+          "DownButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DownButton[5]",
+            "type": "BOOL"
+          },
+          "UpButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_UpButton[5]",
+            "type": "BOOL"
+          },
+          "LeftButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_LeftButton[5]",
+            "type": "BOOL"
+          },
+          "RightButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_RightButton[5]",
+            "type": "BOOL"
+          },
+          "GripButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_GripButton[5]",
+            "type": "BOOL"
+          },
+          "ReleaseButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReleaseButton[5]",
+            "type": "BOOL"
+          },
+          "DownLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DownLimitSwitch[5]",
+            "type": "BOOL"
+          },
+          "UpLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_UpLimitSwitch[5]",
+            "type": "BOOL"
+          },
+          "LeftLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_LeftLimitSwitch[5]",
+            "type": "BOOL"
+          },
+          "RightLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_RightLimitSwitch[5]",
+            "type": "BOOL"
+          },
+          "GripLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_GripLimitSwitch[5]",
+            "type": "BOOL"
+          },
+          "ReleaseLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReleaseLimitSwitch[5]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "MoveDown": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveDown[5]",
+            "type": "BOOL"
+          },
+          "MoveUp": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveUp[5]",
+            "type": "BOOL"
+          },
+          "MoveLeft": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveLeft[5]",
+            "type": "BOOL"
+          },
+          "MoveRight": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveRight[5]",
+            "type": "BOOL"
+          },
+          "ActivateGrip": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_ActivateGrip[5]",
+            "type": "BOOL"
+          },
+          "ActivateRelease": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_ActivateRelease[5]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 6,
+        "case_id": "case_2",
+        "case_step": 1,
+        "dt_expr": null,
+        "inputs": {
+          "ManualMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ManualMode[6]",
+            "type": "BOOL"
+          },
+          "SingleStepMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SingleStepMode[6]",
+            "type": "BOOL"
+          },
+          "SingleCycleMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SingleCycleMode[6]",
+            "type": "BOOL"
+          },
+          "ContinuousMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ContinuousMode[6]",
+            "type": "BOOL"
+          },
+          "EmergencyStop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_EmergencyStop[6]",
+            "type": "BOOL"
+          },
+          "Start": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Start[6]",
+            "type": "BOOL"
+          },
+          "DownButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DownButton[6]",
+            "type": "BOOL"
+          },
+          "UpButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_UpButton[6]",
+            "type": "BOOL"
+          },
+          "LeftButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_LeftButton[6]",
+            "type": "BOOL"
+          },
+          "RightButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_RightButton[6]",
+            "type": "BOOL"
+          },
+          "GripButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_GripButton[6]",
+            "type": "BOOL"
+          },
+          "ReleaseButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReleaseButton[6]",
+            "type": "BOOL"
+          },
+          "DownLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DownLimitSwitch[6]",
+            "type": "BOOL"
+          },
+          "UpLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_UpLimitSwitch[6]",
+            "type": "BOOL"
+          },
+          "LeftLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_LeftLimitSwitch[6]",
+            "type": "BOOL"
+          },
+          "RightLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_RightLimitSwitch[6]",
+            "type": "BOOL"
+          },
+          "GripLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_GripLimitSwitch[6]",
+            "type": "BOOL"
+          },
+          "ReleaseLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReleaseLimitSwitch[6]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "MoveDown": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveDown[6]",
+            "type": "BOOL"
+          },
+          "MoveUp": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveUp[6]",
+            "type": "BOOL"
+          },
+          "MoveLeft": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveLeft[6]",
+            "type": "BOOL"
+          },
+          "MoveRight": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveRight[6]",
+            "type": "BOOL"
+          },
+          "ActivateGrip": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_ActivateGrip[6]",
+            "type": "BOOL"
+          },
+          "ActivateRelease": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_ActivateRelease[6]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 7,
+        "case_id": "case_2",
+        "case_step": 2,
+        "dt_expr": null,
+        "inputs": {
+          "ManualMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ManualMode[7]",
+            "type": "BOOL"
+          },
+          "SingleStepMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SingleStepMode[7]",
+            "type": "BOOL"
+          },
+          "SingleCycleMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SingleCycleMode[7]",
+            "type": "BOOL"
+          },
+          "ContinuousMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ContinuousMode[7]",
+            "type": "BOOL"
+          },
+          "EmergencyStop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_EmergencyStop[7]",
+            "type": "BOOL"
+          },
+          "Start": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Start[7]",
+            "type": "BOOL"
+          },
+          "DownButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DownButton[7]",
+            "type": "BOOL"
+          },
+          "UpButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_UpButton[7]",
+            "type": "BOOL"
+          },
+          "LeftButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_LeftButton[7]",
+            "type": "BOOL"
+          },
+          "RightButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_RightButton[7]",
+            "type": "BOOL"
+          },
+          "GripButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_GripButton[7]",
+            "type": "BOOL"
+          },
+          "ReleaseButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReleaseButton[7]",
+            "type": "BOOL"
+          },
+          "DownLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DownLimitSwitch[7]",
+            "type": "BOOL"
+          },
+          "UpLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_UpLimitSwitch[7]",
+            "type": "BOOL"
+          },
+          "LeftLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_LeftLimitSwitch[7]",
+            "type": "BOOL"
+          },
+          "RightLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_RightLimitSwitch[7]",
+            "type": "BOOL"
+          },
+          "GripLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_GripLimitSwitch[7]",
+            "type": "BOOL"
+          },
+          "ReleaseLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReleaseLimitSwitch[7]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "MoveDown": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveDown[7]",
+            "type": "BOOL"
+          },
+          "MoveUp": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveUp[7]",
+            "type": "BOOL"
+          },
+          "MoveLeft": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveLeft[7]",
+            "type": "BOOL"
+          },
+          "MoveRight": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveRight[7]",
+            "type": "BOOL"
+          },
+          "ActivateGrip": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_ActivateGrip[7]",
+            "type": "BOOL"
+          },
+          "ActivateRelease": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_ActivateRelease[7]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 8,
+        "case_id": "case_2",
+        "case_step": 3,
+        "dt_expr": null,
+        "inputs": {
+          "ManualMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ManualMode[8]",
+            "type": "BOOL"
+          },
+          "SingleStepMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SingleStepMode[8]",
+            "type": "BOOL"
+          },
+          "SingleCycleMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SingleCycleMode[8]",
+            "type": "BOOL"
+          },
+          "ContinuousMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ContinuousMode[8]",
+            "type": "BOOL"
+          },
+          "EmergencyStop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_EmergencyStop[8]",
+            "type": "BOOL"
+          },
+          "Start": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Start[8]",
+            "type": "BOOL"
+          },
+          "DownButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DownButton[8]",
+            "type": "BOOL"
+          },
+          "UpButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_UpButton[8]",
+            "type": "BOOL"
+          },
+          "LeftButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_LeftButton[8]",
+            "type": "BOOL"
+          },
+          "RightButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_RightButton[8]",
+            "type": "BOOL"
+          },
+          "GripButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_GripButton[8]",
+            "type": "BOOL"
+          },
+          "ReleaseButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReleaseButton[8]",
+            "type": "BOOL"
+          },
+          "DownLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DownLimitSwitch[8]",
+            "type": "BOOL"
+          },
+          "UpLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_UpLimitSwitch[8]",
+            "type": "BOOL"
+          },
+          "LeftLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_LeftLimitSwitch[8]",
+            "type": "BOOL"
+          },
+          "RightLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_RightLimitSwitch[8]",
+            "type": "BOOL"
+          },
+          "GripLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_GripLimitSwitch[8]",
+            "type": "BOOL"
+          },
+          "ReleaseLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReleaseLimitSwitch[8]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "MoveDown": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveDown[8]",
+            "type": "BOOL"
+          },
+          "MoveUp": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveUp[8]",
+            "type": "BOOL"
+          },
+          "MoveLeft": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveLeft[8]",
+            "type": "BOOL"
+          },
+          "MoveRight": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveRight[8]",
+            "type": "BOOL"
+          },
+          "ActivateGrip": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_ActivateGrip[8]",
+            "type": "BOOL"
+          },
+          "ActivateRelease": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_ActivateRelease[8]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 9,
+        "case_id": "case_2",
+        "case_step": 4,
+        "dt_expr": null,
+        "inputs": {
+          "ManualMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ManualMode[9]",
+            "type": "BOOL"
+          },
+          "SingleStepMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SingleStepMode[9]",
+            "type": "BOOL"
+          },
+          "SingleCycleMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SingleCycleMode[9]",
+            "type": "BOOL"
+          },
+          "ContinuousMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ContinuousMode[9]",
+            "type": "BOOL"
+          },
+          "EmergencyStop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_EmergencyStop[9]",
+            "type": "BOOL"
+          },
+          "Start": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Start[9]",
+            "type": "BOOL"
+          },
+          "DownButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DownButton[9]",
+            "type": "BOOL"
+          },
+          "UpButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_UpButton[9]",
+            "type": "BOOL"
+          },
+          "LeftButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_LeftButton[9]",
+            "type": "BOOL"
+          },
+          "RightButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_RightButton[9]",
+            "type": "BOOL"
+          },
+          "GripButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_GripButton[9]",
+            "type": "BOOL"
+          },
+          "ReleaseButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReleaseButton[9]",
+            "type": "BOOL"
+          },
+          "DownLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DownLimitSwitch[9]",
+            "type": "BOOL"
+          },
+          "UpLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_UpLimitSwitch[9]",
+            "type": "BOOL"
+          },
+          "LeftLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_LeftLimitSwitch[9]",
+            "type": "BOOL"
+          },
+          "RightLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_RightLimitSwitch[9]",
+            "type": "BOOL"
+          },
+          "GripLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_GripLimitSwitch[9]",
+            "type": "BOOL"
+          },
+          "ReleaseLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReleaseLimitSwitch[9]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "MoveDown": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveDown[9]",
+            "type": "BOOL"
+          },
+          "MoveUp": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveUp[9]",
+            "type": "BOOL"
+          },
+          "MoveLeft": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveLeft[9]",
+            "type": "BOOL"
+          },
+          "MoveRight": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveRight[9]",
+            "type": "BOOL"
+          },
+          "ActivateGrip": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_ActivateGrip[9]",
+            "type": "BOOL"
+          },
+          "ActivateRelease": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_ActivateRelease[9]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 10,
+        "case_id": "case_2",
+        "case_step": 5,
+        "dt_expr": null,
+        "inputs": {
+          "ManualMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ManualMode[10]",
+            "type": "BOOL"
+          },
+          "SingleStepMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SingleStepMode[10]",
+            "type": "BOOL"
+          },
+          "SingleCycleMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SingleCycleMode[10]",
+            "type": "BOOL"
+          },
+          "ContinuousMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ContinuousMode[10]",
+            "type": "BOOL"
+          },
+          "EmergencyStop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_EmergencyStop[10]",
+            "type": "BOOL"
+          },
+          "Start": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Start[10]",
+            "type": "BOOL"
+          },
+          "DownButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DownButton[10]",
+            "type": "BOOL"
+          },
+          "UpButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_UpButton[10]",
+            "type": "BOOL"
+          },
+          "LeftButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_LeftButton[10]",
+            "type": "BOOL"
+          },
+          "RightButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_RightButton[10]",
+            "type": "BOOL"
+          },
+          "GripButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_GripButton[10]",
+            "type": "BOOL"
+          },
+          "ReleaseButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReleaseButton[10]",
+            "type": "BOOL"
+          },
+          "DownLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DownLimitSwitch[10]",
+            "type": "BOOL"
+          },
+          "UpLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_UpLimitSwitch[10]",
+            "type": "BOOL"
+          },
+          "LeftLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_LeftLimitSwitch[10]",
+            "type": "BOOL"
+          },
+          "RightLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_RightLimitSwitch[10]",
+            "type": "BOOL"
+          },
+          "GripLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_GripLimitSwitch[10]",
+            "type": "BOOL"
+          },
+          "ReleaseLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReleaseLimitSwitch[10]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "MoveDown": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveDown[10]",
+            "type": "BOOL"
+          },
+          "MoveUp": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveUp[10]",
+            "type": "BOOL"
+          },
+          "MoveLeft": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveLeft[10]",
+            "type": "BOOL"
+          },
+          "MoveRight": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveRight[10]",
+            "type": "BOOL"
+          },
+          "ActivateGrip": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_ActivateGrip[10]",
+            "type": "BOOL"
+          },
+          "ActivateRelease": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_ActivateRelease[10]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 11,
+        "case_id": "case_2",
+        "case_step": 6,
+        "dt_expr": null,
+        "inputs": {
+          "ManualMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ManualMode[11]",
+            "type": "BOOL"
+          },
+          "SingleStepMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SingleStepMode[11]",
+            "type": "BOOL"
+          },
+          "SingleCycleMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SingleCycleMode[11]",
+            "type": "BOOL"
+          },
+          "ContinuousMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ContinuousMode[11]",
+            "type": "BOOL"
+          },
+          "EmergencyStop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_EmergencyStop[11]",
+            "type": "BOOL"
+          },
+          "Start": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Start[11]",
+            "type": "BOOL"
+          },
+          "DownButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DownButton[11]",
+            "type": "BOOL"
+          },
+          "UpButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_UpButton[11]",
+            "type": "BOOL"
+          },
+          "LeftButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_LeftButton[11]",
+            "type": "BOOL"
+          },
+          "RightButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_RightButton[11]",
+            "type": "BOOL"
+          },
+          "GripButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_GripButton[11]",
+            "type": "BOOL"
+          },
+          "ReleaseButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReleaseButton[11]",
+            "type": "BOOL"
+          },
+          "DownLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DownLimitSwitch[11]",
+            "type": "BOOL"
+          },
+          "UpLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_UpLimitSwitch[11]",
+            "type": "BOOL"
+          },
+          "LeftLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_LeftLimitSwitch[11]",
+            "type": "BOOL"
+          },
+          "RightLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_RightLimitSwitch[11]",
+            "type": "BOOL"
+          },
+          "GripLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_GripLimitSwitch[11]",
+            "type": "BOOL"
+          },
+          "ReleaseLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReleaseLimitSwitch[11]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "MoveDown": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveDown[11]",
+            "type": "BOOL"
+          },
+          "MoveUp": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveUp[11]",
+            "type": "BOOL"
+          },
+          "MoveLeft": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveLeft[11]",
+            "type": "BOOL"
+          },
+          "MoveRight": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveRight[11]",
+            "type": "BOOL"
+          },
+          "ActivateGrip": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_ActivateGrip[11]",
+            "type": "BOOL"
+          },
+          "ActivateRelease": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_ActivateRelease[11]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 12,
+        "case_id": "case_2",
+        "case_step": 7,
+        "dt_expr": null,
+        "inputs": {
+          "ManualMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ManualMode[12]",
+            "type": "BOOL"
+          },
+          "SingleStepMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SingleStepMode[12]",
+            "type": "BOOL"
+          },
+          "SingleCycleMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_SingleCycleMode[12]",
+            "type": "BOOL"
+          },
+          "ContinuousMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ContinuousMode[12]",
+            "type": "BOOL"
+          },
+          "EmergencyStop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_EmergencyStop[12]",
+            "type": "BOOL"
+          },
+          "Start": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Start[12]",
+            "type": "BOOL"
+          },
+          "DownButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DownButton[12]",
+            "type": "BOOL"
+          },
+          "UpButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_UpButton[12]",
+            "type": "BOOL"
+          },
+          "LeftButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_LeftButton[12]",
+            "type": "BOOL"
+          },
+          "RightButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_RightButton[12]",
+            "type": "BOOL"
+          },
+          "GripButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_GripButton[12]",
+            "type": "BOOL"
+          },
+          "ReleaseButton": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReleaseButton[12]",
+            "type": "BOOL"
+          },
+          "DownLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DownLimitSwitch[12]",
+            "type": "BOOL"
+          },
+          "UpLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_UpLimitSwitch[12]",
+            "type": "BOOL"
+          },
+          "LeftLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_LeftLimitSwitch[12]",
+            "type": "BOOL"
+          },
+          "RightLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_RightLimitSwitch[12]",
+            "type": "BOOL"
+          },
+          "GripLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_GripLimitSwitch[12]",
+            "type": "BOOL"
+          },
+          "ReleaseLimitSwitch": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReleaseLimitSwitch[12]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "MoveDown": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveDown[12]",
+            "type": "BOOL"
+          },
+          "MoveUp": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveUp[12]",
+            "type": "BOOL"
+          },
+          "MoveLeft": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveLeft[12]",
+            "type": "BOOL"
+          },
+          "MoveRight": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_MoveRight[12]",
+            "type": "BOOL"
+          },
+          "ActivateGrip": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_ActivateGrip[12]",
+            "type": "BOOL"
+          },
+          "ActivateRelease": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_ActivateRelease[12]",
+            "type": "BOOL"
+          }
+        }
+      }
+    ]
+  },
+  "result_path": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\72e0bc758994bbe1\\simulation_evidence.json"
+}

@@ -1,0 +1,19 @@
+{
+  "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    enqueue : BOOL;\n    dequeue : BOOL;\n    reset : BOOL;\nEND_VAR\nVAR_OUTPUT\n    elementCount : DINT := 0;\n    {attribute 'analysis' := '-27'}\n    status : WORD := 16#0000;\nEND_VAR\nVAR_IN_OUT\n    item : VARIANT;\n    buffer : VARIANT;\nEND_VAR\nVAR\n    initialized : BOOL := FALSE;\n    capacity : DINT := 0;\n    head : DINT := 0;\n    tail : DINT := 0;\n    internalCount : DINT := 0;\n    enqueuePrev : BOOL := FALSE;\n    dequeuePrev : BOOL := FALSE;\n    enqueueRise : BOOL;\n    dequeueRise : BOOL;\n    elementSize : UDINT;\n    pBuffer : POINTER TO BYTE;\n    pItem : POINTER TO BYTE;\n    pElem : POINTER TO BYTE;\n    idx : DINT;\n    offset : UDINT;\nEND_VAR",
+  "implementation": "IF NOT initialized THEN\n    elementSize := item.Size;\n    IF elementSize > 0 AND buffer.Size > 0 THEN\n        capacity := UDINT_TO_DINT(buffer.Size / elementSize);\n    ELSE\n        capacity := 0;\n    END_IF;\n    IF capacity < 0 THEN\n        capacity := 0;\n    END_IF;\n    head := 0;\n    tail := 0;\n    internalCount := 0;\n    status := 16#0000;\n    initialized := TRUE;\nEND_IF;\n\npBuffer := buffer.pData;\npItem := item.pData;\n\nenqueueRise := enqueue AND NOT enqueuePrev;\ndequeueRise := dequeue AND NOT dequeuePrev;\nenqueuePrev := enqueue;\ndequeuePrev := dequeue;\n\nIF reset THEN\n    internalCount := 0;\n    head := 0;\n    tail := 0;\n    status := 16#0000;\nELSIF enqueueRise AND dequeueRise THEN\n    status := 16#0000;\nELSIF enqueueRise THEN\n    IF internalCount >= capacity THEN\n        status := 16#8002;\n    ELSE\n        idx := tail;\n        offset := DINT_TO_UDINT(idx) * elementSize;\n        pElem := pBuffer + offset;\n        FIFO_CopyBytes(dest := pElem, src := pItem, size := elementSize);\n        tail := (tail + 1) MOD capacity;\n        internalCount := internalCount + 1;\n        status := 16#0000;\n    END_IF;\nELSIF dequeueRise THEN\n    IF internalCount <= 0 THEN\n        status := 16#8001;\n    ELSE\n        idx := head;\n        offset := DINT_TO_UDINT(idx) * elementSize;\n        pElem := pBuffer + offset;\n        FIFO_CopyBytes(dest := pItem, src := pElem, size := elementSize);\n        head := (head + 1) MOD capacity;\n        internalCount := internalCount - 1;\n        status := 16#0000;\n    END_IF;\nELSE\n    status := 16#0000;\nEND_IF;\n\nelementCount := internalCount;",
+  "supporting_objects": [
+    {
+      "name": "VARIANT",
+      "kind": "DUT",
+      "declaration": "TYPE VARIANT : STRUCT\n    pData : POINTER TO BYTE;\n    Size : UDINT;\nEND_STRUCT\nEND_TYPE",
+      "implementation": ""
+    },
+    {
+      "name": "FIFO_CopyBytes",
+      "kind": "FUNCTION",
+      "return_type": "BOOL",
+      "declaration": "FUNCTION FIFO_CopyBytes : BOOL\nVAR_INPUT\n    dest : POINTER TO BYTE;\n    src : POINTER TO BYTE;\n    size : UDINT;\nEND_VAR\nVAR\n    i : UDINT;\n    pD : POINTER TO BYTE;\n    pS : POINTER TO BYTE;\nEND_VAR",
+      "implementation": "FIFO_CopyBytes := FALSE;\nIF size > 0 THEN\n    pD := dest;\n    pS := src;\n    FOR i := 0 TO size - 1 DO\n        pD^ := pS^;\n        pD := pD + 1;\n        pS := pS + 1;\n    END_FOR;\nEND_IF;\nFIFO_CopyBytes := TRUE;"
+    }
+  ]
+}

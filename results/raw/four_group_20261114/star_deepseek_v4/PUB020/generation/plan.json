@@ -1,0 +1,219 @@
+{
+  "state_machine": [
+    {
+      "state": "MANUAL",
+      "entry_actions": "Mode=FALSE. Clear automatic route, kick, and CompletionLight; retain firingTemp. Motor outputs are computed from buttons with conflict inhibit.",
+      "transitions": [
+        {
+          "to": "WAIT_FEED",
+          "when": "Mode == TRUE"
+        }
+      ]
+    },
+    {
+      "state": "WAIT_FEED",
+      "entry_actions": "Motor stopped; kick and CompletionLight cleared; automatic route ready.",
+      "transitions": [
+        {
+          "to": "MANUAL",
+          "when": "Mode == FALSE"
+        },
+        {
+          "to": "MOVE_TO_WASH",
+          "when": "Mode == TRUE AND SensorFeed"
+        }
+      ]
+    },
+    {
+      "state": "MOVE_TO_WASH",
+      "entry_actions": "MotorForward ON; MotorReverse OFF.",
+      "transitions": [
+        {
+          "to": "MANUAL",
+          "when": "Mode == FALSE"
+        },
+        {
+          "to": "WAIT_WASH",
+          "when": "Mode == TRUE AND SensorWash"
+        }
+      ]
+    },
+    {
+      "state": "WAIT_WASH",
+      "entry_actions": "Motor stopped; wait for washComplete.",
+      "transitions": [
+        {
+          "to": "MANUAL",
+          "when": "Mode == FALSE"
+        },
+        {
+          "to": "MOVE_TO_WEIGHT",
+          "when": "Mode == TRUE AND washComplete"
+        }
+      ]
+    },
+    {
+      "state": "MOVE_TO_WEIGHT",
+      "entry_actions": "MotorForward ON; MotorReverse OFF.",
+      "transitions": [
+        {
+          "to": "MANUAL",
+          "when": "Mode == FALSE"
+        },
+        {
+          "to": "WAIT_WEIGHT",
+          "when": "Mode == TRUE AND SensorWeight"
+        }
+      ]
+    },
+    {
+      "state": "WAIT_WEIGHT",
+      "entry_actions": "Motor stopped; wait for weightComplete. Do not accept weightComplete on the same scan as arrival; evaluate on subsequent scan.",
+      "transitions": [
+        {
+          "to": "MANUAL",
+          "when": "Mode == FALSE"
+        },
+        {
+          "to": "MOVE_TO_FIRING",
+          "when": "Mode == TRUE AND SensorWeight AND weightComplete AND 100.0 <= weight <= 200.0"
+        },
+        {
+          "to": "REJECT_WAIT",
+          "when": "Mode == TRUE AND SensorWeight AND weightComplete AND (weight < 100.0 OR weight > 200.0)"
+        }
+      ]
+    },
+    {
+      "state": "REJECT_WAIT",
+      "entry_actions": "kick ON; MotorForward OFF; MotorReverse OFF; firingTemp unchanged.",
+      "transitions": [
+        {
+          "to": "MANUAL",
+          "when": "Mode == FALSE"
+        },
+        {
+          "to": "WAIT_FEED",
+          "when": "Mode == TRUE AND NOT SensorWeight"
+        }
+      ]
+    },
+    {
+      "state": "MOVE_TO_FIRING",
+      "entry_actions": "MotorForward ON; MotorReverse OFF; firingTemp holds newly computed accepted value.",
+      "transitions": [
+        {
+          "to": "MANUAL",
+          "when": "Mode == FALSE"
+        },
+        {
+          "to": "WAIT_FIRING",
+          "when": "Mode == TRUE AND SensorFiring"
+        }
+      ]
+    },
+    {
+      "state": "WAIT_FIRING",
+      "entry_actions": "Motor stopped; wait for firingComplete.",
+      "transitions": [
+        {
+          "to": "MANUAL",
+          "when": "Mode == FALSE"
+        },
+        {
+          "to": "MOVE_TO_OUTPUT",
+          "when": "Mode == TRUE AND firingComplete"
+        }
+      ]
+    },
+    {
+      "state": "MOVE_TO_OUTPUT",
+      "entry_actions": "MotorForward ON; MotorReverse OFF.",
+      "transitions": [
+        {
+          "to": "MANUAL",
+          "when": "Mode == FALSE"
+        },
+        {
+          "to": "OUTPUT_DONE",
+          "when": "Mode == TRUE AND SensorOutput"
+        }
+      ]
+    },
+    {
+      "state": "OUTPUT_DONE",
+      "entry_actions": "CompletionLight ON; MotorForward OFF; MotorReverse OFF. Clear route only after removal.",
+      "transitions": [
+        {
+          "to": "MANUAL",
+          "when": "Mode == FALSE"
+        },
+        {
+          "to": "WAIT_FEED",
+          "when": "Mode == TRUE AND NOT SensorOutput"
+        }
+      ]
+    }
+  ],
+  "timer_plan": {
+    "required_timers": [],
+    "pt_durations": "None; no timed requirement. Confirmations are level-gated by phase; kick and CompletionLight are level states cleared by sensor removal.",
+    "optional_edge_timers": "If platform uses R_TRIG/one-shot FBs for Mode, buttons, or confirmations, call them unconditionally at top level and reset them on manual entry, Mode change, or route reset.",
+    "reset_conditions": "Reset all edge/timer FBs on Mode change, entry to MANUAL, safety/reset, or transition to WAIT_FEED."
+  },
+  "priorities": [
+    "Safety interlock: MotorForward and MotorReverse are mutually exclusive; conflicting manual buttons inhibit both outputs.",
+    "Mode/manual reset: Mode=FALSE enters MANUAL immediately, clears automatic sequence, kick, CompletionLight, and timers; firingTemp is retained.",
+    "Arrival and safety priority: destination sensor stops motion before processing; unqualified weight never proceeds to firing; unrelated completion signals are ignored.",
+    "Automatic sequence: at most one phase transition per scan; arrival has priority over matching completion on the same scan; confirmations are accepted only in their corresponding WAIT state on a subsequent scan.",
+    "Output unification: assign all outputs once at scan end; enforce interlock last; kick only in REJECT_WAIT; CompletionLight only in OUTPUT_DONE; firingTemp updates only on accepted valid weight."
+  ],
+  "initial_values": {
+    "phase": "WAIT_FEED",
+    "MotorForward": false,
+    "MotorReverse": false,
+    "kick": false,
+    "CompletionLight": false,
+    "firingTemp": 0.0,
+    "prevMode": false,
+    "prevForwardButton": false,
+    "prevReverseButton": false,
+    "prevWashComplete": false,
+    "prevWeightComplete": false,
+    "prevFiringComplete": false,
+    "prevSensorOutput": false,
+    "timerReset": true
+  },
+  "scan_execution_order": [
+    "1. Edge sampling: sample Mode, ForwardButton, ReverseButton, station sensors, washComplete, weightComplete, weight, and firingComplete into shadow registers; compute rising-edge flags and latch pre-phase state for this invocation.",
+    "2. Safety/reset priority and state transitions: if Mode=FALSE, enter MANUAL, clear auto route, kick, CompletionLight, and reset timers, retaining firingTemp; otherwise enforce motor interlock, ignore unrelated completions, allow at most one automatic phase transition, give destination arrival priority, and accept a matching completion only in the correct WAIT state and not on the arrival scan.",
+    "3. Unconditional top-level timer FB calls outside CASE/IF: call all configured TON/TOF/R_TRIG/one-shot instances unconditionally here; no process timers are required, but any edge/diagnostic timers must be updated every scan and reset by the stage-2 reset conditions.",
+    "4. Unified output assignments: assign MotorForward, MotorReverse, kick, CompletionLight, and firingTemp exactly once from the resulting state and manual logic; enforce MotorForward and MotorReverse mutual exclusion as the final interlock; no output writes occur in CASE/IF logic."
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G(!(MotorForward && MotorReverse))"
+    },
+    {
+      "id": "A2",
+      "formula": "G(Mode -> !MotorReverse)"
+    },
+    {
+      "id": "A3",
+      "formula": "G(!Mode -> ((MotorForward <-> (ForwardButton && !ReverseButton)) && (MotorReverse <-> (ReverseButton && !ForwardButton))))"
+    },
+    {
+      "id": "A4",
+      "formula": "G(!Mode -> (!kick && !CompletionLight))"
+    },
+    {
+      "id": "A5",
+      "formula": "G(kick -> (Mode && SensorWeight))"
+    },
+    {
+      "id": "A6",
+      "formula": "G(CompletionLight -> (Mode && SensorOutput))"
+    }
+  ]
+}

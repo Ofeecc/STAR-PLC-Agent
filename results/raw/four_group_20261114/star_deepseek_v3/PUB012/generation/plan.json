@@ -1,0 +1,332 @@
+{
+  "state_machine": {
+    "states": [
+      {
+        "name": "S0_POWER_UP",
+        "description": "Pseudo-state entered once at instance initialization.",
+        "entry_actions": [
+          "Initialize all internal and output registers to declared initial values.",
+          "prevValidFault := FALSE",
+          "holdActive := FALSE",
+          "holdRestart := FALSE",
+          "FaultCounter_Int := 0",
+          "RuntimeAccumulator_Int := LTIME#0ns",
+          "FaultHistory_Int := [0,0,0,0,0]"
+        ]
+      },
+      {
+        "name": "S1_SIGNAL_INVALID",
+        "description": "THICKNESS_SIGNAL_VALID is FALSE. Alarm and hold are forced off; no fault record or runtime add occurs. Statistics/history are preserved.",
+        "entry_actions": [
+          "holdActive := FALSE",
+          "holdRestart := FALSE",
+          "prevValidFault := FALSE",
+          "AlarmHoldTimer reset via IN=FALSE",
+          "Do not clear FaultCounter_Int, RuntimeAccumulator_Int, or FaultHistory_Int"
+        ]
+      },
+      {
+        "name": "S2_VALID_NORMAL",
+        "description": "Valid signal, no thickness fault, no active alarm hold."
+      },
+      {
+        "name": "S3_VALID_FAULT",
+        "description": "Valid signal and THICKNESS_FAULT TRUE. Alarm is forced TRUE. Fault recording occurs on entry from a non-fault/invalid state."
+      },
+      {
+        "name": "S4_VALID_HOLD",
+        "description": "Valid signal, fault absent, minimum 500 ms alarm hold active."
+      }
+    ],
+    "transitions": [
+      {
+        "from": "S0_POWER_UP",
+        "to": "S1_SIGNAL_INVALID",
+        "condition": "NOT THICKNESS_SIGNAL_VALID",
+        "actions": [
+          "apply S1 invalid override"
+        ]
+      },
+      {
+        "from": "S0_POWER_UP",
+        "to": "S2_VALID_NORMAL",
+        "condition": "THICKNESS_SIGNAL_VALID AND NOT THICKNESS_FAULT",
+        "actions": [
+          "holdActive := FALSE",
+          "holdRestart := FALSE"
+        ]
+      },
+      {
+        "from": "S0_POWER_UP",
+        "to": "S3_VALID_FAULT",
+        "condition": "THICKNESS_SIGNAL_VALID AND THICKNESS_FAULT",
+        "actions": [
+          "if validFaultRise then record fault",
+          "holdActive := TRUE",
+          "holdRestart := TRUE"
+        ]
+      },
+      {
+        "from": "S1_SIGNAL_INVALID",
+        "to": "S1_SIGNAL_INVALID",
+        "condition": "NOT THICKNESS_SIGNAL_VALID",
+        "actions": [
+          "keep alarm off and hold cleared",
+          "preserve statistics/history"
+        ]
+      },
+      {
+        "from": "S1_SIGNAL_INVALID",
+        "to": "S2_VALID_NORMAL",
+        "condition": "THICKNESS_SIGNAL_VALID AND NOT THICKNESS_FAULT",
+        "actions": [
+          "holdActive := FALSE",
+          "no fault record"
+        ]
+      },
+      {
+        "from": "S1_SIGNAL_INVALID",
+        "to": "S3_VALID_FAULT",
+        "condition": "THICKNESS_SIGNAL_VALID AND THICKNESS_FAULT",
+        "actions": [
+          "record validFaultRise",
+          "holdActive := TRUE",
+          "holdRestart := TRUE"
+        ]
+      },
+      {
+        "from": "S2_VALID_NORMAL",
+        "to": "S1_SIGNAL_INVALID",
+        "condition": "NOT THICKNESS_SIGNAL_VALID",
+        "actions": [
+          "apply S1 invalid override"
+        ]
+      },
+      {
+        "from": "S2_VALID_NORMAL",
+        "to": "S2_VALID_NORMAL",
+        "condition": "THICKNESS_SIGNAL_VALID AND NOT THICKNESS_FAULT",
+        "actions": [
+          "alarm off",
+          "hold inactive"
+        ]
+      },
+      {
+        "from": "S2_VALID_NORMAL",
+        "to": "S3_VALID_FAULT",
+        "condition": "THICKNESS_SIGNAL_VALID AND THICKNESS_FAULT",
+        "actions": [
+          "record validFaultRise",
+          "holdActive := TRUE",
+          "holdRestart := TRUE"
+        ]
+      },
+      {
+        "from": "S3_VALID_FAULT",
+        "to": "S1_SIGNAL_INVALID",
+        "condition": "NOT THICKNESS_SIGNAL_VALID",
+        "actions": [
+          "apply S1 invalid override"
+        ]
+      },
+      {
+        "from": "S3_VALID_FAULT",
+        "to": "S3_VALID_FAULT",
+        "condition": "THICKNESS_SIGNAL_VALID AND THICKNESS_FAULT",
+        "actions": [
+          "alarm remains TRUE",
+          "no new record",
+          "no runtime add"
+        ]
+      },
+      {
+        "from": "S3_VALID_FAULT",
+        "to": "S4_VALID_HOLD",
+        "condition": "THICKNESS_SIGNAL_VALID AND NOT THICKNESS_FAULT AND NOT AlarmHoldTimer.Q",
+        "actions": [
+          "holdActive remains TRUE",
+          "alarm held"
+        ]
+      },
+      {
+        "from": "S3_VALID_FAULT",
+        "to": "S2_VALID_NORMAL",
+        "condition": "THICKNESS_SIGNAL_VALID AND NOT THICKNESS_FAULT AND AlarmHoldTimer.Q",
+        "actions": [
+          "holdActive := FALSE",
+          "alarm releases"
+        ]
+      },
+      {
+        "from": "S4_VALID_HOLD",
+        "to": "S1_SIGNAL_INVALID",
+        "condition": "NOT THICKNESS_SIGNAL_VALID",
+        "actions": [
+          "apply S1 invalid override"
+        ]
+      },
+      {
+        "from": "S4_VALID_HOLD",
+        "to": "S4_VALID_HOLD",
+        "condition": "THICKNESS_SIGNAL_VALID AND NOT THICKNESS_FAULT AND NOT AlarmHoldTimer.Q",
+        "actions": [
+          "hold active",
+          "alarm TRUE"
+        ]
+      },
+      {
+        "from": "S4_VALID_HOLD",
+        "to": "S2_VALID_NORMAL",
+        "condition": "THICKNESS_SIGNAL_VALID AND NOT THICKNESS_FAULT AND AlarmHoldTimer.Q",
+        "actions": [
+          "holdActive := FALSE",
+          "alarm releases"
+        ]
+      },
+      {
+        "from": "S4_VALID_HOLD",
+        "to": "S3_VALID_FAULT",
+        "condition": "THICKNESS_SIGNAL_VALID AND THICKNESS_FAULT",
+        "actions": [
+          "record validFaultRise",
+          "holdActive := TRUE",
+          "holdRestart := TRUE"
+        ]
+      }
+    ]
+  },
+  "timer_plan": {
+    "timers": [
+      {
+        "name": "AlarmHoldTimer",
+        "type": "TON",
+        "PT": "T#500ms",
+        "IN": "THICKNESS_SIGNAL_VALID AND holdActive AND NOT holdRestart",
+        "reset_conditions": [
+          "power-up/init",
+          "THICKNESS_SIGNAL_VALID = FALSE",
+          "fresh valid THICKNESS_FAULT rising edge via holdRestart = TRUE for one scan",
+          "holdActive becomes FALSE",
+          "whenever IN is FALSE"
+        ],
+        "purpose": "Enforces the minimum 500 ms alarm hold from the most recent valid fault rising edge. Q TRUE means 500 ms elapsed."
+      }
+    ],
+    "one_shot_reset": "holdRestart is cleared at the start of each scan and set TRUE only on validFaultRise. It forces AlarmHoldTimer.IN FALSE during the edge scan so a fresh edge restarts the 500 ms timing."
+  },
+  "priorities": [
+    "1. Invalid signal override: THICKNESS_SIGNAL_VALID = FALSE forces THICKNESS_ALARM = FALSE, clears holdActive/holdRestart, resets AlarmHoldTimer, and suppresses fault records and runtime accumulation.",
+    "2. Valid fault override: THICKNESS_SIGNAL_VALID = TRUE AND THICKNESS_FAULT = TRUE forces THICKNESS_ALARM = TRUE regardless of timer state.",
+    "3. Minimum hold: after a valid fault rising edge, holdActive keeps THICKNESS_ALARM TRUE for at least 500 ms when the fault is absent; a fresh valid fault rising edge restarts the hold.",
+    "4. Fault history update: only validFaultRise records a fault. Persistent faults, invalid inputs, and held faults do not create records.",
+    "5. Normal runtime: accumulate CycleTime only when THICKNESS_SIGNAL_VALID = TRUE AND THICKNESS_FAULT = FALSE AND CUTTING_RUN = TRUE; otherwise preserve the accumulator.",
+    "6. Observation-only statistics: fault counter, runtime accumulator, and fault history never alter cutting permissives. History is updated only from private internal state and copied to the output in the output stage."
+  ],
+  "initial_values": {
+    "outputs": {
+      "THICKNESS_ALARM": false,
+      "Slab_Fault_Counter": 0,
+      "Slab_Runtime_Accumulator": "LTIME#0ns",
+      "Slab_Fault_History": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "internal": {
+      "state": "S0_POWER_UP",
+      "prevValidFault": false,
+      "holdActive": false,
+      "holdRestart": false,
+      "validFault": false,
+      "validFaultRise": false,
+      "FaultCounter_Int": 0,
+      "RuntimeAccumulator_Int": "LTIME#0ns",
+      "FaultHistory_Int": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "AlarmHoldTimer.Q": false,
+      "AlarmHoldTimer.ET": "T#0ms"
+    }
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "Edge sampling",
+      "actions": [
+        "Latch inputs: THICKNESS_SIGNAL_VALID, THICKNESS_FAULT, CUTTING_RUN, FaultTimestamp, CycleTime.",
+        "Compute validFault := THICKNESS_SIGNAL_VALID AND THICKNESS_FAULT.",
+        "Compute validFaultRise := validFault AND NOT prevValidFault.",
+        "Update prevValidFault := validFault for the next scan; invalid input leaves it FALSE."
+      ]
+    },
+    {
+      "stage": 2,
+      "name": "Safety/reset priority and state transitions",
+      "actions": [
+        "At scan start, holdRestart := FALSE.",
+        "FIRST apply invalid-signal override: if NOT THICKNESS_SIGNAL_VALID, force alarm/hold off, reset timer via IN=FALSE, clear prevValidFault, and skip records/runtime.",
+        "Else, if validFaultRise, record fault: increment FaultCounter_Int, shift FaultHistory_Int toward higher indices, set FaultHistory_Int[0] := FaultTimestamp, set holdActive := TRUE, and holdRestart := TRUE.",
+        "Apply state transitions.",
+        "If THICKNESS_SIGNAL_VALID AND NOT THICKNESS_FAULT AND CUTTING_RUN, add CycleTime to RuntimeAccumulator_Int.",
+        "If THICKNESS_SIGNAL_VALID AND NOT THICKNESS_FAULT AND AlarmHoldTimer.Q, clear holdActive.",
+        "Never clear statistics/history on invalid signal; preserve them."
+      ]
+    },
+    {
+      "stage": 3,
+      "name": "Unconditional top-level timer FB calls outside CASE/IF",
+      "actions": [
+        "Call AlarmHoldTimer(IN := THICKNESS_SIGNAL_VALID AND holdActive AND NOT holdRestart, PT := T#500ms) exactly once per scan.",
+        "Timer Q and ET are updated here, unconditionally and outside any CASE/IF."
+      ]
+    },
+    {
+      "stage": 4,
+      "name": "Unified output assignments",
+      "actions": [
+        "THICKNESS_ALARM := THICKNESS_SIGNAL_VALID AND (THICKNESS_FAULT OR (holdActive AND NOT AlarmHoldTimer.Q)).",
+        "Slab_Fault_Counter := FaultCounter_Int.",
+        "Slab_Runtime_Accumulator := RuntimeAccumulator_Int.",
+        "Copy FaultHistory_Int[0..4] to Slab_Fault_History[0..4].",
+        "No other code writes outputs."
+      ]
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G(!THICKNESS_SIGNAL_VALID -> !THICKNESS_ALARM)"
+    },
+    {
+      "id": "A2",
+      "formula": "G(THICKNESS_SIGNAL_VALID & THICKNESS_FAULT -> THICKNESS_ALARM)"
+    },
+    {
+      "id": "A3",
+      "formula": "G((THICKNESS_SIGNAL_VALID & THICKNESS_FAULT & !previous(THICKNESS_SIGNAL_VALID & THICKNESS_FAULT)) -> (Slab_Fault_History[0] = FaultTimestamp))"
+    },
+    {
+      "id": "A4",
+      "formula": "G((THICKNESS_SIGNAL_VALID & THICKNESS_FAULT & !previous(THICKNESS_SIGNAL_VALID & THICKNESS_FAULT)) -> (Slab_Fault_Counter = previous(Slab_Fault_Counter) + 1))"
+    },
+    {
+      "id": "A5",
+      "formula": "G(!(THICKNESS_SIGNAL_VALID & THICKNESS_FAULT & !previous(THICKNESS_SIGNAL_VALID & THICKNESS_FAULT)) -> (Slab_Fault_Counter = previous(Slab_Fault_Counter)))"
+    },
+    {
+      "id": "A6",
+      "formula": "G((THICKNESS_SIGNAL_VALID & !THICKNESS_FAULT & CUTTING_RUN) -> (Slab_Runtime_Accumulator = previous(Slab_Runtime_Accumulator) + CycleTime))"
+    },
+    {
+      "id": "A7",
+      "formula": "G(!(THICKNESS_SIGNAL_VALID & !THICKNESS_FAULT & CUTTING_RUN) -> (Slab_Runtime_Accumulator = previous(Slab_Runtime_Accumulator)))"
+    }
+  ]
+}

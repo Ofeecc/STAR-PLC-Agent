@@ -1,0 +1,712 @@
+{
+  "request_id": "5b66368ce361484cbbd5b017aa053da7",
+  "mode": "IDE_SIMULATION_ONLY",
+  "no_physical_connection": true,
+  "workspace": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\b9a247e8c2faa895",
+  "project": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\b9a247e8c2faa895\\simulation.project",
+  "template": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\b9a247e8c2faa895\\benchmark.project",
+  "task_id": "PUB006",
+  "task_sha256": "6891b26c2e4ce691e180bbf11d048ef3182e877cd543fac2abecef3cbddbbdf3",
+  "source_sha256": "9b343e0ca9c774ef7dc17b3f59b33c688dc7e0cbf95c099dace4ca87b699aee2",
+  "candidate": {
+    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    DO_LOW : BOOL;\n    AERATION_E_STOP_NC : BOOL;\nEND_VAR\nVAR_OUTPUT\n    BLOWER_RUN : BOOL := FALSE;\n    AERATION_BLOWER_CYCLE_COUNT : UINT := 0;\nEND_VAR\nVAR\n    StartDelay : TON;\n    State : INT := 0;\n    RunPrev : BOOL := FALSE;\n    Permit : BOOL := FALSE;\nEND_VAR",
+    "implementation": "// 1) Sample inputs and retained previous output state\nRunPrev := BLOWER_RUN;\nPermit := DO_LOW AND AERATION_E_STOP_NC;\n\n// 2) Safety/reset priority and state transitions\nIF NOT Permit THEN\n    State := 0;\nELSE\n    CASE State OF\n        0:\n            State := 1;\n        1:\n            IF StartDelay.Q THEN\n                State := 2;\n            END_IF;\n        2:\n            State := 2;\n    ELSE\n        State := 0;\n    END_CASE;\nEND_IF;\n\n// 3) Unconditional top-level TON call outside CASE/IF\nStartDelay(IN := (State = 1) AND Permit, PT := T#5s);\n\n// 4) Unified output assignments and cycle counting\nBLOWER_RUN := Permit AND ((State = 2) OR ((State = 1) AND StartDelay.Q));\n\nIF (NOT RunPrev) AND BLOWER_RUN THEN\n    AERATION_BLOWER_CYCLE_COUNT := AERATION_BLOWER_CYCLE_COUNT + 1;\nEND_IF;",
+    "supporting_objects": []
+  },
+  "program": {
+    "declaration": "PROGRAM PLC_PRG\nVAR\n BenchStep : UDINT := 0;\n BenchCalls : UDINT := 0;\n BenchDone : BOOL := FALSE;\n BenchLastTime : TIME := T#0ms;\n BenchClockReady : BOOL := FALSE;\n BenchCurrentTime : TIME := T#0ms;\n TraceDt : ARRAY[0..15] OF UDINT;\n BenchUut0 : FB_Task;\n BenchUut1 : FB_Task;\n TraceIn_DO_LOW : ARRAY[0..15] OF BOOL;\n TraceIn_AERATION_E_STOP_NC : ARRAY[0..15] OF BOOL;\n TraceOut_BLOWER_RUN : ARRAY[0..15] OF BOOL;\n TraceOut_AERATION_BLOWER_CYCLE_COUNT : ARRAY[0..15] OF UINT;\nEND_VAR",
+    "implementation": "IF NOT BenchDone THEN\n BenchCurrentTime := TIME();\n IF NOT BenchClockReady THEN\n  BenchLastTime := BenchCurrentTime;\n  BenchClockReady := TRUE;\n ELSE\n CASE BenchStep OF\n 0:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(0) THEN\n   TraceDt[0] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut0.DO_LOW := FALSE;\n   BenchUut0.AERATION_E_STOP_NC := TRUE;\n   TraceIn_DO_LOW[0] := BenchUut0.DO_LOW;\n   TraceIn_AERATION_E_STOP_NC[0] := BenchUut0.AERATION_E_STOP_NC;\n   BenchUut0();\n   TraceOut_BLOWER_RUN[0] := BenchUut0.BLOWER_RUN;\n   TraceOut_AERATION_BLOWER_CYCLE_COUNT[0] := BenchUut0.AERATION_BLOWER_CYCLE_COUNT;\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 1:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(0) THEN\n   TraceDt[1] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut0.DO_LOW := TRUE;\n   BenchUut0.AERATION_E_STOP_NC := TRUE;\n   TraceIn_DO_LOW[1] := BenchUut0.DO_LOW;\n   TraceIn_AERATION_E_STOP_NC[1] := BenchUut0.AERATION_E_STOP_NC;\n   BenchUut0();\n   TraceOut_BLOWER_RUN[1] := BenchUut0.BLOWER_RUN;\n   TraceOut_AERATION_BLOWER_CYCLE_COUNT[1] := BenchUut0.AERATION_BLOWER_CYCLE_COUNT;\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 2:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(2000) THEN\n   TraceDt[2] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut0.DO_LOW := TRUE;\n   BenchUut0.AERATION_E_STOP_NC := TRUE;\n   TraceIn_DO_LOW[2] := BenchUut0.DO_LOW;\n   TraceIn_AERATION_E_STOP_NC[2] := BenchUut0.AERATION_E_STOP_NC;\n   BenchUut0();\n   TraceOut_BLOWER_RUN[2] := BenchUut0.BLOWER_RUN;\n   TraceOut_AERATION_BLOWER_CYCLE_COUNT[2] := BenchUut0.AERATION_BLOWER_CYCLE_COUNT;\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 3:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(3000) THEN\n   TraceDt[3] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut0.DO_LOW := TRUE;\n   BenchUut0.AERATION_E_STOP_NC := TRUE;\n   TraceIn_DO_LOW[3] := BenchUut0.DO_LOW;\n   TraceIn_AERATION_E_STOP_NC[3] := BenchUut0.AERATION_E_STOP_NC;\n   BenchUut0();\n   TraceOut_BLOWER_RUN[3] := BenchUut0.BLOWER_RUN;\n   TraceOut_AERATION_BLOWER_CYCLE_COUNT[3] := BenchUut0.AERATION_BLOWER_CYCLE_COUNT;\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 4:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(1000) THEN\n   TraceDt[4] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut0.DO_LOW := TRUE;\n   BenchUut0.AERATION_E_STOP_NC := TRUE;\n   TraceIn_DO_LOW[4] := BenchUut0.DO_LOW;\n   TraceIn_AERATION_E_STOP_NC[4] := BenchUut0.AERATION_E_STOP_NC;\n   BenchUut0();\n   TraceOut_BLOWER_RUN[4] := BenchUut0.BLOWER_RUN;\n   TraceOut_AERATION_BLOWER_CYCLE_COUNT[4] := BenchUut0.AERATION_BLOWER_CYCLE_COUNT;\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 5:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(1000) THEN\n   TraceDt[5] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut0.DO_LOW := FALSE;\n   BenchUut0.AERATION_E_STOP_NC := TRUE;\n   TraceIn_DO_LOW[5] := BenchUut0.DO_LOW;\n   TraceIn_AERATION_E_STOP_NC[5] := BenchUut0.AERATION_E_STOP_NC;\n   BenchUut0();\n   TraceOut_BLOWER_RUN[5] := BenchUut0.BLOWER_RUN;\n   TraceOut_AERATION_BLOWER_CYCLE_COUNT[5] := BenchUut0.AERATION_BLOWER_CYCLE_COUNT;\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 6:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(0) THEN\n   TraceDt[6] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut0.DO_LOW := TRUE;\n   BenchUut0.AERATION_E_STOP_NC := TRUE;\n   TraceIn_DO_LOW[6] := BenchUut0.DO_LOW;\n   TraceIn_AERATION_E_STOP_NC[6] := BenchUut0.AERATION_E_STOP_NC;\n   BenchUut0();\n   TraceOut_BLOWER_RUN[6] := BenchUut0.BLOWER_RUN;\n   TraceOut_AERATION_BLOWER_CYCLE_COUNT[6] := BenchUut0.AERATION_BLOWER_CYCLE_COUNT;\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 7:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(5000) THEN\n   TraceDt[7] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut0.DO_LOW := TRUE;\n   BenchUut0.AERATION_E_STOP_NC := TRUE;\n   TraceIn_DO_LOW[7] := BenchUut0.DO_LOW;\n   TraceIn_AERATION_E_STOP_NC[7] := BenchUut0.AERATION_E_STOP_NC;\n   BenchUut0();\n   TraceOut_BLOWER_RUN[7] := BenchUut0.BLOWER_RUN;\n   TraceOut_AERATION_BLOWER_CYCLE_COUNT[7] := BenchUut0.AERATION_BLOWER_CYCLE_COUNT;\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 8:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(0) THEN\n   TraceDt[8] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut1.DO_LOW := TRUE;\n   BenchUut1.AERATION_E_STOP_NC := TRUE;\n   TraceIn_DO_LOW[8] := BenchUut1.DO_LOW;\n   TraceIn_AERATION_E_STOP_NC[8] := BenchUut1.AERATION_E_STOP_NC;\n   BenchUut1();\n   TraceOut_BLOWER_RUN[8] := BenchUut1.BLOWER_RUN;\n   TraceOut_AERATION_BLOWER_CYCLE_COUNT[8] := BenchUut1.AERATION_BLOWER_CYCLE_COUNT;\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 9:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(4000) THEN\n   TraceDt[9] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut1.DO_LOW := TRUE;\n   BenchUut1.AERATION_E_STOP_NC := TRUE;\n   TraceIn_DO_LOW[9] := BenchUut1.DO_LOW;\n   TraceIn_AERATION_E_STOP_NC[9] := BenchUut1.AERATION_E_STOP_NC;\n   BenchUut1();\n   TraceOut_BLOWER_RUN[9] := BenchUut1.BLOWER_RUN;\n   TraceOut_AERATION_BLOWER_CYCLE_COUNT[9] := BenchUut1.AERATION_BLOWER_CYCLE_COUNT;\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 10:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(1000) THEN\n   TraceDt[10] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut1.DO_LOW := TRUE;\n   BenchUut1.AERATION_E_STOP_NC := FALSE;\n   TraceIn_DO_LOW[10] := BenchUut1.DO_LOW;\n   TraceIn_AERATION_E_STOP_NC[10] := BenchUut1.AERATION_E_STOP_NC;\n   BenchUut1();\n   TraceOut_BLOWER_RUN[10] := BenchUut1.BLOWER_RUN;\n   TraceOut_AERATION_BLOWER_CYCLE_COUNT[10] := BenchUut1.AERATION_BLOWER_CYCLE_COUNT;\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 11:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(0) THEN\n   TraceDt[11] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut1.DO_LOW := TRUE;\n   BenchUut1.AERATION_E_STOP_NC := TRUE;\n   TraceIn_DO_LOW[11] := BenchUut1.DO_LOW;\n   TraceIn_AERATION_E_STOP_NC[11] := BenchUut1.AERATION_E_STOP_NC;\n   BenchUut1();\n   TraceOut_BLOWER_RUN[11] := BenchUut1.BLOWER_RUN;\n   TraceOut_AERATION_BLOWER_CYCLE_COUNT[11] := BenchUut1.AERATION_BLOWER_CYCLE_COUNT;\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 12:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(4000) THEN\n   TraceDt[12] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut1.DO_LOW := TRUE;\n   BenchUut1.AERATION_E_STOP_NC := TRUE;\n   TraceIn_DO_LOW[12] := BenchUut1.DO_LOW;\n   TraceIn_AERATION_E_STOP_NC[12] := BenchUut1.AERATION_E_STOP_NC;\n   BenchUut1();\n   TraceOut_BLOWER_RUN[12] := BenchUut1.BLOWER_RUN;\n   TraceOut_AERATION_BLOWER_CYCLE_COUNT[12] := BenchUut1.AERATION_BLOWER_CYCLE_COUNT;\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 13:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(1000) THEN\n   TraceDt[13] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut1.DO_LOW := TRUE;\n   BenchUut1.AERATION_E_STOP_NC := TRUE;\n   TraceIn_DO_LOW[13] := BenchUut1.DO_LOW;\n   TraceIn_AERATION_E_STOP_NC[13] := BenchUut1.AERATION_E_STOP_NC;\n   BenchUut1();\n   TraceOut_BLOWER_RUN[13] := BenchUut1.BLOWER_RUN;\n   TraceOut_AERATION_BLOWER_CYCLE_COUNT[13] := BenchUut1.AERATION_BLOWER_CYCLE_COUNT;\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 14:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(1000) THEN\n   TraceDt[14] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut1.DO_LOW := TRUE;\n   BenchUut1.AERATION_E_STOP_NC := TRUE;\n   TraceIn_DO_LOW[14] := BenchUut1.DO_LOW;\n   TraceIn_AERATION_E_STOP_NC[14] := BenchUut1.AERATION_E_STOP_NC;\n   BenchUut1();\n   TraceOut_BLOWER_RUN[14] := BenchUut1.BLOWER_RUN;\n   TraceOut_AERATION_BLOWER_CYCLE_COUNT[14] := BenchUut1.AERATION_BLOWER_CYCLE_COUNT;\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 15:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(1000) THEN\n   TraceDt[15] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut1.DO_LOW := TRUE;\n   BenchUut1.AERATION_E_STOP_NC := FALSE;\n   TraceIn_DO_LOW[15] := BenchUut1.DO_LOW;\n   TraceIn_AERATION_E_STOP_NC[15] := BenchUut1.AERATION_E_STOP_NC;\n   BenchUut1();\n   TraceOut_BLOWER_RUN[15] := BenchUut1.BLOWER_RUN;\n   TraceOut_AERATION_BLOWER_CYCLE_COUNT[15] := BenchUut1.AERATION_BLOWER_CYCLE_COUNT;\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n END_CASE;\n END_IF;\n IF BenchStep >= 16 THEN BenchDone := TRUE; END_IF;\nEND_IF;",
+    "step_count": 16,
+    "steps": [
+      {
+        "index": 0,
+        "case_id": "case_1",
+        "case_step": 0,
+        "dt_ms": 0
+      },
+      {
+        "index": 1,
+        "case_id": "case_1",
+        "case_step": 1,
+        "dt_ms": 0
+      },
+      {
+        "index": 2,
+        "case_id": "case_1",
+        "case_step": 2,
+        "dt_ms": 2000
+      },
+      {
+        "index": 3,
+        "case_id": "case_1",
+        "case_step": 3,
+        "dt_ms": 3000
+      },
+      {
+        "index": 4,
+        "case_id": "case_1",
+        "case_step": 4,
+        "dt_ms": 1000
+      },
+      {
+        "index": 5,
+        "case_id": "case_1",
+        "case_step": 5,
+        "dt_ms": 1000
+      },
+      {
+        "index": 6,
+        "case_id": "case_1",
+        "case_step": 6,
+        "dt_ms": 0
+      },
+      {
+        "index": 7,
+        "case_id": "case_1",
+        "case_step": 7,
+        "dt_ms": 5000
+      },
+      {
+        "index": 8,
+        "case_id": "case_2",
+        "case_step": 0,
+        "dt_ms": 0
+      },
+      {
+        "index": 9,
+        "case_id": "case_2",
+        "case_step": 1,
+        "dt_ms": 4000
+      },
+      {
+        "index": 10,
+        "case_id": "case_2",
+        "case_step": 2,
+        "dt_ms": 1000
+      },
+      {
+        "index": 11,
+        "case_id": "case_2",
+        "case_step": 3,
+        "dt_ms": 0
+      },
+      {
+        "index": 12,
+        "case_id": "case_2",
+        "case_step": 4,
+        "dt_ms": 4000
+      },
+      {
+        "index": 13,
+        "case_id": "case_2",
+        "case_step": 5,
+        "dt_ms": 1000
+      },
+      {
+        "index": 14,
+        "case_id": "case_2",
+        "case_step": 6,
+        "dt_ms": 1000
+      },
+      {
+        "index": 15,
+        "case_id": "case_2",
+        "case_step": 7,
+        "dt_ms": 1000
+      }
+    ],
+    "inputs": [
+      {
+        "direction": "INPUT",
+        "name": "DO_LOW",
+        "type": "BOOL",
+        "description": "Dissolved oxygen is below its threshold and aeration is needed."
+      },
+      {
+        "direction": "INPUT",
+        "name": "AERATION_E_STOP_NC",
+        "type": "BOOL",
+        "description": "TRUE means the emergency stop is inactive; FALSE means it is active."
+      }
+    ],
+    "outputs": [
+      {
+        "direction": "OUTPUT",
+        "name": "BLOWER_RUN",
+        "type": "BOOL",
+        "description": "Blower motor-contactor run command."
+      },
+      {
+        "direction": "OUTPUT",
+        "name": "AERATION_BLOWER_CYCLE_COUNT",
+        "type": "UINT",
+        "description": "Count of actual blower starts."
+      }
+    ],
+    "trace_expressions": [
+      "PLC_PRG.TraceDt[0]",
+      "PLC_PRG.TraceIn_DO_LOW[0]",
+      "PLC_PRG.TraceIn_AERATION_E_STOP_NC[0]",
+      "PLC_PRG.TraceOut_BLOWER_RUN[0]",
+      "PLC_PRG.TraceOut_AERATION_BLOWER_CYCLE_COUNT[0]",
+      "PLC_PRG.TraceDt[1]",
+      "PLC_PRG.TraceIn_DO_LOW[1]",
+      "PLC_PRG.TraceIn_AERATION_E_STOP_NC[1]",
+      "PLC_PRG.TraceOut_BLOWER_RUN[1]",
+      "PLC_PRG.TraceOut_AERATION_BLOWER_CYCLE_COUNT[1]",
+      "PLC_PRG.TraceDt[2]",
+      "PLC_PRG.TraceIn_DO_LOW[2]",
+      "PLC_PRG.TraceIn_AERATION_E_STOP_NC[2]",
+      "PLC_PRG.TraceOut_BLOWER_RUN[2]",
+      "PLC_PRG.TraceOut_AERATION_BLOWER_CYCLE_COUNT[2]",
+      "PLC_PRG.TraceDt[3]",
+      "PLC_PRG.TraceIn_DO_LOW[3]",
+      "PLC_PRG.TraceIn_AERATION_E_STOP_NC[3]",
+      "PLC_PRG.TraceOut_BLOWER_RUN[3]",
+      "PLC_PRG.TraceOut_AERATION_BLOWER_CYCLE_COUNT[3]",
+      "PLC_PRG.TraceDt[4]",
+      "PLC_PRG.TraceIn_DO_LOW[4]",
+      "PLC_PRG.TraceIn_AERATION_E_STOP_NC[4]",
+      "PLC_PRG.TraceOut_BLOWER_RUN[4]",
+      "PLC_PRG.TraceOut_AERATION_BLOWER_CYCLE_COUNT[4]",
+      "PLC_PRG.TraceDt[5]",
+      "PLC_PRG.TraceIn_DO_LOW[5]",
+      "PLC_PRG.TraceIn_AERATION_E_STOP_NC[5]",
+      "PLC_PRG.TraceOut_BLOWER_RUN[5]",
+      "PLC_PRG.TraceOut_AERATION_BLOWER_CYCLE_COUNT[5]",
+      "PLC_PRG.TraceDt[6]",
+      "PLC_PRG.TraceIn_DO_LOW[6]",
+      "PLC_PRG.TraceIn_AERATION_E_STOP_NC[6]",
+      "PLC_PRG.TraceOut_BLOWER_RUN[6]",
+      "PLC_PRG.TraceOut_AERATION_BLOWER_CYCLE_COUNT[6]",
+      "PLC_PRG.TraceDt[7]",
+      "PLC_PRG.TraceIn_DO_LOW[7]",
+      "PLC_PRG.TraceIn_AERATION_E_STOP_NC[7]",
+      "PLC_PRG.TraceOut_BLOWER_RUN[7]",
+      "PLC_PRG.TraceOut_AERATION_BLOWER_CYCLE_COUNT[7]",
+      "PLC_PRG.TraceDt[8]",
+      "PLC_PRG.TraceIn_DO_LOW[8]",
+      "PLC_PRG.TraceIn_AERATION_E_STOP_NC[8]",
+      "PLC_PRG.TraceOut_BLOWER_RUN[8]",
+      "PLC_PRG.TraceOut_AERATION_BLOWER_CYCLE_COUNT[8]",
+      "PLC_PRG.TraceDt[9]",
+      "PLC_PRG.TraceIn_DO_LOW[9]",
+      "PLC_PRG.TraceIn_AERATION_E_STOP_NC[9]",
+      "PLC_PRG.TraceOut_BLOWER_RUN[9]",
+      "PLC_PRG.TraceOut_AERATION_BLOWER_CYCLE_COUNT[9]",
+      "PLC_PRG.TraceDt[10]",
+      "PLC_PRG.TraceIn_DO_LOW[10]",
+      "PLC_PRG.TraceIn_AERATION_E_STOP_NC[10]",
+      "PLC_PRG.TraceOut_BLOWER_RUN[10]",
+      "PLC_PRG.TraceOut_AERATION_BLOWER_CYCLE_COUNT[10]",
+      "PLC_PRG.TraceDt[11]",
+      "PLC_PRG.TraceIn_DO_LOW[11]",
+      "PLC_PRG.TraceIn_AERATION_E_STOP_NC[11]",
+      "PLC_PRG.TraceOut_BLOWER_RUN[11]",
+      "PLC_PRG.TraceOut_AERATION_BLOWER_CYCLE_COUNT[11]",
+      "PLC_PRG.TraceDt[12]",
+      "PLC_PRG.TraceIn_DO_LOW[12]",
+      "PLC_PRG.TraceIn_AERATION_E_STOP_NC[12]",
+      "PLC_PRG.TraceOut_BLOWER_RUN[12]",
+      "PLC_PRG.TraceOut_AERATION_BLOWER_CYCLE_COUNT[12]",
+      "PLC_PRG.TraceDt[13]",
+      "PLC_PRG.TraceIn_DO_LOW[13]",
+      "PLC_PRG.TraceIn_AERATION_E_STOP_NC[13]",
+      "PLC_PRG.TraceOut_BLOWER_RUN[13]",
+      "PLC_PRG.TraceOut_AERATION_BLOWER_CYCLE_COUNT[13]",
+      "PLC_PRG.TraceDt[14]",
+      "PLC_PRG.TraceIn_DO_LOW[14]",
+      "PLC_PRG.TraceIn_AERATION_E_STOP_NC[14]",
+      "PLC_PRG.TraceOut_BLOWER_RUN[14]",
+      "PLC_PRG.TraceOut_AERATION_BLOWER_CYCLE_COUNT[14]",
+      "PLC_PRG.TraceDt[15]",
+      "PLC_PRG.TraceIn_DO_LOW[15]",
+      "PLC_PRG.TraceIn_AERATION_E_STOP_NC[15]",
+      "PLC_PRG.TraceOut_BLOWER_RUN[15]",
+      "PLC_PRG.TraceOut_AERATION_BLOWER_CYCLE_COUNT[15]"
+    ],
+    "trace_mapping": [
+      {
+        "step_index": 0,
+        "case_id": "case_1",
+        "case_step": 0,
+        "dt_expr": "PLC_PRG.TraceDt[0]",
+        "inputs": {
+          "DO_LOW": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DO_LOW[0]",
+            "type": "BOOL"
+          },
+          "AERATION_E_STOP_NC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_AERATION_E_STOP_NC[0]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "BLOWER_RUN": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_BLOWER_RUN[0]",
+            "type": "BOOL"
+          },
+          "AERATION_BLOWER_CYCLE_COUNT": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_AERATION_BLOWER_CYCLE_COUNT[0]",
+            "type": "UINT"
+          }
+        }
+      },
+      {
+        "step_index": 1,
+        "case_id": "case_1",
+        "case_step": 1,
+        "dt_expr": "PLC_PRG.TraceDt[1]",
+        "inputs": {
+          "DO_LOW": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DO_LOW[1]",
+            "type": "BOOL"
+          },
+          "AERATION_E_STOP_NC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_AERATION_E_STOP_NC[1]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "BLOWER_RUN": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_BLOWER_RUN[1]",
+            "type": "BOOL"
+          },
+          "AERATION_BLOWER_CYCLE_COUNT": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_AERATION_BLOWER_CYCLE_COUNT[1]",
+            "type": "UINT"
+          }
+        }
+      },
+      {
+        "step_index": 2,
+        "case_id": "case_1",
+        "case_step": 2,
+        "dt_expr": "PLC_PRG.TraceDt[2]",
+        "inputs": {
+          "DO_LOW": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DO_LOW[2]",
+            "type": "BOOL"
+          },
+          "AERATION_E_STOP_NC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_AERATION_E_STOP_NC[2]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "BLOWER_RUN": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_BLOWER_RUN[2]",
+            "type": "BOOL"
+          },
+          "AERATION_BLOWER_CYCLE_COUNT": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_AERATION_BLOWER_CYCLE_COUNT[2]",
+            "type": "UINT"
+          }
+        }
+      },
+      {
+        "step_index": 3,
+        "case_id": "case_1",
+        "case_step": 3,
+        "dt_expr": "PLC_PRG.TraceDt[3]",
+        "inputs": {
+          "DO_LOW": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DO_LOW[3]",
+            "type": "BOOL"
+          },
+          "AERATION_E_STOP_NC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_AERATION_E_STOP_NC[3]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "BLOWER_RUN": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_BLOWER_RUN[3]",
+            "type": "BOOL"
+          },
+          "AERATION_BLOWER_CYCLE_COUNT": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_AERATION_BLOWER_CYCLE_COUNT[3]",
+            "type": "UINT"
+          }
+        }
+      },
+      {
+        "step_index": 4,
+        "case_id": "case_1",
+        "case_step": 4,
+        "dt_expr": "PLC_PRG.TraceDt[4]",
+        "inputs": {
+          "DO_LOW": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DO_LOW[4]",
+            "type": "BOOL"
+          },
+          "AERATION_E_STOP_NC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_AERATION_E_STOP_NC[4]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "BLOWER_RUN": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_BLOWER_RUN[4]",
+            "type": "BOOL"
+          },
+          "AERATION_BLOWER_CYCLE_COUNT": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_AERATION_BLOWER_CYCLE_COUNT[4]",
+            "type": "UINT"
+          }
+        }
+      },
+      {
+        "step_index": 5,
+        "case_id": "case_1",
+        "case_step": 5,
+        "dt_expr": "PLC_PRG.TraceDt[5]",
+        "inputs": {
+          "DO_LOW": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DO_LOW[5]",
+            "type": "BOOL"
+          },
+          "AERATION_E_STOP_NC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_AERATION_E_STOP_NC[5]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "BLOWER_RUN": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_BLOWER_RUN[5]",
+            "type": "BOOL"
+          },
+          "AERATION_BLOWER_CYCLE_COUNT": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_AERATION_BLOWER_CYCLE_COUNT[5]",
+            "type": "UINT"
+          }
+        }
+      },
+      {
+        "step_index": 6,
+        "case_id": "case_1",
+        "case_step": 6,
+        "dt_expr": "PLC_PRG.TraceDt[6]",
+        "inputs": {
+          "DO_LOW": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DO_LOW[6]",
+            "type": "BOOL"
+          },
+          "AERATION_E_STOP_NC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_AERATION_E_STOP_NC[6]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "BLOWER_RUN": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_BLOWER_RUN[6]",
+            "type": "BOOL"
+          },
+          "AERATION_BLOWER_CYCLE_COUNT": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_AERATION_BLOWER_CYCLE_COUNT[6]",
+            "type": "UINT"
+          }
+        }
+      },
+      {
+        "step_index": 7,
+        "case_id": "case_1",
+        "case_step": 7,
+        "dt_expr": "PLC_PRG.TraceDt[7]",
+        "inputs": {
+          "DO_LOW": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DO_LOW[7]",
+            "type": "BOOL"
+          },
+          "AERATION_E_STOP_NC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_AERATION_E_STOP_NC[7]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "BLOWER_RUN": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_BLOWER_RUN[7]",
+            "type": "BOOL"
+          },
+          "AERATION_BLOWER_CYCLE_COUNT": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_AERATION_BLOWER_CYCLE_COUNT[7]",
+            "type": "UINT"
+          }
+        }
+      },
+      {
+        "step_index": 8,
+        "case_id": "case_2",
+        "case_step": 0,
+        "dt_expr": "PLC_PRG.TraceDt[8]",
+        "inputs": {
+          "DO_LOW": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DO_LOW[8]",
+            "type": "BOOL"
+          },
+          "AERATION_E_STOP_NC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_AERATION_E_STOP_NC[8]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "BLOWER_RUN": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_BLOWER_RUN[8]",
+            "type": "BOOL"
+          },
+          "AERATION_BLOWER_CYCLE_COUNT": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_AERATION_BLOWER_CYCLE_COUNT[8]",
+            "type": "UINT"
+          }
+        }
+      },
+      {
+        "step_index": 9,
+        "case_id": "case_2",
+        "case_step": 1,
+        "dt_expr": "PLC_PRG.TraceDt[9]",
+        "inputs": {
+          "DO_LOW": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DO_LOW[9]",
+            "type": "BOOL"
+          },
+          "AERATION_E_STOP_NC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_AERATION_E_STOP_NC[9]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "BLOWER_RUN": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_BLOWER_RUN[9]",
+            "type": "BOOL"
+          },
+          "AERATION_BLOWER_CYCLE_COUNT": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_AERATION_BLOWER_CYCLE_COUNT[9]",
+            "type": "UINT"
+          }
+        }
+      },
+      {
+        "step_index": 10,
+        "case_id": "case_2",
+        "case_step": 2,
+        "dt_expr": "PLC_PRG.TraceDt[10]",
+        "inputs": {
+          "DO_LOW": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DO_LOW[10]",
+            "type": "BOOL"
+          },
+          "AERATION_E_STOP_NC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_AERATION_E_STOP_NC[10]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "BLOWER_RUN": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_BLOWER_RUN[10]",
+            "type": "BOOL"
+          },
+          "AERATION_BLOWER_CYCLE_COUNT": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_AERATION_BLOWER_CYCLE_COUNT[10]",
+            "type": "UINT"
+          }
+        }
+      },
+      {
+        "step_index": 11,
+        "case_id": "case_2",
+        "case_step": 3,
+        "dt_expr": "PLC_PRG.TraceDt[11]",
+        "inputs": {
+          "DO_LOW": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DO_LOW[11]",
+            "type": "BOOL"
+          },
+          "AERATION_E_STOP_NC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_AERATION_E_STOP_NC[11]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "BLOWER_RUN": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_BLOWER_RUN[11]",
+            "type": "BOOL"
+          },
+          "AERATION_BLOWER_CYCLE_COUNT": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_AERATION_BLOWER_CYCLE_COUNT[11]",
+            "type": "UINT"
+          }
+        }
+      },
+      {
+        "step_index": 12,
+        "case_id": "case_2",
+        "case_step": 4,
+        "dt_expr": "PLC_PRG.TraceDt[12]",
+        "inputs": {
+          "DO_LOW": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DO_LOW[12]",
+            "type": "BOOL"
+          },
+          "AERATION_E_STOP_NC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_AERATION_E_STOP_NC[12]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "BLOWER_RUN": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_BLOWER_RUN[12]",
+            "type": "BOOL"
+          },
+          "AERATION_BLOWER_CYCLE_COUNT": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_AERATION_BLOWER_CYCLE_COUNT[12]",
+            "type": "UINT"
+          }
+        }
+      },
+      {
+        "step_index": 13,
+        "case_id": "case_2",
+        "case_step": 5,
+        "dt_expr": "PLC_PRG.TraceDt[13]",
+        "inputs": {
+          "DO_LOW": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DO_LOW[13]",
+            "type": "BOOL"
+          },
+          "AERATION_E_STOP_NC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_AERATION_E_STOP_NC[13]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "BLOWER_RUN": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_BLOWER_RUN[13]",
+            "type": "BOOL"
+          },
+          "AERATION_BLOWER_CYCLE_COUNT": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_AERATION_BLOWER_CYCLE_COUNT[13]",
+            "type": "UINT"
+          }
+        }
+      },
+      {
+        "step_index": 14,
+        "case_id": "case_2",
+        "case_step": 6,
+        "dt_expr": "PLC_PRG.TraceDt[14]",
+        "inputs": {
+          "DO_LOW": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DO_LOW[14]",
+            "type": "BOOL"
+          },
+          "AERATION_E_STOP_NC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_AERATION_E_STOP_NC[14]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "BLOWER_RUN": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_BLOWER_RUN[14]",
+            "type": "BOOL"
+          },
+          "AERATION_BLOWER_CYCLE_COUNT": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_AERATION_BLOWER_CYCLE_COUNT[14]",
+            "type": "UINT"
+          }
+        }
+      },
+      {
+        "step_index": 15,
+        "case_id": "case_2",
+        "case_step": 7,
+        "dt_expr": "PLC_PRG.TraceDt[15]",
+        "inputs": {
+          "DO_LOW": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DO_LOW[15]",
+            "type": "BOOL"
+          },
+          "AERATION_E_STOP_NC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_AERATION_E_STOP_NC[15]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "BLOWER_RUN": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_BLOWER_RUN[15]",
+            "type": "BOOL"
+          },
+          "AERATION_BLOWER_CYCLE_COUNT": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_AERATION_BLOWER_CYCLE_COUNT[15]",
+            "type": "UINT"
+          }
+        }
+      }
+    ]
+  },
+  "result_path": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\b9a247e8c2faa895\\simulation_evidence.json"
+}

@@ -1,0 +1,126 @@
+{
+  "task_id": "PUB020",
+  "source_sha256": "fd82d9ba08983abc97998720eefc39ef3773f8fb3f7c71552baceb7135a6d5ec",
+  "st_path": "candidate.st",
+  "ltl_path": "spec.ltl",
+  "properties": [
+    {
+      "id": "PUB020.P_init",
+      "formula": "init",
+      "description": "Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope)."
+    },
+    {
+      "id": "PUB020.P1",
+      "formula": "G(!(fwd & rev))",
+      "description": "Motor directions cannot overlap."
+    },
+    {
+      "id": "PUB020.P2",
+      "formula": "G(!auto -> ((fwd <-> mf) & (rev <-> mr)))",
+      "description": "Manual commands follow level inputs with neutral conflict handling."
+    },
+    {
+      "id": "PUB020.P3",
+      "formula": "G(auto -> !rev)",
+      "description": "The automatic route never reverses."
+    },
+    {
+      "id": "PUB020.P4",
+      "formula": "G(auto & arrival -> stopped)",
+      "description": "An arrived item stops before processing."
+    },
+    {
+      "id": "PUB020.P5",
+      "formula": "G(judged -> ((valid -> qualified) & (!valid -> reject)))",
+      "description": "The acceptance interval is inclusive and its setpoint is linear."
+    },
+    {
+      "id": "PUB020.P6",
+      "formula": "G(no_judgment -> same_temp)",
+      "description": "No unqualified or unrelated scan changes the last accepted setpoint."
+    },
+    {
+      "id": "PUB020.P7",
+      "formula": "G((output_arrival -> light) & (removed -> clear))",
+      "description": "Output arrival and removal control the light."
+    },
+    {
+      "id": "PUB020.P8",
+      "formula": "G(order)",
+      "description": "Only the ordered processing route advances qualified products."
+    },
+    {
+      "id": "PUB020.P9",
+      "formula": "(G(auto) & G(arrival_pending -> F arrival) & G(processing_wait -> F matching_completion) & G(judged -> valid)) -> G(feed -> F light)",
+      "description": "With continuing automatic mode, eventual movement/processing feedback and accepted weights, each feed eventually completes."
+    },
+    {
+      "id": "PUB020.P10",
+      "formula": "G((!auto -> (!kick & !CompletionLight)) & (auto & post_wait -> stopped) & (auto & post_move -> (fwd & !rev)))",
+      "description": "Closes independent LTL coverage of manual/waiting/transport actuator behavior."
+    },
+    {
+      "id": "PUB020.COMPLETE",
+      "formula": "G(CompleteBehavior)",
+      "description": "Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed."
+    }
+  ],
+  "atomic_propositions": {
+    "auto": "Mode",
+    "fwd": "MotorForward",
+    "rev": "MotorReverse",
+    "mf": "ForwardButton AND NOT ReverseButton",
+    "mr": "ReverseButton AND NOT ForwardButton",
+    "feed": "pre-phase WAIT_FEED AND SensorFeed",
+    "moving": "pre-phase is a conveyor movement (MOVE_TO_WASH, MOVE_TO_WEIGHT, MOVE_TO_FIRING, or MOVE_TO_OUTPUT)",
+    "arrival": "pre-phase moving AND corresponding destination sensor TRUE",
+    "stopped": "NOT MotorForward AND NOT MotorReverse",
+    "judged": "auto AND pre-phase WAIT_WEIGHT AND SensorWeight AND weightComplete",
+    "valid": "100.0 <= real32(weight) <= 200.0",
+    "reject": "kick AND stopped",
+    "qualified": "NOT kick AND fwd AND firingTemp=real32(500.0+real32(real32(weight-100.0)*0.5))",
+    "output_arrival": "auto AND pre-phase MOVE_TO_OUTPUT AND SensorOutput",
+    "light": "CompletionLight",
+    "removed": "auto AND pre-phase OUTPUT_DONE AND NOT SensorOutput",
+    "clear": "NOT CompletionLight AND stopped",
+    "no_judgment": "NOT judged OR NOT valid",
+    "same_temp": "firingTemp=pre-firingTemp",
+    "arrival_pending": "pre-phase is a conveyor movement",
+    "processing_wait": "pre-phase is WAIT_WASH, WAIT_WEIGHT or WAIT_FIRING",
+    "matching_completion": "matching station sensor and processing completion are TRUE in the corresponding wait",
+    "order": "automatic route is FEED, WASH, WEIGHT, FIRING, OUTPUT; rejected weights cannot enter FIRING",
+    "CompleteBehavior": "令(Sref[k+1], E[k])=T_PUB020(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\n参考阶段WAIT_FEED→MOVE_WASH→WAIT_WASH→MOVE_WEIGHT→WAIT_WEIGHT→REJECT或MOVE_FIRING→WAIT_FIRING→MOVE_OUTPUT→OUTPUT_DONE；每拍按旧阶段只推进一阶。重量100..200含边界合格，合格温度real32(500+real32(real32(weight-100)*0.5))；不合格保持温度并剔除至SensorWeight假。完成取走后回初始。手动清流程、方向按钮互锁、kick/灯关闭、温度保持。自动仅运输阶段正转、不反转；kick对应REJECT、灯对应OUTPUT_DONE。",
+    "Mode": "I[k].Mode: sampled input (BOOL).",
+    "ForwardButton": "I[k].ForwardButton: sampled input (BOOL).",
+    "ReverseButton": "I[k].ReverseButton: sampled input (BOOL).",
+    "SensorFeed": "I[k].SensorFeed: sampled input (BOOL).",
+    "SensorWash": "I[k].SensorWash: sampled input (BOOL).",
+    "SensorWeight": "I[k].SensorWeight: sampled input (BOOL).",
+    "SensorFiring": "I[k].SensorFiring: sampled input (BOOL).",
+    "SensorOutput": "I[k].SensorOutput: sampled input (BOOL).",
+    "washComplete": "I[k].washComplete: sampled input (BOOL).",
+    "weightComplete": "I[k].weightComplete: sampled input (BOOL).",
+    "weight": "I[k].weight: sampled input (REAL).",
+    "firingComplete": "I[k].firingComplete: sampled input (BOOL).",
+    "MotorForward": "O[k].MotorForward: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "MotorReverse": "O[k].MotorReverse: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "kick": "O[k].kick: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "CompletionLight": "O[k].CompletionLight: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "firingTemp": "O[k].firingTemp: independently observed post-scan candidate value (REAL); never defined as expected output.",
+    "post_wait": "post-phase is WAIT_FEED, WAIT_WASH, WAIT_WEIGHT, or WAIT_FIRING",
+    "post_move": "post-phase is MOVE_TO_WASH, MOVE_TO_WEIGHT, MOVE_TO_FIRING, or MOVE_TO_OUTPUT",
+    "init": "At the separate pre-invocation initial observation before scan k=0: Spre.phase=\"WAIT_FEED\", O_init.MotorForward=false, O_init.MotorReverse=false, O_init.kick=false, O_init.CompletionLight=false, O_init.firingTemp=0.0."
+  },
+  "tools_supported": [
+    "nuXmv"
+  ],
+  "encoding_complete": true,
+  "task_sha256": "3b27a4a07b5c55f625564ab8f1e7c2dba589d378e5097028ce082cc0806ac11f",
+  "bundle_status": "PASS",
+  "created_utc": "2026-11-14T11:41:43.161885+00:00",
+  "smv_path": "D:\\张景颢\\学习\\大三上\\课件\\GenAI赋能工业编程\\仓库审阅\\STAR-PLC-Agent_github_5853e54\\results\\raw\\four_group_20261114\\star_terra\\PUB020\\formal\\attempt_0001\\candidate_coupled.smv",
+  "observer_smv": "D:\\张景颢\\学习\\大三上\\课件\\GenAI赋能工业编程\\仓库审阅\\STAR-PLC-Agent_github_5853e54\\models\\PUB020_reference.smv",
+  "verification_status": "PASS",
+  "candidate_st_verified": true,
+  "property_pass_ratio": 1.0
+}

@@ -1,0 +1,108 @@
+{
+  "state_machine": [
+    {
+      "state": "EMPTY",
+      "condition": "Valid configuration with sampleCount = 0; also the initial state."
+    },
+    {
+      "state": "FILLING",
+      "condition": "Valid configuration with 0 < sampleCount < activeWindowSize."
+    },
+    {
+      "state": "FULL",
+      "condition": "Valid configuration with sampleCount = activeWindowSize > 0."
+    },
+    {
+      "state": "INVALID_WINDOW",
+      "condition": "windowSize < 1 or windowSize > 100; history and mean are retained."
+    },
+    {
+      "transitions": [
+        "From any state, an invalid window enters INVALID_WINDOW without changing calculation history or activeWindowSize.",
+        "On a valid scan, update activeWindowSize. If reset is TRUE or the valid size changed, clear the history before considering sampling.",
+        "On a valid scan with reset FALSE, accept exactly one value if cyclicExecution is TRUE or triggerRise is TRUE; otherwise accept none.",
+        "After valid-scan actions, enter EMPTY, FILLING, or FULL according to sampleCount and activeWindowSize. This also governs recovery from INVALID_WINDOW."
+      ],
+      "history_algorithm": "Use a 100-element circular buffer and a zero-based nextIndex. Clearing sets sampleCount and nextIndex to zero and mean to 0.0. On acceptance, write value at nextIndex, increment sampleCount up to activeWindowSize, advance nextIndex modulo activeWindowSize, and calculate the arithmetic mean of the sampleCount active elements. Once full, the write replaces the oldest element.",
+      "numeric_policy": "Use LREAL arithmetic. Check results against the specified trace tolerances; no accuracy guarantee is claimed for arbitrary magnitudes beyond the supplied finite-arithmetic assumptions."
+    }
+  ],
+  "timer_plan": {
+    "timers": [],
+    "PT_durations": "None",
+    "reset_conditions": "Not applicable; sampling is scan-driven or edge-triggered."
+  },
+  "priorities": [
+    "Invalid window detection overrides reset and sampling: report 16#8200 and preserve history, average, and windowSizeReached.",
+    "For a valid window, reset overrides sampling and clears history. Record the current valid window size even during reset.",
+    "A changed valid window clears history before any same-scan accepted sample. The first valid size is treated as a change from the initial sentinel.",
+    "Cyclic execution accepts one sample per valid, non-reset scan; trigger cannot cause a second insertion.",
+    "Update trigger edge history on every invocation, including cyclic, reset, and invalid-window scans."
+  ],
+  "initial_values": {
+    "average": 0.0,
+    "windowSizeReached": false,
+    "error": false,
+    "status": "16#0000",
+    "sampleCount": 0,
+    "previousTrigger": false,
+    "activeWindowSize": 0,
+    "nextIndex": 0,
+    "mean": 0.0,
+    "sampleBuffer": {
+      "length": 100,
+      "element_initial_value": 0.0
+    },
+    "state": "EMPTY"
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "Edge sampling",
+      "actions": [
+        "Sample all inputs once.",
+        "Compute triggerRise = trigger AND NOT previousTrigger, then store the sampled trigger in previousTrigger unconditionally."
+      ]
+    },
+    {
+      "stage": 2,
+      "name": "Safety/reset priority and state transitions",
+      "actions": [
+        "Check windowSize bounds. If invalid, preserve calculation state and select INVALID_WINDOW.",
+        "If valid, detect a change from activeWindowSize and record the current size. Clear history on reset or size change.",
+        "If valid and reset is FALSE, accept one sample when cyclicExecution OR triggerRise is TRUE; update the circular buffer, count, and mean.",
+        "Select EMPTY, FILLING, or FULL from the resulting count."
+      ]
+    },
+    {
+      "stage": 3,
+      "name": "Unconditional top-level timer FB calls outside CASE/IF",
+      "actions": [
+        "No timer FBs are required; this stage is a no-op."
+      ]
+    },
+    {
+      "stage": 4,
+      "name": "Unified output assignments",
+      "actions": [
+        "Assign average from the retained mean.",
+        "Assign windowSizeReached = (activeWindowSize > 0 AND sampleCount = activeWindowSize); retained calculation state preserves this output during invalid scans.",
+        "Assign error and status from the sampled window validity: invalid gives TRUE and 16#8200; valid gives FALSE and 16#0000."
+      ]
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G((windowSize < 1 OR windowSize > 100) -> (error AND status = 16#8200))"
+    },
+    {
+      "id": "A2",
+      "formula": "G((windowSize >= 1 AND windowSize <= 100) -> (NOT error AND status = 16#0000))"
+    },
+    {
+      "id": "A3",
+      "formula": "G((windowSize >= 1 AND windowSize <= 100 AND reset) -> (average = 0.0 AND NOT windowSizeReached))"
+    }
+  ]
+}

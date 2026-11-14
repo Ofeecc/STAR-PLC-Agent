@@ -1,0 +1,137 @@
+{
+  "state_machine": [
+    {
+      "state": "RESET_REQUIRED",
+      "outputs": {
+        "Run": false,
+        "ResetRequired": true
+      },
+      "description": "Initial/inhibit state after power-up or any E-stop loss; Run is blocked until isolated reset.",
+      "transitions": [
+        {
+          "to": "RESET_REQUIRED",
+          "when": "!EStopNC OR !(EStopNC AND Reset AND !Start AND !Stop)",
+          "actions": "ResetRequired:=TRUE; Run:=FALSE"
+        },
+        {
+          "to": "READY",
+          "when": "EStopNC AND Reset AND !Start AND !Stop",
+          "actions": "ResetRequired:=FALSE; Run:=FALSE"
+        }
+      ]
+    },
+    {
+      "state": "READY",
+      "outputs": {
+        "Run": false,
+        "ResetRequired": false
+      },
+      "description": "Reset accepted; motor stopped and ready for a fresh start.",
+      "transitions": [
+        {
+          "to": "RESET_REQUIRED",
+          "when": "!EStopNC",
+          "actions": "ResetRequired:=TRUE; Run:=FALSE"
+        },
+        {
+          "to": "RUNNING",
+          "when": "EStopNC AND !Stop AND Start",
+          "actions": "ResetRequired:=FALSE; Run:=TRUE"
+        },
+        {
+          "to": "READY",
+          "when": "EStopNC AND (Stop OR (!Stop AND !Start))",
+          "actions": "ResetRequired:=FALSE; Run:=FALSE"
+        }
+      ]
+    },
+    {
+      "state": "RUNNING",
+      "outputs": {
+        "Run": true,
+        "ResetRequired": false
+      },
+      "description": "Motor run command active under normal stop/start priority.",
+      "transitions": [
+        {
+          "to": "RESET_REQUIRED",
+          "when": "!EStopNC",
+          "actions": "ResetRequired:=TRUE; Run:=FALSE"
+        },
+        {
+          "to": "READY",
+          "when": "EStopNC AND Stop",
+          "actions": "ResetRequired:=FALSE; Run:=FALSE"
+        },
+        {
+          "to": "RUNNING",
+          "when": "EStopNC AND !Stop",
+          "actions": "ResetRequired:=FALSE; Run:=TRUE"
+        }
+      ]
+    }
+  ],
+  "timer_plan": {
+    "timers": [],
+    "pt_durations": "none",
+    "reset_conditions": "none; no timer instances or timed resets are used"
+  },
+  "priorities": [
+    "1. EStopNC=FALSE overrides all: ResetRequired:=TRUE, Run:=FALSE immediately.",
+    "2. Restart inhibition overrides Start: while ResetRequired=TRUE, Run:=FALSE; clear ResetRequired only on EStopNC AND Reset AND !Start AND !Stop.",
+    "3. Normal Stop overrides Start when ResetRequired=FALSE and EStopNC=TRUE: Stop=TRUE clears Run:=FALSE.",
+    "4. Start sets Run:=TRUE only when ResetRequired=FALSE, EStopNC=TRUE, Stop=FALSE, and Start=TRUE.",
+    "5. Retain Run otherwise when no higher-priority condition applies; reset acceptance and motor start never occur in the same scan."
+  ],
+  "initial_values": {
+    "Run": false,
+    "ResetRequired": true,
+    "qRun": false,
+    "qRequired": true,
+    "state": "RESET_REQUIRED"
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "edge sampling",
+      "actions": "Sample every input once into scan-local I_Start, I_Stop, I_EStopNC, I_Reset; compute edges if needed, but this logic uses levels. Do not use stale inputs."
+    },
+    {
+      "stage": 2,
+      "name": "safety/reset priority and state transitions",
+      "actions": "Using qRequired/qRun (previous observed outputs) and sampled inputs, apply priority: E-stop override; ResetRequired latch clear only on EStopNC AND Reset AND !Start AND !Stop; while qRequired, force Run=FALSE; otherwise apply Stop then Start then retain. Compute next state and next Run/ResetRequired values. No final output writes here."
+    },
+    {
+      "stage": 3,
+      "name": "unconditional top-level timer FB calls outside CASE/IF",
+      "actions": "None; no timer FBs required. If timers are added later, call them unconditionally at top level, never inside CASE/IF."
+    },
+    {
+      "stage": 4,
+      "name": "unified output assignments",
+      "actions": "Assign Run and ResetRequired exactly once from stage-2 results; then latch qRun:=Run and qRequired:=ResetRequired for next scan. No other stage writes outputs."
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G(!EStopNC -> (!Run & ResetRequired))"
+    },
+    {
+      "id": "A2",
+      "formula": "G(ResetRequired -> !Run)"
+    },
+    {
+      "id": "A3",
+      "formula": "G((EStopNC & Reset & !Start & !Stop) -> !ResetRequired)"
+    },
+    {
+      "id": "A4",
+      "formula": "G((!ResetRequired & EStopNC & Stop) -> !Run)"
+    },
+    {
+      "id": "A5",
+      "formula": "G((!ResetRequired & EStopNC & !Stop & Start) -> Run)"
+    }
+  ]
+}

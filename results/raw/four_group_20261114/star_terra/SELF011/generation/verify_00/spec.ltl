@@ -1,0 +1,50 @@
+-- Formal verification specification for Task SELF011
+-- Generated: 2026-11-14T11:50:43.566810+00:00
+
+-- Property: SELF011.P_init
+-- Description: Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
+LTLSPEC NAME SELF011.P_init := init;
+
+-- Property: SELF011.P1
+-- Description: Action commands never overlap.
+LTLSPEC NAME SELF011.P1 := G(oneAction);
+
+-- Property: SELF011.P2
+-- Description: Abort clears every command immediately.
+LTLSPEC NAME SELF011.P2 := G((Stop | Reset) -> (!Busy & !Done & !Extend & !Clamp & !Release & !Retract));
+
+-- Property: SELF011.P3
+-- Description: Home-qualified Start enters only the first action.
+LTLSPEC NAME SELF011.P3 := G((normal & qIdle & Start & RetractDone) -> Extend);
+
+-- Property: SELF011.P4
+-- Description: Extension completion enters clamp.
+LTLSPEC NAME SELF011.P4 := G((normal & qExtend & ExtendDone) -> Clamp);
+
+-- Property: SELF011.P5
+-- Description: Clamp completion enters release.
+LTLSPEC NAME SELF011.P5 := G((normal & qClamp & ClampDone) -> Release);
+
+-- Property: SELF011.P6
+-- Description: Release completion enters retract.
+LTLSPEC NAME SELF011.P6 := G((normal & qRelease & ReleaseDone) -> Retract);
+
+-- Property: SELF011.P7
+-- Description: Home arrival completes the cycle.
+LTLSPEC NAME SELF011.P7 := G((normal & qRetract & RetractDone) -> Done);
+
+-- Property: SELF011.P8
+-- Description: A completed cycle cannot restart without an explicit clear.
+LTLSPEC NAME SELF011.P8 := G((normal & qDone) -> Done);
+
+-- Property: SELF011.P9
+-- Description: The fixture waits for an extension handshake rather than assuming completion.
+LTLSPEC NAME SELF011.P9 := G((normal & qExtend & !ExtendDone) -> Extend);
+
+-- Property: SELF011.P10
+-- Description: Previously Busy had no positive constraint during active stages.
+LTLSPEC NAME SELF011.P10 := G((Busy <-> (Extend | Clamp | Release | Retract)) & (!(Busy & Done)));
+
+-- Property: SELF011.P11
+-- Description: Completes stage-hold symmetry alongside existing P9 (EXTEND hold).
+LTLSPEC NAME SELF011.P11 := G(((normal & qIdle & !(Start & RetractDone)) -> (!Busy & !Done)) & ((normal & qClamp & !ClampDone) -> Clamp) & ((normal & qRelease & !ReleaseDone) -> Release) & ((normal & qRetract & !RetractDone) -> Retract));

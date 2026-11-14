@@ -1,0 +1,127 @@
+{
+  "state_machine": [
+    {
+      "state": "IDLE",
+      "meaning": "Heater commanded off; protection inactive.",
+      "transitions": [
+        "If the sensor is valid and heatDemand is true, enter HEATING and record heatStart as the current scan time.",
+        "Otherwise remain IDLE."
+      ]
+    },
+    {
+      "state": "HEATING",
+      "meaning": "Heater commanded on; continuous heating time starts at zero on entry.",
+      "transitions": [
+        "If the preceding continuous energized interval has reached 5s, enter PROTECTED and record protectionStart as the current scan time.",
+        "Otherwise, if sensorFault is true or heatDemand is false, enter IDLE and reset heating time.",
+        "Otherwise remain HEATING."
+      ],
+      "boundary_rule": "An interval already reaching 5s trips protection even if a fault or loss of demand is sampled on that scan. The fault or loss of demand still turns the heater off and resets heating time."
+    },
+    {
+      "state": "PROTECTED",
+      "meaning": "Protection is active and the heater is commanded off.",
+      "transitions": [
+        "Before 3s from protectionStart, remain PROTECTED regardless of sensor faults or demand changes.",
+        "At the first scan at or after 3s, clear protection. Enter HEATING with heatStart set to the current scan time if the sensor is valid and heatDemand is true; otherwise enter IDLE."
+      ]
+    }
+  ],
+  "timer_plan": [
+    {
+      "name": "HeatTON",
+      "type": "TON",
+      "PT": "T#5s",
+      "call": "Call unconditionally once per scan with IN equal to state = HEATING.",
+      "reset": "IN is false outside HEATING, including on a trip, fault shutdown, or loss of demand."
+    },
+    {
+      "name": "CooldownTON",
+      "type": "TON",
+      "PT": "T#3s",
+      "call": "Call unconditionally once per scan with IN equal to state = PROTECTED.",
+      "reset": "IN is false outside PROTECTED; a sensor fault does not reset an active cooldown."
+    },
+    {
+      "name": "Authoritative scan-time deadlines",
+      "type": "Monotonic timestamps",
+      "PT": "5s heating; 3s protection",
+      "purpose": "Evaluate transitions before the current scan's TON calls, without relying on their stale Q values. Record heatStart and protectionStart on state entry and compare elapsed monotonic time against the respective threshold.",
+      "reset": "Discard heatStart on leaving HEATING and protectionStart on leaving PROTECTED.",
+      "timing_notes": "Sample a monotonic runtime clock once per scan; normalize the first scan to zero and ignore any pre-invocation interval. Use adequate resolution and wrap-safe elapsed-time arithmetic. The TONs provide elapsed-time diagnostics; timestamp comparisons govern transitions."
+    }
+  ],
+  "priorities": [
+    "Sensor fault is TemperatureSensorInput < 0 or TemperatureSensorInput > 100. It prevents heating immediately and freezes heatDemand.",
+    "Active protection prevents heating. A fault neither clears nor restarts an active cooldown.",
+    "Recognize an already completed 5s energized interval before discarding its heating timestamp; trip protection in that scan.",
+    "When valid, set heatDemand below the setpoint, clear it above the setpoint, and retain it at equality, including while protected.",
+    "At cooldown expiry, clear protection in that scan; restart heat only if the sensor is valid and demand remains.",
+    "Threshold actions occur at observed scans. Task scheduling must be fast enough for the required physical response; a stalled task cannot guarantee shutdown at exactly 5s."
+  ],
+  "initial_values": {
+    "state": "IDLE",
+    "heatDemand": false,
+    "sensorFault": false,
+    "heatElapsed_ms": 0,
+    "cooldownElapsed_ms": 0,
+    "heatStart": null,
+    "protectionStart": null,
+    "clockInitialized": false,
+    "HeatTON": "Reset: Q=false, ET=T#0s",
+    "CooldownTON": "Reset: Q=false, ET=T#0s",
+    "CurrentTemperature": 0.0,
+    "SetTempDisplay": 0.0,
+    "HeaterStatus": false,
+    "OverheatProtection": false,
+    "HeaterOutput": false
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "Edge sampling",
+      "actions": "Snapshot both inputs and the monotonic clock once. Retain the prior state for transition detection. No external edge-trigger inputs are required."
+    },
+    {
+      "stage": 2,
+      "name": "Safety/reset priority and state transitions",
+      "actions": "Compute sensorFault; update or freeze heatDemand. Evaluate the prior state's elapsed timestamp and apply the specified transitions and timestamp resets or entries. Compute elapsed values from the sampled clock. Do not use this scan's timer Q values for transitions."
+    },
+    {
+      "stage": 3,
+      "name": "Unconditional top-level timer FB calls",
+      "actions": "Outside all CASE and IF blocks, call HeatTON and CooldownTON exactly once using the resulting state and their specified PT values."
+    },
+    {
+      "stage": 4,
+      "name": "Unified output assignments",
+      "actions": "Assign CurrentTemperature and SetTempDisplay from the sampled inputs. Assign OverheatProtection from state = PROTECTED, HeaterOutput from state = HEATING, and HeaterStatus = HeaterOutput."
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G(((TemperatureSensorInput < 0.0) OR (TemperatureSensorInput > 100.0)) -> NOT HeaterOutput)"
+    },
+    {
+      "id": "A2",
+      "formula": "G(OverheatProtection -> NOT HeaterOutput)"
+    },
+    {
+      "id": "A3",
+      "formula": "G(HeaterStatus = HeaterOutput)"
+    },
+    {
+      "id": "A4",
+      "formula": "G((CurrentTemperature = TemperatureSensorInput) AND (SetTempDisplay = SetTemperature))"
+    },
+    {
+      "id": "A5",
+      "formula": "G((TemperatureSensorInput > SetTemperature) -> NOT HeaterOutput)"
+    },
+    {
+      "id": "A6",
+      "formula": "G(((TemperatureSensorInput >= 0.0) AND (TemperatureSensorInput <= 100.0) AND (TemperatureSensorInput < SetTemperature) AND NOT OverheatProtection) -> HeaterOutput)"
+    }
+  ]
+}

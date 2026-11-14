@@ -1,0 +1,217 @@
+{
+  "state_machine": [
+    {
+      "state": "INIT",
+      "description": "Fresh instance before first scan; declared outputs and internal state at initial values.",
+      "transitions": [
+        {
+          "to": "SENSOR_FAULT",
+          "when": "sensorFault on first scan"
+        },
+        {
+          "to": "HEATING",
+          "when": "!sensorFault AND heatDemand"
+        },
+        {
+          "to": "IDLE",
+          "when": "!sensorFault AND !heatDemand"
+        }
+      ]
+    },
+    {
+      "state": "IDLE",
+      "description": "Valid sensor, no active overheat protection, no heat demand.",
+      "transitions": [
+        {
+          "to": "HEATING",
+          "when": "!sensorFault AND heatDemand AND !protectionLatched"
+        },
+        {
+          "to": "SENSOR_FAULT",
+          "when": "sensorFault"
+        },
+        {
+          "to": "IDLE",
+          "when": "otherwise"
+        }
+      ]
+    },
+    {
+      "state": "HEATING",
+      "description": "Valid sensor, heatDemand true, heater commanded until trip, demand clear, or fault.",
+      "transitions": [
+        {
+          "to": "OVERHEAT_COOLDOWN",
+          "when": "heatLimitReached OR tripNow; continuous energized time >= 5s"
+        },
+        {
+          "to": "IDLE",
+          "when": "!sensorFault AND !heatDemand"
+        },
+        {
+          "to": "SENSOR_FAULT",
+          "when": "sensorFault"
+        },
+        {
+          "to": "HEATING",
+          "when": "equality retains heatDemand"
+        }
+      ]
+    },
+    {
+      "state": "OVERHEAT_COOLDOWN",
+      "description": "Overheat protection latched; heater off; cooldown timer runs from trip time.",
+      "transitions": [
+        {
+          "to": "SENSOR_FAULT",
+          "when": "cooldownDone AND sensorFault"
+        },
+        {
+          "to": "HEATING",
+          "when": "cooldownDone AND !sensorFault AND heatDemand"
+        },
+        {
+          "to": "IDLE",
+          "when": "cooldownDone AND !sensorFault AND !heatDemand"
+        },
+        {
+          "to": "OVERHEAT_COOLDOWN",
+          "when": "!cooldownDone or sensorFault during cooldown"
+        }
+      ]
+    },
+    {
+      "state": "SENSOR_FAULT",
+      "description": "Invalid sensor: TemperatureSensorInput < 0 or > 100. Heater off, heat timer reset, heatDemand frozen.",
+      "transitions": [
+        {
+          "to": "OVERHEAT_COOLDOWN",
+          "when": "protectionLatched"
+        },
+        {
+          "to": "IDLE",
+          "when": "sensor valid AND !heatDemand AND !protectionLatched"
+        },
+        {
+          "to": "HEATING",
+          "when": "sensor valid AND heatDemand AND !protectionLatched"
+        },
+        {
+          "to": "SENSOR_FAULT",
+          "when": "sensorFault"
+        }
+      ]
+    }
+  ],
+  "timer_plan": [
+    {
+      "name": "HeatContinuityTimer",
+      "type": "TON",
+      "PT": "T#5S",
+      "IN": "heatEnable = (state=HEATING OR (cooldownDonePred AND !sensorFault AND heatDemand)) AND !sensorFault AND !protectionForHeat AND heatDemand",
+      "trip": "Q true at ET>=5s; set heatLimitReached/tripNow, protectionLatched=true, protectionStart=now, and force HeaterOutput=false in the same scan.",
+      "reset": "IN=false; sensorFault; protectionLatched or protectionNext; heatDemand=false; leaving HEATING; after trip detection or initialization."
+    },
+    {
+      "name": "CooldownTimer",
+      "type": "TON",
+      "PT": "T#3S",
+      "IN": "protectionLatched OR tripNow; call after HeatContinuityTimer so a same-scan trip starts cooldown immediately.",
+      "trip": "Q true at ET>=3s; cooldownDone=true. At cooldownDone clear protection in that scan unless a new trip exists; same-scan heat restart is allowed if sensor is valid and heatDemand remains.",
+      "reset": "protectionLatched=false AND tripNow=false; initialization; after cooldownDone has cleared protection."
+    }
+  ],
+  "priorities": {
+    "safety": [
+      "Sensor fault, TemperatureSensorInput < 0 or > 100, or active overheat protection overrides heat demand and forces HeaterOutput=false.",
+      "Protection trip is evaluated before final output. Continuous energized time >=5s latches OverheatProtection and forces HeaterOutput=false in the trip scan.",
+      "During OverheatProtection, HeaterOutput remains false until cooldownDone, i.e. at least 3s from trip. At cooldownDone the protection must clear in that scan; heating may restart in the same scan only when sensor is valid and heatDemand remains.",
+      "Sensor fault resets the continuous-heating timer; it neither clears nor restarts an already active cooldown. During sensorFault, heatDemand is frozen."
+    ],
+    "operational": [
+      "If TemperatureSensorInput < SetTemperature, set heatDemand=true; if > SetTemperature, set heatDemand=false; at equality retain prior heatDemand, initially false.",
+      "HeaterOutput is true only when sensor valid, no OverheatProtection, heatDemand true, heatLimit not reached, and the state permits heating.",
+      "CurrentTemperature mirrors TemperatureSensorInput and SetTempDisplay mirrors SetTemperature every scan, including during fault.",
+      "HeaterStatus always mirrors HeaterOutput."
+    ]
+  },
+  "initial_values": {
+    "CurrentTemperature": 0.0,
+    "SetTempDisplay": 0.0,
+    "HeaterStatus": false,
+    "OverheatProtection": false,
+    "HeaterOutput": false,
+    "state": "INIT",
+    "heatDemand": false,
+    "sensorFault": false,
+    "protectionLatched": false,
+    "protectionStart": "T#0S",
+    "heatLimitReached": false,
+    "cooldownDone": false,
+    "tripNow": false,
+    "HeatContinuityTimer.ET": "T#0S",
+    "CooldownTimer.ET": "T#0S"
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "Edge sampling",
+      "actions": [
+        "Sample TemperatureSensorInput and SetTemperature once.",
+        "Compute sensorFault = (TemperatureSensorInput < 0.0) OR (TemperatureSensorInput > 100.0).",
+        "Capture comparison edges and previous observed OverheatProtection; compute dt_ms with the first scan treated as zero for timer initialization."
+      ]
+    },
+    {
+      "stage": 2,
+      "name": "Safety/reset priority and state transitions",
+      "actions": [
+        "Apply safety priority first: sensorFault or active protection forces the internal heat command false and resets HeatContinuityTimer.",
+        "Update heatDemand: frozen during sensorFault; otherwise true when below setpoint, false when above setpoint, retained at equality.",
+        "Evaluate state transitions using sampled inputs, heatDemand, protectionLatched, and timer status; do not assign output ports in this stage."
+      ]
+    },
+    {
+      "stage": 3,
+      "name": "Unconditional top-level timer FB calls outside CASE/IF",
+      "actions": [
+        "Call HeatContinuityTimer unconditionally with PT=T#5S and IN derived from the stage-2 heat enable, using cooldownDonePred to permit same-scan restart after cooldown.",
+        "If HeatContinuityTimer.Q, set heatLimitReached/tripNow, protectionLatched=true, protectionStart=now.",
+        "Call CooldownTimer unconditionally with PT=T#3S and IN=(protectionLatched OR tripNow); derive cooldownDone and protectionNext, clearing protectionLatched when cooldownDone and no trip.",
+        "Timer reset is performed through IN conditions; no timer FB call is placed inside CASE/IF."
+      ]
+    },
+    {
+      "stage": 4,
+      "name": "Unified output assignments",
+      "actions": [
+        "Assign CurrentTemperature := TemperatureSensorInput and SetTempDisplay := SetTemperature.",
+        "Assign OverheatProtection := protectionNext, i.e. protection active and not cooldownDone, OR tripNow.",
+        "Assign HeaterOutput := heatCommand AND NOT sensorFault AND NOT OverheatProtection AND NOT heatLimitReached.",
+        "Assign HeaterStatus := HeaterOutput."
+      ]
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G(((TemperatureSensorInput < 0.0) | (TemperatureSensorInput > 100.0)) -> !HeaterOutput)"
+    },
+    {
+      "id": "A2",
+      "formula": "G(OverheatProtection -> !HeaterOutput)"
+    },
+    {
+      "id": "A3",
+      "formula": "G(HeaterStatus = HeaterOutput)"
+    },
+    {
+      "id": "A4",
+      "formula": "G((CurrentTemperature = TemperatureSensorInput) & (SetTempDisplay = SetTemperature))"
+    },
+    {
+      "id": "A5",
+      "formula": "G((TemperatureSensorInput > SetTemperature) -> !HeaterOutput)"
+    }
+  ]
+}

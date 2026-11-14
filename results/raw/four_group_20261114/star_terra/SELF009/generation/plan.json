@@ -1,0 +1,108 @@
+{
+  "state_machine": [
+    {
+      "state": "Invalid",
+      "transitions": [
+        {
+          "from": "ANY",
+          "when": "Target < 1 OR Target > 20",
+          "actions": "Set next Count=0, Complete=FALSE, Error=TRUE."
+        }
+      ]
+    },
+    {
+      "state": "Resetting",
+      "transitions": [
+        {
+          "from": "ANY",
+          "when": "Target is valid AND Reset",
+          "actions": "Set next Count=0, Complete=FALSE, Error=FALSE."
+        }
+      ]
+    },
+    {
+      "state": "Counting",
+      "transitions": [
+        {
+          "from": "ANY",
+          "when": "Target is valid AND NOT Reset AND next Count < Target",
+          "actions": "Set Complete=FALSE, Error=FALSE."
+        }
+      ]
+    },
+    {
+      "state": "Complete",
+      "transitions": [
+        {
+          "from": "ANY",
+          "when": "Target is valid AND NOT Reset AND next Count >= Target",
+          "actions": "Set Complete=TRUE, Error=FALSE."
+        }
+      ]
+    },
+    {
+      "transition_rule": "For valid Target and NOT Reset, calculate next Count=min(pre-scan Count + (1 if rise else 0), Target) before selecting Counting or Complete. Clamp on every scan, including scans without a rising edge. States are descriptive; no state transition delays output updates."
+    }
+  ],
+  "timer_plan": [],
+  "priorities": [
+    "Invalid Target overrides Reset and counting; Error remains TRUE when both invalid and Reset are present.",
+    "For a valid Target, Reset overrides counting and clears Count and Complete.",
+    "Sample and update pulse edge memory on every scan, including invalid-target and reset scans.",
+    "Use the declared USINT Target interface: valid values are 1 through 20. Reject Boolean or non-integer values at any external adapter rather than coercing them."
+  ],
+  "initial_values": {
+    "Count": 0,
+    "previous_pulse": false,
+    "Complete": false,
+    "Error": false
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "Edge sampling",
+      "actions": "Sample inputs once; calculate rise=PartPulse AND NOT previous_pulse using the retained pre-scan value, then unconditionally set previous_pulse to the sampled PartPulse."
+    },
+    {
+      "stage": 2,
+      "name": "Safety/reset priority and state transitions",
+      "actions": "Validate Target, apply invalid-target and Reset priorities, and calculate next Count, Complete, and Error using the pre-scan Count and sampled inputs. Select the descriptive state in the same scan."
+    },
+    {
+      "stage": 3,
+      "name": "Unconditional top-level timer FB calls outside CASE/IF",
+      "actions": "No timers are required; this stage performs no calls."
+    },
+    {
+      "stage": 4,
+      "name": "Unified output assignments",
+      "actions": "Assign Count, Complete, and Error once from their calculated next values. The assigned Count is retained for the next scan."
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G(Error <-> (Target < 1 | Target > 20))"
+    },
+    {
+      "id": "A2",
+      "formula": "G((Reset | Target < 1 | Target > 20) -> (Count = 0 & !Complete))"
+    },
+    {
+      "id": "A3",
+      "formula": "G((!Reset & Target >= 1 & Target <= 20) -> (Complete <-> Count >= Target))"
+    },
+    {
+      "id": "A4",
+      "formula": "G((Target >= 1 & Target <= 20) -> Count <= Target)"
+    },
+    {
+      "id": "A5",
+      "formula": "G((!PartPulse & X(PartPulse) & X(!Reset & Target >= 1 & Target <= 20)) -> X(Count) = min(Count + 1, X(Target)))"
+    },
+    {
+      "id": "A6",
+      "formula": "G(((PartPulse | X(!PartPulse)) & X(!Reset & Target >= 1 & Target <= 20)) -> X(Count) = min(Count, X(Target)))"
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+-- Formal verification specification for Task SELF005
+-- Generated: 2026-11-14T10:50:14.146081+00:00
+
+-- Property: SELF005.P_init
+-- Description: Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
+LTLSPEC NAME SELF005.P_init := init;
+
+-- Property: SELF005.P1
+-- Description: The lamp encoding is one-hot.
+LTLSPEC NAME SELF005.P1 := G(oneColor);
+
+-- Property: SELF005.P2
+-- Description: When Enable is FALSE, immediately force Red (Phase=0) with age reset to 0.
+LTLSPEC NAME SELF005.P2 := G(!Enable -> (Red & !Green & !Amber & Phase=0));
+
+-- Property: SELF005.P3
+-- Description: No tick preserves phase.
+LTLSPEC NAME SELF005.P3 := G((Enable & !Tick) -> (Phase = qPhase));
+
+-- Property: SELF005.P4
+-- Description: The second red tick enters green.
+LTLSPEC NAME SELF005.P4 := G((Enable & Tick & qRedLast) -> Green);
+
+-- Property: SELF005.P5
+-- Description: The third green tick enters amber.
+LTLSPEC NAME SELF005.P5 := G((Enable & Tick & qGreenLast) -> Amber);
+
+-- Property: SELF005.P6
+-- Description: One amber tick returns red.
+LTLSPEC NAME SELF005.P6 := G((Enable & Tick & qAmber) -> Red);
+
+-- Property: SELF005.P7
+-- Description: Persistent enable plus infinitely many ticks makes every phase recur; finite traces cannot prove this liveness property.
+LTLSPEC NAME SELF005.P7 := (G Enable & G(F Tick)) -> (G(F Red) & G(F Green) & G(F Amber));
+
+-- Property: SELF005.P8
+-- Description: Previously Phase was left unconstrained except for holding on !Tick.
+LTLSPEC NAME SELF005.P8 := G((Red <-> Phase=0) & (Green <-> Phase=1) & (Amber <-> Phase=2) & (Phase>=0 & Phase<=2));
+
+-- Property: SELF005.P9
+-- Description: Prevents single-tick skipping through Red (needs 2 ticks) or Green (needs 3 ticks).
+LTLSPEC NAME SELF005.P9 := G((Enable & Tick & !qRedLast & !qGreenLast & !qAmber) -> (Phase = qPhase));
+
+-- Property: SELF005.COMPLETE
+-- Description: Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
+LTLSPEC NAME SELF005.COMPLETE := G(CompleteBehavior);

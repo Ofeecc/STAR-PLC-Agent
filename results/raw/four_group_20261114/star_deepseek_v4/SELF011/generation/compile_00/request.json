@@ -1,0 +1,20 @@
+{
+  "request_id": "ae0b6279be244023b067b3a37740e2e4",
+  "source_sha256": "5f97f63255bda3686656681ddccdedf6945633024e1379a438abb8f980084632",
+  "task_id": "SELF011",
+  "project": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\a8166493f9df2ba6\\task.project",
+  "candidate": {
+    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    Start : BOOL;\n    Stop : BOOL;\n    Reset : BOOL;\n    ExtendDone : BOOL;\n    ClampDone : BOOL;\n    ReleaseDone : BOOL;\n    RetractDone : BOOL;\nEND_VAR\nVAR_OUTPUT\n    Extend : BOOL := FALSE;\n    Clamp : BOOL := FALSE;\n    Release : BOOL := FALSE;\n    Retract : BOOL := FALSE;\n    Busy : BOOL := FALSE;\n    Done : BOOL := FALSE;\nEND_VAR\nVAR\n    state : E_FbTaskState := E_FbTaskState.eIDLE;\n    iStart : BOOL;\n    iStop : BOOL;\n    iReset : BOOL;\n    iExtendDone : BOOL;\n    iClampDone : BOOL;\n    iReleaseDone : BOOL;\n    iRetractDone : BOOL;\nEND_VAR",
+    "implementation": "// Stage 1: sample each input once per scan\n    iStart := Start;\n    iStop := Stop;\n    iReset := Reset;\n    iExtendDone := ExtendDone;\n    iClampDone := ClampDone;\n    iReleaseDone := ReleaseDone;\n    iRetractDone := RetractDone;\n\n    // Stage 2: safety/reset priority; exactly one normal transition per scan\n    IF iStop OR iReset THEN\n        state := E_FbTaskState.eIDLE;\n    ELSE\n        CASE state OF\n            E_FbTaskState.eIDLE:\n                IF iStart AND iRetractDone THEN\n                    state := E_FbTaskState.eEXTEND;\n                END_IF;\n\n            E_FbTaskState.eEXTEND:\n                IF iExtendDone THEN\n                    state := E_FbTaskState.eCLAMP;\n                END_IF;\n\n            E_FbTaskState.eCLAMP:\n                IF iClampDone THEN\n                    state := E_FbTaskState.eRELEASE;\n                END_IF;\n\n            E_FbTaskState.eRELEASE:\n                IF iReleaseDone THEN\n                    state := E_FbTaskState.eRETRACT;\n                END_IF;\n\n            E_FbTaskState.eRETRACT:\n                IF iRetractDone THEN\n                    state := E_FbTaskState.eDONE;\n                END_IF;\n\n            E_FbTaskState.eDONE:\n                state := E_FbTaskState.eDONE; // hold DONE until Stop or Reset\n\n            ELSE\n                state := E_FbTaskState.eIDLE;\n        END_CASE;\n    END_IF;\n\n    // Stage 3: no timers required; no unconditional timer FB calls exist\n\n    // Stage 4: unified output assignments from scan-final state\n    Extend := (state = E_FbTaskState.eEXTEND);\n    Clamp := (state = E_FbTaskState.eCLAMP);\n    Release := (state = E_FbTaskState.eRELEASE);\n    Retract := (state = E_FbTaskState.eRETRACT);\n    Busy := (state = E_FbTaskState.eEXTEND) OR (state = E_FbTaskState.eCLAMP) OR (state = E_FbTaskState.eRELEASE) OR (state = E_FbTaskState.eRETRACT);\n    Done := (state = E_FbTaskState.eDONE);",
+    "supporting_objects": [
+      {
+        "name": "E_FbTaskState",
+        "kind": "DUT",
+        "declaration": "TYPE E_FbTaskState :\n(\n    eIDLE := 0,\n    eEXTEND := 1,\n    eCLAMP := 2,\n    eRELEASE := 3,\n    eRETRACT := 4,\n    eDONE := 5\n);\nEND_TYPE",
+        "implementation": ""
+      }
+    ]
+  },
+  "result_path": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\a8166493f9df2ba6\\codesys_evidence.json",
+  "started_utc": "2026-11-14T10:57:29.239247+00:00"
+}

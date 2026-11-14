@@ -1,0 +1,168 @@
+{
+  "state_machine": [
+    {
+      "state": "WAIT_FEED",
+      "transitions": [
+        {
+          "condition": "SensorFeed",
+          "next": "MOVE_TO_WASH"
+        }
+      ]
+    },
+    {
+      "state": "MOVE_TO_WASH",
+      "transitions": [
+        {
+          "condition": "SensorWash",
+          "next": "WAIT_WASH"
+        }
+      ]
+    },
+    {
+      "state": "WAIT_WASH",
+      "transitions": [
+        {
+          "condition": "SensorWash AND washComplete",
+          "next": "MOVE_TO_WEIGHT"
+        }
+      ]
+    },
+    {
+      "state": "MOVE_TO_WEIGHT",
+      "transitions": [
+        {
+          "condition": "SensorWeight",
+          "next": "WAIT_WEIGHT"
+        }
+      ]
+    },
+    {
+      "state": "WAIT_WEIGHT",
+      "transitions": [
+        {
+          "condition": "SensorWeight AND weightComplete AND 100.0 <= real32(weight) <= 200.0",
+          "action": "Latch firingTemp = real32(500.0 + real32(real32(weight - 100.0) * 0.5)).",
+          "next": "MOVE_TO_FIRING"
+        },
+        {
+          "condition": "SensorWeight AND weightComplete AND weight is outside the inclusive range",
+          "next": "REJECT"
+        }
+      ]
+    },
+    {
+      "state": "REJECT",
+      "transitions": [
+        {
+          "condition": "NOT SensorWeight",
+          "next": "WAIT_FEED"
+        }
+      ]
+    },
+    {
+      "state": "MOVE_TO_FIRING",
+      "transitions": [
+        {
+          "condition": "SensorFiring",
+          "next": "WAIT_FIRING"
+        }
+      ]
+    },
+    {
+      "state": "WAIT_FIRING",
+      "transitions": [
+        {
+          "condition": "SensorFiring AND firingComplete",
+          "next": "MOVE_TO_OUTPUT"
+        }
+      ]
+    },
+    {
+      "state": "MOVE_TO_OUTPUT",
+      "transitions": [
+        {
+          "condition": "SensorOutput",
+          "next": "OUTPUT_DONE"
+        }
+      ]
+    },
+    {
+      "state": "OUTPUT_DONE",
+      "transitions": [
+        {
+          "condition": "NOT SensorOutput",
+          "next": "WAIT_FEED"
+        }
+      ]
+    }
+  ],
+  "timer_plan": {
+    "timers": [],
+    "note": "No timing requirement is specified. Do not introduce rejection pulses, travel timeouts, or reversal delays without an approved specification."
+  },
+  "priorities": [
+    "Manual mode overrides the automatic route: set phase to WAIT_FEED, clear kick and CompletionLight, and retain firingTemp. Manual forward and reverse requests are mutually exclusive; simultaneous requests inhibit both.",
+    "Automatic mode permits forward motion only. Evaluate at most one phase transition per invocation, using the pre-transition phase. Destination arrival stops motion in the same invocation; a completion already asserted on arrival is not accepted until a later invocation.",
+    "Accept completion levels only in their corresponding wait state and only while the matching station sensor is true. Ignore unrelated confirmations.",
+    "An out-of-range item enters REJECT immediately, remains stopped with kick asserted while SensorWeight is true, and cannot proceed to firing.",
+    "Mode entry uses the reset WAIT_FEED phase; SensorFeed may start the route on that invocation. A reset or transition to WAIT_FEED from another phase does not also start a new route in the same invocation.",
+    "The design assumes one product and noncontradictory station sensors. Motor interlocking in application logic is not a substitute for an independently engineered safety circuit and contactor interlocks."
+  ],
+  "initial_values": {
+    "phase": "WAIT_FEED",
+    "MotorForward": false,
+    "MotorReverse": false,
+    "kick": false,
+    "CompletionLight": false,
+    "firingTemp": 0.0,
+    "previousMode": false
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "Edge sampling",
+      "details": "Sample all inputs once; update previousMode and mode-edge indications unconditionally. Completion and sensor conditions are sampled levels, not required edges."
+    },
+    {
+      "stage": 2,
+      "name": "Safety/reset priority and state transitions",
+      "details": "Apply the manual reset priority or evaluate one automatic transition from the applicable pre-transition phase. Latch the setpoint only on a qualified WAIT_WEIGHT judgment. Use binary32 rounding at each indicated arithmetic operation; otherwise retain the previous setpoint."
+    },
+    {
+      "stage": 3,
+      "name": "Unconditional top-level timer FB calls outside CASE/IF",
+      "details": "There are no timer FBs in this design, so this stage has zero calls. Any subsequently approved timer FB must be called once per scan here, outside CASE/IF."
+    },
+    {
+      "stage": 4,
+      "name": "Unified output assignments",
+      "details": "Assign outputs once from the sampled inputs and post-transition phase. In manual: MotorForward = ForwardButton AND NOT ReverseButton; MotorReverse = ReverseButton AND NOT ForwardButton; kick and CompletionLight are false. In automatic: MotorForward is true exactly in the four MOVE states; MotorReverse is false; kick is true exactly in REJECT; CompletionLight is true exactly in OUTPUT_DONE. Assign firingTemp from the retained setpoint. Thus transitions affect outputs in the same invocation."
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G(!(MotorForward & MotorReverse))"
+    },
+    {
+      "id": "A2",
+      "formula": "G(!Mode -> ((MotorForward <-> (ForwardButton & !ReverseButton)) & (MotorReverse <-> (ReverseButton & !ForwardButton))))"
+    },
+    {
+      "id": "A3",
+      "formula": "G(Mode -> !MotorReverse)"
+    },
+    {
+      "id": "A4",
+      "formula": "G(!Mode -> (!kick & !CompletionLight))"
+    },
+    {
+      "id": "A5",
+      "formula": "G(kick -> (Mode & SensorWeight & !MotorForward & !MotorReverse))"
+    },
+    {
+      "id": "A6",
+      "formula": "G(CompletionLight -> (Mode & SensorOutput & !MotorForward & !MotorReverse))"
+    }
+  ]
+}

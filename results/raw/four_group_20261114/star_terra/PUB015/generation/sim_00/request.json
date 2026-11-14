@@ -1,0 +1,1920 @@
+{
+  "request_id": "223c0a9a0d1e47fca7d12d1f013370cf",
+  "mode": "IDE_SIMULATION_ONLY",
+  "no_physical_connection": true,
+  "workspace": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\3df82f41acf778fc",
+  "project": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\3df82f41acf778fc\\simulation.project",
+  "template": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\3df82f41acf778fc\\benchmark.project",
+  "task_id": "PUB015",
+  "task_sha256": "7e805a4ef6d84a18c3b0793ed2f022fb5e7501339ba47b0b213ca58430ae32a0",
+  "source_sha256": "aaae2d52ddca78a0abfb0b7307656851913d28b1bf1699c2ef66ee569b20a5f3",
+  "candidate": {
+    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    estop : BOOL;\n    opeMode : BOOL;\n    valveAStart : BOOL;\n    valveBStart : BOOL;\n    valveCStart : BOOL;\n    valveDStart : BOOL;\n    mixMotorStart : BOOL;\n    autoStart : BOOL;\n    processMode : BOOL;\n    levelSensor : INT;\n    mixMotorComplete : BOOL;\nEND_VAR\nVAR_OUTPUT\n    valveARun : BOOL := FALSE;\n    valveBRun : BOOL := FALSE;\n    valveCRun : BOOL := FALSE;\n    valveDRun : BOOL := FALSE;\n    mixMotorRun : BOOL := FALSE;\nEND_VAR\nVAR\n    (* Phase: 0=IDLE, 1=FILL_A, 2=FILL_B, 3=FILL_C, 4=MIX, 5=DRAIN. *)\n    phase : INT := 0;\n    batchMode : BOOL := FALSE;\n    manualA : BOOL := FALSE;\n    manualB : BOOL := FALSE;\n    manualC : BOOL := FALSE;\n    manualD : BOOL := FALSE;\n    manualMix : BOOL := FALSE;\n    prevA : BOOL := FALSE;\n    prevB : BOOL := FALSE;\n    prevC : BOOL := FALSE;\n    prevD : BOOL := FALSE;\n    prevMix : BOOL := FALSE;\n    prevAuto : BOOL := FALSE;\n    edgeA : BOOL := FALSE;\n    edgeB : BOOL := FALSE;\n    edgeC : BOOL := FALSE;\n    edgeD : BOOL := FALSE;\n    edgeMix : BOOL := FALSE;\n    edgeAuto : BOOL := FALSE;\n    modeSeen : BOOL := FALSE;\n    previousOpeMode : BOOL := FALSE;\n    modeChanged : BOOL := FALSE;\nEND_VAR",
+    "implementation": "(* Button and mode histories update even during a reset scan. *)\nedgeA := valveAStart AND NOT prevA;\nedgeB := valveBStart AND NOT prevB;\nedgeC := valveCStart AND NOT prevC;\nedgeD := valveDStart AND NOT prevD;\nedgeMix := mixMotorStart AND NOT prevMix;\nedgeAuto := autoStart AND NOT prevAuto;\nprevA := valveAStart;\nprevB := valveBStart;\nprevC := valveCStart;\nprevD := valveDStart;\nprevMix := mixMotorStart;\nprevAuto := autoStart;\nmodeChanged := modeSeen AND (opeMode <> previousOpeMode);\npreviousOpeMode := opeMode;\nmodeSeen := TRUE;\n\n(* Physical emergency stopping requires an independent safety-rated path. *)\nIF (NOT estop) OR modeChanged THEN\n    phase := 0;\n    batchMode := FALSE;\n    manualA := FALSE;\n    manualB := FALSE;\n    manualC := FALSE;\n    manualD := FALSE;\n    manualMix := FALSE;\nELSIF NOT opeMode THEN\n    phase := 0;\n    batchMode := FALSE;\n    IF edgeA THEN manualA := NOT manualA; END_IF;\n    IF edgeB THEN manualB := NOT manualB; END_IF;\n    IF edgeC THEN manualC := NOT manualC; END_IF;\n    IF edgeD THEN manualD := NOT manualD; END_IF;\n    IF edgeMix THEN manualMix := NOT manualMix; END_IF;\nELSE\n    (* Evaluate only the phase present at entry to this CASE. *)\n    CASE phase OF\n        0: (* IDLE *)\n            IF edgeAuto THEN\n                batchMode := processMode;\n                phase := 1;\n            END_IF;\n        1: (* FILL_A *)\n            IF levelSensor >= 50 THEN\n                phase := 2;\n            END_IF;\n        2: (* FILL_B *)\n            IF levelSensor >= 80 THEN\n                IF batchMode THEN\n                    phase := 3;\n                ELSE\n                    phase := 4;\n                END_IF;\n            END_IF;\n        3: (* FILL_C *)\n            IF levelSensor >= 100 THEN\n                phase := 4;\n            END_IF;\n        4: (* MIX *)\n            IF mixMotorComplete THEN\n                phase := 5;\n            END_IF;\n        5: (* DRAIN: no tank-empty input is provided. *)\n            IF edgeAuto THEN\n                batchMode := processMode;\n                phase := 1;\n            END_IF;\n        ELSE\n            phase := 0;\n            batchMode := FALSE;\n    END_CASE;\nEND_IF;\n\nvalveARun := estop AND NOT modeChanged AND ((NOT opeMode AND manualA) OR (opeMode AND (phase = 1)));\nvalveBRun := estop AND NOT modeChanged AND ((NOT opeMode AND manualB) OR (opeMode AND (phase = 2)));\nvalveCRun := estop AND NOT modeChanged AND ((NOT opeMode AND manualC) OR (opeMode AND (phase = 3)));\nvalveDRun := estop AND NOT modeChanged AND ((NOT opeMode AND manualD) OR (opeMode AND (phase = 5)));\nmixMotorRun := estop AND NOT modeChanged AND ((NOT opeMode AND manualMix) OR (opeMode AND (phase = 4)));",
+    "supporting_objects": []
+  },
+  "program": {
+    "declaration": "PROGRAM PLC_PRG\nVAR\n BenchStep : UDINT := 0;\n BenchCalls : UDINT := 0;\n BenchDone : BOOL := FALSE;\n BenchUut0 : FB_Task;\n BenchUut1 : FB_Task;\n TraceIn_estop : ARRAY[0..15] OF BOOL;\n TraceIn_opeMode : ARRAY[0..15] OF BOOL;\n TraceIn_valveAStart : ARRAY[0..15] OF BOOL;\n TraceIn_valveBStart : ARRAY[0..15] OF BOOL;\n TraceIn_valveCStart : ARRAY[0..15] OF BOOL;\n TraceIn_valveDStart : ARRAY[0..15] OF BOOL;\n TraceIn_mixMotorStart : ARRAY[0..15] OF BOOL;\n TraceIn_autoStart : ARRAY[0..15] OF BOOL;\n TraceIn_processMode : ARRAY[0..15] OF BOOL;\n TraceIn_levelSensor : ARRAY[0..15] OF INT;\n TraceIn_mixMotorComplete : ARRAY[0..15] OF BOOL;\n TraceOut_valveARun : ARRAY[0..15] OF BOOL;\n TraceOut_valveBRun : ARRAY[0..15] OF BOOL;\n TraceOut_valveCRun : ARRAY[0..15] OF BOOL;\n TraceOut_valveDRun : ARRAY[0..15] OF BOOL;\n TraceOut_mixMotorRun : ARRAY[0..15] OF BOOL;\nEND_VAR",
+    "implementation": "IF NOT BenchDone THEN\n CASE BenchStep OF\n 0:\n   BenchUut0.estop := TRUE;\n   BenchUut0.opeMode := TRUE;\n   BenchUut0.valveAStart := FALSE;\n   BenchUut0.valveBStart := FALSE;\n   BenchUut0.valveCStart := FALSE;\n   BenchUut0.valveDStart := FALSE;\n   BenchUut0.mixMotorStart := FALSE;\n   BenchUut0.autoStart := FALSE;\n   BenchUut0.processMode := TRUE;\n   BenchUut0.levelSensor := INT#0;\n   BenchUut0.mixMotorComplete := FALSE;\n   TraceIn_estop[0] := BenchUut0.estop;\n   TraceIn_opeMode[0] := BenchUut0.opeMode;\n   TraceIn_valveAStart[0] := BenchUut0.valveAStart;\n   TraceIn_valveBStart[0] := BenchUut0.valveBStart;\n   TraceIn_valveCStart[0] := BenchUut0.valveCStart;\n   TraceIn_valveDStart[0] := BenchUut0.valveDStart;\n   TraceIn_mixMotorStart[0] := BenchUut0.mixMotorStart;\n   TraceIn_autoStart[0] := BenchUut0.autoStart;\n   TraceIn_processMode[0] := BenchUut0.processMode;\n   TraceIn_levelSensor[0] := BenchUut0.levelSensor;\n   TraceIn_mixMotorComplete[0] := BenchUut0.mixMotorComplete;\n   BenchUut0();\n   TraceOut_valveARun[0] := BenchUut0.valveARun;\n   TraceOut_valveBRun[0] := BenchUut0.valveBRun;\n   TraceOut_valveCRun[0] := BenchUut0.valveCRun;\n   TraceOut_valveDRun[0] := BenchUut0.valveDRun;\n   TraceOut_mixMotorRun[0] := BenchUut0.mixMotorRun;\n   BenchCalls := BenchCalls + 1;\n 1:\n   BenchUut0.estop := TRUE;\n   BenchUut0.opeMode := TRUE;\n   BenchUut0.valveAStart := FALSE;\n   BenchUut0.valveBStart := FALSE;\n   BenchUut0.valveCStart := FALSE;\n   BenchUut0.valveDStart := FALSE;\n   BenchUut0.mixMotorStart := FALSE;\n   BenchUut0.autoStart := TRUE;\n   BenchUut0.processMode := TRUE;\n   BenchUut0.levelSensor := INT#49;\n   BenchUut0.mixMotorComplete := FALSE;\n   TraceIn_estop[1] := BenchUut0.estop;\n   TraceIn_opeMode[1] := BenchUut0.opeMode;\n   TraceIn_valveAStart[1] := BenchUut0.valveAStart;\n   TraceIn_valveBStart[1] := BenchUut0.valveBStart;\n   TraceIn_valveCStart[1] := BenchUut0.valveCStart;\n   TraceIn_valveDStart[1] := BenchUut0.valveDStart;\n   TraceIn_mixMotorStart[1] := BenchUut0.mixMotorStart;\n   TraceIn_autoStart[1] := BenchUut0.autoStart;\n   TraceIn_processMode[1] := BenchUut0.processMode;\n   TraceIn_levelSensor[1] := BenchUut0.levelSensor;\n   TraceIn_mixMotorComplete[1] := BenchUut0.mixMotorComplete;\n   BenchUut0();\n   TraceOut_valveARun[1] := BenchUut0.valveARun;\n   TraceOut_valveBRun[1] := BenchUut0.valveBRun;\n   TraceOut_valveCRun[1] := BenchUut0.valveCRun;\n   TraceOut_valveDRun[1] := BenchUut0.valveDRun;\n   TraceOut_mixMotorRun[1] := BenchUut0.mixMotorRun;\n   BenchCalls := BenchCalls + 1;\n 2:\n   BenchUut0.estop := TRUE;\n   BenchUut0.opeMode := TRUE;\n   BenchUut0.valveAStart := FALSE;\n   BenchUut0.valveBStart := FALSE;\n   BenchUut0.valveCStart := FALSE;\n   BenchUut0.valveDStart := FALSE;\n   BenchUut0.mixMotorStart := FALSE;\n   BenchUut0.autoStart := FALSE;\n   BenchUut0.processMode := FALSE;\n   BenchUut0.levelSensor := INT#50;\n   BenchUut0.mixMotorComplete := FALSE;\n   TraceIn_estop[2] := BenchUut0.estop;\n   TraceIn_opeMode[2] := BenchUut0.opeMode;\n   TraceIn_valveAStart[2] := BenchUut0.valveAStart;\n   TraceIn_valveBStart[2] := BenchUut0.valveBStart;\n   TraceIn_valveCStart[2] := BenchUut0.valveCStart;\n   TraceIn_valveDStart[2] := BenchUut0.valveDStart;\n   TraceIn_mixMotorStart[2] := BenchUut0.mixMotorStart;\n   TraceIn_autoStart[2] := BenchUut0.autoStart;\n   TraceIn_processMode[2] := BenchUut0.processMode;\n   TraceIn_levelSensor[2] := BenchUut0.levelSensor;\n   TraceIn_mixMotorComplete[2] := BenchUut0.mixMotorComplete;\n   BenchUut0();\n   TraceOut_valveARun[2] := BenchUut0.valveARun;\n   TraceOut_valveBRun[2] := BenchUut0.valveBRun;\n   TraceOut_valveCRun[2] := BenchUut0.valveCRun;\n   TraceOut_valveDRun[2] := BenchUut0.valveDRun;\n   TraceOut_mixMotorRun[2] := BenchUut0.mixMotorRun;\n   BenchCalls := BenchCalls + 1;\n 3:\n   BenchUut0.estop := TRUE;\n   BenchUut0.opeMode := TRUE;\n   BenchUut0.valveAStart := FALSE;\n   BenchUut0.valveBStart := FALSE;\n   BenchUut0.valveCStart := FALSE;\n   BenchUut0.valveDStart := FALSE;\n   BenchUut0.mixMotorStart := FALSE;\n   BenchUut0.autoStart := FALSE;\n   BenchUut0.processMode := FALSE;\n   BenchUut0.levelSensor := INT#79;\n   BenchUut0.mixMotorComplete := FALSE;\n   TraceIn_estop[3] := BenchUut0.estop;\n   TraceIn_opeMode[3] := BenchUut0.opeMode;\n   TraceIn_valveAStart[3] := BenchUut0.valveAStart;\n   TraceIn_valveBStart[3] := BenchUut0.valveBStart;\n   TraceIn_valveCStart[3] := BenchUut0.valveCStart;\n   TraceIn_valveDStart[3] := BenchUut0.valveDStart;\n   TraceIn_mixMotorStart[3] := BenchUut0.mixMotorStart;\n   TraceIn_autoStart[3] := BenchUut0.autoStart;\n   TraceIn_processMode[3] := BenchUut0.processMode;\n   TraceIn_levelSensor[3] := BenchUut0.levelSensor;\n   TraceIn_mixMotorComplete[3] := BenchUut0.mixMotorComplete;\n   BenchUut0();\n   TraceOut_valveARun[3] := BenchUut0.valveARun;\n   TraceOut_valveBRun[3] := BenchUut0.valveBRun;\n   TraceOut_valveCRun[3] := BenchUut0.valveCRun;\n   TraceOut_valveDRun[3] := BenchUut0.valveDRun;\n   TraceOut_mixMotorRun[3] := BenchUut0.mixMotorRun;\n   BenchCalls := BenchCalls + 1;\n 4:\n   BenchUut0.estop := TRUE;\n   BenchUut0.opeMode := TRUE;\n   BenchUut0.valveAStart := FALSE;\n   BenchUut0.valveBStart := FALSE;\n   BenchUut0.valveCStart := FALSE;\n   BenchUut0.valveDStart := FALSE;\n   BenchUut0.mixMotorStart := FALSE;\n   BenchUut0.autoStart := FALSE;\n   BenchUut0.processMode := FALSE;\n   BenchUut0.levelSensor := INT#80;\n   BenchUut0.mixMotorComplete := FALSE;\n   TraceIn_estop[4] := BenchUut0.estop;\n   TraceIn_opeMode[4] := BenchUut0.opeMode;\n   TraceIn_valveAStart[4] := BenchUut0.valveAStart;\n   TraceIn_valveBStart[4] := BenchUut0.valveBStart;\n   TraceIn_valveCStart[4] := BenchUut0.valveCStart;\n   TraceIn_valveDStart[4] := BenchUut0.valveDStart;\n   TraceIn_mixMotorStart[4] := BenchUut0.mixMotorStart;\n   TraceIn_autoStart[4] := BenchUut0.autoStart;\n   TraceIn_processMode[4] := BenchUut0.processMode;\n   TraceIn_levelSensor[4] := BenchUut0.levelSensor;\n   TraceIn_mixMotorComplete[4] := BenchUut0.mixMotorComplete;\n   BenchUut0();\n   TraceOut_valveARun[4] := BenchUut0.valveARun;\n   TraceOut_valveBRun[4] := BenchUut0.valveBRun;\n   TraceOut_valveCRun[4] := BenchUut0.valveCRun;\n   TraceOut_valveDRun[4] := BenchUut0.valveDRun;\n   TraceOut_mixMotorRun[4] := BenchUut0.mixMotorRun;\n   BenchCalls := BenchCalls + 1;\n 5:\n   BenchUut0.estop := TRUE;\n   BenchUut0.opeMode := TRUE;\n   BenchUut0.valveAStart := FALSE;\n   BenchUut0.valveBStart := FALSE;\n   BenchUut0.valveCStart := FALSE;\n   BenchUut0.valveDStart := FALSE;\n   BenchUut0.mixMotorStart := FALSE;\n   BenchUut0.autoStart := FALSE;\n   BenchUut0.processMode := FALSE;\n   BenchUut0.levelSensor := INT#99;\n   BenchUut0.mixMotorComplete := FALSE;\n   TraceIn_estop[5] := BenchUut0.estop;\n   TraceIn_opeMode[5] := BenchUut0.opeMode;\n   TraceIn_valveAStart[5] := BenchUut0.valveAStart;\n   TraceIn_valveBStart[5] := BenchUut0.valveBStart;\n   TraceIn_valveCStart[5] := BenchUut0.valveCStart;\n   TraceIn_valveDStart[5] := BenchUut0.valveDStart;\n   TraceIn_mixMotorStart[5] := BenchUut0.mixMotorStart;\n   TraceIn_autoStart[5] := BenchUut0.autoStart;\n   TraceIn_processMode[5] := BenchUut0.processMode;\n   TraceIn_levelSensor[5] := BenchUut0.levelSensor;\n   TraceIn_mixMotorComplete[5] := BenchUut0.mixMotorComplete;\n   BenchUut0();\n   TraceOut_valveARun[5] := BenchUut0.valveARun;\n   TraceOut_valveBRun[5] := BenchUut0.valveBRun;\n   TraceOut_valveCRun[5] := BenchUut0.valveCRun;\n   TraceOut_valveDRun[5] := BenchUut0.valveDRun;\n   TraceOut_mixMotorRun[5] := BenchUut0.mixMotorRun;\n   BenchCalls := BenchCalls + 1;\n 6:\n   BenchUut0.estop := TRUE;\n   BenchUut0.opeMode := TRUE;\n   BenchUut0.valveAStart := FALSE;\n   BenchUut0.valveBStart := FALSE;\n   BenchUut0.valveCStart := FALSE;\n   BenchUut0.valveDStart := FALSE;\n   BenchUut0.mixMotorStart := FALSE;\n   BenchUut0.autoStart := FALSE;\n   BenchUut0.processMode := FALSE;\n   BenchUut0.levelSensor := INT#100;\n   BenchUut0.mixMotorComplete := FALSE;\n   TraceIn_estop[6] := BenchUut0.estop;\n   TraceIn_opeMode[6] := BenchUut0.opeMode;\n   TraceIn_valveAStart[6] := BenchUut0.valveAStart;\n   TraceIn_valveBStart[6] := BenchUut0.valveBStart;\n   TraceIn_valveCStart[6] := BenchUut0.valveCStart;\n   TraceIn_valveDStart[6] := BenchUut0.valveDStart;\n   TraceIn_mixMotorStart[6] := BenchUut0.mixMotorStart;\n   TraceIn_autoStart[6] := BenchUut0.autoStart;\n   TraceIn_processMode[6] := BenchUut0.processMode;\n   TraceIn_levelSensor[6] := BenchUut0.levelSensor;\n   TraceIn_mixMotorComplete[6] := BenchUut0.mixMotorComplete;\n   BenchUut0();\n   TraceOut_valveARun[6] := BenchUut0.valveARun;\n   TraceOut_valveBRun[6] := BenchUut0.valveBRun;\n   TraceOut_valveCRun[6] := BenchUut0.valveCRun;\n   TraceOut_valveDRun[6] := BenchUut0.valveDRun;\n   TraceOut_mixMotorRun[6] := BenchUut0.mixMotorRun;\n   BenchCalls := BenchCalls + 1;\n 7:\n   BenchUut0.estop := TRUE;\n   BenchUut0.opeMode := TRUE;\n   BenchUut0.valveAStart := FALSE;\n   BenchUut0.valveBStart := FALSE;\n   BenchUut0.valveCStart := FALSE;\n   BenchUut0.valveDStart := FALSE;\n   BenchUut0.mixMotorStart := FALSE;\n   BenchUut0.autoStart := FALSE;\n   BenchUut0.processMode := FALSE;\n   BenchUut0.levelSensor := INT#100;\n   BenchUut0.mixMotorComplete := TRUE;\n   TraceIn_estop[7] := BenchUut0.estop;\n   TraceIn_opeMode[7] := BenchUut0.opeMode;\n   TraceIn_valveAStart[7] := BenchUut0.valveAStart;\n   TraceIn_valveBStart[7] := BenchUut0.valveBStart;\n   TraceIn_valveCStart[7] := BenchUut0.valveCStart;\n   TraceIn_valveDStart[7] := BenchUut0.valveDStart;\n   TraceIn_mixMotorStart[7] := BenchUut0.mixMotorStart;\n   TraceIn_autoStart[7] := BenchUut0.autoStart;\n   TraceIn_processMode[7] := BenchUut0.processMode;\n   TraceIn_levelSensor[7] := BenchUut0.levelSensor;\n   TraceIn_mixMotorComplete[7] := BenchUut0.mixMotorComplete;\n   BenchUut0();\n   TraceOut_valveARun[7] := BenchUut0.valveARun;\n   TraceOut_valveBRun[7] := BenchUut0.valveBRun;\n   TraceOut_valveCRun[7] := BenchUut0.valveCRun;\n   TraceOut_valveDRun[7] := BenchUut0.valveDRun;\n   TraceOut_mixMotorRun[7] := BenchUut0.mixMotorRun;\n   BenchCalls := BenchCalls + 1;\n 8:\n   BenchUut1.estop := TRUE;\n   BenchUut1.opeMode := TRUE;\n   BenchUut1.valveAStart := FALSE;\n   BenchUut1.valveBStart := FALSE;\n   BenchUut1.valveCStart := FALSE;\n   BenchUut1.valveDStart := FALSE;\n   BenchUut1.mixMotorStart := FALSE;\n   BenchUut1.autoStart := FALSE;\n   BenchUut1.processMode := FALSE;\n   BenchUut1.levelSensor := INT#0;\n   BenchUut1.mixMotorComplete := FALSE;\n   TraceIn_estop[8] := BenchUut1.estop;\n   TraceIn_opeMode[8] := BenchUut1.opeMode;\n   TraceIn_valveAStart[8] := BenchUut1.valveAStart;\n   TraceIn_valveBStart[8] := BenchUut1.valveBStart;\n   TraceIn_valveCStart[8] := BenchUut1.valveCStart;\n   TraceIn_valveDStart[8] := BenchUut1.valveDStart;\n   TraceIn_mixMotorStart[8] := BenchUut1.mixMotorStart;\n   TraceIn_autoStart[8] := BenchUut1.autoStart;\n   TraceIn_processMode[8] := BenchUut1.processMode;\n   TraceIn_levelSensor[8] := BenchUut1.levelSensor;\n   TraceIn_mixMotorComplete[8] := BenchUut1.mixMotorComplete;\n   BenchUut1();\n   TraceOut_valveARun[8] := BenchUut1.valveARun;\n   TraceOut_valveBRun[8] := BenchUut1.valveBRun;\n   TraceOut_valveCRun[8] := BenchUut1.valveCRun;\n   TraceOut_valveDRun[8] := BenchUut1.valveDRun;\n   TraceOut_mixMotorRun[8] := BenchUut1.mixMotorRun;\n   BenchCalls := BenchCalls + 1;\n 9:\n   BenchUut1.estop := TRUE;\n   BenchUut1.opeMode := TRUE;\n   BenchUut1.valveAStart := FALSE;\n   BenchUut1.valveBStart := FALSE;\n   BenchUut1.valveCStart := FALSE;\n   BenchUut1.valveDStart := FALSE;\n   BenchUut1.mixMotorStart := FALSE;\n   BenchUut1.autoStart := TRUE;\n   BenchUut1.processMode := FALSE;\n   BenchUut1.levelSensor := INT#0;\n   BenchUut1.mixMotorComplete := FALSE;\n   TraceIn_estop[9] := BenchUut1.estop;\n   TraceIn_opeMode[9] := BenchUut1.opeMode;\n   TraceIn_valveAStart[9] := BenchUut1.valveAStart;\n   TraceIn_valveBStart[9] := BenchUut1.valveBStart;\n   TraceIn_valveCStart[9] := BenchUut1.valveCStart;\n   TraceIn_valveDStart[9] := BenchUut1.valveDStart;\n   TraceIn_mixMotorStart[9] := BenchUut1.mixMotorStart;\n   TraceIn_autoStart[9] := BenchUut1.autoStart;\n   TraceIn_processMode[9] := BenchUut1.processMode;\n   TraceIn_levelSensor[9] := BenchUut1.levelSensor;\n   TraceIn_mixMotorComplete[9] := BenchUut1.mixMotorComplete;\n   BenchUut1();\n   TraceOut_valveARun[9] := BenchUut1.valveARun;\n   TraceOut_valveBRun[9] := BenchUut1.valveBRun;\n   TraceOut_valveCRun[9] := BenchUut1.valveCRun;\n   TraceOut_valveDRun[9] := BenchUut1.valveDRun;\n   TraceOut_mixMotorRun[9] := BenchUut1.mixMotorRun;\n   BenchCalls := BenchCalls + 1;\n 10:\n   BenchUut1.estop := TRUE;\n   BenchUut1.opeMode := TRUE;\n   BenchUut1.valveAStart := FALSE;\n   BenchUut1.valveBStart := FALSE;\n   BenchUut1.valveCStart := FALSE;\n   BenchUut1.valveDStart := FALSE;\n   BenchUut1.mixMotorStart := FALSE;\n   BenchUut1.autoStart := FALSE;\n   BenchUut1.processMode := TRUE;\n   BenchUut1.levelSensor := INT#51;\n   BenchUut1.mixMotorComplete := FALSE;\n   TraceIn_estop[10] := BenchUut1.estop;\n   TraceIn_opeMode[10] := BenchUut1.opeMode;\n   TraceIn_valveAStart[10] := BenchUut1.valveAStart;\n   TraceIn_valveBStart[10] := BenchUut1.valveBStart;\n   TraceIn_valveCStart[10] := BenchUut1.valveCStart;\n   TraceIn_valveDStart[10] := BenchUut1.valveDStart;\n   TraceIn_mixMotorStart[10] := BenchUut1.mixMotorStart;\n   TraceIn_autoStart[10] := BenchUut1.autoStart;\n   TraceIn_processMode[10] := BenchUut1.processMode;\n   TraceIn_levelSensor[10] := BenchUut1.levelSensor;\n   TraceIn_mixMotorComplete[10] := BenchUut1.mixMotorComplete;\n   BenchUut1();\n   TraceOut_valveARun[10] := BenchUut1.valveARun;\n   TraceOut_valveBRun[10] := BenchUut1.valveBRun;\n   TraceOut_valveCRun[10] := BenchUut1.valveCRun;\n   TraceOut_valveDRun[10] := BenchUut1.valveDRun;\n   TraceOut_mixMotorRun[10] := BenchUut1.mixMotorRun;\n   BenchCalls := BenchCalls + 1;\n 11:\n   BenchUut1.estop := TRUE;\n   BenchUut1.opeMode := TRUE;\n   BenchUut1.valveAStart := FALSE;\n   BenchUut1.valveBStart := FALSE;\n   BenchUut1.valveCStart := FALSE;\n   BenchUut1.valveDStart := FALSE;\n   BenchUut1.mixMotorStart := FALSE;\n   BenchUut1.autoStart := FALSE;\n   BenchUut1.processMode := TRUE;\n   BenchUut1.levelSensor := INT#81;\n   BenchUut1.mixMotorComplete := FALSE;\n   TraceIn_estop[11] := BenchUut1.estop;\n   TraceIn_opeMode[11] := BenchUut1.opeMode;\n   TraceIn_valveAStart[11] := BenchUut1.valveAStart;\n   TraceIn_valveBStart[11] := BenchUut1.valveBStart;\n   TraceIn_valveCStart[11] := BenchUut1.valveCStart;\n   TraceIn_valveDStart[11] := BenchUut1.valveDStart;\n   TraceIn_mixMotorStart[11] := BenchUut1.mixMotorStart;\n   TraceIn_autoStart[11] := BenchUut1.autoStart;\n   TraceIn_processMode[11] := BenchUut1.processMode;\n   TraceIn_levelSensor[11] := BenchUut1.levelSensor;\n   TraceIn_mixMotorComplete[11] := BenchUut1.mixMotorComplete;\n   BenchUut1();\n   TraceOut_valveARun[11] := BenchUut1.valveARun;\n   TraceOut_valveBRun[11] := BenchUut1.valveBRun;\n   TraceOut_valveCRun[11] := BenchUut1.valveCRun;\n   TraceOut_valveDRun[11] := BenchUut1.valveDRun;\n   TraceOut_mixMotorRun[11] := BenchUut1.mixMotorRun;\n   BenchCalls := BenchCalls + 1;\n 12:\n   BenchUut1.estop := FALSE;\n   BenchUut1.opeMode := TRUE;\n   BenchUut1.valveAStart := FALSE;\n   BenchUut1.valveBStart := FALSE;\n   BenchUut1.valveCStart := FALSE;\n   BenchUut1.valveDStart := FALSE;\n   BenchUut1.mixMotorStart := FALSE;\n   BenchUut1.autoStart := TRUE;\n   BenchUut1.processMode := TRUE;\n   BenchUut1.levelSensor := INT#81;\n   BenchUut1.mixMotorComplete := TRUE;\n   TraceIn_estop[12] := BenchUut1.estop;\n   TraceIn_opeMode[12] := BenchUut1.opeMode;\n   TraceIn_valveAStart[12] := BenchUut1.valveAStart;\n   TraceIn_valveBStart[12] := BenchUut1.valveBStart;\n   TraceIn_valveCStart[12] := BenchUut1.valveCStart;\n   TraceIn_valveDStart[12] := BenchUut1.valveDStart;\n   TraceIn_mixMotorStart[12] := BenchUut1.mixMotorStart;\n   TraceIn_autoStart[12] := BenchUut1.autoStart;\n   TraceIn_processMode[12] := BenchUut1.processMode;\n   TraceIn_levelSensor[12] := BenchUut1.levelSensor;\n   TraceIn_mixMotorComplete[12] := BenchUut1.mixMotorComplete;\n   BenchUut1();\n   TraceOut_valveARun[12] := BenchUut1.valveARun;\n   TraceOut_valveBRun[12] := BenchUut1.valveBRun;\n   TraceOut_valveCRun[12] := BenchUut1.valveCRun;\n   TraceOut_valveDRun[12] := BenchUut1.valveDRun;\n   TraceOut_mixMotorRun[12] := BenchUut1.mixMotorRun;\n   BenchCalls := BenchCalls + 1;\n 13:\n   BenchUut1.estop := TRUE;\n   BenchUut1.opeMode := TRUE;\n   BenchUut1.valveAStart := FALSE;\n   BenchUut1.valveBStart := FALSE;\n   BenchUut1.valveCStart := FALSE;\n   BenchUut1.valveDStart := FALSE;\n   BenchUut1.mixMotorStart := FALSE;\n   BenchUut1.autoStart := TRUE;\n   BenchUut1.processMode := TRUE;\n   BenchUut1.levelSensor := INT#0;\n   BenchUut1.mixMotorComplete := TRUE;\n   TraceIn_estop[13] := BenchUut1.estop;\n   TraceIn_opeMode[13] := BenchUut1.opeMode;\n   TraceIn_valveAStart[13] := BenchUut1.valveAStart;\n   TraceIn_valveBStart[13] := BenchUut1.valveBStart;\n   TraceIn_valveCStart[13] := BenchUut1.valveCStart;\n   TraceIn_valveDStart[13] := BenchUut1.valveDStart;\n   TraceIn_mixMotorStart[13] := BenchUut1.mixMotorStart;\n   TraceIn_autoStart[13] := BenchUut1.autoStart;\n   TraceIn_processMode[13] := BenchUut1.processMode;\n   TraceIn_levelSensor[13] := BenchUut1.levelSensor;\n   TraceIn_mixMotorComplete[13] := BenchUut1.mixMotorComplete;\n   BenchUut1();\n   TraceOut_valveARun[13] := BenchUut1.valveARun;\n   TraceOut_valveBRun[13] := BenchUut1.valveBRun;\n   TraceOut_valveCRun[13] := BenchUut1.valveCRun;\n   TraceOut_valveDRun[13] := BenchUut1.valveDRun;\n   TraceOut_mixMotorRun[13] := BenchUut1.mixMotorRun;\n   BenchCalls := BenchCalls + 1;\n 14:\n   BenchUut1.estop := TRUE;\n   BenchUut1.opeMode := TRUE;\n   BenchUut1.valveAStart := FALSE;\n   BenchUut1.valveBStart := FALSE;\n   BenchUut1.valveCStart := FALSE;\n   BenchUut1.valveDStart := FALSE;\n   BenchUut1.mixMotorStart := FALSE;\n   BenchUut1.autoStart := FALSE;\n   BenchUut1.processMode := TRUE;\n   BenchUut1.levelSensor := INT#0;\n   BenchUut1.mixMotorComplete := FALSE;\n   TraceIn_estop[14] := BenchUut1.estop;\n   TraceIn_opeMode[14] := BenchUut1.opeMode;\n   TraceIn_valveAStart[14] := BenchUut1.valveAStart;\n   TraceIn_valveBStart[14] := BenchUut1.valveBStart;\n   TraceIn_valveCStart[14] := BenchUut1.valveCStart;\n   TraceIn_valveDStart[14] := BenchUut1.valveDStart;\n   TraceIn_mixMotorStart[14] := BenchUut1.mixMotorStart;\n   TraceIn_autoStart[14] := BenchUut1.autoStart;\n   TraceIn_processMode[14] := BenchUut1.processMode;\n   TraceIn_levelSensor[14] := BenchUut1.levelSensor;\n   TraceIn_mixMotorComplete[14] := BenchUut1.mixMotorComplete;\n   BenchUut1();\n   TraceOut_valveARun[14] := BenchUut1.valveARun;\n   TraceOut_valveBRun[14] := BenchUut1.valveBRun;\n   TraceOut_valveCRun[14] := BenchUut1.valveCRun;\n   TraceOut_valveDRun[14] := BenchUut1.valveDRun;\n   TraceOut_mixMotorRun[14] := BenchUut1.mixMotorRun;\n   BenchCalls := BenchCalls + 1;\n 15:\n   BenchUut1.estop := TRUE;\n   BenchUut1.opeMode := TRUE;\n   BenchUut1.valveAStart := FALSE;\n   BenchUut1.valveBStart := FALSE;\n   BenchUut1.valveCStart := FALSE;\n   BenchUut1.valveDStart := FALSE;\n   BenchUut1.mixMotorStart := FALSE;\n   BenchUut1.autoStart := TRUE;\n   BenchUut1.processMode := TRUE;\n   BenchUut1.levelSensor := INT#0;\n   BenchUut1.mixMotorComplete := FALSE;\n   TraceIn_estop[15] := BenchUut1.estop;\n   TraceIn_opeMode[15] := BenchUut1.opeMode;\n   TraceIn_valveAStart[15] := BenchUut1.valveAStart;\n   TraceIn_valveBStart[15] := BenchUut1.valveBStart;\n   TraceIn_valveCStart[15] := BenchUut1.valveCStart;\n   TraceIn_valveDStart[15] := BenchUut1.valveDStart;\n   TraceIn_mixMotorStart[15] := BenchUut1.mixMotorStart;\n   TraceIn_autoStart[15] := BenchUut1.autoStart;\n   TraceIn_processMode[15] := BenchUut1.processMode;\n   TraceIn_levelSensor[15] := BenchUut1.levelSensor;\n   TraceIn_mixMotorComplete[15] := BenchUut1.mixMotorComplete;\n   BenchUut1();\n   TraceOut_valveARun[15] := BenchUut1.valveARun;\n   TraceOut_valveBRun[15] := BenchUut1.valveBRun;\n   TraceOut_valveCRun[15] := BenchUut1.valveCRun;\n   TraceOut_valveDRun[15] := BenchUut1.valveDRun;\n   TraceOut_mixMotorRun[15] := BenchUut1.mixMotorRun;\n   BenchCalls := BenchCalls + 1;\n END_CASE;\n BenchStep := BenchStep + 1;\n IF BenchStep >= 16 THEN BenchDone := TRUE; END_IF;\nEND_IF;",
+    "step_count": 16,
+    "steps": [
+      {
+        "index": 0,
+        "case_id": "three_material_thresholds_and_completion",
+        "case_step": 0,
+        "dt_ms": 0
+      },
+      {
+        "index": 1,
+        "case_id": "three_material_thresholds_and_completion",
+        "case_step": 1,
+        "dt_ms": 0
+      },
+      {
+        "index": 2,
+        "case_id": "three_material_thresholds_and_completion",
+        "case_step": 2,
+        "dt_ms": 0
+      },
+      {
+        "index": 3,
+        "case_id": "three_material_thresholds_and_completion",
+        "case_step": 3,
+        "dt_ms": 0
+      },
+      {
+        "index": 4,
+        "case_id": "three_material_thresholds_and_completion",
+        "case_step": 4,
+        "dt_ms": 0
+      },
+      {
+        "index": 5,
+        "case_id": "three_material_thresholds_and_completion",
+        "case_step": 5,
+        "dt_ms": 0
+      },
+      {
+        "index": 6,
+        "case_id": "three_material_thresholds_and_completion",
+        "case_step": 6,
+        "dt_ms": 0
+      },
+      {
+        "index": 7,
+        "case_id": "three_material_thresholds_and_completion",
+        "case_step": 7,
+        "dt_ms": 0
+      },
+      {
+        "index": 8,
+        "case_id": "two_material_estop_and_fresh_restart",
+        "case_step": 0,
+        "dt_ms": 0
+      },
+      {
+        "index": 9,
+        "case_id": "two_material_estop_and_fresh_restart",
+        "case_step": 1,
+        "dt_ms": 0
+      },
+      {
+        "index": 10,
+        "case_id": "two_material_estop_and_fresh_restart",
+        "case_step": 2,
+        "dt_ms": 0
+      },
+      {
+        "index": 11,
+        "case_id": "two_material_estop_and_fresh_restart",
+        "case_step": 3,
+        "dt_ms": 0
+      },
+      {
+        "index": 12,
+        "case_id": "two_material_estop_and_fresh_restart",
+        "case_step": 4,
+        "dt_ms": 0
+      },
+      {
+        "index": 13,
+        "case_id": "two_material_estop_and_fresh_restart",
+        "case_step": 5,
+        "dt_ms": 0
+      },
+      {
+        "index": 14,
+        "case_id": "two_material_estop_and_fresh_restart",
+        "case_step": 6,
+        "dt_ms": 0
+      },
+      {
+        "index": 15,
+        "case_id": "two_material_estop_and_fresh_restart",
+        "case_step": 7,
+        "dt_ms": 0
+      }
+    ],
+    "inputs": [
+      {
+        "direction": "INPUT",
+        "name": "estop",
+        "type": "BOOL",
+        "description": "Emergency Stop Signal<br>FALSE: Emergency stop triggered<br>TRUE: No emergency stop triggered"
+      },
+      {
+        "direction": "INPUT",
+        "name": "opeMode",
+        "type": "BOOL",
+        "description": "Operation Mode<br>FALSE: Manual Operation Mode<br>TRUE: Automatic Operation Mode"
+      },
+      {
+        "direction": "INPUT",
+        "name": "valveAStart",
+        "type": "BOOL",
+        "description": "Valve A Start Button"
+      },
+      {
+        "direction": "INPUT",
+        "name": "valveBStart",
+        "type": "BOOL",
+        "description": "Valve B Start Button"
+      },
+      {
+        "direction": "INPUT",
+        "name": "valveCStart",
+        "type": "BOOL",
+        "description": "Valve C Start Button"
+      },
+      {
+        "direction": "INPUT",
+        "name": "valveDStart",
+        "type": "BOOL",
+        "description": "Valve D Start Button"
+      },
+      {
+        "direction": "INPUT",
+        "name": "mixMotorStart",
+        "type": "BOOL",
+        "description": "Mixing Motor Start Button"
+      },
+      {
+        "direction": "INPUT",
+        "name": "autoStart",
+        "type": "BOOL",
+        "description": "Automatic Start Button"
+      },
+      {
+        "direction": "INPUT",
+        "name": "processMode",
+        "type": "BOOL",
+        "description": "Process Mode"
+      },
+      {
+        "direction": "INPUT",
+        "name": "levelSensor",
+        "type": "INT",
+        "description": "Liquid Level Sensor (unit cm)"
+      },
+      {
+        "direction": "INPUT",
+        "name": "mixMotorComplete",
+        "type": "BOOL",
+        "description": "Mixing Complete Signal"
+      }
+    ],
+    "outputs": [
+      {
+        "direction": "OUTPUT",
+        "name": "valveARun",
+        "type": "BOOL",
+        "description": "Valve A Run Command"
+      },
+      {
+        "direction": "OUTPUT",
+        "name": "valveBRun",
+        "type": "BOOL",
+        "description": "Valve B Run Command"
+      },
+      {
+        "direction": "OUTPUT",
+        "name": "valveCRun",
+        "type": "BOOL",
+        "description": "Valve C Run Command"
+      },
+      {
+        "direction": "OUTPUT",
+        "name": "valveDRun",
+        "type": "BOOL",
+        "description": "Valve D Run Command"
+      },
+      {
+        "direction": "OUTPUT",
+        "name": "mixMotorRun",
+        "type": "BOOL",
+        "description": "Mixing Motor Run Command"
+      }
+    ],
+    "trace_expressions": [
+      "PLC_PRG.TraceIn_estop[0]",
+      "PLC_PRG.TraceIn_opeMode[0]",
+      "PLC_PRG.TraceIn_valveAStart[0]",
+      "PLC_PRG.TraceIn_valveBStart[0]",
+      "PLC_PRG.TraceIn_valveCStart[0]",
+      "PLC_PRG.TraceIn_valveDStart[0]",
+      "PLC_PRG.TraceIn_mixMotorStart[0]",
+      "PLC_PRG.TraceIn_autoStart[0]",
+      "PLC_PRG.TraceIn_processMode[0]",
+      "PLC_PRG.TraceIn_levelSensor[0]",
+      "PLC_PRG.TraceIn_mixMotorComplete[0]",
+      "PLC_PRG.TraceOut_valveARun[0]",
+      "PLC_PRG.TraceOut_valveBRun[0]",
+      "PLC_PRG.TraceOut_valveCRun[0]",
+      "PLC_PRG.TraceOut_valveDRun[0]",
+      "PLC_PRG.TraceOut_mixMotorRun[0]",
+      "PLC_PRG.TraceIn_estop[1]",
+      "PLC_PRG.TraceIn_opeMode[1]",
+      "PLC_PRG.TraceIn_valveAStart[1]",
+      "PLC_PRG.TraceIn_valveBStart[1]",
+      "PLC_PRG.TraceIn_valveCStart[1]",
+      "PLC_PRG.TraceIn_valveDStart[1]",
+      "PLC_PRG.TraceIn_mixMotorStart[1]",
+      "PLC_PRG.TraceIn_autoStart[1]",
+      "PLC_PRG.TraceIn_processMode[1]",
+      "PLC_PRG.TraceIn_levelSensor[1]",
+      "PLC_PRG.TraceIn_mixMotorComplete[1]",
+      "PLC_PRG.TraceOut_valveARun[1]",
+      "PLC_PRG.TraceOut_valveBRun[1]",
+      "PLC_PRG.TraceOut_valveCRun[1]",
+      "PLC_PRG.TraceOut_valveDRun[1]",
+      "PLC_PRG.TraceOut_mixMotorRun[1]",
+      "PLC_PRG.TraceIn_estop[2]",
+      "PLC_PRG.TraceIn_opeMode[2]",
+      "PLC_PRG.TraceIn_valveAStart[2]",
+      "PLC_PRG.TraceIn_valveBStart[2]",
+      "PLC_PRG.TraceIn_valveCStart[2]",
+      "PLC_PRG.TraceIn_valveDStart[2]",
+      "PLC_PRG.TraceIn_mixMotorStart[2]",
+      "PLC_PRG.TraceIn_autoStart[2]",
+      "PLC_PRG.TraceIn_processMode[2]",
+      "PLC_PRG.TraceIn_levelSensor[2]",
+      "PLC_PRG.TraceIn_mixMotorComplete[2]",
+      "PLC_PRG.TraceOut_valveARun[2]",
+      "PLC_PRG.TraceOut_valveBRun[2]",
+      "PLC_PRG.TraceOut_valveCRun[2]",
+      "PLC_PRG.TraceOut_valveDRun[2]",
+      "PLC_PRG.TraceOut_mixMotorRun[2]",
+      "PLC_PRG.TraceIn_estop[3]",
+      "PLC_PRG.TraceIn_opeMode[3]",
+      "PLC_PRG.TraceIn_valveAStart[3]",
+      "PLC_PRG.TraceIn_valveBStart[3]",
+      "PLC_PRG.TraceIn_valveCStart[3]",
+      "PLC_PRG.TraceIn_valveDStart[3]",
+      "PLC_PRG.TraceIn_mixMotorStart[3]",
+      "PLC_PRG.TraceIn_autoStart[3]",
+      "PLC_PRG.TraceIn_processMode[3]",
+      "PLC_PRG.TraceIn_levelSensor[3]",
+      "PLC_PRG.TraceIn_mixMotorComplete[3]",
+      "PLC_PRG.TraceOut_valveARun[3]",
+      "PLC_PRG.TraceOut_valveBRun[3]",
+      "PLC_PRG.TraceOut_valveCRun[3]",
+      "PLC_PRG.TraceOut_valveDRun[3]",
+      "PLC_PRG.TraceOut_mixMotorRun[3]",
+      "PLC_PRG.TraceIn_estop[4]",
+      "PLC_PRG.TraceIn_opeMode[4]",
+      "PLC_PRG.TraceIn_valveAStart[4]",
+      "PLC_PRG.TraceIn_valveBStart[4]",
+      "PLC_PRG.TraceIn_valveCStart[4]",
+      "PLC_PRG.TraceIn_valveDStart[4]",
+      "PLC_PRG.TraceIn_mixMotorStart[4]",
+      "PLC_PRG.TraceIn_autoStart[4]",
+      "PLC_PRG.TraceIn_processMode[4]",
+      "PLC_PRG.TraceIn_levelSensor[4]",
+      "PLC_PRG.TraceIn_mixMotorComplete[4]",
+      "PLC_PRG.TraceOut_valveARun[4]",
+      "PLC_PRG.TraceOut_valveBRun[4]",
+      "PLC_PRG.TraceOut_valveCRun[4]",
+      "PLC_PRG.TraceOut_valveDRun[4]",
+      "PLC_PRG.TraceOut_mixMotorRun[4]",
+      "PLC_PRG.TraceIn_estop[5]",
+      "PLC_PRG.TraceIn_opeMode[5]",
+      "PLC_PRG.TraceIn_valveAStart[5]",
+      "PLC_PRG.TraceIn_valveBStart[5]",
+      "PLC_PRG.TraceIn_valveCStart[5]",
+      "PLC_PRG.TraceIn_valveDStart[5]",
+      "PLC_PRG.TraceIn_mixMotorStart[5]",
+      "PLC_PRG.TraceIn_autoStart[5]",
+      "PLC_PRG.TraceIn_processMode[5]",
+      "PLC_PRG.TraceIn_levelSensor[5]",
+      "PLC_PRG.TraceIn_mixMotorComplete[5]",
+      "PLC_PRG.TraceOut_valveARun[5]",
+      "PLC_PRG.TraceOut_valveBRun[5]",
+      "PLC_PRG.TraceOut_valveCRun[5]",
+      "PLC_PRG.TraceOut_valveDRun[5]",
+      "PLC_PRG.TraceOut_mixMotorRun[5]",
+      "PLC_PRG.TraceIn_estop[6]",
+      "PLC_PRG.TraceIn_opeMode[6]",
+      "PLC_PRG.TraceIn_valveAStart[6]",
+      "PLC_PRG.TraceIn_valveBStart[6]",
+      "PLC_PRG.TraceIn_valveCStart[6]",
+      "PLC_PRG.TraceIn_valveDStart[6]",
+      "PLC_PRG.TraceIn_mixMotorStart[6]",
+      "PLC_PRG.TraceIn_autoStart[6]",
+      "PLC_PRG.TraceIn_processMode[6]",
+      "PLC_PRG.TraceIn_levelSensor[6]",
+      "PLC_PRG.TraceIn_mixMotorComplete[6]",
+      "PLC_PRG.TraceOut_valveARun[6]",
+      "PLC_PRG.TraceOut_valveBRun[6]",
+      "PLC_PRG.TraceOut_valveCRun[6]",
+      "PLC_PRG.TraceOut_valveDRun[6]",
+      "PLC_PRG.TraceOut_mixMotorRun[6]",
+      "PLC_PRG.TraceIn_estop[7]",
+      "PLC_PRG.TraceIn_opeMode[7]",
+      "PLC_PRG.TraceIn_valveAStart[7]",
+      "PLC_PRG.TraceIn_valveBStart[7]",
+      "PLC_PRG.TraceIn_valveCStart[7]",
+      "PLC_PRG.TraceIn_valveDStart[7]",
+      "PLC_PRG.TraceIn_mixMotorStart[7]",
+      "PLC_PRG.TraceIn_autoStart[7]",
+      "PLC_PRG.TraceIn_processMode[7]",
+      "PLC_PRG.TraceIn_levelSensor[7]",
+      "PLC_PRG.TraceIn_mixMotorComplete[7]",
+      "PLC_PRG.TraceOut_valveARun[7]",
+      "PLC_PRG.TraceOut_valveBRun[7]",
+      "PLC_PRG.TraceOut_valveCRun[7]",
+      "PLC_PRG.TraceOut_valveDRun[7]",
+      "PLC_PRG.TraceOut_mixMotorRun[7]",
+      "PLC_PRG.TraceIn_estop[8]",
+      "PLC_PRG.TraceIn_opeMode[8]",
+      "PLC_PRG.TraceIn_valveAStart[8]",
+      "PLC_PRG.TraceIn_valveBStart[8]",
+      "PLC_PRG.TraceIn_valveCStart[8]",
+      "PLC_PRG.TraceIn_valveDStart[8]",
+      "PLC_PRG.TraceIn_mixMotorStart[8]",
+      "PLC_PRG.TraceIn_autoStart[8]",
+      "PLC_PRG.TraceIn_processMode[8]",
+      "PLC_PRG.TraceIn_levelSensor[8]",
+      "PLC_PRG.TraceIn_mixMotorComplete[8]",
+      "PLC_PRG.TraceOut_valveARun[8]",
+      "PLC_PRG.TraceOut_valveBRun[8]",
+      "PLC_PRG.TraceOut_valveCRun[8]",
+      "PLC_PRG.TraceOut_valveDRun[8]",
+      "PLC_PRG.TraceOut_mixMotorRun[8]",
+      "PLC_PRG.TraceIn_estop[9]",
+      "PLC_PRG.TraceIn_opeMode[9]",
+      "PLC_PRG.TraceIn_valveAStart[9]",
+      "PLC_PRG.TraceIn_valveBStart[9]",
+      "PLC_PRG.TraceIn_valveCStart[9]",
+      "PLC_PRG.TraceIn_valveDStart[9]",
+      "PLC_PRG.TraceIn_mixMotorStart[9]",
+      "PLC_PRG.TraceIn_autoStart[9]",
+      "PLC_PRG.TraceIn_processMode[9]",
+      "PLC_PRG.TraceIn_levelSensor[9]",
+      "PLC_PRG.TraceIn_mixMotorComplete[9]",
+      "PLC_PRG.TraceOut_valveARun[9]",
+      "PLC_PRG.TraceOut_valveBRun[9]",
+      "PLC_PRG.TraceOut_valveCRun[9]",
+      "PLC_PRG.TraceOut_valveDRun[9]",
+      "PLC_PRG.TraceOut_mixMotorRun[9]",
+      "PLC_PRG.TraceIn_estop[10]",
+      "PLC_PRG.TraceIn_opeMode[10]",
+      "PLC_PRG.TraceIn_valveAStart[10]",
+      "PLC_PRG.TraceIn_valveBStart[10]",
+      "PLC_PRG.TraceIn_valveCStart[10]",
+      "PLC_PRG.TraceIn_valveDStart[10]",
+      "PLC_PRG.TraceIn_mixMotorStart[10]",
+      "PLC_PRG.TraceIn_autoStart[10]",
+      "PLC_PRG.TraceIn_processMode[10]",
+      "PLC_PRG.TraceIn_levelSensor[10]",
+      "PLC_PRG.TraceIn_mixMotorComplete[10]",
+      "PLC_PRG.TraceOut_valveARun[10]",
+      "PLC_PRG.TraceOut_valveBRun[10]",
+      "PLC_PRG.TraceOut_valveCRun[10]",
+      "PLC_PRG.TraceOut_valveDRun[10]",
+      "PLC_PRG.TraceOut_mixMotorRun[10]",
+      "PLC_PRG.TraceIn_estop[11]",
+      "PLC_PRG.TraceIn_opeMode[11]",
+      "PLC_PRG.TraceIn_valveAStart[11]",
+      "PLC_PRG.TraceIn_valveBStart[11]",
+      "PLC_PRG.TraceIn_valveCStart[11]",
+      "PLC_PRG.TraceIn_valveDStart[11]",
+      "PLC_PRG.TraceIn_mixMotorStart[11]",
+      "PLC_PRG.TraceIn_autoStart[11]",
+      "PLC_PRG.TraceIn_processMode[11]",
+      "PLC_PRG.TraceIn_levelSensor[11]",
+      "PLC_PRG.TraceIn_mixMotorComplete[11]",
+      "PLC_PRG.TraceOut_valveARun[11]",
+      "PLC_PRG.TraceOut_valveBRun[11]",
+      "PLC_PRG.TraceOut_valveCRun[11]",
+      "PLC_PRG.TraceOut_valveDRun[11]",
+      "PLC_PRG.TraceOut_mixMotorRun[11]",
+      "PLC_PRG.TraceIn_estop[12]",
+      "PLC_PRG.TraceIn_opeMode[12]",
+      "PLC_PRG.TraceIn_valveAStart[12]",
+      "PLC_PRG.TraceIn_valveBStart[12]",
+      "PLC_PRG.TraceIn_valveCStart[12]",
+      "PLC_PRG.TraceIn_valveDStart[12]",
+      "PLC_PRG.TraceIn_mixMotorStart[12]",
+      "PLC_PRG.TraceIn_autoStart[12]",
+      "PLC_PRG.TraceIn_processMode[12]",
+      "PLC_PRG.TraceIn_levelSensor[12]",
+      "PLC_PRG.TraceIn_mixMotorComplete[12]",
+      "PLC_PRG.TraceOut_valveARun[12]",
+      "PLC_PRG.TraceOut_valveBRun[12]",
+      "PLC_PRG.TraceOut_valveCRun[12]",
+      "PLC_PRG.TraceOut_valveDRun[12]",
+      "PLC_PRG.TraceOut_mixMotorRun[12]",
+      "PLC_PRG.TraceIn_estop[13]",
+      "PLC_PRG.TraceIn_opeMode[13]",
+      "PLC_PRG.TraceIn_valveAStart[13]",
+      "PLC_PRG.TraceIn_valveBStart[13]",
+      "PLC_PRG.TraceIn_valveCStart[13]",
+      "PLC_PRG.TraceIn_valveDStart[13]",
+      "PLC_PRG.TraceIn_mixMotorStart[13]",
+      "PLC_PRG.TraceIn_autoStart[13]",
+      "PLC_PRG.TraceIn_processMode[13]",
+      "PLC_PRG.TraceIn_levelSensor[13]",
+      "PLC_PRG.TraceIn_mixMotorComplete[13]",
+      "PLC_PRG.TraceOut_valveARun[13]",
+      "PLC_PRG.TraceOut_valveBRun[13]",
+      "PLC_PRG.TraceOut_valveCRun[13]",
+      "PLC_PRG.TraceOut_valveDRun[13]",
+      "PLC_PRG.TraceOut_mixMotorRun[13]",
+      "PLC_PRG.TraceIn_estop[14]",
+      "PLC_PRG.TraceIn_opeMode[14]",
+      "PLC_PRG.TraceIn_valveAStart[14]",
+      "PLC_PRG.TraceIn_valveBStart[14]",
+      "PLC_PRG.TraceIn_valveCStart[14]",
+      "PLC_PRG.TraceIn_valveDStart[14]",
+      "PLC_PRG.TraceIn_mixMotorStart[14]",
+      "PLC_PRG.TraceIn_autoStart[14]",
+      "PLC_PRG.TraceIn_processMode[14]",
+      "PLC_PRG.TraceIn_levelSensor[14]",
+      "PLC_PRG.TraceIn_mixMotorComplete[14]",
+      "PLC_PRG.TraceOut_valveARun[14]",
+      "PLC_PRG.TraceOut_valveBRun[14]",
+      "PLC_PRG.TraceOut_valveCRun[14]",
+      "PLC_PRG.TraceOut_valveDRun[14]",
+      "PLC_PRG.TraceOut_mixMotorRun[14]",
+      "PLC_PRG.TraceIn_estop[15]",
+      "PLC_PRG.TraceIn_opeMode[15]",
+      "PLC_PRG.TraceIn_valveAStart[15]",
+      "PLC_PRG.TraceIn_valveBStart[15]",
+      "PLC_PRG.TraceIn_valveCStart[15]",
+      "PLC_PRG.TraceIn_valveDStart[15]",
+      "PLC_PRG.TraceIn_mixMotorStart[15]",
+      "PLC_PRG.TraceIn_autoStart[15]",
+      "PLC_PRG.TraceIn_processMode[15]",
+      "PLC_PRG.TraceIn_levelSensor[15]",
+      "PLC_PRG.TraceIn_mixMotorComplete[15]",
+      "PLC_PRG.TraceOut_valveARun[15]",
+      "PLC_PRG.TraceOut_valveBRun[15]",
+      "PLC_PRG.TraceOut_valveCRun[15]",
+      "PLC_PRG.TraceOut_valveDRun[15]",
+      "PLC_PRG.TraceOut_mixMotorRun[15]"
+    ],
+    "trace_mapping": [
+      {
+        "step_index": 0,
+        "case_id": "three_material_thresholds_and_completion",
+        "case_step": 0,
+        "dt_expr": null,
+        "inputs": {
+          "estop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_estop[0]",
+            "type": "BOOL"
+          },
+          "opeMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_opeMode[0]",
+            "type": "BOOL"
+          },
+          "valveAStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveAStart[0]",
+            "type": "BOOL"
+          },
+          "valveBStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveBStart[0]",
+            "type": "BOOL"
+          },
+          "valveCStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveCStart[0]",
+            "type": "BOOL"
+          },
+          "valveDStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveDStart[0]",
+            "type": "BOOL"
+          },
+          "mixMotorStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_mixMotorStart[0]",
+            "type": "BOOL"
+          },
+          "autoStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_autoStart[0]",
+            "type": "BOOL"
+          },
+          "processMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_processMode[0]",
+            "type": "BOOL"
+          },
+          "levelSensor": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_levelSensor[0]",
+            "type": "INT"
+          },
+          "mixMotorComplete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_mixMotorComplete[0]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "valveARun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveARun[0]",
+            "type": "BOOL"
+          },
+          "valveBRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveBRun[0]",
+            "type": "BOOL"
+          },
+          "valveCRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveCRun[0]",
+            "type": "BOOL"
+          },
+          "valveDRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveDRun[0]",
+            "type": "BOOL"
+          },
+          "mixMotorRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_mixMotorRun[0]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 1,
+        "case_id": "three_material_thresholds_and_completion",
+        "case_step": 1,
+        "dt_expr": null,
+        "inputs": {
+          "estop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_estop[1]",
+            "type": "BOOL"
+          },
+          "opeMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_opeMode[1]",
+            "type": "BOOL"
+          },
+          "valveAStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveAStart[1]",
+            "type": "BOOL"
+          },
+          "valveBStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveBStart[1]",
+            "type": "BOOL"
+          },
+          "valveCStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveCStart[1]",
+            "type": "BOOL"
+          },
+          "valveDStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveDStart[1]",
+            "type": "BOOL"
+          },
+          "mixMotorStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_mixMotorStart[1]",
+            "type": "BOOL"
+          },
+          "autoStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_autoStart[1]",
+            "type": "BOOL"
+          },
+          "processMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_processMode[1]",
+            "type": "BOOL"
+          },
+          "levelSensor": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_levelSensor[1]",
+            "type": "INT"
+          },
+          "mixMotorComplete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_mixMotorComplete[1]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "valveARun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveARun[1]",
+            "type": "BOOL"
+          },
+          "valveBRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveBRun[1]",
+            "type": "BOOL"
+          },
+          "valveCRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveCRun[1]",
+            "type": "BOOL"
+          },
+          "valveDRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveDRun[1]",
+            "type": "BOOL"
+          },
+          "mixMotorRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_mixMotorRun[1]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 2,
+        "case_id": "three_material_thresholds_and_completion",
+        "case_step": 2,
+        "dt_expr": null,
+        "inputs": {
+          "estop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_estop[2]",
+            "type": "BOOL"
+          },
+          "opeMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_opeMode[2]",
+            "type": "BOOL"
+          },
+          "valveAStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveAStart[2]",
+            "type": "BOOL"
+          },
+          "valveBStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveBStart[2]",
+            "type": "BOOL"
+          },
+          "valveCStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveCStart[2]",
+            "type": "BOOL"
+          },
+          "valveDStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveDStart[2]",
+            "type": "BOOL"
+          },
+          "mixMotorStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_mixMotorStart[2]",
+            "type": "BOOL"
+          },
+          "autoStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_autoStart[2]",
+            "type": "BOOL"
+          },
+          "processMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_processMode[2]",
+            "type": "BOOL"
+          },
+          "levelSensor": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_levelSensor[2]",
+            "type": "INT"
+          },
+          "mixMotorComplete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_mixMotorComplete[2]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "valveARun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveARun[2]",
+            "type": "BOOL"
+          },
+          "valveBRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveBRun[2]",
+            "type": "BOOL"
+          },
+          "valveCRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveCRun[2]",
+            "type": "BOOL"
+          },
+          "valveDRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveDRun[2]",
+            "type": "BOOL"
+          },
+          "mixMotorRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_mixMotorRun[2]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 3,
+        "case_id": "three_material_thresholds_and_completion",
+        "case_step": 3,
+        "dt_expr": null,
+        "inputs": {
+          "estop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_estop[3]",
+            "type": "BOOL"
+          },
+          "opeMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_opeMode[3]",
+            "type": "BOOL"
+          },
+          "valveAStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveAStart[3]",
+            "type": "BOOL"
+          },
+          "valveBStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveBStart[3]",
+            "type": "BOOL"
+          },
+          "valveCStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveCStart[3]",
+            "type": "BOOL"
+          },
+          "valveDStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveDStart[3]",
+            "type": "BOOL"
+          },
+          "mixMotorStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_mixMotorStart[3]",
+            "type": "BOOL"
+          },
+          "autoStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_autoStart[3]",
+            "type": "BOOL"
+          },
+          "processMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_processMode[3]",
+            "type": "BOOL"
+          },
+          "levelSensor": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_levelSensor[3]",
+            "type": "INT"
+          },
+          "mixMotorComplete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_mixMotorComplete[3]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "valveARun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveARun[3]",
+            "type": "BOOL"
+          },
+          "valveBRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveBRun[3]",
+            "type": "BOOL"
+          },
+          "valveCRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveCRun[3]",
+            "type": "BOOL"
+          },
+          "valveDRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveDRun[3]",
+            "type": "BOOL"
+          },
+          "mixMotorRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_mixMotorRun[3]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 4,
+        "case_id": "three_material_thresholds_and_completion",
+        "case_step": 4,
+        "dt_expr": null,
+        "inputs": {
+          "estop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_estop[4]",
+            "type": "BOOL"
+          },
+          "opeMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_opeMode[4]",
+            "type": "BOOL"
+          },
+          "valveAStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveAStart[4]",
+            "type": "BOOL"
+          },
+          "valveBStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveBStart[4]",
+            "type": "BOOL"
+          },
+          "valveCStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveCStart[4]",
+            "type": "BOOL"
+          },
+          "valveDStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveDStart[4]",
+            "type": "BOOL"
+          },
+          "mixMotorStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_mixMotorStart[4]",
+            "type": "BOOL"
+          },
+          "autoStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_autoStart[4]",
+            "type": "BOOL"
+          },
+          "processMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_processMode[4]",
+            "type": "BOOL"
+          },
+          "levelSensor": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_levelSensor[4]",
+            "type": "INT"
+          },
+          "mixMotorComplete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_mixMotorComplete[4]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "valveARun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveARun[4]",
+            "type": "BOOL"
+          },
+          "valveBRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveBRun[4]",
+            "type": "BOOL"
+          },
+          "valveCRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveCRun[4]",
+            "type": "BOOL"
+          },
+          "valveDRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveDRun[4]",
+            "type": "BOOL"
+          },
+          "mixMotorRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_mixMotorRun[4]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 5,
+        "case_id": "three_material_thresholds_and_completion",
+        "case_step": 5,
+        "dt_expr": null,
+        "inputs": {
+          "estop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_estop[5]",
+            "type": "BOOL"
+          },
+          "opeMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_opeMode[5]",
+            "type": "BOOL"
+          },
+          "valveAStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveAStart[5]",
+            "type": "BOOL"
+          },
+          "valveBStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveBStart[5]",
+            "type": "BOOL"
+          },
+          "valveCStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveCStart[5]",
+            "type": "BOOL"
+          },
+          "valveDStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveDStart[5]",
+            "type": "BOOL"
+          },
+          "mixMotorStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_mixMotorStart[5]",
+            "type": "BOOL"
+          },
+          "autoStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_autoStart[5]",
+            "type": "BOOL"
+          },
+          "processMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_processMode[5]",
+            "type": "BOOL"
+          },
+          "levelSensor": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_levelSensor[5]",
+            "type": "INT"
+          },
+          "mixMotorComplete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_mixMotorComplete[5]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "valveARun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveARun[5]",
+            "type": "BOOL"
+          },
+          "valveBRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveBRun[5]",
+            "type": "BOOL"
+          },
+          "valveCRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveCRun[5]",
+            "type": "BOOL"
+          },
+          "valveDRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveDRun[5]",
+            "type": "BOOL"
+          },
+          "mixMotorRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_mixMotorRun[5]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 6,
+        "case_id": "three_material_thresholds_and_completion",
+        "case_step": 6,
+        "dt_expr": null,
+        "inputs": {
+          "estop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_estop[6]",
+            "type": "BOOL"
+          },
+          "opeMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_opeMode[6]",
+            "type": "BOOL"
+          },
+          "valveAStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveAStart[6]",
+            "type": "BOOL"
+          },
+          "valveBStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveBStart[6]",
+            "type": "BOOL"
+          },
+          "valveCStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveCStart[6]",
+            "type": "BOOL"
+          },
+          "valveDStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveDStart[6]",
+            "type": "BOOL"
+          },
+          "mixMotorStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_mixMotorStart[6]",
+            "type": "BOOL"
+          },
+          "autoStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_autoStart[6]",
+            "type": "BOOL"
+          },
+          "processMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_processMode[6]",
+            "type": "BOOL"
+          },
+          "levelSensor": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_levelSensor[6]",
+            "type": "INT"
+          },
+          "mixMotorComplete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_mixMotorComplete[6]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "valveARun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveARun[6]",
+            "type": "BOOL"
+          },
+          "valveBRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveBRun[6]",
+            "type": "BOOL"
+          },
+          "valveCRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveCRun[6]",
+            "type": "BOOL"
+          },
+          "valveDRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveDRun[6]",
+            "type": "BOOL"
+          },
+          "mixMotorRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_mixMotorRun[6]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 7,
+        "case_id": "three_material_thresholds_and_completion",
+        "case_step": 7,
+        "dt_expr": null,
+        "inputs": {
+          "estop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_estop[7]",
+            "type": "BOOL"
+          },
+          "opeMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_opeMode[7]",
+            "type": "BOOL"
+          },
+          "valveAStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveAStart[7]",
+            "type": "BOOL"
+          },
+          "valveBStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveBStart[7]",
+            "type": "BOOL"
+          },
+          "valveCStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveCStart[7]",
+            "type": "BOOL"
+          },
+          "valveDStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveDStart[7]",
+            "type": "BOOL"
+          },
+          "mixMotorStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_mixMotorStart[7]",
+            "type": "BOOL"
+          },
+          "autoStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_autoStart[7]",
+            "type": "BOOL"
+          },
+          "processMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_processMode[7]",
+            "type": "BOOL"
+          },
+          "levelSensor": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_levelSensor[7]",
+            "type": "INT"
+          },
+          "mixMotorComplete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_mixMotorComplete[7]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "valveARun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveARun[7]",
+            "type": "BOOL"
+          },
+          "valveBRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveBRun[7]",
+            "type": "BOOL"
+          },
+          "valveCRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveCRun[7]",
+            "type": "BOOL"
+          },
+          "valveDRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveDRun[7]",
+            "type": "BOOL"
+          },
+          "mixMotorRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_mixMotorRun[7]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 8,
+        "case_id": "two_material_estop_and_fresh_restart",
+        "case_step": 0,
+        "dt_expr": null,
+        "inputs": {
+          "estop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_estop[8]",
+            "type": "BOOL"
+          },
+          "opeMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_opeMode[8]",
+            "type": "BOOL"
+          },
+          "valveAStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveAStart[8]",
+            "type": "BOOL"
+          },
+          "valveBStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveBStart[8]",
+            "type": "BOOL"
+          },
+          "valveCStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveCStart[8]",
+            "type": "BOOL"
+          },
+          "valveDStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveDStart[8]",
+            "type": "BOOL"
+          },
+          "mixMotorStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_mixMotorStart[8]",
+            "type": "BOOL"
+          },
+          "autoStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_autoStart[8]",
+            "type": "BOOL"
+          },
+          "processMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_processMode[8]",
+            "type": "BOOL"
+          },
+          "levelSensor": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_levelSensor[8]",
+            "type": "INT"
+          },
+          "mixMotorComplete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_mixMotorComplete[8]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "valveARun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveARun[8]",
+            "type": "BOOL"
+          },
+          "valveBRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveBRun[8]",
+            "type": "BOOL"
+          },
+          "valveCRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveCRun[8]",
+            "type": "BOOL"
+          },
+          "valveDRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveDRun[8]",
+            "type": "BOOL"
+          },
+          "mixMotorRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_mixMotorRun[8]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 9,
+        "case_id": "two_material_estop_and_fresh_restart",
+        "case_step": 1,
+        "dt_expr": null,
+        "inputs": {
+          "estop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_estop[9]",
+            "type": "BOOL"
+          },
+          "opeMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_opeMode[9]",
+            "type": "BOOL"
+          },
+          "valveAStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveAStart[9]",
+            "type": "BOOL"
+          },
+          "valveBStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveBStart[9]",
+            "type": "BOOL"
+          },
+          "valveCStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveCStart[9]",
+            "type": "BOOL"
+          },
+          "valveDStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveDStart[9]",
+            "type": "BOOL"
+          },
+          "mixMotorStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_mixMotorStart[9]",
+            "type": "BOOL"
+          },
+          "autoStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_autoStart[9]",
+            "type": "BOOL"
+          },
+          "processMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_processMode[9]",
+            "type": "BOOL"
+          },
+          "levelSensor": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_levelSensor[9]",
+            "type": "INT"
+          },
+          "mixMotorComplete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_mixMotorComplete[9]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "valveARun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveARun[9]",
+            "type": "BOOL"
+          },
+          "valveBRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveBRun[9]",
+            "type": "BOOL"
+          },
+          "valveCRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveCRun[9]",
+            "type": "BOOL"
+          },
+          "valveDRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveDRun[9]",
+            "type": "BOOL"
+          },
+          "mixMotorRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_mixMotorRun[9]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 10,
+        "case_id": "two_material_estop_and_fresh_restart",
+        "case_step": 2,
+        "dt_expr": null,
+        "inputs": {
+          "estop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_estop[10]",
+            "type": "BOOL"
+          },
+          "opeMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_opeMode[10]",
+            "type": "BOOL"
+          },
+          "valveAStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveAStart[10]",
+            "type": "BOOL"
+          },
+          "valveBStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveBStart[10]",
+            "type": "BOOL"
+          },
+          "valveCStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveCStart[10]",
+            "type": "BOOL"
+          },
+          "valveDStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveDStart[10]",
+            "type": "BOOL"
+          },
+          "mixMotorStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_mixMotorStart[10]",
+            "type": "BOOL"
+          },
+          "autoStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_autoStart[10]",
+            "type": "BOOL"
+          },
+          "processMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_processMode[10]",
+            "type": "BOOL"
+          },
+          "levelSensor": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_levelSensor[10]",
+            "type": "INT"
+          },
+          "mixMotorComplete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_mixMotorComplete[10]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "valveARun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveARun[10]",
+            "type": "BOOL"
+          },
+          "valveBRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveBRun[10]",
+            "type": "BOOL"
+          },
+          "valveCRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveCRun[10]",
+            "type": "BOOL"
+          },
+          "valveDRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveDRun[10]",
+            "type": "BOOL"
+          },
+          "mixMotorRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_mixMotorRun[10]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 11,
+        "case_id": "two_material_estop_and_fresh_restart",
+        "case_step": 3,
+        "dt_expr": null,
+        "inputs": {
+          "estop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_estop[11]",
+            "type": "BOOL"
+          },
+          "opeMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_opeMode[11]",
+            "type": "BOOL"
+          },
+          "valveAStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveAStart[11]",
+            "type": "BOOL"
+          },
+          "valveBStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveBStart[11]",
+            "type": "BOOL"
+          },
+          "valveCStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveCStart[11]",
+            "type": "BOOL"
+          },
+          "valveDStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveDStart[11]",
+            "type": "BOOL"
+          },
+          "mixMotorStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_mixMotorStart[11]",
+            "type": "BOOL"
+          },
+          "autoStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_autoStart[11]",
+            "type": "BOOL"
+          },
+          "processMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_processMode[11]",
+            "type": "BOOL"
+          },
+          "levelSensor": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_levelSensor[11]",
+            "type": "INT"
+          },
+          "mixMotorComplete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_mixMotorComplete[11]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "valveARun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveARun[11]",
+            "type": "BOOL"
+          },
+          "valveBRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveBRun[11]",
+            "type": "BOOL"
+          },
+          "valveCRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveCRun[11]",
+            "type": "BOOL"
+          },
+          "valveDRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveDRun[11]",
+            "type": "BOOL"
+          },
+          "mixMotorRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_mixMotorRun[11]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 12,
+        "case_id": "two_material_estop_and_fresh_restart",
+        "case_step": 4,
+        "dt_expr": null,
+        "inputs": {
+          "estop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_estop[12]",
+            "type": "BOOL"
+          },
+          "opeMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_opeMode[12]",
+            "type": "BOOL"
+          },
+          "valveAStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveAStart[12]",
+            "type": "BOOL"
+          },
+          "valveBStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveBStart[12]",
+            "type": "BOOL"
+          },
+          "valveCStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveCStart[12]",
+            "type": "BOOL"
+          },
+          "valveDStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveDStart[12]",
+            "type": "BOOL"
+          },
+          "mixMotorStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_mixMotorStart[12]",
+            "type": "BOOL"
+          },
+          "autoStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_autoStart[12]",
+            "type": "BOOL"
+          },
+          "processMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_processMode[12]",
+            "type": "BOOL"
+          },
+          "levelSensor": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_levelSensor[12]",
+            "type": "INT"
+          },
+          "mixMotorComplete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_mixMotorComplete[12]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "valveARun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveARun[12]",
+            "type": "BOOL"
+          },
+          "valveBRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveBRun[12]",
+            "type": "BOOL"
+          },
+          "valveCRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveCRun[12]",
+            "type": "BOOL"
+          },
+          "valveDRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveDRun[12]",
+            "type": "BOOL"
+          },
+          "mixMotorRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_mixMotorRun[12]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 13,
+        "case_id": "two_material_estop_and_fresh_restart",
+        "case_step": 5,
+        "dt_expr": null,
+        "inputs": {
+          "estop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_estop[13]",
+            "type": "BOOL"
+          },
+          "opeMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_opeMode[13]",
+            "type": "BOOL"
+          },
+          "valveAStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveAStart[13]",
+            "type": "BOOL"
+          },
+          "valveBStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveBStart[13]",
+            "type": "BOOL"
+          },
+          "valveCStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveCStart[13]",
+            "type": "BOOL"
+          },
+          "valveDStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveDStart[13]",
+            "type": "BOOL"
+          },
+          "mixMotorStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_mixMotorStart[13]",
+            "type": "BOOL"
+          },
+          "autoStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_autoStart[13]",
+            "type": "BOOL"
+          },
+          "processMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_processMode[13]",
+            "type": "BOOL"
+          },
+          "levelSensor": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_levelSensor[13]",
+            "type": "INT"
+          },
+          "mixMotorComplete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_mixMotorComplete[13]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "valveARun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveARun[13]",
+            "type": "BOOL"
+          },
+          "valveBRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveBRun[13]",
+            "type": "BOOL"
+          },
+          "valveCRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveCRun[13]",
+            "type": "BOOL"
+          },
+          "valveDRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveDRun[13]",
+            "type": "BOOL"
+          },
+          "mixMotorRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_mixMotorRun[13]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 14,
+        "case_id": "two_material_estop_and_fresh_restart",
+        "case_step": 6,
+        "dt_expr": null,
+        "inputs": {
+          "estop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_estop[14]",
+            "type": "BOOL"
+          },
+          "opeMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_opeMode[14]",
+            "type": "BOOL"
+          },
+          "valveAStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveAStart[14]",
+            "type": "BOOL"
+          },
+          "valveBStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveBStart[14]",
+            "type": "BOOL"
+          },
+          "valveCStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveCStart[14]",
+            "type": "BOOL"
+          },
+          "valveDStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveDStart[14]",
+            "type": "BOOL"
+          },
+          "mixMotorStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_mixMotorStart[14]",
+            "type": "BOOL"
+          },
+          "autoStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_autoStart[14]",
+            "type": "BOOL"
+          },
+          "processMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_processMode[14]",
+            "type": "BOOL"
+          },
+          "levelSensor": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_levelSensor[14]",
+            "type": "INT"
+          },
+          "mixMotorComplete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_mixMotorComplete[14]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "valveARun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveARun[14]",
+            "type": "BOOL"
+          },
+          "valveBRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveBRun[14]",
+            "type": "BOOL"
+          },
+          "valveCRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveCRun[14]",
+            "type": "BOOL"
+          },
+          "valveDRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveDRun[14]",
+            "type": "BOOL"
+          },
+          "mixMotorRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_mixMotorRun[14]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 15,
+        "case_id": "two_material_estop_and_fresh_restart",
+        "case_step": 7,
+        "dt_expr": null,
+        "inputs": {
+          "estop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_estop[15]",
+            "type": "BOOL"
+          },
+          "opeMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_opeMode[15]",
+            "type": "BOOL"
+          },
+          "valveAStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveAStart[15]",
+            "type": "BOOL"
+          },
+          "valveBStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveBStart[15]",
+            "type": "BOOL"
+          },
+          "valveCStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveCStart[15]",
+            "type": "BOOL"
+          },
+          "valveDStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_valveDStart[15]",
+            "type": "BOOL"
+          },
+          "mixMotorStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_mixMotorStart[15]",
+            "type": "BOOL"
+          },
+          "autoStart": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_autoStart[15]",
+            "type": "BOOL"
+          },
+          "processMode": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_processMode[15]",
+            "type": "BOOL"
+          },
+          "levelSensor": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_levelSensor[15]",
+            "type": "INT"
+          },
+          "mixMotorComplete": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_mixMotorComplete[15]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "valveARun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveARun[15]",
+            "type": "BOOL"
+          },
+          "valveBRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveBRun[15]",
+            "type": "BOOL"
+          },
+          "valveCRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveCRun[15]",
+            "type": "BOOL"
+          },
+          "valveDRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_valveDRun[15]",
+            "type": "BOOL"
+          },
+          "mixMotorRun": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_mixMotorRun[15]",
+            "type": "BOOL"
+          }
+        }
+      }
+    ]
+  },
+  "result_path": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\3df82f41acf778fc\\simulation_evidence.json"
+}

@@ -1,0 +1,66 @@
+{
+  "state_machine": [
+    {
+      "state": "STATELESS",
+      "description": "Each invocation processes the batch independently; no state is retained between scans.",
+      "transitions": [
+        {
+          "condition": "Every invocation, including count=0",
+          "next_state": "STATELESS"
+        }
+      ]
+    }
+  ],
+  "timer_plan": [],
+  "priorities": [
+    "Never write analogValues or channel configuration fields.",
+    "Process only ordinal positions 0 through count-1, using each array's independent lower bound.",
+    "Disabled and out-of-count channels retain both output fields exactly.",
+    "For enabled channels, an invalid measuringMode takes priority over invalid limits.",
+    "Validate hiLIM > loLIM for every supported mode. Errors update retVal only; outputValue is preserved.",
+    "Successful conversions set retVal to 16#0000. Do not clamp extrapolated values."
+  ],
+  "initial_values": {
+    "retained_internal_state": "None.",
+    "channel_output_fields": "Caller-provided values; do not initialize or clear them on FB creation or scan entry.",
+    "temporary_variables": "Assign before use on each invocation; no prior value is relied upon."
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "Edge sampling",
+      "actions": [
+        "No edge detectors are required. Sample count and both array bounds; use the caller's sampled array contents for this invocation.",
+        "The caller must keep the referenced data stable during the invocation, or the implementation must use an equivalent entry snapshot."
+      ]
+    },
+    {
+      "stage": 2,
+      "name": "Safety/reset priority and state transitions",
+      "actions": [
+        "No reset input or state transition is required.",
+        "Check count against zero and both array lengths before indexing, using sufficiently wide bounds arithmetic. The caller guarantees a valid count; defensively perform no writes if it is invalid.",
+        "Resolve channel decisions in this order: enabled, supported mode, valid limits, conversion."
+      ]
+    },
+    {
+      "stage": 3,
+      "name": "Unconditional top-level timer FB calls outside CASE/IF",
+      "actions": [
+        "No timers are required; there are no timer FB calls."
+      ]
+    },
+    {
+      "stage": 4,
+      "name": "Unified output assignments",
+      "actions": [
+        "If count is zero, make no element writes. Otherwise iterate ordinal j from 0 to count-1; pair analogValues[LOWER_BOUND(analogValues,1)+j] with channels[LOWER_BOUND(channels,1)+j].",
+        "For a disabled channel, write neither retVal nor outputValue. For an unsupported mode, write retVal=16#8001 only. Otherwise, if hiLIM<=loLIM, write retVal=16#8002 only.",
+        "For a valid channel, calculate using widened floating-point intermediates, then assign outputValue as REAL and retVal=16#0000. Promote raw before arithmetic to avoid INT overflow.",
+        "Mode 0 unipolar: loLIM + (raw/27648.0)*(hiLIM-loLIM). Mode 0 bipolar: loLIM + ((raw+27648.0)/55296.0)*(hiLIM-loLIM).",
+        "Mode 1: raw/10.0. Mode 2: raw/100.0. Do not modify any channel outside the processed range."
+      ]
+    }
+  ],
+  "formal_assertions": []
+}

@@ -1,0 +1,21 @@
+{
+  "request_id": "f3146e9b6fea44e592575a39328814db",
+  "source_sha256": "4ff44935e27108f013f5104f50ef36941315c7f456da55c2d86df3bc0f04ed95",
+  "task_id": "PUB010",
+  "project": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\90aabf714bfea18c\\task.project",
+  "candidate": {
+    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    TemperatureSensorInput : REAL;\n    SetTemperature : REAL;\nEND_VAR\nVAR_OUTPUT\n    CurrentTemperature : REAL := 0.0;\n    SetTempDisplay : REAL := 0.0;\n    HeaterStatus : BOOL := FALSE;\n    OverheatProtection : BOOL := FALSE;\n    HeaterOutput : BOOL := FALSE;\nEND_VAR\nVAR\n    state : INT := 0; (* 0: idle, 1: heating, 2: protected *)\n    heatDemand : BOOL := FALSE;\n    sensorFault : BOOL := FALSE;\n    sampledTemperature : REAL;\n    sampledSetTemperature : REAL;\n    clockInitialized : BOOL := FALSE;\n    clockOriginUs : ULINT := 0;\n    rawClockUs : ULINT := 0;\n    nowUs : ULINT := 0;\n    heatStartUs : ULINT := 0;\n    protectionStartUs : ULINT := 0;\n    elapsedUs : ULINT := 0;\n    heatElapsed_ms : UDINT := 0;\n    cooldownElapsed_ms : UDINT := 0;\n    HeatTON : TON;\n    CooldownTON : TON;\nEND_VAR",
+    "implementation": "(* SysTimeGetUs requires the CODESYS SysTimeCore library. *)\nsampledTemperature := TemperatureSensorInput;\nsampledSetTemperature := SetTemperature;\nrawClockUs := SysTimeGetUs();\nIF NOT clockInitialized THEN\n    clockOriginUs := rawClockUs;\n    clockInitialized := TRUE;\nEND_IF;\nnowUs := F_TaskElapsedUs(nowValue := rawClockUs, startValue := clockOriginUs);\n\nsensorFault := (sampledTemperature < 0.0) OR (sampledTemperature > 100.0);\nIF NOT sensorFault THEN\n    IF sampledTemperature < sampledSetTemperature THEN\n        heatDemand := TRUE;\n    ELSIF sampledTemperature > sampledSetTemperature THEN\n        heatDemand := FALSE;\n    END_IF;\nEND_IF;\n\nCASE state OF\n    0:\n        heatElapsed_ms := 0;\n        cooldownElapsed_ms := 0;\n        IF NOT sensorFault AND heatDemand THEN\n            heatStartUs := nowUs;\n            state := 1;\n        END_IF;\n\n    1:\n        elapsedUs := F_TaskElapsedUs(nowValue := nowUs, startValue := heatStartUs);\n        IF elapsedUs >= ULINT#5000000 THEN\n            heatElapsed_ms := 0;\n            cooldownElapsed_ms := 0;\n            protectionStartUs := nowUs;\n            state := 2;\n        ELSIF sensorFault OR NOT heatDemand THEN\n            heatElapsed_ms := 0;\n            state := 0;\n        ELSE\n            heatElapsed_ms := ULINT_TO_UDINT(elapsedUs / ULINT#1000);\n        END_IF;\n\n    2:\n        heatElapsed_ms := 0;\n        elapsedUs := F_TaskElapsedUs(nowValue := nowUs, startValue := protectionStartUs);\n        IF elapsedUs >= ULINT#3000000 THEN\n            cooldownElapsed_ms := 0;\n            IF NOT sensorFault AND heatDemand THEN\n                heatStartUs := nowUs;\n                state := 1;\n            ELSE\n                state := 0;\n            END_IF;\n        ELSE\n            cooldownElapsed_ms := ULINT_TO_UDINT(elapsedUs / ULINT#1000);\n        END_IF;\n\n    ELSE\n        state := 0;\n        heatElapsed_ms := 0;\n        cooldownElapsed_ms := 0;\nEND_CASE;\n\nHeatTON(IN := (state = 1), PT := T#5s);\nCooldownTON(IN := (state = 2), PT := T#3s);\n\nCurrentTemperature := sampledTemperature;\nSetTempDisplay := sampledSetTemperature;\nOverheatProtection := (state = 2);\nHeaterOutput := (state = 1);\nHeaterStatus := HeaterOutput;",
+    "supporting_objects": [
+      {
+        "name": "F_TaskElapsedUs",
+        "kind": "FUNCTION",
+        "return_type": "ULINT",
+        "declaration": "FUNCTION F_TaskElapsedUs : ULINT\nVAR_INPUT\n    nowValue : ULINT;\n    startValue : ULINT;\nEND_VAR",
+        "implementation": "IF nowValue >= startValue THEN\n    F_TaskElapsedUs := nowValue - startValue;\nELSE\n    F_TaskElapsedUs := (ULINT#16#FFFFFFFFFFFFFFFF - startValue) + nowValue + ULINT#1;\nEND_IF;"
+      }
+    ]
+  },
+  "result_path": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\90aabf714bfea18c\\codesys_evidence.json",
+  "started_utc": "2026-11-14T11:21:07.326615+00:00"
+}

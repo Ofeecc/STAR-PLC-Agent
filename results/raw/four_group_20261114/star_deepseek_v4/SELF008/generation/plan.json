@@ -1,0 +1,142 @@
+{
+  "state_machine": [
+    {
+      "name": "RESET",
+      "meaning": "Count = 0 and Ready = FALSE; reset-condition state.",
+      "entry_actions": [
+        "Count := 0",
+        "Ready := FALSE"
+      ],
+      "transitions": [
+        {
+          "to": "RESET",
+          "condition": "Trip OR NOT Request OR (Preset < 1) OR (Preset > 5)",
+          "actions": [
+            "Count := 0",
+            "Ready := FALSE"
+          ]
+        },
+        {
+          "to": "QUALIFIED",
+          "condition": "Request AND NOT Trip AND (Preset >= 1) AND (Preset <= 5) AND ((Count + 1) >= Preset)",
+          "actions": [
+            "Count := min(Count + 1, Preset)",
+            "Ready := TRUE"
+          ]
+        },
+        {
+          "to": "COUNTING",
+          "condition": "Request AND NOT Trip AND (Preset >= 1) AND (Preset <= 5) AND ((Count + 1) < Preset)",
+          "actions": [
+            "Count := Count + 1",
+            "Ready := FALSE"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "COUNTING",
+      "meaning": "0 < Count < Preset and Ready = FALSE; accumulating qualifying scans.",
+      "entry_actions": [],
+      "transitions": [
+        {
+          "to": "RESET",
+          "condition": "Trip OR NOT Request OR (Preset < 1) OR (Preset > 5)",
+          "actions": [
+            "Count := 0",
+            "Ready := FALSE"
+          ]
+        },
+        {
+          "to": "QUALIFIED",
+          "condition": "Request AND NOT Trip AND (Preset >= 1) AND (Preset <= 5) AND ((Count + 1) >= Preset)",
+          "actions": [
+            "Count := Preset",
+            "Ready := TRUE"
+          ]
+        },
+        {
+          "to": "COUNTING",
+          "condition": "Request AND NOT Trip AND (Preset >= 1) AND (Preset <= 5) AND ((Count + 1) < Preset)",
+          "actions": [
+            "Count := Count + 1",
+            "Ready := FALSE"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "QUALIFIED",
+      "meaning": "Count >= Preset and Ready = TRUE; saturated qualified state.",
+      "entry_actions": [
+        "Count := Preset",
+        "Ready := TRUE"
+      ],
+      "transitions": [
+        {
+          "to": "RESET",
+          "condition": "Trip OR NOT Request OR (Preset < 1) OR (Preset > 5)",
+          "actions": [
+            "Count := 0",
+            "Ready := FALSE"
+          ]
+        },
+        {
+          "to": "QUALIFIED",
+          "condition": "Request AND NOT Trip AND (Preset >= 1) AND (Preset <= 5)",
+          "actions": [
+            "Count := Preset",
+            "Ready := TRUE"
+          ]
+        }
+      ]
+    }
+  ],
+  "timer_plan": {
+    "timers_required": false,
+    "timers": [],
+    "pt_durations": [],
+    "reset_conditions": "Not applicable; no timer FBs. Event reset is Trip OR NOT Request OR invalid Preset, where invalid Preset is Preset < 1 OR Preset > 5."
+  },
+  "priorities": [
+    "Safety first: Trip = TRUE immediately forces Count := 0 and Ready := FALSE.",
+    "Safety second: Request = FALSE immediately forces Count := 0 and Ready := FALSE.",
+    "Validity: Preset outside 1..5 immediately forces Count := 0 and Ready := FALSE; no counting occurs.",
+    "Operational: only Request = TRUE, Trip = FALSE, and valid Preset may increment Count.",
+    "Saturation: Count increments by one per qualifying scan and saturates at Preset.",
+    "Output consistency: Ready is always computed from the post-scan Count and valid Preset; single unified output write point."
+  ],
+  "initial_values": {
+    "Count": 0,
+    "Ready": false,
+    "notes": "Fresh instance state before scan k=0; initial observation is Count=0, Ready=false."
+  },
+  "scan_execution_order": [
+    "1. Edge sampling: sample Request, Trip, and Preset once at scan start; derive invalid := (Preset < 1) OR (Preset > 5); capture previous Count/Ready only as needed for scan-sequence semantics.",
+    "2. Safety/reset priority and state transitions: evaluate Trip OR NOT Request OR invalid first; if true, nextCount := 0, nextReady := FALSE and enter/reset RESET. Otherwise perform the qualifying counter update nextCount := min(Count + 1, Preset), nextReady := (nextCount >= Preset), and transition among RESET/COUNTING/QUALIFIED.",
+    "3. Unconditional top-level timer FB calls outside CASE/IF: none; this task has no timers.",
+    "4. Unified output assignments: write Count := nextCount and Ready := nextReady at one output assignment point; do not write outputs elsewhere."
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G((Trip | !Request | (Preset < 1) | (Preset > 5)) -> (!Ready & (Count = 0)))"
+    },
+    {
+      "id": "A2",
+      "formula": "G((Request & !Trip & Preset >= 1 & Preset <= 5) -> (Count = min(prev(Count) + 1, Preset)))"
+    },
+    {
+      "id": "A3",
+      "formula": "G(Ready <-> ((Count >= Preset) & (Preset >= 1) & (Preset <= 5)))"
+    },
+    {
+      "id": "A4",
+      "formula": "G(((Preset >= 1) & (Preset <= 5)) -> ((Count >= 0) & (Count <= Preset)))"
+    },
+    {
+      "id": "A5",
+      "formula": "((G (Request & !Trip & Preset >= 1 & Preset <= 5)) -> F Ready)"
+    }
+  ]
+}

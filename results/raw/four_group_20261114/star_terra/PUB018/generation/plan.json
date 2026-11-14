@@ -1,0 +1,106 @@
+{
+  "state_machine": {
+    "representation": "Use one operational state, READY, with retained count, head and tail. Positions are zero-based offsets into the actual buffer bounds; head identifies the front and tail identifies the next insertion slot.",
+    "transitions": [
+      {
+        "condition": "reset",
+        "action": "Set count, head and tail to 0; status is 16#0000. Do not clear buffer or write item."
+      },
+      {
+        "condition": "NOT reset AND enqueue rising edge AND count < capacity",
+        "action": "Copy the sampled item to buffer[lowerBound + tail], advance tail with wraparound, increment count, and set status to 16#0000."
+      },
+      {
+        "condition": "NOT reset AND enqueue rising edge AND count = capacity",
+        "action": "Preserve queue, buffer and item; set status to 16#8002."
+      },
+      {
+        "condition": "NOT reset AND dequeue rising edge AND count > 0",
+        "action": "Capture the front value, remove it, advance head with wraparound, decrement count, write the captured value to item, and set status to 16#0000. Apply alias-safe relocation if necessary."
+      },
+      {
+        "condition": "NOT reset AND dequeue rising edge AND count = 0",
+        "action": "Preserve queue, buffer and item; set status to 16#8001."
+      },
+      {
+        "condition": "NOT reset AND no request rising edge",
+        "action": "Preserve queue, buffer and item; set status to 16#0000."
+      }
+    ],
+    "implementation_notes": [
+      "Obtain the actual one-dimensional array lower bound, length and element type from the fixed buffer binding. Validate positive capacity fitting DINT and item type compatibility at binding or integration time.",
+      "Use checked wide arithmetic for bounds and length. Advance an offset using 'if offset = capacity - 1 then 0 else offset + 1', avoiding DINT overflow.",
+      "Preserve the VARIANT interface. Generic metadata access, typed copying and alias detection require target-specific support; if unavailable, fail integration rather than substitute a DINT-only interface.",
+      "If item aliases a buffer element occupied by the remaining queue after a successful dequeue, use overlap-safe typed relocation to place the remaining FIFO sequence in slots excluding that element before writing item. Capture the dequeued value first. This may require O(capacity) work and typed temporary storage.",
+      "Simultaneous enqueue and dequeue rising edges on a non-reset invocation are outside the valid domain; the test harness or adapter rejects them with ValueError. Reset overrides both edges."
+    ]
+  },
+  "timer_plan": {
+    "timers": [],
+    "pt_durations": "None.",
+    "reset_conditions": "Not applicable; no timer FBs are required."
+  },
+  "priorities": [
+    "Sample both request edges and update both edge memories on every invocation, including reset.",
+    "Reset overrides requests and produces an empty queue and status 16#0000 in the same invocation.",
+    "On valid non-reset invocations, process at most one rising-edge request. Rejection preserves the queue and item.",
+    "Only a successful dequeue writes item; only a successful enqueue or alias-safe dequeue relocation writes buffer.",
+    "Status describes the current invocation, not a latched error."
+  ],
+  "initial_values": {
+    "elementCount": 0,
+    "status": "16#0000",
+    "count": 0,
+    "head": 0,
+    "tail": 0,
+    "previousEnqueue": false,
+    "previousDequeue": false,
+    "buffer": "Caller-provided contents; not cleared.",
+    "item": "Caller-provided value; not initialized by the FB.",
+    "binding_metadata": "Resolved and validated before processing the first invocation."
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "Edge sampling",
+      "action": "Sample inputs and calculate each rising edge from its current level and retained previous level. Update both previous levels even during reset."
+    },
+    {
+      "stage": 2,
+      "name": "Safety/reset priority and state transitions",
+      "action": "Default next status to 16#0000. Apply reset first; otherwise select the valid request transition using pre-operation count. Calculate next indices and count, stage payload transfers and capture a successful dequeue's front value. Plan any required alias-safe relocation."
+    },
+    {
+      "stage": 3,
+      "name": "Unconditional top-level timer FB calls outside CASE/IF",
+      "action": "No-op: this FB has no timers."
+    },
+    {
+      "stage": 4,
+      "name": "Unified output assignments",
+      "action": "Execute staged typed buffer relocation or insertion and the successful dequeue item write; commit the staged queue state. Assign elementCount and status once from the resulting state and invocation result. No intermediate state is externally observable."
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G(reset -> (elementCount = 0 AND status = 16#0000))"
+    },
+    {
+      "id": "A2",
+      "formula": "G(elementCount >= 0)"
+    },
+    {
+      "id": "A3",
+      "formula": "G((status = 16#0000) OR (status = 16#8001) OR (status = 16#8002))"
+    },
+    {
+      "id": "A4",
+      "formula": "G((status = 16#8001) -> (NOT reset AND dequeue))"
+    },
+    {
+      "id": "A5",
+      "formula": "G((status = 16#8002) -> (NOT reset AND enqueue))"
+    }
+  ]
+}

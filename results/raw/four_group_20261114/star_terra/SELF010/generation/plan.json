@@ -1,0 +1,143 @@
+{
+  "state_machine": [
+    {
+      "state": "IDLE",
+      "outputs": {
+        "Alarm": false,
+        "Acknowledged": false
+      },
+      "transitions": [
+        {
+          "guard": "Reset AND NOT Fault",
+          "to": "IDLE"
+        },
+        {
+          "guard": "fault_rise",
+          "to": "UNACK"
+        },
+        {
+          "guard": "Fault AND NOT fault_rise AND Ack",
+          "to": "ACKED"
+        },
+        {
+          "guard": "Fault AND NOT fault_rise AND NOT Ack",
+          "to": "UNACK"
+        },
+        {
+          "guard": "otherwise",
+          "to": "IDLE"
+        }
+      ]
+    },
+    {
+      "state": "UNACK",
+      "outputs": {
+        "Alarm": true,
+        "Acknowledged": false
+      },
+      "transitions": [
+        {
+          "guard": "Reset AND NOT Fault",
+          "to": "IDLE"
+        },
+        {
+          "guard": "fault_rise",
+          "to": "UNACK"
+        },
+        {
+          "guard": "Ack",
+          "to": "ACKED"
+        },
+        {
+          "guard": "otherwise",
+          "to": "UNACK"
+        }
+      ]
+    },
+    {
+      "state": "ACKED",
+      "outputs": {
+        "Alarm": true,
+        "Acknowledged": true
+      },
+      "transitions": [
+        {
+          "guard": "Reset AND NOT Fault",
+          "to": "IDLE"
+        },
+        {
+          "guard": "fault_rise",
+          "to": "UNACK"
+        },
+        {
+          "guard": "otherwise",
+          "to": "ACKED"
+        }
+      ]
+    }
+  ],
+  "timer_plan": {
+    "timers_required": false,
+    "timers": [],
+    "PT_durations": "Not applicable",
+    "reset_conditions": "Not applicable"
+  },
+  "priorities": [
+    "Evaluate each state's transitions in listed order; take the first matching transition.",
+    "Reset clears the alarm only when Fault is false; otherwise it is ignored.",
+    "A new Fault rising edge clears acknowledgment before Ack is considered.",
+    "A valid Reset takes precedence over Ack."
+  ],
+  "initial_values": {
+    "state": "IDLE",
+    "previous_fault": false,
+    "fault_rise": false,
+    "Alarm": false,
+    "Acknowledged": false,
+    "Horn": false
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "Edge sampling",
+      "action": "Sample Fault, Ack, and Reset once. Compute fault_rise := Fault AND NOT previous_fault, then update previous_fault := Fault on every scan."
+    },
+    {
+      "stage": 2,
+      "name": "Safety/reset priority and state transitions",
+      "action": "Evaluate the ordered transitions using sampled inputs and fault_rise; update state in this scan."
+    },
+    {
+      "stage": 3,
+      "name": "Unconditional top-level timer FB calls outside CASE/IF",
+      "action": "No timer FBs are required; this stage is intentionally empty."
+    },
+    {
+      "stage": 4,
+      "name": "Unified output assignments",
+      "action": "Assign Alarm and Acknowledged from the updated state, then assign Horn := Alarm AND NOT Acknowledged. Outputs are observed at the end of this same scan."
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G(Horn <-> (Alarm & !Acknowledged))"
+    },
+    {
+      "id": "A2",
+      "formula": "G(Fault -> Alarm)"
+    },
+    {
+      "id": "A3",
+      "formula": "G((Reset & !Fault) -> (!Alarm & !Acknowledged & !Horn))"
+    },
+    {
+      "id": "A4",
+      "formula": "G(Acknowledged -> Alarm)"
+    },
+    {
+      "id": "A5",
+      "formula": "G((!Fault & X(Fault)) -> X(Alarm & !Acknowledged & Horn))"
+    }
+  ]
+}

@@ -1,0 +1,121 @@
+{
+  "state_machine": [
+    {
+      "state": "INIT",
+      "description": "Fresh FB instance before the first scan. Outputs and previousValue hold declared initial values.",
+      "transitions": [
+        {
+          "to": "RUN",
+          "condition": "first scan invocation",
+          "actions": [
+            "sample value",
+            "transition unconditionally to RUN for first-scan edge computation",
+            "do not update previousValue before computing rising/falling masks"
+          ]
+        }
+      ]
+    },
+    {
+      "state": "RUN",
+      "description": "Normal per-scan operation. The FB samples value and reports per-scan edge masks, flags, and counts.",
+      "transitions": [
+        {
+          "to": "RUN",
+          "condition": "each subsequent scan invocation / unconditional",
+          "actions": [
+            "sample value",
+            "compute risingBits and fallingBits from sampled value and retained previousValue",
+            "compute flags and counts",
+            "assign outputs",
+            "update previousValue := value after edge masks are computed"
+          ]
+        }
+      ]
+    }
+  ],
+  "timer_plan": [],
+  "priorities": [
+    "Safety: compute both edge masks from the current sampled value and the retained previousValue before updating previousValue.",
+    "Safety: use full 32-bit DWORD bitwise operations; do not truncate to 16 bits. Counts must remain in 0..32.",
+    "Safety: rising and falling masks are mutually exclusive per bit in the same scan: (risingBits AND fallingBits) = 0.",
+    "Operational: outputs are per-scan pulse values, not latched. Recompute every scan from value and previousValue.",
+    "Operational: flags are derived from masks and value change; hasChanged is true iff value <> previousValue.",
+    "Operational: no timers or CASE/IF-gated timer calls. The FB is deterministic and combinational per scan except for previousValue memory.",
+    "Operational: no explicit reset input. Initialization occurs only at FB instance creation/initial observation."
+  ],
+  "initial_values": {
+    "previousValue": "DWORD#0",
+    "sampledValue": "DWORD#0",
+    "hasChanged": false,
+    "hasRisingEdges": false,
+    "risingBits": "DWORD#0",
+    "noOfRisingBits": 0,
+    "hasFallingEdges": false,
+    "fallingBits": "DWORD#0",
+    "noOfFallingBits": 0
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "edge sampling",
+      "details": "Sample the current input port value once into sampledValue. Do not update previousValue in this stage."
+    },
+    {
+      "stage": 2,
+      "name": "safety/reset priority & state transitions",
+      "details": "Apply no external reset. If in INIT, transition unconditionally to RUN after preserving the fresh-instance initial observation. In RUN, remain in RUN. Safety rule: previousValue is not updated here."
+    },
+    {
+      "stage": 3,
+      "name": "unconditional top-level timer FB calls outside CASE/IF",
+      "details": "No timer FBs are required or called by this FB. If timers were present, all top-level timer FB calls would be placed here unconditionally, outside CASE/IF."
+    },
+    {
+      "stage": 4,
+      "name": "unified output assignments",
+      "details": "Compute risingBits := value AND (NOT previousValue); fallingBits := previousValue AND (NOT value); noOfRisingBits := popcount(risingBits); noOfFallingBits := popcount(fallingBits); hasRisingEdges := risingBits <> 0; hasFallingEdges := fallingBits <> 0; hasChanged := value <> previousValue. Assign all declared outputs exactly once. After both edge masks are computed and outputs are assigned, update previousValue := value."
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G((risingBits AND fallingBits)=0)"
+    },
+    {
+      "id": "A2",
+      "formula": "G(hasRisingEdges <-> (risingBits<>0))"
+    },
+    {
+      "id": "A3",
+      "formula": "G(hasFallingEdges <-> (fallingBits<>0))"
+    },
+    {
+      "id": "A4",
+      "formula": "G(hasChanged <-> ((risingBits OR fallingBits)<>0))"
+    },
+    {
+      "id": "A5",
+      "formula": "G((risingBits AND (NOT value))=0)"
+    },
+    {
+      "id": "A6",
+      "formula": "G((fallingBits AND value)=0)"
+    },
+    {
+      "id": "A7",
+      "formula": "G(noOfRisingBits=popcount(risingBits))"
+    },
+    {
+      "id": "A8",
+      "formula": "G(noOfFallingBits=popcount(fallingBits))"
+    },
+    {
+      "id": "A9",
+      "formula": "G(noOfRisingBits<=32)"
+    },
+    {
+      "id": "A10",
+      "formula": "G(noOfFallingBits<=32)"
+    }
+  ]
+}

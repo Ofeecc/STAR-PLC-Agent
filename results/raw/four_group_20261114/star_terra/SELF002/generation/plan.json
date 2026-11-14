@@ -1,0 +1,130 @@
+{
+  "state_machine": [
+    {
+      "state": "Neutral",
+      "previous_direction": 0,
+      "transitions": [
+        {
+          "desired_direction": 0,
+          "next_state": "Neutral",
+          "output_direction": 0
+        },
+        {
+          "desired_direction": 1,
+          "next_state": "Forward",
+          "output_direction": 1
+        },
+        {
+          "desired_direction": -1,
+          "next_state": "Reverse",
+          "output_direction": -1
+        }
+      ]
+    },
+    {
+      "state": "Forward",
+      "previous_direction": 1,
+      "transitions": [
+        {
+          "desired_direction": 0,
+          "next_state": "Neutral",
+          "output_direction": 0
+        },
+        {
+          "desired_direction": 1,
+          "next_state": "Forward",
+          "output_direction": 1
+        },
+        {
+          "desired_direction": -1,
+          "next_state": "Neutral",
+          "output_direction": 0
+        }
+      ]
+    },
+    {
+      "state": "Reverse",
+      "previous_direction": -1,
+      "transitions": [
+        {
+          "desired_direction": 0,
+          "next_state": "Neutral",
+          "output_direction": 0
+        },
+        {
+          "desired_direction": 1,
+          "next_state": "Neutral",
+          "output_direction": 0
+        },
+        {
+          "desired_direction": -1,
+          "next_state": "Reverse",
+          "output_direction": -1
+        }
+      ]
+    }
+  ],
+  "timer_plan": [],
+  "priorities": [
+    "Stop or equal button levels command neutral and clear direction memory.",
+    "An opposite-direction request commands neutral for the current scan and clears direction memory.",
+    "Otherwise, command the desired direction immediately. After a reversal-neutral scan, evaluate current inputs again; do not retain a pending request.",
+    "The one-scan interlock is a command-level function; physical contactor interlocking and safety functions require separate engineering."
+  ],
+  "initial_values": {
+    "previous_direction": 0,
+    "Forward": false,
+    "Reverse": false,
+    "desired_direction": 0,
+    "output_direction": 0,
+    "note": "These are pre-invocation values. Scan 0 executes the transition normally."
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "Edge sampling",
+      "action": "Sample each input once. All inputs are level-sensitive; no edge detection is required."
+    },
+    {
+      "stage": 2,
+      "name": "Safety/reset priority and state transitions",
+      "action": "Read previous_direction as the retained pre-state. Set desired_direction to 0 if Stop is true or the button levels are equal, to 1 if only ForwardButton is true, and to -1 if only ReverseButton is true. Apply the state transition table to select output_direction, then store it as previous_direction. Stop clears direction memory but is not latched."
+    },
+    {
+      "stage": 3,
+      "name": "Unconditional top-level timer FB calls outside CASE/IF",
+      "action": "No timer FBs are required or called; the neutral interval is exactly one invocation."
+    },
+    {
+      "stage": 4,
+      "name": "Unified output assignments",
+      "action": "Assign Forward := (output_direction = 1) and Reverse := (output_direction = -1) once. Observe these outputs at the end of the same scan."
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G(!(Forward & Reverse))"
+    },
+    {
+      "id": "A2",
+      "formula": "G((Stop | (ForwardButton <-> ReverseButton)) -> (!Forward & !Reverse))"
+    },
+    {
+      "id": "A3",
+      "formula": "G((Reverse & X(!Stop & ForwardButton & !ReverseButton)) -> X(!Forward & !Reverse))"
+    },
+    {
+      "id": "A4",
+      "formula": "G((Forward & X(!Stop & !ForwardButton & ReverseButton)) -> X(!Forward & !Reverse))"
+    },
+    {
+      "id": "A5",
+      "formula": "G((!Reverse & X(!Stop & ForwardButton & !ReverseButton)) -> X(Forward))"
+    },
+    {
+      "id": "A6",
+      "formula": "G((!Forward & X(!Stop & !ForwardButton & ReverseButton)) -> X(Reverse))"
+    }
+  ]
+}

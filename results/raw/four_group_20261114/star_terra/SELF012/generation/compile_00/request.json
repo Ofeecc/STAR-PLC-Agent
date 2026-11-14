@@ -1,0 +1,20 @@
+{
+  "request_id": "d4afd12d16af43769e70e055faead950",
+  "source_sha256": "1d08985361de89ddb85a5947ee462560f26e1d9891a04ece14a3649fd4422e1a",
+  "task_id": "SELF012",
+  "project": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\0c646f254448f9b1\\task.project",
+  "candidate": {
+    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    Start : BOOL;\n    Stop : BOOL;\n    Fault : BOOL;\n    Reset : BOOL;\nEND_VAR\nVAR_OUTPUT\n    Run : BOOL := FALSE;\n    Locked : BOOL := FALSE;\n    Attempts : USINT := 0;\nEND_VAR\nVAR\n    mode : E_TaskMode := E_TaskMode.IDLE;\n    attempt_count : USINT := 0;\n    free_scans : USINT := 0;\n    sampledStart : BOOL;\n    sampledStop : BOOL;\n    sampledFault : BOOL;\n    sampledReset : BOOL;\nEND_VAR",
+    "implementation": "sampledStart := Start;\nsampledStop := Stop;\nsampledFault := Fault;\nsampledReset := Reset;\n\nIF sampledReset AND NOT sampledFault AND NOT sampledStart THEN\n    mode := E_TaskMode.IDLE;\n    attempt_count := 0;\n    free_scans := 0;\nELSIF mode <> E_TaskMode.LOCKED THEN\n    IF sampledStop THEN\n        mode := E_TaskMode.IDLE;\n        free_scans := 0;\n    ELSE\n        CASE mode OF\n            E_TaskMode.IDLE:\n                IF sampledStart AND NOT sampledFault THEN\n                    mode := E_TaskMode.RUNNING;\n                END_IF;\n\n            E_TaskMode.RUNNING:\n                IF sampledFault THEN\n                    IF attempt_count >= 2 THEN\n                        mode := E_TaskMode.LOCKED;\n                    ELSE\n                        mode := E_TaskMode.WAIT;\n                        free_scans := 0;\n                    END_IF;\n                END_IF;\n\n            E_TaskMode.WAIT:\n                IF sampledFault THEN\n                    free_scans := 0;\n                ELSE\n                    free_scans := free_scans + 1;\n                    IF free_scans >= 2 THEN\n                        attempt_count := attempt_count + 1;\n                        free_scans := 0;\n                        mode := E_TaskMode.RUNNING;\n                    END_IF;\n                END_IF;\n        END_CASE;\n    END_IF;\nEND_IF;\n\nRun := (mode = E_TaskMode.RUNNING);\nLocked := (mode = E_TaskMode.LOCKED);\nAttempts := attempt_count;",
+    "supporting_objects": [
+      {
+        "name": "E_TaskMode",
+        "kind": "DUT",
+        "declaration": "{attribute 'qualified_only'}\n{attribute 'strict'}\nTYPE E_TaskMode :\n(\n    IDLE := 0,\n    RUNNING := 1,\n    WAIT := 2,\n    LOCKED := 3\n);\nEND_TYPE",
+        "implementation": ""
+      }
+    ]
+  },
+  "result_path": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\0c646f254448f9b1\\codesys_evidence.json",
+  "started_utc": "2026-11-14T11:52:20.103618+00:00"
+}

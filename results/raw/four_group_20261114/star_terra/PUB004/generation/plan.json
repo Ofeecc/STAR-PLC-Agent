@@ -1,0 +1,94 @@
+{
+  "state_machine": [
+    {
+      "state": "BLOCKED",
+      "behavior": "Debounce timer is reset and VFD_RUN is FALSE.",
+      "transitions": [
+        {
+          "condition": "PASTE_E_STOP_NC AND VISCOSITY_OK",
+          "target": "PERMITTED"
+        },
+        {
+          "condition": "NOT PASTE_E_STOP_NC OR NOT VISCOSITY_OK",
+          "target": "BLOCKED"
+        }
+      ]
+    },
+    {
+      "state": "PERMITTED",
+      "behavior": "The debounce timer qualifies the continuous permissive; VFD_RUN follows its current-scan Q output.",
+      "transitions": [
+        {
+          "condition": "NOT PASTE_E_STOP_NC OR NOT VISCOSITY_OK",
+          "target": "BLOCKED"
+        },
+        {
+          "condition": "PASTE_E_STOP_NC AND VISCOSITY_OK",
+          "target": "PERMITTED"
+        }
+      ]
+    }
+  ],
+  "timer_plan": [
+    {
+      "name": "ViscosityDebounce",
+      "type": "TON-style FB",
+      "PT": "DebounceTime",
+      "IN": "state = PERMITTED",
+      "behavior": "Call once unconditionally per scan. Elapsed time is zero on the first permitted sample; Q becomes TRUE when continuous elapsed time reaches PT.",
+      "reset_conditions": "IN is FALSE, including on either sampled E-stop activation or raw viscosity loss; clear elapsed time and Q in that scan.",
+      "implementation": "Use a timer or equivalent monotonic-clock FB that supports the full specified TIME range and precision. Its current-scan Q must be available to output assignment."
+    }
+  ],
+  "priorities": [
+    "Sampled E-stop activation or raw viscosity loss immediately clears run permission and debounce qualification in the same scan.",
+    "After either loss, require a complete new debounce interval before running.",
+    "Maintenance indication is informational and never inhibits the pump.",
+    "Software response is scan-bound; use an appropriate independent safety-rated circuit for the E-stop safety function."
+  ],
+  "initial_values": {
+    "state": "BLOCKED",
+    "VFD_RUN": false,
+    "PUMP_RUNTIME_ACC": "LTIME#0ns",
+    "PUMP_MAINT_DUE": false,
+    "ViscosityDebounce.Q": false,
+    "ViscosityDebounce.ET": "TIME#0ns",
+    "previous_sample_available": false
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "Edge sampling",
+      "actions": "Sample all inputs and the monotonic time once. Derive any required edges from the previous samples; do not assume prior input stability on the first scan."
+    },
+    {
+      "stage": 2,
+      "name": "Safety/reset priority and state transitions",
+      "actions": "Transition to BLOCKED if either permissive input is FALSE; otherwise transition to or remain in PERMITTED. This establishes the timer input for the current scan."
+    },
+    {
+      "stage": 3,
+      "name": "Unconditional top-level timer FB calls",
+      "actions": "Outside all CASE and IF blocks, call ViscosityDebounce exactly once with IN=(state=PERMITTED) and PT=DebounceTime. Use the current sampled time if required by the implementation."
+    },
+    {
+      "stage": 4,
+      "name": "Unified output assignments",
+      "actions": "Compute run_next as PASTE_E_STOP_NC AND VISCOSITY_OK AND ViscosityDebounce.Q. Compute acc_next from the pre-scan PUMP_RUNTIME_ACC, adding TIME_TO_LTIME(CycleTime) exactly once if run_next is TRUE and otherwise preserving it. Assign VFD_RUN=run_next, PUMP_RUNTIME_ACC=acc_next, and PUMP_MAINT_DUE=(acc_next >= LTIME#500h), each from one unified assignment path."
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G(VFD_RUN -> (PASTE_E_STOP_NC & VISCOSITY_OK))"
+    },
+    {
+      "id": "A2",
+      "formula": "G(PUMP_MAINT_DUE <-> (PUMP_RUNTIME_ACC >= LTIME#500h))"
+    }
+  ],
+  "notes": [
+    "DebounceTime and CycleTime are strictly positive; DebounceTime is constant within a test. Inputs are stable between timed samples.",
+    "Exact runtime accumulation requires the accumulated result to remain representable in LTIME; behavior beyond its maximum is outside the specified domain."
+  ]
+}

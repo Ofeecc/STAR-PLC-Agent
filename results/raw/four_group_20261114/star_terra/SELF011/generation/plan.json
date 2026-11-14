@@ -1,0 +1,113 @@
+{
+  "state_machine": [
+    {
+      "state": "IDLE",
+      "transition": "If Start AND RetractDone, enter EXTEND; otherwise hold IDLE.",
+      "outputs": "All outputs FALSE."
+    },
+    {
+      "state": "EXTEND",
+      "transition": "If ExtendDone, enter CLAMP; otherwise hold EXTEND.",
+      "outputs": "Extend and Busy TRUE."
+    },
+    {
+      "state": "CLAMP",
+      "transition": "If ClampDone, enter RELEASE; otherwise hold CLAMP.",
+      "outputs": "Clamp and Busy TRUE."
+    },
+    {
+      "state": "RELEASE",
+      "transition": "If ReleaseDone, enter RETRACT; otherwise hold RELEASE.",
+      "outputs": "Release and Busy TRUE."
+    },
+    {
+      "state": "RETRACT",
+      "transition": "If RetractDone, enter DONE; otherwise hold RETRACT.",
+      "outputs": "Retract and Busy TRUE."
+    },
+    {
+      "state": "DONE",
+      "transition": "Hold DONE until Stop or Reset.",
+      "outputs": "Done TRUE."
+    }
+  ],
+  "timer_plan": {
+    "timers": [],
+    "PT_durations": null,
+    "reset_conditions": null,
+    "note": "No timers or timeouts; missing feedback stalls the active state."
+  },
+  "priorities": [
+    "Stop OR Reset overrides every normal transition and sets IDLE with all outputs FALSE in the same invocation.",
+    "Otherwise, evaluate only the transition associated with the pre-scan state; permit at most one transition per invocation.",
+    "All inputs are level-sensitive. After Stop or Reset clears, a still-asserted Start may initiate a new cycle if RetractDone is TRUE.",
+    "These software commands do not constitute a certified mechanical safety function."
+  ],
+  "initial_values": {
+    "state": "IDLE",
+    "all_commands": false,
+    "Extend": false,
+    "Clamp": false,
+    "Release": false,
+    "Retract": false,
+    "Busy": false,
+    "Done": false,
+    "note": "These are pre-invocation values; scan 0 executes normally."
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "edge sampling",
+      "action": "Sample all inputs once and retain the pre-scan state for this invocation. No edge detectors are required; use sampled levels."
+    },
+    {
+      "stage": 2,
+      "name": "safety/reset priority & state transitions",
+      "action": "If sampled Stop OR Reset is TRUE, set state to IDLE. Otherwise evaluate one CASE branch using the pre-scan state and update state at most once."
+    },
+    {
+      "stage": 3,
+      "name": "unconditional top-level timer FB calls outside CASE/IF",
+      "action": "No timer FBs are required, so this stage has no calls."
+    },
+    {
+      "stage": 4,
+      "name": "unified output assignments",
+      "action": "Assign Extend, Clamp, Release and Retract from equality of the updated state to their respective states; assign Busy as their OR and Done as state = DONE. These are the outputs observed at the end of the same scan."
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G((Stop | Reset) -> (!Extend & !Clamp & !Release & !Retract & !Busy & !Done))"
+    },
+    {
+      "id": "A2",
+      "formula": "G((Extend -> (!Clamp & !Release & !Retract)) & (Clamp -> (!Release & !Retract)) & (Release -> !Retract))"
+    },
+    {
+      "id": "A3",
+      "formula": "G((Busy <-> (Extend | Clamp | Release | Retract)) & !(Busy & Done))"
+    },
+    {
+      "id": "A4",
+      "formula": "G((Done & X(!Stop & !Reset)) -> X(Done))"
+    },
+    {
+      "id": "A5",
+      "formula": "G((Extend & X(!Stop & !Reset & ExtendDone)) -> X(Clamp))"
+    },
+    {
+      "id": "A6",
+      "formula": "G((Clamp & X(!Stop & !Reset & ClampDone)) -> X(Release))"
+    },
+    {
+      "id": "A7",
+      "formula": "G((Release & X(!Stop & !Reset & ReleaseDone)) -> X(Retract))"
+    },
+    {
+      "id": "A8",
+      "formula": "G((Retract & X(!Stop & !Reset & RetractDone)) -> X(Done))"
+    }
+  ]
+}

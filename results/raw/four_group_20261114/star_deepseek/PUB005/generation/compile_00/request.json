@@ -1,0 +1,13 @@
+{
+  "request_id": "5affb7b95a2247a3b0b87abc6cb4c428",
+  "source_sha256": "41b4326dbeda7fc4ba649322fa2ca7a50a33e9f1c8b86284454957ee12cd5da9",
+  "task_id": "PUB005",
+  "project": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\90e00c4dacf039e7\\task.project",
+  "candidate": {
+    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    Gap_Exceeded : BOOL;\n    Weld_E_Stop_NC : BOOL;\n    DebounceTime : TIME;\nEND_VAR\nVAR_OUTPUT\n    Operator_Alert : BOOL := FALSE;\n    Weld_Soft_Start_Active : BOOL := TRUE;\nEND_VAR\nVAR\n    StartupTimer : TON;\n    GapDebounceTimer : TON;\n    startupActive : BOOL := TRUE;\n    state : INT := 0;\nEND_VAR",
+    "implementation": "// Stage 2: safety/reset priority and supervisory state transition.\nIF NOT Weld_E_Stop_NC THEN\n    Operator_Alert := FALSE;\nEND_IF;\n\nIF state = 0 THEN\n    IF StartupTimer.Q THEN\n        state := 1;\n    END_IF;\nELSE\n    state := 1;\nEND_IF;\n\n// Stage 3: unconditional top-level timer calls.\nStartupTimer(IN := TRUE, PT := T#5s);\nstartupActive := NOT StartupTimer.Q;\nGapDebounceTimer(IN := (NOT startupActive) AND Weld_E_Stop_NC AND Gap_Exceeded, PT := DebounceTime);\n\n// Stage 4: unified output assignments.\nOperator_Alert := (NOT startupActive) AND Weld_E_Stop_NC AND Gap_Exceeded AND GapDebounceTimer.Q;\nWeld_Soft_Start_Active := startupActive;",
+    "supporting_objects": []
+  },
+  "result_path": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\90e00c4dacf039e7\\codesys_evidence.json",
+  "started_utc": "2026-11-14T09:22:02.461627+00:00"
+}

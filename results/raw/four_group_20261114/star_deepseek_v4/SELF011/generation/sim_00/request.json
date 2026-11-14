@@ -1,0 +1,1339 @@
+{
+  "request_id": "6e7f9f8bec0245aeace3534d7eb14caa",
+  "mode": "IDE_SIMULATION_ONLY",
+  "no_physical_connection": true,
+  "workspace": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\a327cec46bbf6b91",
+  "project": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\a327cec46bbf6b91\\simulation.project",
+  "template": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\a327cec46bbf6b91\\benchmark.project",
+  "task_id": "SELF011",
+  "task_sha256": "ac55f38427bf0d17ca925845c8f2140ca351d5106a19aa9585ff88fd797a7b4d",
+  "source_sha256": "5f97f63255bda3686656681ddccdedf6945633024e1379a438abb8f980084632",
+  "candidate": {
+    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    Start : BOOL;\n    Stop : BOOL;\n    Reset : BOOL;\n    ExtendDone : BOOL;\n    ClampDone : BOOL;\n    ReleaseDone : BOOL;\n    RetractDone : BOOL;\nEND_VAR\nVAR_OUTPUT\n    Extend : BOOL := FALSE;\n    Clamp : BOOL := FALSE;\n    Release : BOOL := FALSE;\n    Retract : BOOL := FALSE;\n    Busy : BOOL := FALSE;\n    Done : BOOL := FALSE;\nEND_VAR\nVAR\n    state : E_FbTaskState := E_FbTaskState.eIDLE;\n    iStart : BOOL;\n    iStop : BOOL;\n    iReset : BOOL;\n    iExtendDone : BOOL;\n    iClampDone : BOOL;\n    iReleaseDone : BOOL;\n    iRetractDone : BOOL;\nEND_VAR",
+    "implementation": "// Stage 1: sample each input once per scan\n    iStart := Start;\n    iStop := Stop;\n    iReset := Reset;\n    iExtendDone := ExtendDone;\n    iClampDone := ClampDone;\n    iReleaseDone := ReleaseDone;\n    iRetractDone := RetractDone;\n\n    // Stage 2: safety/reset priority; exactly one normal transition per scan\n    IF iStop OR iReset THEN\n        state := E_FbTaskState.eIDLE;\n    ELSE\n        CASE state OF\n            E_FbTaskState.eIDLE:\n                IF iStart AND iRetractDone THEN\n                    state := E_FbTaskState.eEXTEND;\n                END_IF;\n\n            E_FbTaskState.eEXTEND:\n                IF iExtendDone THEN\n                    state := E_FbTaskState.eCLAMP;\n                END_IF;\n\n            E_FbTaskState.eCLAMP:\n                IF iClampDone THEN\n                    state := E_FbTaskState.eRELEASE;\n                END_IF;\n\n            E_FbTaskState.eRELEASE:\n                IF iReleaseDone THEN\n                    state := E_FbTaskState.eRETRACT;\n                END_IF;\n\n            E_FbTaskState.eRETRACT:\n                IF iRetractDone THEN\n                    state := E_FbTaskState.eDONE;\n                END_IF;\n\n            E_FbTaskState.eDONE:\n                state := E_FbTaskState.eDONE; // hold DONE until Stop or Reset\n\n            ELSE\n                state := E_FbTaskState.eIDLE;\n        END_CASE;\n    END_IF;\n\n    // Stage 3: no timers required; no unconditional timer FB calls exist\n\n    // Stage 4: unified output assignments from scan-final state\n    Extend := (state = E_FbTaskState.eEXTEND);\n    Clamp := (state = E_FbTaskState.eCLAMP);\n    Release := (state = E_FbTaskState.eRELEASE);\n    Retract := (state = E_FbTaskState.eRETRACT);\n    Busy := (state = E_FbTaskState.eEXTEND) OR (state = E_FbTaskState.eCLAMP) OR (state = E_FbTaskState.eRELEASE) OR (state = E_FbTaskState.eRETRACT);\n    Done := (state = E_FbTaskState.eDONE);",
+    "supporting_objects": [
+      {
+        "name": "E_FbTaskState",
+        "kind": "DUT",
+        "declaration": "TYPE E_FbTaskState :\n(\n    eIDLE := 0,\n    eEXTEND := 1,\n    eCLAMP := 2,\n    eRELEASE := 3,\n    eRETRACT := 4,\n    eDONE := 5\n);\nEND_TYPE",
+        "implementation": ""
+      }
+    ]
+  },
+  "program": {
+    "declaration": "PROGRAM PLC_PRG\nVAR\n BenchStep : UDINT := 0;\n BenchCalls : UDINT := 0;\n BenchDone : BOOL := FALSE;\n BenchUut0 : FB_Task;\n BenchUut1 : FB_Task;\n TraceIn_Start : ARRAY[0..12] OF BOOL;\n TraceIn_Stop : ARRAY[0..12] OF BOOL;\n TraceIn_Reset : ARRAY[0..12] OF BOOL;\n TraceIn_ExtendDone : ARRAY[0..12] OF BOOL;\n TraceIn_ClampDone : ARRAY[0..12] OF BOOL;\n TraceIn_ReleaseDone : ARRAY[0..12] OF BOOL;\n TraceIn_RetractDone : ARRAY[0..12] OF BOOL;\n TraceOut_Extend : ARRAY[0..12] OF BOOL;\n TraceOut_Clamp : ARRAY[0..12] OF BOOL;\n TraceOut_Release : ARRAY[0..12] OF BOOL;\n TraceOut_Retract : ARRAY[0..12] OF BOOL;\n TraceOut_Busy : ARRAY[0..12] OF BOOL;\n TraceOut_Done : ARRAY[0..12] OF BOOL;\nEND_VAR",
+    "implementation": "IF NOT BenchDone THEN\n CASE BenchStep OF\n 0:\n   BenchUut0.Start := TRUE;\n   BenchUut0.Stop := FALSE;\n   BenchUut0.Reset := FALSE;\n   BenchUut0.ExtendDone := FALSE;\n   BenchUut0.ClampDone := FALSE;\n   BenchUut0.ReleaseDone := FALSE;\n   BenchUut0.RetractDone := TRUE;\n   TraceIn_Start[0] := BenchUut0.Start;\n   TraceIn_Stop[0] := BenchUut0.Stop;\n   TraceIn_Reset[0] := BenchUut0.Reset;\n   TraceIn_ExtendDone[0] := BenchUut0.ExtendDone;\n   TraceIn_ClampDone[0] := BenchUut0.ClampDone;\n   TraceIn_ReleaseDone[0] := BenchUut0.ReleaseDone;\n   TraceIn_RetractDone[0] := BenchUut0.RetractDone;\n   BenchUut0();\n   TraceOut_Extend[0] := BenchUut0.Extend;\n   TraceOut_Clamp[0] := BenchUut0.Clamp;\n   TraceOut_Release[0] := BenchUut0.Release;\n   TraceOut_Retract[0] := BenchUut0.Retract;\n   TraceOut_Busy[0] := BenchUut0.Busy;\n   TraceOut_Done[0] := BenchUut0.Done;\n   BenchCalls := BenchCalls + 1;\n 1:\n   BenchUut0.Start := FALSE;\n   BenchUut0.Stop := FALSE;\n   BenchUut0.Reset := FALSE;\n   BenchUut0.ExtendDone := TRUE;\n   BenchUut0.ClampDone := FALSE;\n   BenchUut0.ReleaseDone := FALSE;\n   BenchUut0.RetractDone := FALSE;\n   TraceIn_Start[1] := BenchUut0.Start;\n   TraceIn_Stop[1] := BenchUut0.Stop;\n   TraceIn_Reset[1] := BenchUut0.Reset;\n   TraceIn_ExtendDone[1] := BenchUut0.ExtendDone;\n   TraceIn_ClampDone[1] := BenchUut0.ClampDone;\n   TraceIn_ReleaseDone[1] := BenchUut0.ReleaseDone;\n   TraceIn_RetractDone[1] := BenchUut0.RetractDone;\n   BenchUut0();\n   TraceOut_Extend[1] := BenchUut0.Extend;\n   TraceOut_Clamp[1] := BenchUut0.Clamp;\n   TraceOut_Release[1] := BenchUut0.Release;\n   TraceOut_Retract[1] := BenchUut0.Retract;\n   TraceOut_Busy[1] := BenchUut0.Busy;\n   TraceOut_Done[1] := BenchUut0.Done;\n   BenchCalls := BenchCalls + 1;\n 2:\n   BenchUut0.Start := FALSE;\n   BenchUut0.Stop := FALSE;\n   BenchUut0.Reset := FALSE;\n   BenchUut0.ExtendDone := FALSE;\n   BenchUut0.ClampDone := TRUE;\n   BenchUut0.ReleaseDone := FALSE;\n   BenchUut0.RetractDone := FALSE;\n   TraceIn_Start[2] := BenchUut0.Start;\n   TraceIn_Stop[2] := BenchUut0.Stop;\n   TraceIn_Reset[2] := BenchUut0.Reset;\n   TraceIn_ExtendDone[2] := BenchUut0.ExtendDone;\n   TraceIn_ClampDone[2] := BenchUut0.ClampDone;\n   TraceIn_ReleaseDone[2] := BenchUut0.ReleaseDone;\n   TraceIn_RetractDone[2] := BenchUut0.RetractDone;\n   BenchUut0();\n   TraceOut_Extend[2] := BenchUut0.Extend;\n   TraceOut_Clamp[2] := BenchUut0.Clamp;\n   TraceOut_Release[2] := BenchUut0.Release;\n   TraceOut_Retract[2] := BenchUut0.Retract;\n   TraceOut_Busy[2] := BenchUut0.Busy;\n   TraceOut_Done[2] := BenchUut0.Done;\n   BenchCalls := BenchCalls + 1;\n 3:\n   BenchUut0.Start := FALSE;\n   BenchUut0.Stop := FALSE;\n   BenchUut0.Reset := FALSE;\n   BenchUut0.ExtendDone := FALSE;\n   BenchUut0.ClampDone := FALSE;\n   BenchUut0.ReleaseDone := TRUE;\n   BenchUut0.RetractDone := FALSE;\n   TraceIn_Start[3] := BenchUut0.Start;\n   TraceIn_Stop[3] := BenchUut0.Stop;\n   TraceIn_Reset[3] := BenchUut0.Reset;\n   TraceIn_ExtendDone[3] := BenchUut0.ExtendDone;\n   TraceIn_ClampDone[3] := BenchUut0.ClampDone;\n   TraceIn_ReleaseDone[3] := BenchUut0.ReleaseDone;\n   TraceIn_RetractDone[3] := BenchUut0.RetractDone;\n   BenchUut0();\n   TraceOut_Extend[3] := BenchUut0.Extend;\n   TraceOut_Clamp[3] := BenchUut0.Clamp;\n   TraceOut_Release[3] := BenchUut0.Release;\n   TraceOut_Retract[3] := BenchUut0.Retract;\n   TraceOut_Busy[3] := BenchUut0.Busy;\n   TraceOut_Done[3] := BenchUut0.Done;\n   BenchCalls := BenchCalls + 1;\n 4:\n   BenchUut0.Start := FALSE;\n   BenchUut0.Stop := FALSE;\n   BenchUut0.Reset := FALSE;\n   BenchUut0.ExtendDone := FALSE;\n   BenchUut0.ClampDone := FALSE;\n   BenchUut0.ReleaseDone := FALSE;\n   BenchUut0.RetractDone := TRUE;\n   TraceIn_Start[4] := BenchUut0.Start;\n   TraceIn_Stop[4] := BenchUut0.Stop;\n   TraceIn_Reset[4] := BenchUut0.Reset;\n   TraceIn_ExtendDone[4] := BenchUut0.ExtendDone;\n   TraceIn_ClampDone[4] := BenchUut0.ClampDone;\n   TraceIn_ReleaseDone[4] := BenchUut0.ReleaseDone;\n   TraceIn_RetractDone[4] := BenchUut0.RetractDone;\n   BenchUut0();\n   TraceOut_Extend[4] := BenchUut0.Extend;\n   TraceOut_Clamp[4] := BenchUut0.Clamp;\n   TraceOut_Release[4] := BenchUut0.Release;\n   TraceOut_Retract[4] := BenchUut0.Retract;\n   TraceOut_Busy[4] := BenchUut0.Busy;\n   TraceOut_Done[4] := BenchUut0.Done;\n   BenchCalls := BenchCalls + 1;\n 5:\n   BenchUut0.Start := TRUE;\n   BenchUut0.Stop := FALSE;\n   BenchUut0.Reset := FALSE;\n   BenchUut0.ExtendDone := FALSE;\n   BenchUut0.ClampDone := FALSE;\n   BenchUut0.ReleaseDone := FALSE;\n   BenchUut0.RetractDone := TRUE;\n   TraceIn_Start[5] := BenchUut0.Start;\n   TraceIn_Stop[5] := BenchUut0.Stop;\n   TraceIn_Reset[5] := BenchUut0.Reset;\n   TraceIn_ExtendDone[5] := BenchUut0.ExtendDone;\n   TraceIn_ClampDone[5] := BenchUut0.ClampDone;\n   TraceIn_ReleaseDone[5] := BenchUut0.ReleaseDone;\n   TraceIn_RetractDone[5] := BenchUut0.RetractDone;\n   BenchUut0();\n   TraceOut_Extend[5] := BenchUut0.Extend;\n   TraceOut_Clamp[5] := BenchUut0.Clamp;\n   TraceOut_Release[5] := BenchUut0.Release;\n   TraceOut_Retract[5] := BenchUut0.Retract;\n   TraceOut_Busy[5] := BenchUut0.Busy;\n   TraceOut_Done[5] := BenchUut0.Done;\n   BenchCalls := BenchCalls + 1;\n 6:\n   BenchUut1.Start := TRUE;\n   BenchUut1.Stop := FALSE;\n   BenchUut1.Reset := FALSE;\n   BenchUut1.ExtendDone := FALSE;\n   BenchUut1.ClampDone := FALSE;\n   BenchUut1.ReleaseDone := FALSE;\n   BenchUut1.RetractDone := FALSE;\n   TraceIn_Start[6] := BenchUut1.Start;\n   TraceIn_Stop[6] := BenchUut1.Stop;\n   TraceIn_Reset[6] := BenchUut1.Reset;\n   TraceIn_ExtendDone[6] := BenchUut1.ExtendDone;\n   TraceIn_ClampDone[6] := BenchUut1.ClampDone;\n   TraceIn_ReleaseDone[6] := BenchUut1.ReleaseDone;\n   TraceIn_RetractDone[6] := BenchUut1.RetractDone;\n   BenchUut1();\n   TraceOut_Extend[6] := BenchUut1.Extend;\n   TraceOut_Clamp[6] := BenchUut1.Clamp;\n   TraceOut_Release[6] := BenchUut1.Release;\n   TraceOut_Retract[6] := BenchUut1.Retract;\n   TraceOut_Busy[6] := BenchUut1.Busy;\n   TraceOut_Done[6] := BenchUut1.Done;\n   BenchCalls := BenchCalls + 1;\n 7:\n   BenchUut1.Start := TRUE;\n   BenchUut1.Stop := FALSE;\n   BenchUut1.Reset := FALSE;\n   BenchUut1.ExtendDone := FALSE;\n   BenchUut1.ClampDone := FALSE;\n   BenchUut1.ReleaseDone := FALSE;\n   BenchUut1.RetractDone := TRUE;\n   TraceIn_Start[7] := BenchUut1.Start;\n   TraceIn_Stop[7] := BenchUut1.Stop;\n   TraceIn_Reset[7] := BenchUut1.Reset;\n   TraceIn_ExtendDone[7] := BenchUut1.ExtendDone;\n   TraceIn_ClampDone[7] := BenchUut1.ClampDone;\n   TraceIn_ReleaseDone[7] := BenchUut1.ReleaseDone;\n   TraceIn_RetractDone[7] := BenchUut1.RetractDone;\n   BenchUut1();\n   TraceOut_Extend[7] := BenchUut1.Extend;\n   TraceOut_Clamp[7] := BenchUut1.Clamp;\n   TraceOut_Release[7] := BenchUut1.Release;\n   TraceOut_Retract[7] := BenchUut1.Retract;\n   TraceOut_Busy[7] := BenchUut1.Busy;\n   TraceOut_Done[7] := BenchUut1.Done;\n   BenchCalls := BenchCalls + 1;\n 8:\n   BenchUut1.Start := FALSE;\n   BenchUut1.Stop := FALSE;\n   BenchUut1.Reset := FALSE;\n   BenchUut1.ExtendDone := TRUE;\n   BenchUut1.ClampDone := FALSE;\n   BenchUut1.ReleaseDone := FALSE;\n   BenchUut1.RetractDone := FALSE;\n   TraceIn_Start[8] := BenchUut1.Start;\n   TraceIn_Stop[8] := BenchUut1.Stop;\n   TraceIn_Reset[8] := BenchUut1.Reset;\n   TraceIn_ExtendDone[8] := BenchUut1.ExtendDone;\n   TraceIn_ClampDone[8] := BenchUut1.ClampDone;\n   TraceIn_ReleaseDone[8] := BenchUut1.ReleaseDone;\n   TraceIn_RetractDone[8] := BenchUut1.RetractDone;\n   BenchUut1();\n   TraceOut_Extend[8] := BenchUut1.Extend;\n   TraceOut_Clamp[8] := BenchUut1.Clamp;\n   TraceOut_Release[8] := BenchUut1.Release;\n   TraceOut_Retract[8] := BenchUut1.Retract;\n   TraceOut_Busy[8] := BenchUut1.Busy;\n   TraceOut_Done[8] := BenchUut1.Done;\n   BenchCalls := BenchCalls + 1;\n 9:\n   BenchUut1.Start := TRUE;\n   BenchUut1.Stop := FALSE;\n   BenchUut1.Reset := TRUE;\n   BenchUut1.ExtendDone := FALSE;\n   BenchUut1.ClampDone := TRUE;\n   BenchUut1.ReleaseDone := FALSE;\n   BenchUut1.RetractDone := FALSE;\n   TraceIn_Start[9] := BenchUut1.Start;\n   TraceIn_Stop[9] := BenchUut1.Stop;\n   TraceIn_Reset[9] := BenchUut1.Reset;\n   TraceIn_ExtendDone[9] := BenchUut1.ExtendDone;\n   TraceIn_ClampDone[9] := BenchUut1.ClampDone;\n   TraceIn_ReleaseDone[9] := BenchUut1.ReleaseDone;\n   TraceIn_RetractDone[9] := BenchUut1.RetractDone;\n   BenchUut1();\n   TraceOut_Extend[9] := BenchUut1.Extend;\n   TraceOut_Clamp[9] := BenchUut1.Clamp;\n   TraceOut_Release[9] := BenchUut1.Release;\n   TraceOut_Retract[9] := BenchUut1.Retract;\n   TraceOut_Busy[9] := BenchUut1.Busy;\n   TraceOut_Done[9] := BenchUut1.Done;\n   BenchCalls := BenchCalls + 1;\n 10:\n   BenchUut1.Start := TRUE;\n   BenchUut1.Stop := FALSE;\n   BenchUut1.Reset := FALSE;\n   BenchUut1.ExtendDone := FALSE;\n   BenchUut1.ClampDone := FALSE;\n   BenchUut1.ReleaseDone := FALSE;\n   BenchUut1.RetractDone := TRUE;\n   TraceIn_Start[10] := BenchUut1.Start;\n   TraceIn_Stop[10] := BenchUut1.Stop;\n   TraceIn_Reset[10] := BenchUut1.Reset;\n   TraceIn_ExtendDone[10] := BenchUut1.ExtendDone;\n   TraceIn_ClampDone[10] := BenchUut1.ClampDone;\n   TraceIn_ReleaseDone[10] := BenchUut1.ReleaseDone;\n   TraceIn_RetractDone[10] := BenchUut1.RetractDone;\n   BenchUut1();\n   TraceOut_Extend[10] := BenchUut1.Extend;\n   TraceOut_Clamp[10] := BenchUut1.Clamp;\n   TraceOut_Release[10] := BenchUut1.Release;\n   TraceOut_Retract[10] := BenchUut1.Retract;\n   TraceOut_Busy[10] := BenchUut1.Busy;\n   TraceOut_Done[10] := BenchUut1.Done;\n   BenchCalls := BenchCalls + 1;\n 11:\n   BenchUut1.Start := FALSE;\n   BenchUut1.Stop := TRUE;\n   BenchUut1.Reset := FALSE;\n   BenchUut1.ExtendDone := TRUE;\n   BenchUut1.ClampDone := FALSE;\n   BenchUut1.ReleaseDone := FALSE;\n   BenchUut1.RetractDone := FALSE;\n   TraceIn_Start[11] := BenchUut1.Start;\n   TraceIn_Stop[11] := BenchUut1.Stop;\n   TraceIn_Reset[11] := BenchUut1.Reset;\n   TraceIn_ExtendDone[11] := BenchUut1.ExtendDone;\n   TraceIn_ClampDone[11] := BenchUut1.ClampDone;\n   TraceIn_ReleaseDone[11] := BenchUut1.ReleaseDone;\n   TraceIn_RetractDone[11] := BenchUut1.RetractDone;\n   BenchUut1();\n   TraceOut_Extend[11] := BenchUut1.Extend;\n   TraceOut_Clamp[11] := BenchUut1.Clamp;\n   TraceOut_Release[11] := BenchUut1.Release;\n   TraceOut_Retract[11] := BenchUut1.Retract;\n   TraceOut_Busy[11] := BenchUut1.Busy;\n   TraceOut_Done[11] := BenchUut1.Done;\n   BenchCalls := BenchCalls + 1;\n 12:\n   BenchUut1.Start := FALSE;\n   BenchUut1.Stop := FALSE;\n   BenchUut1.Reset := FALSE;\n   BenchUut1.ExtendDone := FALSE;\n   BenchUut1.ClampDone := FALSE;\n   BenchUut1.ReleaseDone := FALSE;\n   BenchUut1.RetractDone := FALSE;\n   TraceIn_Start[12] := BenchUut1.Start;\n   TraceIn_Stop[12] := BenchUut1.Stop;\n   TraceIn_Reset[12] := BenchUut1.Reset;\n   TraceIn_ExtendDone[12] := BenchUut1.ExtendDone;\n   TraceIn_ClampDone[12] := BenchUut1.ClampDone;\n   TraceIn_ReleaseDone[12] := BenchUut1.ReleaseDone;\n   TraceIn_RetractDone[12] := BenchUut1.RetractDone;\n   BenchUut1();\n   TraceOut_Extend[12] := BenchUut1.Extend;\n   TraceOut_Clamp[12] := BenchUut1.Clamp;\n   TraceOut_Release[12] := BenchUut1.Release;\n   TraceOut_Retract[12] := BenchUut1.Retract;\n   TraceOut_Busy[12] := BenchUut1.Busy;\n   TraceOut_Done[12] := BenchUut1.Done;\n   BenchCalls := BenchCalls + 1;\n END_CASE;\n BenchStep := BenchStep + 1;\n IF BenchStep >= 13 THEN BenchDone := TRUE; END_IF;\nEND_IF;",
+    "step_count": 13,
+    "steps": [
+      {
+        "index": 0,
+        "case_id": "case_1_complete_normal_path",
+        "case_step": 0,
+        "dt_ms": 0
+      },
+      {
+        "index": 1,
+        "case_id": "case_1_complete_normal_path",
+        "case_step": 1,
+        "dt_ms": 0
+      },
+      {
+        "index": 2,
+        "case_id": "case_1_complete_normal_path",
+        "case_step": 2,
+        "dt_ms": 0
+      },
+      {
+        "index": 3,
+        "case_id": "case_1_complete_normal_path",
+        "case_step": 3,
+        "dt_ms": 0
+      },
+      {
+        "index": 4,
+        "case_id": "case_1_complete_normal_path",
+        "case_step": 4,
+        "dt_ms": 0
+      },
+      {
+        "index": 5,
+        "case_id": "case_1_complete_normal_path",
+        "case_step": 5,
+        "dt_ms": 0
+      },
+      {
+        "index": 6,
+        "case_id": "case_2_start_precondition_and_abort_priority",
+        "case_step": 0,
+        "dt_ms": 0
+      },
+      {
+        "index": 7,
+        "case_id": "case_2_start_precondition_and_abort_priority",
+        "case_step": 1,
+        "dt_ms": 0
+      },
+      {
+        "index": 8,
+        "case_id": "case_2_start_precondition_and_abort_priority",
+        "case_step": 2,
+        "dt_ms": 0
+      },
+      {
+        "index": 9,
+        "case_id": "case_2_start_precondition_and_abort_priority",
+        "case_step": 3,
+        "dt_ms": 0
+      },
+      {
+        "index": 10,
+        "case_id": "case_2_start_precondition_and_abort_priority",
+        "case_step": 4,
+        "dt_ms": 0
+      },
+      {
+        "index": 11,
+        "case_id": "case_2_start_precondition_and_abort_priority",
+        "case_step": 5,
+        "dt_ms": 0
+      },
+      {
+        "index": 12,
+        "case_id": "case_2_start_precondition_and_abort_priority",
+        "case_step": 6,
+        "dt_ms": 0
+      }
+    ],
+    "inputs": [
+      {
+        "direction": "INPUT",
+        "name": "Start",
+        "type": "BOOL",
+        "description": "Begin one fixture cycle"
+      },
+      {
+        "direction": "INPUT",
+        "name": "Stop",
+        "type": "BOOL",
+        "description": "Abort fixture cycle"
+      },
+      {
+        "direction": "INPUT",
+        "name": "Reset",
+        "type": "BOOL",
+        "description": "Clear cycle state"
+      },
+      {
+        "direction": "INPUT",
+        "name": "ExtendDone",
+        "type": "BOOL",
+        "description": "Extension completion handshake"
+      },
+      {
+        "direction": "INPUT",
+        "name": "ClampDone",
+        "type": "BOOL",
+        "description": "Clamp completion handshake"
+      },
+      {
+        "direction": "INPUT",
+        "name": "ReleaseDone",
+        "type": "BOOL",
+        "description": "Release completion handshake"
+      },
+      {
+        "direction": "INPUT",
+        "name": "RetractDone",
+        "type": "BOOL",
+        "description": "Retracted home handshake"
+      }
+    ],
+    "outputs": [
+      {
+        "direction": "OUTPUT",
+        "name": "Extend",
+        "type": "BOOL",
+        "description": "Slide extend command"
+      },
+      {
+        "direction": "OUTPUT",
+        "name": "Clamp",
+        "type": "BOOL",
+        "description": "Clamp command"
+      },
+      {
+        "direction": "OUTPUT",
+        "name": "Release",
+        "type": "BOOL",
+        "description": "Release command"
+      },
+      {
+        "direction": "OUTPUT",
+        "name": "Retract",
+        "type": "BOOL",
+        "description": "Slide retract command"
+      },
+      {
+        "direction": "OUTPUT",
+        "name": "Busy",
+        "type": "BOOL",
+        "description": "An action state is active"
+      },
+      {
+        "direction": "OUTPUT",
+        "name": "Done",
+        "type": "BOOL",
+        "description": "Cycle completed"
+      }
+    ],
+    "trace_expressions": [
+      "PLC_PRG.TraceIn_Start[0]",
+      "PLC_PRG.TraceIn_Stop[0]",
+      "PLC_PRG.TraceIn_Reset[0]",
+      "PLC_PRG.TraceIn_ExtendDone[0]",
+      "PLC_PRG.TraceIn_ClampDone[0]",
+      "PLC_PRG.TraceIn_ReleaseDone[0]",
+      "PLC_PRG.TraceIn_RetractDone[0]",
+      "PLC_PRG.TraceOut_Extend[0]",
+      "PLC_PRG.TraceOut_Clamp[0]",
+      "PLC_PRG.TraceOut_Release[0]",
+      "PLC_PRG.TraceOut_Retract[0]",
+      "PLC_PRG.TraceOut_Busy[0]",
+      "PLC_PRG.TraceOut_Done[0]",
+      "PLC_PRG.TraceIn_Start[1]",
+      "PLC_PRG.TraceIn_Stop[1]",
+      "PLC_PRG.TraceIn_Reset[1]",
+      "PLC_PRG.TraceIn_ExtendDone[1]",
+      "PLC_PRG.TraceIn_ClampDone[1]",
+      "PLC_PRG.TraceIn_ReleaseDone[1]",
+      "PLC_PRG.TraceIn_RetractDone[1]",
+      "PLC_PRG.TraceOut_Extend[1]",
+      "PLC_PRG.TraceOut_Clamp[1]",
+      "PLC_PRG.TraceOut_Release[1]",
+      "PLC_PRG.TraceOut_Retract[1]",
+      "PLC_PRG.TraceOut_Busy[1]",
+      "PLC_PRG.TraceOut_Done[1]",
+      "PLC_PRG.TraceIn_Start[2]",
+      "PLC_PRG.TraceIn_Stop[2]",
+      "PLC_PRG.TraceIn_Reset[2]",
+      "PLC_PRG.TraceIn_ExtendDone[2]",
+      "PLC_PRG.TraceIn_ClampDone[2]",
+      "PLC_PRG.TraceIn_ReleaseDone[2]",
+      "PLC_PRG.TraceIn_RetractDone[2]",
+      "PLC_PRG.TraceOut_Extend[2]",
+      "PLC_PRG.TraceOut_Clamp[2]",
+      "PLC_PRG.TraceOut_Release[2]",
+      "PLC_PRG.TraceOut_Retract[2]",
+      "PLC_PRG.TraceOut_Busy[2]",
+      "PLC_PRG.TraceOut_Done[2]",
+      "PLC_PRG.TraceIn_Start[3]",
+      "PLC_PRG.TraceIn_Stop[3]",
+      "PLC_PRG.TraceIn_Reset[3]",
+      "PLC_PRG.TraceIn_ExtendDone[3]",
+      "PLC_PRG.TraceIn_ClampDone[3]",
+      "PLC_PRG.TraceIn_ReleaseDone[3]",
+      "PLC_PRG.TraceIn_RetractDone[3]",
+      "PLC_PRG.TraceOut_Extend[3]",
+      "PLC_PRG.TraceOut_Clamp[3]",
+      "PLC_PRG.TraceOut_Release[3]",
+      "PLC_PRG.TraceOut_Retract[3]",
+      "PLC_PRG.TraceOut_Busy[3]",
+      "PLC_PRG.TraceOut_Done[3]",
+      "PLC_PRG.TraceIn_Start[4]",
+      "PLC_PRG.TraceIn_Stop[4]",
+      "PLC_PRG.TraceIn_Reset[4]",
+      "PLC_PRG.TraceIn_ExtendDone[4]",
+      "PLC_PRG.TraceIn_ClampDone[4]",
+      "PLC_PRG.TraceIn_ReleaseDone[4]",
+      "PLC_PRG.TraceIn_RetractDone[4]",
+      "PLC_PRG.TraceOut_Extend[4]",
+      "PLC_PRG.TraceOut_Clamp[4]",
+      "PLC_PRG.TraceOut_Release[4]",
+      "PLC_PRG.TraceOut_Retract[4]",
+      "PLC_PRG.TraceOut_Busy[4]",
+      "PLC_PRG.TraceOut_Done[4]",
+      "PLC_PRG.TraceIn_Start[5]",
+      "PLC_PRG.TraceIn_Stop[5]",
+      "PLC_PRG.TraceIn_Reset[5]",
+      "PLC_PRG.TraceIn_ExtendDone[5]",
+      "PLC_PRG.TraceIn_ClampDone[5]",
+      "PLC_PRG.TraceIn_ReleaseDone[5]",
+      "PLC_PRG.TraceIn_RetractDone[5]",
+      "PLC_PRG.TraceOut_Extend[5]",
+      "PLC_PRG.TraceOut_Clamp[5]",
+      "PLC_PRG.TraceOut_Release[5]",
+      "PLC_PRG.TraceOut_Retract[5]",
+      "PLC_PRG.TraceOut_Busy[5]",
+      "PLC_PRG.TraceOut_Done[5]",
+      "PLC_PRG.TraceIn_Start[6]",
+      "PLC_PRG.TraceIn_Stop[6]",
+      "PLC_PRG.TraceIn_Reset[6]",
+      "PLC_PRG.TraceIn_ExtendDone[6]",
+      "PLC_PRG.TraceIn_ClampDone[6]",
+      "PLC_PRG.TraceIn_ReleaseDone[6]",
+      "PLC_PRG.TraceIn_RetractDone[6]",
+      "PLC_PRG.TraceOut_Extend[6]",
+      "PLC_PRG.TraceOut_Clamp[6]",
+      "PLC_PRG.TraceOut_Release[6]",
+      "PLC_PRG.TraceOut_Retract[6]",
+      "PLC_PRG.TraceOut_Busy[6]",
+      "PLC_PRG.TraceOut_Done[6]",
+      "PLC_PRG.TraceIn_Start[7]",
+      "PLC_PRG.TraceIn_Stop[7]",
+      "PLC_PRG.TraceIn_Reset[7]",
+      "PLC_PRG.TraceIn_ExtendDone[7]",
+      "PLC_PRG.TraceIn_ClampDone[7]",
+      "PLC_PRG.TraceIn_ReleaseDone[7]",
+      "PLC_PRG.TraceIn_RetractDone[7]",
+      "PLC_PRG.TraceOut_Extend[7]",
+      "PLC_PRG.TraceOut_Clamp[7]",
+      "PLC_PRG.TraceOut_Release[7]",
+      "PLC_PRG.TraceOut_Retract[7]",
+      "PLC_PRG.TraceOut_Busy[7]",
+      "PLC_PRG.TraceOut_Done[7]",
+      "PLC_PRG.TraceIn_Start[8]",
+      "PLC_PRG.TraceIn_Stop[8]",
+      "PLC_PRG.TraceIn_Reset[8]",
+      "PLC_PRG.TraceIn_ExtendDone[8]",
+      "PLC_PRG.TraceIn_ClampDone[8]",
+      "PLC_PRG.TraceIn_ReleaseDone[8]",
+      "PLC_PRG.TraceIn_RetractDone[8]",
+      "PLC_PRG.TraceOut_Extend[8]",
+      "PLC_PRG.TraceOut_Clamp[8]",
+      "PLC_PRG.TraceOut_Release[8]",
+      "PLC_PRG.TraceOut_Retract[8]",
+      "PLC_PRG.TraceOut_Busy[8]",
+      "PLC_PRG.TraceOut_Done[8]",
+      "PLC_PRG.TraceIn_Start[9]",
+      "PLC_PRG.TraceIn_Stop[9]",
+      "PLC_PRG.TraceIn_Reset[9]",
+      "PLC_PRG.TraceIn_ExtendDone[9]",
+      "PLC_PRG.TraceIn_ClampDone[9]",
+      "PLC_PRG.TraceIn_ReleaseDone[9]",
+      "PLC_PRG.TraceIn_RetractDone[9]",
+      "PLC_PRG.TraceOut_Extend[9]",
+      "PLC_PRG.TraceOut_Clamp[9]",
+      "PLC_PRG.TraceOut_Release[9]",
+      "PLC_PRG.TraceOut_Retract[9]",
+      "PLC_PRG.TraceOut_Busy[9]",
+      "PLC_PRG.TraceOut_Done[9]",
+      "PLC_PRG.TraceIn_Start[10]",
+      "PLC_PRG.TraceIn_Stop[10]",
+      "PLC_PRG.TraceIn_Reset[10]",
+      "PLC_PRG.TraceIn_ExtendDone[10]",
+      "PLC_PRG.TraceIn_ClampDone[10]",
+      "PLC_PRG.TraceIn_ReleaseDone[10]",
+      "PLC_PRG.TraceIn_RetractDone[10]",
+      "PLC_PRG.TraceOut_Extend[10]",
+      "PLC_PRG.TraceOut_Clamp[10]",
+      "PLC_PRG.TraceOut_Release[10]",
+      "PLC_PRG.TraceOut_Retract[10]",
+      "PLC_PRG.TraceOut_Busy[10]",
+      "PLC_PRG.TraceOut_Done[10]",
+      "PLC_PRG.TraceIn_Start[11]",
+      "PLC_PRG.TraceIn_Stop[11]",
+      "PLC_PRG.TraceIn_Reset[11]",
+      "PLC_PRG.TraceIn_ExtendDone[11]",
+      "PLC_PRG.TraceIn_ClampDone[11]",
+      "PLC_PRG.TraceIn_ReleaseDone[11]",
+      "PLC_PRG.TraceIn_RetractDone[11]",
+      "PLC_PRG.TraceOut_Extend[11]",
+      "PLC_PRG.TraceOut_Clamp[11]",
+      "PLC_PRG.TraceOut_Release[11]",
+      "PLC_PRG.TraceOut_Retract[11]",
+      "PLC_PRG.TraceOut_Busy[11]",
+      "PLC_PRG.TraceOut_Done[11]",
+      "PLC_PRG.TraceIn_Start[12]",
+      "PLC_PRG.TraceIn_Stop[12]",
+      "PLC_PRG.TraceIn_Reset[12]",
+      "PLC_PRG.TraceIn_ExtendDone[12]",
+      "PLC_PRG.TraceIn_ClampDone[12]",
+      "PLC_PRG.TraceIn_ReleaseDone[12]",
+      "PLC_PRG.TraceIn_RetractDone[12]",
+      "PLC_PRG.TraceOut_Extend[12]",
+      "PLC_PRG.TraceOut_Clamp[12]",
+      "PLC_PRG.TraceOut_Release[12]",
+      "PLC_PRG.TraceOut_Retract[12]",
+      "PLC_PRG.TraceOut_Busy[12]",
+      "PLC_PRG.TraceOut_Done[12]"
+    ],
+    "trace_mapping": [
+      {
+        "step_index": 0,
+        "case_id": "case_1_complete_normal_path",
+        "case_step": 0,
+        "dt_expr": null,
+        "inputs": {
+          "Start": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Start[0]",
+            "type": "BOOL"
+          },
+          "Stop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Stop[0]",
+            "type": "BOOL"
+          },
+          "Reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Reset[0]",
+            "type": "BOOL"
+          },
+          "ExtendDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ExtendDone[0]",
+            "type": "BOOL"
+          },
+          "ClampDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ClampDone[0]",
+            "type": "BOOL"
+          },
+          "ReleaseDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReleaseDone[0]",
+            "type": "BOOL"
+          },
+          "RetractDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_RetractDone[0]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "Extend": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Extend[0]",
+            "type": "BOOL"
+          },
+          "Clamp": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Clamp[0]",
+            "type": "BOOL"
+          },
+          "Release": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Release[0]",
+            "type": "BOOL"
+          },
+          "Retract": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Retract[0]",
+            "type": "BOOL"
+          },
+          "Busy": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Busy[0]",
+            "type": "BOOL"
+          },
+          "Done": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Done[0]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 1,
+        "case_id": "case_1_complete_normal_path",
+        "case_step": 1,
+        "dt_expr": null,
+        "inputs": {
+          "Start": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Start[1]",
+            "type": "BOOL"
+          },
+          "Stop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Stop[1]",
+            "type": "BOOL"
+          },
+          "Reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Reset[1]",
+            "type": "BOOL"
+          },
+          "ExtendDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ExtendDone[1]",
+            "type": "BOOL"
+          },
+          "ClampDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ClampDone[1]",
+            "type": "BOOL"
+          },
+          "ReleaseDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReleaseDone[1]",
+            "type": "BOOL"
+          },
+          "RetractDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_RetractDone[1]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "Extend": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Extend[1]",
+            "type": "BOOL"
+          },
+          "Clamp": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Clamp[1]",
+            "type": "BOOL"
+          },
+          "Release": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Release[1]",
+            "type": "BOOL"
+          },
+          "Retract": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Retract[1]",
+            "type": "BOOL"
+          },
+          "Busy": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Busy[1]",
+            "type": "BOOL"
+          },
+          "Done": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Done[1]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 2,
+        "case_id": "case_1_complete_normal_path",
+        "case_step": 2,
+        "dt_expr": null,
+        "inputs": {
+          "Start": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Start[2]",
+            "type": "BOOL"
+          },
+          "Stop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Stop[2]",
+            "type": "BOOL"
+          },
+          "Reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Reset[2]",
+            "type": "BOOL"
+          },
+          "ExtendDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ExtendDone[2]",
+            "type": "BOOL"
+          },
+          "ClampDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ClampDone[2]",
+            "type": "BOOL"
+          },
+          "ReleaseDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReleaseDone[2]",
+            "type": "BOOL"
+          },
+          "RetractDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_RetractDone[2]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "Extend": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Extend[2]",
+            "type": "BOOL"
+          },
+          "Clamp": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Clamp[2]",
+            "type": "BOOL"
+          },
+          "Release": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Release[2]",
+            "type": "BOOL"
+          },
+          "Retract": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Retract[2]",
+            "type": "BOOL"
+          },
+          "Busy": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Busy[2]",
+            "type": "BOOL"
+          },
+          "Done": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Done[2]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 3,
+        "case_id": "case_1_complete_normal_path",
+        "case_step": 3,
+        "dt_expr": null,
+        "inputs": {
+          "Start": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Start[3]",
+            "type": "BOOL"
+          },
+          "Stop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Stop[3]",
+            "type": "BOOL"
+          },
+          "Reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Reset[3]",
+            "type": "BOOL"
+          },
+          "ExtendDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ExtendDone[3]",
+            "type": "BOOL"
+          },
+          "ClampDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ClampDone[3]",
+            "type": "BOOL"
+          },
+          "ReleaseDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReleaseDone[3]",
+            "type": "BOOL"
+          },
+          "RetractDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_RetractDone[3]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "Extend": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Extend[3]",
+            "type": "BOOL"
+          },
+          "Clamp": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Clamp[3]",
+            "type": "BOOL"
+          },
+          "Release": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Release[3]",
+            "type": "BOOL"
+          },
+          "Retract": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Retract[3]",
+            "type": "BOOL"
+          },
+          "Busy": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Busy[3]",
+            "type": "BOOL"
+          },
+          "Done": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Done[3]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 4,
+        "case_id": "case_1_complete_normal_path",
+        "case_step": 4,
+        "dt_expr": null,
+        "inputs": {
+          "Start": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Start[4]",
+            "type": "BOOL"
+          },
+          "Stop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Stop[4]",
+            "type": "BOOL"
+          },
+          "Reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Reset[4]",
+            "type": "BOOL"
+          },
+          "ExtendDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ExtendDone[4]",
+            "type": "BOOL"
+          },
+          "ClampDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ClampDone[4]",
+            "type": "BOOL"
+          },
+          "ReleaseDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReleaseDone[4]",
+            "type": "BOOL"
+          },
+          "RetractDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_RetractDone[4]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "Extend": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Extend[4]",
+            "type": "BOOL"
+          },
+          "Clamp": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Clamp[4]",
+            "type": "BOOL"
+          },
+          "Release": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Release[4]",
+            "type": "BOOL"
+          },
+          "Retract": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Retract[4]",
+            "type": "BOOL"
+          },
+          "Busy": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Busy[4]",
+            "type": "BOOL"
+          },
+          "Done": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Done[4]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 5,
+        "case_id": "case_1_complete_normal_path",
+        "case_step": 5,
+        "dt_expr": null,
+        "inputs": {
+          "Start": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Start[5]",
+            "type": "BOOL"
+          },
+          "Stop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Stop[5]",
+            "type": "BOOL"
+          },
+          "Reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Reset[5]",
+            "type": "BOOL"
+          },
+          "ExtendDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ExtendDone[5]",
+            "type": "BOOL"
+          },
+          "ClampDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ClampDone[5]",
+            "type": "BOOL"
+          },
+          "ReleaseDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReleaseDone[5]",
+            "type": "BOOL"
+          },
+          "RetractDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_RetractDone[5]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "Extend": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Extend[5]",
+            "type": "BOOL"
+          },
+          "Clamp": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Clamp[5]",
+            "type": "BOOL"
+          },
+          "Release": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Release[5]",
+            "type": "BOOL"
+          },
+          "Retract": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Retract[5]",
+            "type": "BOOL"
+          },
+          "Busy": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Busy[5]",
+            "type": "BOOL"
+          },
+          "Done": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Done[5]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 6,
+        "case_id": "case_2_start_precondition_and_abort_priority",
+        "case_step": 0,
+        "dt_expr": null,
+        "inputs": {
+          "Start": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Start[6]",
+            "type": "BOOL"
+          },
+          "Stop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Stop[6]",
+            "type": "BOOL"
+          },
+          "Reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Reset[6]",
+            "type": "BOOL"
+          },
+          "ExtendDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ExtendDone[6]",
+            "type": "BOOL"
+          },
+          "ClampDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ClampDone[6]",
+            "type": "BOOL"
+          },
+          "ReleaseDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReleaseDone[6]",
+            "type": "BOOL"
+          },
+          "RetractDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_RetractDone[6]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "Extend": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Extend[6]",
+            "type": "BOOL"
+          },
+          "Clamp": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Clamp[6]",
+            "type": "BOOL"
+          },
+          "Release": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Release[6]",
+            "type": "BOOL"
+          },
+          "Retract": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Retract[6]",
+            "type": "BOOL"
+          },
+          "Busy": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Busy[6]",
+            "type": "BOOL"
+          },
+          "Done": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Done[6]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 7,
+        "case_id": "case_2_start_precondition_and_abort_priority",
+        "case_step": 1,
+        "dt_expr": null,
+        "inputs": {
+          "Start": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Start[7]",
+            "type": "BOOL"
+          },
+          "Stop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Stop[7]",
+            "type": "BOOL"
+          },
+          "Reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Reset[7]",
+            "type": "BOOL"
+          },
+          "ExtendDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ExtendDone[7]",
+            "type": "BOOL"
+          },
+          "ClampDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ClampDone[7]",
+            "type": "BOOL"
+          },
+          "ReleaseDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReleaseDone[7]",
+            "type": "BOOL"
+          },
+          "RetractDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_RetractDone[7]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "Extend": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Extend[7]",
+            "type": "BOOL"
+          },
+          "Clamp": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Clamp[7]",
+            "type": "BOOL"
+          },
+          "Release": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Release[7]",
+            "type": "BOOL"
+          },
+          "Retract": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Retract[7]",
+            "type": "BOOL"
+          },
+          "Busy": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Busy[7]",
+            "type": "BOOL"
+          },
+          "Done": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Done[7]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 8,
+        "case_id": "case_2_start_precondition_and_abort_priority",
+        "case_step": 2,
+        "dt_expr": null,
+        "inputs": {
+          "Start": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Start[8]",
+            "type": "BOOL"
+          },
+          "Stop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Stop[8]",
+            "type": "BOOL"
+          },
+          "Reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Reset[8]",
+            "type": "BOOL"
+          },
+          "ExtendDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ExtendDone[8]",
+            "type": "BOOL"
+          },
+          "ClampDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ClampDone[8]",
+            "type": "BOOL"
+          },
+          "ReleaseDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReleaseDone[8]",
+            "type": "BOOL"
+          },
+          "RetractDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_RetractDone[8]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "Extend": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Extend[8]",
+            "type": "BOOL"
+          },
+          "Clamp": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Clamp[8]",
+            "type": "BOOL"
+          },
+          "Release": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Release[8]",
+            "type": "BOOL"
+          },
+          "Retract": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Retract[8]",
+            "type": "BOOL"
+          },
+          "Busy": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Busy[8]",
+            "type": "BOOL"
+          },
+          "Done": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Done[8]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 9,
+        "case_id": "case_2_start_precondition_and_abort_priority",
+        "case_step": 3,
+        "dt_expr": null,
+        "inputs": {
+          "Start": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Start[9]",
+            "type": "BOOL"
+          },
+          "Stop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Stop[9]",
+            "type": "BOOL"
+          },
+          "Reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Reset[9]",
+            "type": "BOOL"
+          },
+          "ExtendDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ExtendDone[9]",
+            "type": "BOOL"
+          },
+          "ClampDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ClampDone[9]",
+            "type": "BOOL"
+          },
+          "ReleaseDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReleaseDone[9]",
+            "type": "BOOL"
+          },
+          "RetractDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_RetractDone[9]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "Extend": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Extend[9]",
+            "type": "BOOL"
+          },
+          "Clamp": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Clamp[9]",
+            "type": "BOOL"
+          },
+          "Release": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Release[9]",
+            "type": "BOOL"
+          },
+          "Retract": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Retract[9]",
+            "type": "BOOL"
+          },
+          "Busy": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Busy[9]",
+            "type": "BOOL"
+          },
+          "Done": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Done[9]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 10,
+        "case_id": "case_2_start_precondition_and_abort_priority",
+        "case_step": 4,
+        "dt_expr": null,
+        "inputs": {
+          "Start": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Start[10]",
+            "type": "BOOL"
+          },
+          "Stop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Stop[10]",
+            "type": "BOOL"
+          },
+          "Reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Reset[10]",
+            "type": "BOOL"
+          },
+          "ExtendDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ExtendDone[10]",
+            "type": "BOOL"
+          },
+          "ClampDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ClampDone[10]",
+            "type": "BOOL"
+          },
+          "ReleaseDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReleaseDone[10]",
+            "type": "BOOL"
+          },
+          "RetractDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_RetractDone[10]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "Extend": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Extend[10]",
+            "type": "BOOL"
+          },
+          "Clamp": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Clamp[10]",
+            "type": "BOOL"
+          },
+          "Release": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Release[10]",
+            "type": "BOOL"
+          },
+          "Retract": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Retract[10]",
+            "type": "BOOL"
+          },
+          "Busy": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Busy[10]",
+            "type": "BOOL"
+          },
+          "Done": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Done[10]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 11,
+        "case_id": "case_2_start_precondition_and_abort_priority",
+        "case_step": 5,
+        "dt_expr": null,
+        "inputs": {
+          "Start": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Start[11]",
+            "type": "BOOL"
+          },
+          "Stop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Stop[11]",
+            "type": "BOOL"
+          },
+          "Reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Reset[11]",
+            "type": "BOOL"
+          },
+          "ExtendDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ExtendDone[11]",
+            "type": "BOOL"
+          },
+          "ClampDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ClampDone[11]",
+            "type": "BOOL"
+          },
+          "ReleaseDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReleaseDone[11]",
+            "type": "BOOL"
+          },
+          "RetractDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_RetractDone[11]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "Extend": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Extend[11]",
+            "type": "BOOL"
+          },
+          "Clamp": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Clamp[11]",
+            "type": "BOOL"
+          },
+          "Release": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Release[11]",
+            "type": "BOOL"
+          },
+          "Retract": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Retract[11]",
+            "type": "BOOL"
+          },
+          "Busy": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Busy[11]",
+            "type": "BOOL"
+          },
+          "Done": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Done[11]",
+            "type": "BOOL"
+          }
+        }
+      },
+      {
+        "step_index": 12,
+        "case_id": "case_2_start_precondition_and_abort_priority",
+        "case_step": 6,
+        "dt_expr": null,
+        "inputs": {
+          "Start": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Start[12]",
+            "type": "BOOL"
+          },
+          "Stop": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Stop[12]",
+            "type": "BOOL"
+          },
+          "Reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_Reset[12]",
+            "type": "BOOL"
+          },
+          "ExtendDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ExtendDone[12]",
+            "type": "BOOL"
+          },
+          "ClampDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ClampDone[12]",
+            "type": "BOOL"
+          },
+          "ReleaseDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_ReleaseDone[12]",
+            "type": "BOOL"
+          },
+          "RetractDone": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_RetractDone[12]",
+            "type": "BOOL"
+          }
+        },
+        "outputs": {
+          "Extend": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Extend[12]",
+            "type": "BOOL"
+          },
+          "Clamp": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Clamp[12]",
+            "type": "BOOL"
+          },
+          "Release": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Release[12]",
+            "type": "BOOL"
+          },
+          "Retract": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Retract[12]",
+            "type": "BOOL"
+          },
+          "Busy": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Busy[12]",
+            "type": "BOOL"
+          },
+          "Done": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Done[12]",
+            "type": "BOOL"
+          }
+        }
+      }
+    ]
+  },
+  "result_path": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\a327cec46bbf6b91\\simulation_evidence.json"
+}

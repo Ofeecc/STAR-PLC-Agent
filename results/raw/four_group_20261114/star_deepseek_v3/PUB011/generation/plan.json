@@ -1,0 +1,188 @@
+{
+  "state_machine": [
+    {
+      "name": "MANUAL",
+      "outputs": "MotorForward = ForwardButton AND NOT ReverseButton; MotorReverse = ReverseButton AND NOT ForwardButton; CompletionLight = false; phase forced to WAIT_A",
+      "transitions": [
+        {
+          "when": "Mode == true",
+          "target": "WAIT_A",
+          "action": "Return to automatic mode; wait for A; no automatic motion on entry"
+        }
+      ]
+    },
+    {
+      "name": "WAIT_A",
+      "outputs": "MotorForward=false; MotorReverse=false; CompletionLight=false",
+      "transitions": [
+        {
+          "when": "Mode == false",
+          "target": "MANUAL",
+          "action": "Clear automatic state and completion; stop automatic motion"
+        },
+        {
+          "when": "Mode == true AND SensorA AND ButtonA",
+          "target": "MOVE_AB",
+          "action": "Start forward movement from A to B; one transition per scan"
+        }
+      ]
+    },
+    {
+      "name": "MOVE_AB",
+      "outputs": "MotorForward=true; MotorReverse=false; CompletionLight=false unless arrival transition applies in same scan",
+      "transitions": [
+        {
+          "when": "Mode == false",
+          "target": "MANUAL",
+          "action": "Clear automatic state and completion; stop automatic motion"
+        },
+        {
+          "when": "Mode == true AND SensorB",
+          "target": "WAIT_B",
+          "action": "Destination arrival stops forward output in same scan"
+        }
+      ]
+    },
+    {
+      "name": "WAIT_B",
+      "outputs": "MotorForward=false; MotorReverse=false; CompletionLight=false",
+      "transitions": [
+        {
+          "when": "Mode == false",
+          "target": "MANUAL",
+          "action": "Clear automatic state and completion; stop automatic motion"
+        },
+        {
+          "when": "Mode == true AND SensorB AND ButtonB",
+          "target": "MOVE_BC",
+          "action": "Start forward movement from B to C; one transition per scan"
+        }
+      ]
+    },
+    {
+      "name": "MOVE_BC",
+      "outputs": "MotorForward=true; MotorReverse=false; CompletionLight=false unless arrival transition applies in same scan",
+      "transitions": [
+        {
+          "when": "Mode == false",
+          "target": "MANUAL",
+          "action": "Clear automatic state and completion; stop automatic motion"
+        },
+        {
+          "when": "Mode == true AND SensorC",
+          "target": "WAIT_C",
+          "action": "Destination arrival stops forward output in same scan"
+        }
+      ]
+    },
+    {
+      "name": "WAIT_C",
+      "outputs": "MotorForward=false; MotorReverse=false; CompletionLight=false",
+      "transitions": [
+        {
+          "when": "Mode == false",
+          "target": "MANUAL",
+          "action": "Clear automatic state and completion; stop automatic motion"
+        },
+        {
+          "when": "Mode == true AND SensorC AND ButtonC",
+          "target": "DONE",
+          "action": "Assert CompletionLight in same scan"
+        }
+      ]
+    },
+    {
+      "name": "DONE",
+      "outputs": "MotorForward=false; MotorReverse=false; CompletionLight=true while SensorC remains true",
+      "transitions": [
+        {
+          "when": "Mode == false",
+          "target": "MANUAL",
+          "action": "Clear automatic state and completion; stop automatic motion"
+        },
+        {
+          "when": "Mode == true AND NOT SensorC",
+          "target": "WAIT_A",
+          "action": "Product removed; clear CompletionLight in same scan and wait for A"
+        }
+      ]
+    }
+  ],
+  "timer_plan": {
+    "timers": [],
+    "PT_durations": {},
+    "reset_conditions": "None. No IEC timers are required by the specification; all transitions are level- and phase-qualified. If timers are added later, call their FBs unconditionally outside CASE/IF and reset them on Mode=FALSE, manual entry, or instance reset."
+  },
+  "priorities": [
+    "Safety first: MotorForward and MotorReverse must never be true simultaneously.",
+    "Manual conflict resolution: if ForwardButton and ReverseButton are both true, both motor direction outputs are false.",
+    "Mode reset priority: entering manual mode clears automatic phase to WAIT_A and forces CompletionLight off.",
+    "Destination arrival priority: SensorB in MOVE_AB or SensorC in MOVE_BC stops forward motion in the same scan before any next processing step.",
+    "One automatic phase transition per scan; arrival stop has priority over station-complete start.",
+    "Automatic mode allows forward motion only; reverse output is false in automatic mode.",
+    "CompletionLight is on only in DONE while SensorC is true; removal of SensorC clears the light and returns to WAIT_A.",
+    "Station buttons are accepted only when their corresponding sensor and wait phase are active.",
+    "Outputs are assigned once in the final scan stage from the post-transition state, with a final mutual-exclusion interlock."
+  ],
+  "initial_values": {
+    "phase": "WAIT_A",
+    "state": "WAIT_A",
+    "MotorForward": false,
+    "MotorReverse": false,
+    "CompletionLight": false,
+    "ModePrev": false,
+    "ForwardButtonPrev": false,
+    "ReverseButtonPrev": false,
+    "ButtonAPrev": false,
+    "ButtonBPrev": false,
+    "ButtonCPrev": false
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "edge sampling",
+      "description": "Sample all inputs I[k] at invocation. Compute R_TRIG flags for Mode, ForwardButton, ReverseButton, ButtonA, ButtonB, and ButtonC for diagnostics and mode-entry detection. Automatic station acceptance uses level-qualified SensorX AND ButtonX per assumptions; edge flags do not create multiple transitions."
+    },
+    {
+      "stage": 2,
+      "name": "safety/reset priority and state transitions",
+      "description": "Apply Mode=FALSE first: enter MANUAL, force phase=WAIT_A, clear automatic state and CompletionLight. Then apply automatic transitions in priority order: destination arrival stop (MOVE_AB AND SensorB -> WAIT_B; MOVE_BC AND SensorC -> WAIT_C), station complete start (WAIT_A AND SensorA AND ButtonA -> MOVE_AB; WAIT_B AND SensorB AND ButtonB -> MOVE_BC; WAIT_C AND SensorC AND ButtonC -> DONE), and removal (DONE AND NOT SensorC -> WAIT_A). At most one automatic phase transition per scan. Manual-to-auto entry goes to WAIT_A only."
+    },
+    {
+      "stage": 3,
+      "name": "unconditional top-level timer FB calls outside CASE/IF",
+      "description": "No timer FBs are required. If timers are added for future debounce or delay, instantiate and call them unconditionally at top level outside CASE/IF; reset them on instance reset, Mode=FALSE, or manual entry."
+    },
+    {
+      "stage": 4,
+      "name": "unified output assignments",
+      "description": "Assign MotorForward, MotorReverse, and CompletionLight exactly once from the post-transition state/phase. MANUAL: MotorForward=(ForwardButton AND NOT ReverseButton); MotorReverse=(ReverseButton AND NOT ForwardButton); CompletionLight=false. AUTO WAIT_A/WAIT_B/WAIT_C: all outputs false. AUTO MOVE_AB/MOVE_BC: MotorForward=true unless arrival transition moved to WAIT_B/WAIT_C in this scan; MotorReverse=false; CompletionLight=false. DONE: MotorForward=false; MotorReverse=false; CompletionLight=true while SensorC. Final interlock: if MotorForward AND MotorReverse then both are forced false."
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G(!(MotorForward && MotorReverse))"
+    },
+    {
+      "id": "A2",
+      "formula": "G((!Mode) -> ((MotorForward <-> (ForwardButton && !ReverseButton)) && (MotorReverse <-> (ReverseButton && !ForwardButton))))"
+    },
+    {
+      "id": "A3",
+      "formula": "G(Mode -> !MotorReverse)"
+    },
+    {
+      "id": "A4",
+      "formula": "G(CompletionLight -> SensorC)"
+    },
+    {
+      "id": "A5",
+      "formula": "G((!Mode) -> !CompletionLight)"
+    },
+    {
+      "id": "A6",
+      "formula": "G((Mode && SensorC) -> !MotorForward)"
+    }
+  ]
+}

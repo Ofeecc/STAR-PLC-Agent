@@ -1,0 +1,21 @@
+{
+  "request_id": "a8fc30d0c5e145499db93d78fe7a8b20",
+  "source_sha256": "17c419b0afcf1884908f4477e05d9dbb98e534bf0a436f20cd2594535d939728",
+  "task_id": "PUB010",
+  "project": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\53e5457518da8512\\task.project",
+  "candidate": {
+    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    TemperatureSensorInput : REAL;\n    SetTemperature : REAL;\nEND_VAR\nVAR_OUTPUT\n    CurrentTemperature : REAL := 0.0;\n    SetTempDisplay : REAL := 0.0;\n    HeaterStatus : BOOL := FALSE;\n    OverheatProtection : BOOL := FALSE;\n    HeaterOutput : BOOL := FALSE;\nEND_VAR\nVAR\n    state : INT := 0; (* 0: idle, 1: heating, 2: protected *)\n    heatDemand : BOOL := FALSE;\n    sensorFault : BOOL := FALSE;\n    sampledTemperature : REAL;\n    sampledSetTemperature : REAL;\n    now_ms : UDINT := 0;\n    heatStart_ms : UDINT := 0;\n    protectionStart_ms : UDINT := 0;\n    heatElapsed_ms : UDINT := 0;\n    cooldownElapsed_ms : UDINT := 0;\n    elapsed_ms : UDINT := 0;\n    HeatTON : TON;\n    CooldownTON : TON;\nEND_VAR",
+    "implementation": "sampledTemperature := TemperatureSensorInput;\nsampledSetTemperature := SetTemperature;\n(* TIME() is the CODESYS millisecond system clock. Elapsed-time arithmetic\n   handles one clock wrap; the task must execute at least once per wrap. *)\nnow_ms := TIME_TO_UDINT(TIME());\n\nsensorFault := (sampledTemperature < 0.0) OR (sampledTemperature > 100.0);\nIF NOT sensorFault THEN\n    IF sampledTemperature < sampledSetTemperature THEN\n        heatDemand := TRUE;\n    ELSIF sampledTemperature > sampledSetTemperature THEN\n        heatDemand := FALSE;\n    END_IF;\nEND_IF;\n\nCASE state OF\n    0:\n        heatElapsed_ms := 0;\n        cooldownElapsed_ms := 0;\n        IF NOT sensorFault AND heatDemand THEN\n            heatStart_ms := now_ms;\n            state := 1;\n        END_IF;\n\n    1:\n        elapsed_ms := F_TaskElapsedMs(nowValue := now_ms, startValue := heatStart_ms);\n        IF elapsed_ms >= 5000 THEN\n            heatElapsed_ms := 0;\n            cooldownElapsed_ms := 0;\n            protectionStart_ms := now_ms;\n            state := 2;\n        ELSIF sensorFault OR NOT heatDemand THEN\n            heatElapsed_ms := 0;\n            state := 0;\n        ELSE\n            heatElapsed_ms := elapsed_ms;\n        END_IF;\n\n    2:\n        heatElapsed_ms := 0;\n        elapsed_ms := F_TaskElapsedMs(nowValue := now_ms, startValue := protectionStart_ms);\n        IF elapsed_ms >= 3000 THEN\n            cooldownElapsed_ms := 0;\n            IF NOT sensorFault AND heatDemand THEN\n                heatStart_ms := now_ms;\n                state := 1;\n            ELSE\n                state := 0;\n            END_IF;\n        ELSE\n            cooldownElapsed_ms := elapsed_ms;\n        END_IF;\n\n    ELSE\n        state := 0;\n        heatElapsed_ms := 0;\n        cooldownElapsed_ms := 0;\nEND_CASE;\n\nHeatTON(IN := (state = 1), PT := T#5s);\nCooldownTON(IN := (state = 2), PT := T#3s);\n\nCurrentTemperature := sampledTemperature;\nSetTempDisplay := sampledSetTemperature;\nOverheatProtection := (state = 2);\nHeaterOutput := (state = 1);\nHeaterStatus := HeaterOutput;",
+    "supporting_objects": [
+      {
+        "name": "F_TaskElapsedMs",
+        "kind": "FUNCTION",
+        "return_type": "UDINT",
+        "declaration": "FUNCTION F_TaskElapsedMs : UDINT\nVAR_INPUT\n    nowValue : UDINT;\n    startValue : UDINT;\nEND_VAR",
+        "implementation": "IF nowValue >= startValue THEN\n    F_TaskElapsedMs := nowValue - startValue;\nELSE\n    F_TaskElapsedMs := (UDINT#16#FFFFFFFF - startValue) + nowValue + UDINT#1;\nEND_IF;"
+      }
+    ]
+  },
+  "result_path": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\53e5457518da8512\\codesys_evidence.json",
+  "started_utc": "2026-11-14T11:22:02.465111+00:00"
+}

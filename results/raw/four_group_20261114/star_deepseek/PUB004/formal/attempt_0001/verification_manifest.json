@@ -1,0 +1,77 @@
+{
+  "task_id": "PUB004",
+  "source_sha256": "f6bfba37876e750d8fe0a013a590b7a1f261ed462642fce9be817e7ad5a6ac62",
+  "st_path": "candidate.st",
+  "ltl_path": "spec.ltl",
+  "properties": [
+    {
+      "id": "PUB004.P_init",
+      "formula": "init",
+      "description": "Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope)."
+    },
+    {
+      "id": "PUB004.P1",
+      "formula": "G(VFD_RUN <-> (permit & qualified))",
+      "description": "The run output follows the qualified permissive."
+    },
+    {
+      "id": "PUB004.P2",
+      "formula": "G(!permit -> !VFD_RUN)",
+      "description": "Raw loss or E-stop stops immediately."
+    },
+    {
+      "id": "PUB004.P3",
+      "formula": "G((!permit) -> X(!qualified))",
+      "description": "A lost permissive clears qualification history; future qualification must be rebuilt."
+    },
+    {
+      "id": "PUB004.P4",
+      "formula": "G(VFD_RUN -> accNext=accPrev+TIME_TO_LTIME(CycleTime))",
+      "description": "Only enabled intervals are accumulated in a long time type."
+    },
+    {
+      "id": "PUB004.P5",
+      "formula": "G(!VFD_RUN -> accNext=accPrev)",
+      "description": "Stopping retains accumulated service time."
+    },
+    {
+      "id": "PUB004.P6",
+      "formula": "G(PUMP_MAINT_DUE <-> accNext>=LTIME#500h)",
+      "description": "Maintenance threshold is 500 hours."
+    },
+    {
+      "id": "PUB004.P7",
+      "formula": "(G(F(TimeTick))) -> (G((G(permit) & DebounceTime>TIME#0ms) -> F(VFD_RUN)))",
+      "description": "A continuously permitted demand eventually starts under advancing time. Explicit non-Zeno environment premise: physical elapsed time crosses infinitely many 1ms boundaries."
+    },
+    {
+      "id": "PUB004.COMPLETE",
+      "formula": "G(CompleteBehavior)",
+      "description": "Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed."
+    }
+  ],
+  "atomic_propositions": {
+    "permit": "VISCOSITY_OK & PASTE_E_STOP_NC",
+    "qualified": "Continuous permitted raw TRUE duration >= DebounceTime, with first sampled TRUE at elapsed zero.",
+    "accPrev": "{\"kind\": \"previous_observed_output\", \"source\": \"O[k-1].PUMP_RUNTIME_ACC\", \"initial\": \"LTIME#0ns\", \"update\": \"After comparing scan k, store ACTUAL O[k].PUMP_RUNTIME_ACC; never write into reference state.\"}",
+    "accNext": "O[k].PUMP_RUNTIME_ACC, actual post-scan LTIME; never reference accumulator.",
+    "interface names": "Identically named sampled input or end-of-scan output.",
+    "CompleteBehavior": "令(Sref[k+1], E[k])=T_PUB004(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\n物理采样时钟首拍0、以后累加dt_ms；CycleTime与采样周期dt_ms一致，首拍运行工时按CycleTime语义计入。permit=VISCOSITY_OK & PASTE_E_STOP_NC；首次permit真时记录起点，假时清起点，run=permit且年龄>=固定正DebounceTime。acc初值0；accAfter=accBefore+(run?CycleTime:0)，CycleTime先解释为纳秒；maint=accAfter>=500h。累计域0..2^63-1纳秒。",
+    "TimeTick": "Boolean: floor(t[k]/1ms)>floor(t[k-1]/1ms), with t[0]=0, TimeTick[0]=FALSE, t[k]=sum(dt_ms[1..k]). G(F(TimeTick)) states unbounded physical time progress; merely positive dt is insufficient.",
+    "VISCOSITY_OK": "I[k].VISCOSITY_OK: sampled input (BOOL).",
+    "PASTE_E_STOP_NC": "I[k].PASTE_E_STOP_NC: sampled input (BOOL).",
+    "DebounceTime": "I[k].DebounceTime: sampled input (TIME).",
+    "CycleTime": "I[k].CycleTime: sampled input (TIME).",
+    "VFD_RUN": "O[k].VFD_RUN: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "PUMP_MAINT_DUE": "O[k].PUMP_MAINT_DUE: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "PUMP_RUNTIME_ACC": "O[k].PUMP_RUNTIME_ACC: independently observed post-scan candidate value (LTIME); never defined as expected output.",
+    "init": "At the separate pre-invocation initial observation before scan k=0: O_init.VFD_RUN=false, O_init.PUMP_MAINT_DUE=false, O_init.PUMP_RUNTIME_ACC=\"LTIME#0ns\"."
+  },
+  "tools_supported": [],
+  "encoding_complete": false,
+  "task_sha256": "0b54e8d02c93676ec59cae887c572c337a97158483698d7efe06c036991472e5",
+  "bundle_status": "UNSUPPORTED_ST",
+  "created_utc": "2026-11-14T09:24:33.581235+00:00",
+  "verification_status": "UNSUPPORTED_ST",
+  "reason": "Candidate input DebounceTime has no observer binding"
+}

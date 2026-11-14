@@ -1,0 +1,13 @@
+{
+  "request_id": "e19491e6ed8045cb8933d7755f199255",
+  "source_sha256": "121bf68bd16ce4febe8a5692f5ffa79342ce41238423773639f9aa519cceb03c",
+  "task_id": "PUB013",
+  "project": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\dd541a23f9c08b28\\task.project",
+  "candidate": {
+    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    OCCUPANCY_DETECTED : BOOL;\n    ENERGY_SAVING_MODE : BOOL;\n    HVAC_MODE_SELECTOR : INT;\nEND_VAR\nVAR_OUTPUT\n    SUPPLY_FAN_RUN : BOOL := FALSE;\n    TEMP_SETPOINT_ADJUST : INT := 0;\nEND_VAR\nVAR\n    freeRunTimer : TON;\n    startTime : TIME;\n    elapsed : TIME;\n    timing : BOOL := FALSE;\n    state : INT := 0;\n    permit : BOOL := FALSE;\nEND_VAR",
+    "implementation": "// Stage 1: sample inputs and compute permit\npermit := OCCUPANCY_DETECTED AND (HVAC_MODE_SELECTOR <> 3);\n\n// Stage 2: free-running timer for elapsed time measurement\n// Use a TON as a monotonic time source. IN is always TRUE and PT is large.\nfreeRunTimer(IN := TRUE, PT := T#24H);\n\n// Stage 3: timing logic and state machine\nIF NOT permit THEN\n    timing := FALSE;\n    elapsed := T#0S;\n    state := 0; // S0_RESET_OFF\nELSIF NOT timing THEN\n    timing := TRUE;\n    startTime := freeRunTimer.ET;\n    elapsed := T#0S;\n    state := 1; // S1_DELAY_RUNNING\nELSE\n    elapsed := freeRunTimer.ET - startTime;\n    IF elapsed >= T#30S THEN\n        state := 2; // S2_FAN_ON\n    ELSE\n        state := 1; // S1_DELAY_RUNNING\n    END_IF;\nEND_IF;\n\n// Stage 4: unified output assignments\nCASE HVAC_MODE_SELECTOR OF\n    3:\n        TEMP_SETPOINT_ADJUST := 4;\n    0:\n        IF OCCUPANCY_DETECTED THEN\n            TEMP_SETPOINT_ADJUST := 0;\n        ELSIF ENERGY_SAVING_MODE THEN\n            TEMP_SETPOINT_ADJUST := 3;\n        ELSE\n            TEMP_SETPOINT_ADJUST := 2;\n        END_IF;\n    1:\n        IF OCCUPANCY_DETECTED THEN\n            TEMP_SETPOINT_ADJUST := 0;\n        ELSE\n            TEMP_SETPOINT_ADJUST := 1;\n        END_IF;\n    2:\n        IF OCCUPANCY_DETECTED THEN\n            TEMP_SETPOINT_ADJUST := 0;\n        ELSE\n            TEMP_SETPOINT_ADJUST := 4;\n        END_IF;\n    ELSE\n        TEMP_SETPOINT_ADJUST := 0;\nEND_CASE;\n\n// Enforce the required adjustment bounds\nIF TEMP_SETPOINT_ADJUST < -4 THEN\n    TEMP_SETPOINT_ADJUST := -4;\nELSIF TEMP_SETPOINT_ADJUST > 4 THEN\n    TEMP_SETPOINT_ADJUST := 4;\nEND_IF;\n\n// Fan enable: true only after 30 s of continuous permit\nSUPPLY_FAN_RUN := (state = 2);",
+    "supporting_objects": []
+  },
+  "result_path": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\dd541a23f9c08b28\\codesys_evidence.json",
+  "started_utc": "2026-11-14T09:59:03.991036+00:00"
+}

@@ -1,0 +1,159 @@
+{
+  "state_machine": [
+    {
+      "state": "IDLE",
+      "purpose": "Fresh instance or between scans; no retained batch state.",
+      "actions": "None. Outputs are not initialized or cleared.",
+      "transitions": [
+        {
+          "to": "SAMPLE_INPUTS",
+          "condition": "FB invocation / first scan"
+        }
+      ]
+    },
+    {
+      "state": "SAMPLE_INPUTS",
+      "purpose": "Single sampling point for scan inputs.",
+      "actions": "Latch count, array lower bounds, and compute nProcess = clamp(count, 0, min(len(analogValues), len(channels))). Read-only channel configuration and raw analog values are used as sampled for this scan.",
+      "transitions": [
+        {
+          "to": "BATCH_DONE",
+          "condition": "nProcess <= 0"
+        },
+        {
+          "to": "PROCESS_CHANNEL",
+          "condition": "nProcess > 0"
+        }
+      ]
+    },
+    {
+      "state": "PROCESS_CHANNEL",
+      "purpose": "Ordinal loop over the first nProcess channels with per-channel priority decisions.",
+      "actions": "For ordinal j: if j >= count or channels[j].enable is FALSE, preserve retVal and outputValue. Else if measuringMode is not 0, 1, or 2, set retVal=16#8001 and preserve outputValue. Else if hiLIM <= loLIM, set retVal=16#8002 and preserve outputValue. Else compute outputValue according to measuringMode and set retVal=0. Never write analogValues or read-only configuration fields.",
+      "transitions": [
+        {
+          "to": "PROCESS_CHANNEL",
+          "condition": "j + 1 < nProcess"
+        },
+        {
+          "to": "BATCH_DONE",
+          "condition": "j + 1 >= nProcess"
+        }
+      ]
+    },
+    {
+      "state": "BATCH_DONE",
+      "purpose": "Unified output assignments committed for this scan.",
+      "actions": "No persistent state. Next invocation re-enters SAMPLE_INPUTS. Skipped, disabled, out-of-count, and error-channel outputValue remain caller-retained.",
+      "transitions": [
+        {
+          "to": "SAMPLE_INPUTS",
+          "condition": "next FB invocation"
+        }
+      ]
+    }
+  ],
+  "timer_plan": {
+    "required": false,
+    "timers": [],
+    "pt_durations": "N/A",
+    "reset_conditions": "No timers are reset or used. FB behavior is scan-combinational and does not depend on elapsed time."
+  },
+  "priorities": {
+    "safety": [
+      "Never modify analogValues elements.",
+      "Never modify read-only channel configuration fields: enable, hiLIM, loLIM, bipolar, measuringMode.",
+      "Process only ordinal positions j where j < count and j maps to valid indices in both arrays using each array's independent lower bound.",
+      "Preserve retVal and outputValue for disabled and out-of-count channels.",
+      "Preserve outputValue for enabled channels that return an error status.",
+      "Invalid measuringMode has priority over invalid hiLIM/loLIM.",
+      "Limit validation hiLIM <= loLIM applies to every enabled channel whose measuringMode is valid, including temperature modes."
+    ],
+    "operational": [
+      "Sample count and array bounds once per scan before processing.",
+      "Process ordinals in ascending order from 0 to nProcess-1.",
+      "Successful enabled conversion sets retVal=0 and writes exactly one outputValue.",
+      "Mode 0 uses unipolar raw 0..27648 or bipolar raw -27648..27648 linear scaling; no saturation is applied.",
+      "Mode 1 outputValue = REAL(raw) / 10.0.",
+      "Mode 2 outputValue = REAL(raw) / 100.0.",
+      "Use local temporary REAL arithmetic before committing outputValue."
+    ]
+  },
+  "initial_values": {
+    "internal": {
+      "sPhase": "IDLE",
+      "jOrdinal": "0",
+      "nProcess": "0",
+      "tmpRaw": "0",
+      "tmpLo": "0.0",
+      "tmpHi": "0.0",
+      "tmpMode": "0",
+      "tmpBipolar": "FALSE",
+      "tmpEnabled": "FALSE"
+    },
+    "outputs": {
+      "channels[].retVal": "Not initialized or cleared by the FB. Caller-sampled value is preserved for disabled, out-of-count, and invalid channels; written only for enabled in-count channels as specified.",
+      "channels[].outputValue": "Not initialized or cleared by the FB. Caller-sampled value is preserved for disabled, out-of-count, and invalid channels; overwritten only on successful enabled conversion."
+    },
+    "arrays": {
+      "analogValues": "Read-only; never initialized or written by the FB.",
+      "channels configuration fields": "Read-only; never initialized or written by the FB."
+    }
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "edge sampling",
+      "actions": "Sample count, array lower bounds, and guard values once for the current invocation. No R_TRIG/R_FTRIG or timer-edge behavior is required. Read-only channel configuration and raw analog values are treated as stable sampled inputs for this scan."
+    },
+    {
+      "stage": 2,
+      "name": "safety/reset priority and state transitions",
+      "actions": "Establish the global guard nProcess = clamp(count, 0, min(len(analogValues), len(channels))). Apply priority rules: disabled/out-of-count preserves outputs; invalid measuringMode returns 16#8001 before limit validation; invalid limits return 16#8002; valid channels return retVal=0. No reset is required; the logical state transitions IDLE -> SAMPLE_INPUTS -> PROCESS_CHANNEL -> BATCH_DONE each scan."
+    },
+    {
+      "stage": 3,
+      "name": "unconditional top-level timer FB calls outside CASE/IF",
+      "actions": "None. No timer FBs are required. If timers are added later, their unconditional top-level calls belong here outside CASE/IF blocks."
+    },
+    {
+      "stage": 4,
+      "name": "unified output assignments",
+      "actions": "Single ordinal loop j = 0 to nProcess-1. For each enabled in-count channel, assign channels[lbC+j].retVal and channels[lbC+j].outputValue exactly once according to the stage-2 priority and conversion rules. Preserve all other channel outputs exactly. Never assign analogValues or any read-only channel field."
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G(analogValues = PRE(analogValues) && forall j: channels[j].enable = PRE(channels[j].enable) && channels[j].hiLIM = PRE(channels[j].hiLIM) && channels[j].loLIM = PRE(channels[j].loLIM) && channels[j].bipolar = PRE(channels[j].bipolar) && channels[j].measuringMode = PRE(channels[j].measuringMode))"
+    },
+    {
+      "id": "A2",
+      "formula": "G(forall j: (!(j < count && channels[j].enable)) -> (channels[j].retVal = PRE(channels[j].retVal) && channels[j].outputValue = PRE(channels[j].outputValue)))"
+    },
+    {
+      "id": "A3",
+      "formula": "G(forall j: (j < count && channels[j].enable && channels[j].measuringMode != 0 && channels[j].measuringMode != 1 && channels[j].measuringMode != 2) -> (channels[j].retVal = 16#8001 && channels[j].outputValue = PRE(channels[j].outputValue)))"
+    },
+    {
+      "id": "A4",
+      "formula": "G(forall j: (j < count && channels[j].enable && (channels[j].measuringMode = 0 || channels[j].measuringMode = 1 || channels[j].measuringMode = 2) && channels[j].hiLIM <= channels[j].loLIM) -> (channels[j].retVal = 16#8002 && channels[j].outputValue = PRE(channels[j].outputValue)))"
+    },
+    {
+      "id": "A5",
+      "formula": "G(forall j: (j < count && channels[j].enable && (channels[j].measuringMode = 0 || channels[j].measuringMode = 1 || channels[j].measuringMode = 2) && channels[j].hiLIM > channels[j].loLIM) -> channels[j].retVal = 0)"
+    },
+    {
+      "id": "A6",
+      "formula": "G(forall j: (j < count && channels[j].enable && channels[j].measuringMode = 0 && channels[j].hiLIM > channels[j].loLIM) -> channels[j].outputValue = (channels[j].bipolar ? channels[j].loLIM + ((REAL(analogValues[j]) + 27648.0) / 55296.0) * (channels[j].hiLIM - channels[j].loLIM) : channels[j].loLIM + (REAL(analogValues[j]) / 27648.0) * (channels[j].hiLIM - channels[j].loLIM)))"
+    },
+    {
+      "id": "A7",
+      "formula": "G(forall j: (j < count && channels[j].enable && channels[j].measuringMode = 1 && channels[j].hiLIM > channels[j].loLIM) -> channels[j].outputValue = REAL(analogValues[j]) / 10.0)"
+    },
+    {
+      "id": "A8",
+      "formula": "G(forall j: (j < count && channels[j].enable && channels[j].measuringMode = 2 && channels[j].hiLIM > channels[j].loLIM) -> channels[j].outputValue = REAL(analogValues[j]) / 100.0)"
+    }
+  ]
+}

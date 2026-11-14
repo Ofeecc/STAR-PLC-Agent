@@ -1,0 +1,1686 @@
+{
+  "request_id": "7597ca7ad9384df996678597337ad306",
+  "mode": "IDE_SIMULATION_ONLY",
+  "no_physical_connection": true,
+  "workspace": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\d4f8708fe986e735",
+  "project": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\d4f8708fe986e735\\simulation.project",
+  "template": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\d4f8708fe986e735\\benchmark.project",
+  "task_id": "PUB012",
+  "task_sha256": "761ba5d4e4cab8bbcf2e8c675d990b4b27b4707ff72e4893710ed8639917c3bf",
+  "source_sha256": "93aa15555250d5215a9092ec3d66a7bde6c9acd1e8b5529bba47eaecdd33d10d",
+  "candidate": {
+    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    THICKNESS_FAULT : BOOL;\n    THICKNESS_SIGNAL_VALID : BOOL;\n    CUTTING_RUN : BOOL;\n    FaultTimestamp : DINT;\n    CycleTime : TIME;\nEND_VAR\nVAR_OUTPUT\n    THICKNESS_ALARM : BOOL := FALSE;\n    Slab_Fault_Counter : UINT := 0;\n    Slab_Runtime_Accumulator : LTIME := LTIME#0ns;\n    Slab_Fault_History : ARRAY[0..4] OF DINT := [0, 0, 0, 0, 0];\nEND_VAR\nVAR\n    state : USINT := 0;\n    previous_valid_fault : BOOL := FALSE;\n    valid_fault : BOOL := FALSE;\n    rise : BOOL := FALSE;\n    select_A : BOOL := FALSE;\n    hold_active : BOOL := FALSE;\n    HoldA : TON;\n    HoldB : TON;\n    fault_count : UINT := 0;\n    runtime : LTIME := LTIME#0ns;\n    history : ARRAY[0..4] OF DINT := [0, 0, 0, 0, 0];\n    i : INT;\nEND_VAR\nVAR CONSTANT\n    STATE_INHIBITED : USINT := 0;\n    STATE_READY : USINT := 1;\n    STATE_TRACKING : USINT := 2;\nEND_VAR",
+    "implementation": "valid_fault := THICKNESS_SIGNAL_VALID AND THICKNESS_FAULT;\nrise := valid_fault AND NOT previous_valid_fault;\nprevious_valid_fault := valid_fault;\n\nIF NOT THICKNESS_SIGNAL_VALID THEN\n    state := STATE_INHIBITED;\nELSIF rise THEN\n    state := STATE_TRACKING;\n    select_A := NOT select_A;\n    fault_count := fault_count + UINT#1;\n    FOR i := 4 TO 1 BY -1 DO\n        history[i] := history[i - 1];\n    END_FOR;\n    history[0] := FaultTimestamp;\nELSIF state = STATE_INHIBITED THEN\n    state := STATE_READY;\nEND_IF;\n\nIF THICKNESS_SIGNAL_VALID AND NOT THICKNESS_FAULT AND CUTTING_RUN AND (CycleTime > T#0ms) THEN\n    runtime := runtime + TIME_TO_LTIME(CycleTime);\nEND_IF;\n\nHoldA(IN := THICKNESS_SIGNAL_VALID AND (state = STATE_TRACKING) AND select_A, PT := T#500ms);\nHoldB(IN := THICKNESS_SIGNAL_VALID AND (state = STATE_TRACKING) AND NOT select_A, PT := T#500ms);\n\nhold_active := (state = STATE_TRACKING) AND\n    ((select_A AND NOT HoldA.Q) OR (NOT select_A AND NOT HoldB.Q));\nTHICKNESS_ALARM := THICKNESS_SIGNAL_VALID AND (THICKNESS_FAULT OR hold_active);\nSlab_Fault_Counter := fault_count;\nSlab_Runtime_Accumulator := runtime;\nFOR i := 0 TO 4 DO\n    Slab_Fault_History[i] := history[i];\nEND_FOR;",
+    "supporting_objects": []
+  },
+  "program": {
+    "declaration": "PROGRAM PLC_PRG\nVAR\n BenchStep : UDINT := 0;\n BenchCalls : UDINT := 0;\n BenchDone : BOOL := FALSE;\n BenchLastTime : TIME := T#0ms;\n BenchClockReady : BOOL := FALSE;\n BenchCurrentTime : TIME := T#0ms;\n TraceDt : ARRAY[0..15] OF UDINT;\n BenchUut0 : FB_Task;\n BenchUut1 : FB_Task;\n TraceIn_THICKNESS_FAULT : ARRAY[0..15] OF BOOL;\n TraceIn_THICKNESS_SIGNAL_VALID : ARRAY[0..15] OF BOOL;\n TraceIn_CUTTING_RUN : ARRAY[0..15] OF BOOL;\n TraceIn_FaultTimestamp : ARRAY[0..15] OF DINT;\n TraceIn_CycleTime : ARRAY[0..15] OF TIME;\n TraceOut_THICKNESS_ALARM : ARRAY[0..15] OF BOOL;\n TraceOut_Slab_Fault_Counter : ARRAY[0..15] OF UINT;\n TraceOut_Slab_Runtime_Accumulator : ARRAY[0..15] OF LTIME;\n TraceOut_Slab_Fault_History_0 : ARRAY[0..15] OF DINT;\n TraceOut_Slab_Fault_History_1 : ARRAY[0..15] OF DINT;\n TraceOut_Slab_Fault_History_2 : ARRAY[0..15] OF DINT;\n TraceOut_Slab_Fault_History_3 : ARRAY[0..15] OF DINT;\n TraceOut_Slab_Fault_History_4 : ARRAY[0..15] OF DINT;\nEND_VAR",
+    "implementation": "IF NOT BenchDone THEN\n BenchCurrentTime := TIME();\n IF NOT BenchClockReady THEN\n  BenchLastTime := BenchCurrentTime;\n  BenchClockReady := TRUE;\n ELSE\n CASE BenchStep OF\n 0:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(10) THEN\n   TraceDt[0] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut0.THICKNESS_FAULT := FALSE;\n   BenchUut0.THICKNESS_SIGNAL_VALID := FALSE;\n   BenchUut0.CUTTING_RUN := TRUE;\n   BenchUut0.FaultTimestamp := DINT#0;\n   BenchUut0.CycleTime := TIME#10ms;\n   TraceIn_THICKNESS_FAULT[0] := BenchUut0.THICKNESS_FAULT;\n   TraceIn_THICKNESS_SIGNAL_VALID[0] := BenchUut0.THICKNESS_SIGNAL_VALID;\n   TraceIn_CUTTING_RUN[0] := BenchUut0.CUTTING_RUN;\n   TraceIn_FaultTimestamp[0] := BenchUut0.FaultTimestamp;\n   TraceIn_CycleTime[0] := BenchUut0.CycleTime;\n   BenchUut0();\n   TraceOut_THICKNESS_ALARM[0] := BenchUut0.THICKNESS_ALARM;\n   TraceOut_Slab_Fault_Counter[0] := BenchUut0.Slab_Fault_Counter;\n   TraceOut_Slab_Runtime_Accumulator[0] := BenchUut0.Slab_Runtime_Accumulator;\n   TraceOut_Slab_Fault_History_0[0] := BenchUut0.Slab_Fault_History[0];\n   TraceOut_Slab_Fault_History_1[0] := BenchUut0.Slab_Fault_History[1];\n   TraceOut_Slab_Fault_History_2[0] := BenchUut0.Slab_Fault_History[2];\n   TraceOut_Slab_Fault_History_3[0] := BenchUut0.Slab_Fault_History[3];\n   TraceOut_Slab_Fault_History_4[0] := BenchUut0.Slab_Fault_History[4];\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 1:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(100) THEN\n   TraceDt[1] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut0.THICKNESS_FAULT := FALSE;\n   BenchUut0.THICKNESS_SIGNAL_VALID := TRUE;\n   BenchUut0.CUTTING_RUN := TRUE;\n   BenchUut0.FaultTimestamp := DINT#0;\n   BenchUut0.CycleTime := TIME#100ms;\n   TraceIn_THICKNESS_FAULT[1] := BenchUut0.THICKNESS_FAULT;\n   TraceIn_THICKNESS_SIGNAL_VALID[1] := BenchUut0.THICKNESS_SIGNAL_VALID;\n   TraceIn_CUTTING_RUN[1] := BenchUut0.CUTTING_RUN;\n   TraceIn_FaultTimestamp[1] := BenchUut0.FaultTimestamp;\n   TraceIn_CycleTime[1] := BenchUut0.CycleTime;\n   BenchUut0();\n   TraceOut_THICKNESS_ALARM[1] := BenchUut0.THICKNESS_ALARM;\n   TraceOut_Slab_Fault_Counter[1] := BenchUut0.Slab_Fault_Counter;\n   TraceOut_Slab_Runtime_Accumulator[1] := BenchUut0.Slab_Runtime_Accumulator;\n   TraceOut_Slab_Fault_History_0[1] := BenchUut0.Slab_Fault_History[0];\n   TraceOut_Slab_Fault_History_1[1] := BenchUut0.Slab_Fault_History[1];\n   TraceOut_Slab_Fault_History_2[1] := BenchUut0.Slab_Fault_History[2];\n   TraceOut_Slab_Fault_History_3[1] := BenchUut0.Slab_Fault_History[3];\n   TraceOut_Slab_Fault_History_4[1] := BenchUut0.Slab_Fault_History[4];\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 2:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(20) THEN\n   TraceDt[2] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut0.THICKNESS_FAULT := TRUE;\n   BenchUut0.THICKNESS_SIGNAL_VALID := TRUE;\n   BenchUut0.CUTTING_RUN := TRUE;\n   BenchUut0.FaultTimestamp := DINT#101;\n   BenchUut0.CycleTime := TIME#20ms;\n   TraceIn_THICKNESS_FAULT[2] := BenchUut0.THICKNESS_FAULT;\n   TraceIn_THICKNESS_SIGNAL_VALID[2] := BenchUut0.THICKNESS_SIGNAL_VALID;\n   TraceIn_CUTTING_RUN[2] := BenchUut0.CUTTING_RUN;\n   TraceIn_FaultTimestamp[2] := BenchUut0.FaultTimestamp;\n   TraceIn_CycleTime[2] := BenchUut0.CycleTime;\n   BenchUut0();\n   TraceOut_THICKNESS_ALARM[2] := BenchUut0.THICKNESS_ALARM;\n   TraceOut_Slab_Fault_Counter[2] := BenchUut0.Slab_Fault_Counter;\n   TraceOut_Slab_Runtime_Accumulator[2] := BenchUut0.Slab_Runtime_Accumulator;\n   TraceOut_Slab_Fault_History_0[2] := BenchUut0.Slab_Fault_History[0];\n   TraceOut_Slab_Fault_History_1[2] := BenchUut0.Slab_Fault_History[1];\n   TraceOut_Slab_Fault_History_2[2] := BenchUut0.Slab_Fault_History[2];\n   TraceOut_Slab_Fault_History_3[2] := BenchUut0.Slab_Fault_History[3];\n   TraceOut_Slab_Fault_History_4[2] := BenchUut0.Slab_Fault_History[4];\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 3:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(600) THEN\n   TraceDt[3] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut0.THICKNESS_FAULT := TRUE;\n   BenchUut0.THICKNESS_SIGNAL_VALID := TRUE;\n   BenchUut0.CUTTING_RUN := TRUE;\n   BenchUut0.FaultTimestamp := DINT#999;\n   BenchUut0.CycleTime := TIME#600ms;\n   TraceIn_THICKNESS_FAULT[3] := BenchUut0.THICKNESS_FAULT;\n   TraceIn_THICKNESS_SIGNAL_VALID[3] := BenchUut0.THICKNESS_SIGNAL_VALID;\n   TraceIn_CUTTING_RUN[3] := BenchUut0.CUTTING_RUN;\n   TraceIn_FaultTimestamp[3] := BenchUut0.FaultTimestamp;\n   TraceIn_CycleTime[3] := BenchUut0.CycleTime;\n   BenchUut0();\n   TraceOut_THICKNESS_ALARM[3] := BenchUut0.THICKNESS_ALARM;\n   TraceOut_Slab_Fault_Counter[3] := BenchUut0.Slab_Fault_Counter;\n   TraceOut_Slab_Runtime_Accumulator[3] := BenchUut0.Slab_Runtime_Accumulator;\n   TraceOut_Slab_Fault_History_0[3] := BenchUut0.Slab_Fault_History[0];\n   TraceOut_Slab_Fault_History_1[3] := BenchUut0.Slab_Fault_History[1];\n   TraceOut_Slab_Fault_History_2[3] := BenchUut0.Slab_Fault_History[2];\n   TraceOut_Slab_Fault_History_3[3] := BenchUut0.Slab_Fault_History[3];\n   TraceOut_Slab_Fault_History_4[3] := BenchUut0.Slab_Fault_History[4];\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 4:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(1) THEN\n   TraceDt[4] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut0.THICKNESS_FAULT := FALSE;\n   BenchUut0.THICKNESS_SIGNAL_VALID := TRUE;\n   BenchUut0.CUTTING_RUN := FALSE;\n   BenchUut0.FaultTimestamp := DINT#999;\n   BenchUut0.CycleTime := TIME#1ms;\n   TraceIn_THICKNESS_FAULT[4] := BenchUut0.THICKNESS_FAULT;\n   TraceIn_THICKNESS_SIGNAL_VALID[4] := BenchUut0.THICKNESS_SIGNAL_VALID;\n   TraceIn_CUTTING_RUN[4] := BenchUut0.CUTTING_RUN;\n   TraceIn_FaultTimestamp[4] := BenchUut0.FaultTimestamp;\n   TraceIn_CycleTime[4] := BenchUut0.CycleTime;\n   BenchUut0();\n   TraceOut_THICKNESS_ALARM[4] := BenchUut0.THICKNESS_ALARM;\n   TraceOut_Slab_Fault_Counter[4] := BenchUut0.Slab_Fault_Counter;\n   TraceOut_Slab_Runtime_Accumulator[4] := BenchUut0.Slab_Runtime_Accumulator;\n   TraceOut_Slab_Fault_History_0[4] := BenchUut0.Slab_Fault_History[0];\n   TraceOut_Slab_Fault_History_1[4] := BenchUut0.Slab_Fault_History[1];\n   TraceOut_Slab_Fault_History_2[4] := BenchUut0.Slab_Fault_History[2];\n   TraceOut_Slab_Fault_History_3[4] := BenchUut0.Slab_Fault_History[3];\n   TraceOut_Slab_Fault_History_4[4] := BenchUut0.Slab_Fault_History[4];\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 5:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(20) THEN\n   TraceDt[5] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut0.THICKNESS_FAULT := TRUE;\n   BenchUut0.THICKNESS_SIGNAL_VALID := TRUE;\n   BenchUut0.CUTTING_RUN := TRUE;\n   BenchUut0.FaultTimestamp := DINT#202;\n   BenchUut0.CycleTime := TIME#20ms;\n   TraceIn_THICKNESS_FAULT[5] := BenchUut0.THICKNESS_FAULT;\n   TraceIn_THICKNESS_SIGNAL_VALID[5] := BenchUut0.THICKNESS_SIGNAL_VALID;\n   TraceIn_CUTTING_RUN[5] := BenchUut0.CUTTING_RUN;\n   TraceIn_FaultTimestamp[5] := BenchUut0.FaultTimestamp;\n   TraceIn_CycleTime[5] := BenchUut0.CycleTime;\n   BenchUut0();\n   TraceOut_THICKNESS_ALARM[5] := BenchUut0.THICKNESS_ALARM;\n   TraceOut_Slab_Fault_Counter[5] := BenchUut0.Slab_Fault_Counter;\n   TraceOut_Slab_Runtime_Accumulator[5] := BenchUut0.Slab_Runtime_Accumulator;\n   TraceOut_Slab_Fault_History_0[5] := BenchUut0.Slab_Fault_History[0];\n   TraceOut_Slab_Fault_History_1[5] := BenchUut0.Slab_Fault_History[1];\n   TraceOut_Slab_Fault_History_2[5] := BenchUut0.Slab_Fault_History[2];\n   TraceOut_Slab_Fault_History_3[5] := BenchUut0.Slab_Fault_History[3];\n   TraceOut_Slab_Fault_History_4[5] := BenchUut0.Slab_Fault_History[4];\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 6:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(10) THEN\n   TraceDt[6] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut0.THICKNESS_FAULT := TRUE;\n   BenchUut0.THICKNESS_SIGNAL_VALID := FALSE;\n   BenchUut0.CUTTING_RUN := TRUE;\n   BenchUut0.FaultTimestamp := DINT#250;\n   BenchUut0.CycleTime := TIME#10ms;\n   TraceIn_THICKNESS_FAULT[6] := BenchUut0.THICKNESS_FAULT;\n   TraceIn_THICKNESS_SIGNAL_VALID[6] := BenchUut0.THICKNESS_SIGNAL_VALID;\n   TraceIn_CUTTING_RUN[6] := BenchUut0.CUTTING_RUN;\n   TraceIn_FaultTimestamp[6] := BenchUut0.FaultTimestamp;\n   TraceIn_CycleTime[6] := BenchUut0.CycleTime;\n   BenchUut0();\n   TraceOut_THICKNESS_ALARM[6] := BenchUut0.THICKNESS_ALARM;\n   TraceOut_Slab_Fault_Counter[6] := BenchUut0.Slab_Fault_Counter;\n   TraceOut_Slab_Runtime_Accumulator[6] := BenchUut0.Slab_Runtime_Accumulator;\n   TraceOut_Slab_Fault_History_0[6] := BenchUut0.Slab_Fault_History[0];\n   TraceOut_Slab_Fault_History_1[6] := BenchUut0.Slab_Fault_History[1];\n   TraceOut_Slab_Fault_History_2[6] := BenchUut0.Slab_Fault_History[2];\n   TraceOut_Slab_Fault_History_3[6] := BenchUut0.Slab_Fault_History[3];\n   TraceOut_Slab_Fault_History_4[6] := BenchUut0.Slab_Fault_History[4];\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 7:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(10) THEN\n   TraceDt[7] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut0.THICKNESS_FAULT := TRUE;\n   BenchUut0.THICKNESS_SIGNAL_VALID := TRUE;\n   BenchUut0.CUTTING_RUN := TRUE;\n   BenchUut0.FaultTimestamp := DINT#303;\n   BenchUut0.CycleTime := TIME#10ms;\n   TraceIn_THICKNESS_FAULT[7] := BenchUut0.THICKNESS_FAULT;\n   TraceIn_THICKNESS_SIGNAL_VALID[7] := BenchUut0.THICKNESS_SIGNAL_VALID;\n   TraceIn_CUTTING_RUN[7] := BenchUut0.CUTTING_RUN;\n   TraceIn_FaultTimestamp[7] := BenchUut0.FaultTimestamp;\n   TraceIn_CycleTime[7] := BenchUut0.CycleTime;\n   BenchUut0();\n   TraceOut_THICKNESS_ALARM[7] := BenchUut0.THICKNESS_ALARM;\n   TraceOut_Slab_Fault_Counter[7] := BenchUut0.Slab_Fault_Counter;\n   TraceOut_Slab_Runtime_Accumulator[7] := BenchUut0.Slab_Runtime_Accumulator;\n   TraceOut_Slab_Fault_History_0[7] := BenchUut0.Slab_Fault_History[0];\n   TraceOut_Slab_Fault_History_1[7] := BenchUut0.Slab_Fault_History[1];\n   TraceOut_Slab_Fault_History_2[7] := BenchUut0.Slab_Fault_History[2];\n   TraceOut_Slab_Fault_History_3[7] := BenchUut0.Slab_Fault_History[3];\n   TraceOut_Slab_Fault_History_4[7] := BenchUut0.Slab_Fault_History[4];\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 8:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(1) THEN\n   TraceDt[8] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut1.THICKNESS_FAULT := FALSE;\n   BenchUut1.THICKNESS_SIGNAL_VALID := TRUE;\n   BenchUut1.CUTTING_RUN := TRUE;\n   BenchUut1.FaultTimestamp := DINT#0;\n   BenchUut1.CycleTime := TIME#1ms;\n   TraceIn_THICKNESS_FAULT[8] := BenchUut1.THICKNESS_FAULT;\n   TraceIn_THICKNESS_SIGNAL_VALID[8] := BenchUut1.THICKNESS_SIGNAL_VALID;\n   TraceIn_CUTTING_RUN[8] := BenchUut1.CUTTING_RUN;\n   TraceIn_FaultTimestamp[8] := BenchUut1.FaultTimestamp;\n   TraceIn_CycleTime[8] := BenchUut1.CycleTime;\n   BenchUut1();\n   TraceOut_THICKNESS_ALARM[8] := BenchUut1.THICKNESS_ALARM;\n   TraceOut_Slab_Fault_Counter[8] := BenchUut1.Slab_Fault_Counter;\n   TraceOut_Slab_Runtime_Accumulator[8] := BenchUut1.Slab_Runtime_Accumulator;\n   TraceOut_Slab_Fault_History_0[8] := BenchUut1.Slab_Fault_History[0];\n   TraceOut_Slab_Fault_History_1[8] := BenchUut1.Slab_Fault_History[1];\n   TraceOut_Slab_Fault_History_2[8] := BenchUut1.Slab_Fault_History[2];\n   TraceOut_Slab_Fault_History_3[8] := BenchUut1.Slab_Fault_History[3];\n   TraceOut_Slab_Fault_History_4[8] := BenchUut1.Slab_Fault_History[4];\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 9:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(1) THEN\n   TraceDt[9] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut1.THICKNESS_FAULT := TRUE;\n   BenchUut1.THICKNESS_SIGNAL_VALID := TRUE;\n   BenchUut1.CUTTING_RUN := TRUE;\n   BenchUut1.FaultTimestamp := DINT#-2147483648;\n   BenchUut1.CycleTime := TIME#1ms;\n   TraceIn_THICKNESS_FAULT[9] := BenchUut1.THICKNESS_FAULT;\n   TraceIn_THICKNESS_SIGNAL_VALID[9] := BenchUut1.THICKNESS_SIGNAL_VALID;\n   TraceIn_CUTTING_RUN[9] := BenchUut1.CUTTING_RUN;\n   TraceIn_FaultTimestamp[9] := BenchUut1.FaultTimestamp;\n   TraceIn_CycleTime[9] := BenchUut1.CycleTime;\n   BenchUut1();\n   TraceOut_THICKNESS_ALARM[9] := BenchUut1.THICKNESS_ALARM;\n   TraceOut_Slab_Fault_Counter[9] := BenchUut1.Slab_Fault_Counter;\n   TraceOut_Slab_Runtime_Accumulator[9] := BenchUut1.Slab_Runtime_Accumulator;\n   TraceOut_Slab_Fault_History_0[9] := BenchUut1.Slab_Fault_History[0];\n   TraceOut_Slab_Fault_History_1[9] := BenchUut1.Slab_Fault_History[1];\n   TraceOut_Slab_Fault_History_2[9] := BenchUut1.Slab_Fault_History[2];\n   TraceOut_Slab_Fault_History_3[9] := BenchUut1.Slab_Fault_History[3];\n   TraceOut_Slab_Fault_History_4[9] := BenchUut1.Slab_Fault_History[4];\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 10:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(499) THEN\n   TraceDt[10] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut1.THICKNESS_FAULT := FALSE;\n   BenchUut1.THICKNESS_SIGNAL_VALID := TRUE;\n   BenchUut1.CUTTING_RUN := TRUE;\n   BenchUut1.FaultTimestamp := DINT#0;\n   BenchUut1.CycleTime := TIME#499ms;\n   TraceIn_THICKNESS_FAULT[10] := BenchUut1.THICKNESS_FAULT;\n   TraceIn_THICKNESS_SIGNAL_VALID[10] := BenchUut1.THICKNESS_SIGNAL_VALID;\n   TraceIn_CUTTING_RUN[10] := BenchUut1.CUTTING_RUN;\n   TraceIn_FaultTimestamp[10] := BenchUut1.FaultTimestamp;\n   TraceIn_CycleTime[10] := BenchUut1.CycleTime;\n   BenchUut1();\n   TraceOut_THICKNESS_ALARM[10] := BenchUut1.THICKNESS_ALARM;\n   TraceOut_Slab_Fault_Counter[10] := BenchUut1.Slab_Fault_Counter;\n   TraceOut_Slab_Runtime_Accumulator[10] := BenchUut1.Slab_Runtime_Accumulator;\n   TraceOut_Slab_Fault_History_0[10] := BenchUut1.Slab_Fault_History[0];\n   TraceOut_Slab_Fault_History_1[10] := BenchUut1.Slab_Fault_History[1];\n   TraceOut_Slab_Fault_History_2[10] := BenchUut1.Slab_Fault_History[2];\n   TraceOut_Slab_Fault_History_3[10] := BenchUut1.Slab_Fault_History[3];\n   TraceOut_Slab_Fault_History_4[10] := BenchUut1.Slab_Fault_History[4];\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 11:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(1) THEN\n   TraceDt[11] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut1.THICKNESS_FAULT := TRUE;\n   BenchUut1.THICKNESS_SIGNAL_VALID := TRUE;\n   BenchUut1.CUTTING_RUN := TRUE;\n   BenchUut1.FaultTimestamp := DINT#2147483647;\n   BenchUut1.CycleTime := TIME#1ms;\n   TraceIn_THICKNESS_FAULT[11] := BenchUut1.THICKNESS_FAULT;\n   TraceIn_THICKNESS_SIGNAL_VALID[11] := BenchUut1.THICKNESS_SIGNAL_VALID;\n   TraceIn_CUTTING_RUN[11] := BenchUut1.CUTTING_RUN;\n   TraceIn_FaultTimestamp[11] := BenchUut1.FaultTimestamp;\n   TraceIn_CycleTime[11] := BenchUut1.CycleTime;\n   BenchUut1();\n   TraceOut_THICKNESS_ALARM[11] := BenchUut1.THICKNESS_ALARM;\n   TraceOut_Slab_Fault_Counter[11] := BenchUut1.Slab_Fault_Counter;\n   TraceOut_Slab_Runtime_Accumulator[11] := BenchUut1.Slab_Runtime_Accumulator;\n   TraceOut_Slab_Fault_History_0[11] := BenchUut1.Slab_Fault_History[0];\n   TraceOut_Slab_Fault_History_1[11] := BenchUut1.Slab_Fault_History[1];\n   TraceOut_Slab_Fault_History_2[11] := BenchUut1.Slab_Fault_History[2];\n   TraceOut_Slab_Fault_History_3[11] := BenchUut1.Slab_Fault_History[3];\n   TraceOut_Slab_Fault_History_4[11] := BenchUut1.Slab_Fault_History[4];\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 12:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(499) THEN\n   TraceDt[12] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut1.THICKNESS_FAULT := FALSE;\n   BenchUut1.THICKNESS_SIGNAL_VALID := TRUE;\n   BenchUut1.CUTTING_RUN := TRUE;\n   BenchUut1.FaultTimestamp := DINT#0;\n   BenchUut1.CycleTime := TIME#499ms;\n   TraceIn_THICKNESS_FAULT[12] := BenchUut1.THICKNESS_FAULT;\n   TraceIn_THICKNESS_SIGNAL_VALID[12] := BenchUut1.THICKNESS_SIGNAL_VALID;\n   TraceIn_CUTTING_RUN[12] := BenchUut1.CUTTING_RUN;\n   TraceIn_FaultTimestamp[12] := BenchUut1.FaultTimestamp;\n   TraceIn_CycleTime[12] := BenchUut1.CycleTime;\n   BenchUut1();\n   TraceOut_THICKNESS_ALARM[12] := BenchUut1.THICKNESS_ALARM;\n   TraceOut_Slab_Fault_Counter[12] := BenchUut1.Slab_Fault_Counter;\n   TraceOut_Slab_Runtime_Accumulator[12] := BenchUut1.Slab_Runtime_Accumulator;\n   TraceOut_Slab_Fault_History_0[12] := BenchUut1.Slab_Fault_History[0];\n   TraceOut_Slab_Fault_History_1[12] := BenchUut1.Slab_Fault_History[1];\n   TraceOut_Slab_Fault_History_2[12] := BenchUut1.Slab_Fault_History[2];\n   TraceOut_Slab_Fault_History_3[12] := BenchUut1.Slab_Fault_History[3];\n   TraceOut_Slab_Fault_History_4[12] := BenchUut1.Slab_Fault_History[4];\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 13:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(1) THEN\n   TraceDt[13] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut1.THICKNESS_FAULT := FALSE;\n   BenchUut1.THICKNESS_SIGNAL_VALID := TRUE;\n   BenchUut1.CUTTING_RUN := TRUE;\n   BenchUut1.FaultTimestamp := DINT#0;\n   BenchUut1.CycleTime := TIME#1ms;\n   TraceIn_THICKNESS_FAULT[13] := BenchUut1.THICKNESS_FAULT;\n   TraceIn_THICKNESS_SIGNAL_VALID[13] := BenchUut1.THICKNESS_SIGNAL_VALID;\n   TraceIn_CUTTING_RUN[13] := BenchUut1.CUTTING_RUN;\n   TraceIn_FaultTimestamp[13] := BenchUut1.FaultTimestamp;\n   TraceIn_CycleTime[13] := BenchUut1.CycleTime;\n   BenchUut1();\n   TraceOut_THICKNESS_ALARM[13] := BenchUut1.THICKNESS_ALARM;\n   TraceOut_Slab_Fault_Counter[13] := BenchUut1.Slab_Fault_Counter;\n   TraceOut_Slab_Runtime_Accumulator[13] := BenchUut1.Slab_Runtime_Accumulator;\n   TraceOut_Slab_Fault_History_0[13] := BenchUut1.Slab_Fault_History[0];\n   TraceOut_Slab_Fault_History_1[13] := BenchUut1.Slab_Fault_History[1];\n   TraceOut_Slab_Fault_History_2[13] := BenchUut1.Slab_Fault_History[2];\n   TraceOut_Slab_Fault_History_3[13] := BenchUut1.Slab_Fault_History[3];\n   TraceOut_Slab_Fault_History_4[13] := BenchUut1.Slab_Fault_History[4];\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 14:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(1) THEN\n   TraceDt[14] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut1.THICKNESS_FAULT := TRUE;\n   BenchUut1.THICKNESS_SIGNAL_VALID := TRUE;\n   BenchUut1.CUTTING_RUN := TRUE;\n   BenchUut1.FaultTimestamp := DINT#0;\n   BenchUut1.CycleTime := TIME#1ms;\n   TraceIn_THICKNESS_FAULT[14] := BenchUut1.THICKNESS_FAULT;\n   TraceIn_THICKNESS_SIGNAL_VALID[14] := BenchUut1.THICKNESS_SIGNAL_VALID;\n   TraceIn_CUTTING_RUN[14] := BenchUut1.CUTTING_RUN;\n   TraceIn_FaultTimestamp[14] := BenchUut1.FaultTimestamp;\n   TraceIn_CycleTime[14] := BenchUut1.CycleTime;\n   BenchUut1();\n   TraceOut_THICKNESS_ALARM[14] := BenchUut1.THICKNESS_ALARM;\n   TraceOut_Slab_Fault_Counter[14] := BenchUut1.Slab_Fault_Counter;\n   TraceOut_Slab_Runtime_Accumulator[14] := BenchUut1.Slab_Runtime_Accumulator;\n   TraceOut_Slab_Fault_History_0[14] := BenchUut1.Slab_Fault_History[0];\n   TraceOut_Slab_Fault_History_1[14] := BenchUut1.Slab_Fault_History[1];\n   TraceOut_Slab_Fault_History_2[14] := BenchUut1.Slab_Fault_History[2];\n   TraceOut_Slab_Fault_History_3[14] := BenchUut1.Slab_Fault_History[3];\n   TraceOut_Slab_Fault_History_4[14] := BenchUut1.Slab_Fault_History[4];\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 15:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(1) THEN\n   TraceDt[15] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut1.THICKNESS_FAULT := FALSE;\n   BenchUut1.THICKNESS_SIGNAL_VALID := TRUE;\n   BenchUut1.CUTTING_RUN := FALSE;\n   BenchUut1.FaultTimestamp := DINT#1;\n   BenchUut1.CycleTime := TIME#1ms;\n   TraceIn_THICKNESS_FAULT[15] := BenchUut1.THICKNESS_FAULT;\n   TraceIn_THICKNESS_SIGNAL_VALID[15] := BenchUut1.THICKNESS_SIGNAL_VALID;\n   TraceIn_CUTTING_RUN[15] := BenchUut1.CUTTING_RUN;\n   TraceIn_FaultTimestamp[15] := BenchUut1.FaultTimestamp;\n   TraceIn_CycleTime[15] := BenchUut1.CycleTime;\n   BenchUut1();\n   TraceOut_THICKNESS_ALARM[15] := BenchUut1.THICKNESS_ALARM;\n   TraceOut_Slab_Fault_Counter[15] := BenchUut1.Slab_Fault_Counter;\n   TraceOut_Slab_Runtime_Accumulator[15] := BenchUut1.Slab_Runtime_Accumulator;\n   TraceOut_Slab_Fault_History_0[15] := BenchUut1.Slab_Fault_History[0];\n   TraceOut_Slab_Fault_History_1[15] := BenchUut1.Slab_Fault_History[1];\n   TraceOut_Slab_Fault_History_2[15] := BenchUut1.Slab_Fault_History[2];\n   TraceOut_Slab_Fault_History_3[15] := BenchUut1.Slab_Fault_History[3];\n   TraceOut_Slab_Fault_History_4[15] := BenchUut1.Slab_Fault_History[4];\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n END_CASE;\n END_IF;\n IF BenchStep >= 16 THEN BenchDone := TRUE; END_IF;\nEND_IF;",
+    "step_count": 16,
+    "steps": [
+      {
+        "index": 0,
+        "case_id": "case_1",
+        "case_step": 0,
+        "dt_ms": 10
+      },
+      {
+        "index": 1,
+        "case_id": "case_1",
+        "case_step": 1,
+        "dt_ms": 100
+      },
+      {
+        "index": 2,
+        "case_id": "case_1",
+        "case_step": 2,
+        "dt_ms": 20
+      },
+      {
+        "index": 3,
+        "case_id": "case_1",
+        "case_step": 3,
+        "dt_ms": 600
+      },
+      {
+        "index": 4,
+        "case_id": "case_1",
+        "case_step": 4,
+        "dt_ms": 1
+      },
+      {
+        "index": 5,
+        "case_id": "case_1",
+        "case_step": 5,
+        "dt_ms": 20
+      },
+      {
+        "index": 6,
+        "case_id": "case_1",
+        "case_step": 6,
+        "dt_ms": 10
+      },
+      {
+        "index": 7,
+        "case_id": "case_1",
+        "case_step": 7,
+        "dt_ms": 10
+      },
+      {
+        "index": 8,
+        "case_id": "case_2",
+        "case_step": 0,
+        "dt_ms": 1
+      },
+      {
+        "index": 9,
+        "case_id": "case_2",
+        "case_step": 1,
+        "dt_ms": 1
+      },
+      {
+        "index": 10,
+        "case_id": "case_2",
+        "case_step": 2,
+        "dt_ms": 499
+      },
+      {
+        "index": 11,
+        "case_id": "case_2",
+        "case_step": 3,
+        "dt_ms": 1
+      },
+      {
+        "index": 12,
+        "case_id": "case_2",
+        "case_step": 4,
+        "dt_ms": 499
+      },
+      {
+        "index": 13,
+        "case_id": "case_2",
+        "case_step": 5,
+        "dt_ms": 1
+      },
+      {
+        "index": 14,
+        "case_id": "case_2",
+        "case_step": 6,
+        "dt_ms": 1
+      },
+      {
+        "index": 15,
+        "case_id": "case_2",
+        "case_step": 7,
+        "dt_ms": 1
+      }
+    ],
+    "inputs": [
+      {
+        "direction": "INPUT",
+        "name": "THICKNESS_FAULT",
+        "type": "BOOL",
+        "description": "Thickness deviation exceeds the permitted tolerance."
+      },
+      {
+        "direction": "INPUT",
+        "name": "THICKNESS_SIGNAL_VALID",
+        "type": "BOOL",
+        "description": "Thickness-signal validity; FALSE means the signal is lost or unavailable."
+      },
+      {
+        "direction": "INPUT",
+        "name": "CUTTING_RUN",
+        "type": "BOOL",
+        "description": "Actual cutting-equipment running status."
+      },
+      {
+        "direction": "INPUT",
+        "name": "FaultTimestamp",
+        "type": "DINT",
+        "description": "Current timestamp in seconds, used as the fault-record identifier."
+      },
+      {
+        "direction": "INPUT",
+        "name": "CycleTime",
+        "type": "TIME",
+        "description": "Actual elapsed interval represented by this invocation; must be positive."
+      }
+    ],
+    "outputs": [
+      {
+        "direction": "OUTPUT",
+        "name": "THICKNESS_ALARM",
+        "type": "BOOL",
+        "description": "Thickness alarm with a minimum 500 ms hold duration."
+      },
+      {
+        "direction": "OUTPUT",
+        "name": "Slab_Fault_Counter",
+        "type": "UINT",
+        "description": "Number of valid thickness-fault occurrences."
+      },
+      {
+        "direction": "OUTPUT",
+        "name": "Slab_Runtime_Accumulator",
+        "type": "LTIME",
+        "description": "Accumulated normal-cutting runtime."
+      },
+      {
+        "direction": "OUTPUT",
+        "name": "Slab_Fault_History",
+        "type": "ARRAY[0..4] OF DINT",
+        "description": "Five most recent fault timestamps; index 0 is newest; read-only to callers."
+      }
+    ],
+    "trace_expressions": [
+      "PLC_PRG.TraceDt[0]",
+      "PLC_PRG.TraceIn_THICKNESS_FAULT[0]",
+      "PLC_PRG.TraceIn_THICKNESS_SIGNAL_VALID[0]",
+      "PLC_PRG.TraceIn_CUTTING_RUN[0]",
+      "PLC_PRG.TraceIn_FaultTimestamp[0]",
+      "PLC_PRG.TraceIn_CycleTime[0]",
+      "PLC_PRG.TraceOut_THICKNESS_ALARM[0]",
+      "PLC_PRG.TraceOut_Slab_Fault_Counter[0]",
+      "PLC_PRG.TraceOut_Slab_Runtime_Accumulator[0]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_0[0]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_1[0]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_2[0]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_3[0]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_4[0]",
+      "PLC_PRG.TraceDt[1]",
+      "PLC_PRG.TraceIn_THICKNESS_FAULT[1]",
+      "PLC_PRG.TraceIn_THICKNESS_SIGNAL_VALID[1]",
+      "PLC_PRG.TraceIn_CUTTING_RUN[1]",
+      "PLC_PRG.TraceIn_FaultTimestamp[1]",
+      "PLC_PRG.TraceIn_CycleTime[1]",
+      "PLC_PRG.TraceOut_THICKNESS_ALARM[1]",
+      "PLC_PRG.TraceOut_Slab_Fault_Counter[1]",
+      "PLC_PRG.TraceOut_Slab_Runtime_Accumulator[1]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_0[1]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_1[1]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_2[1]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_3[1]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_4[1]",
+      "PLC_PRG.TraceDt[2]",
+      "PLC_PRG.TraceIn_THICKNESS_FAULT[2]",
+      "PLC_PRG.TraceIn_THICKNESS_SIGNAL_VALID[2]",
+      "PLC_PRG.TraceIn_CUTTING_RUN[2]",
+      "PLC_PRG.TraceIn_FaultTimestamp[2]",
+      "PLC_PRG.TraceIn_CycleTime[2]",
+      "PLC_PRG.TraceOut_THICKNESS_ALARM[2]",
+      "PLC_PRG.TraceOut_Slab_Fault_Counter[2]",
+      "PLC_PRG.TraceOut_Slab_Runtime_Accumulator[2]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_0[2]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_1[2]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_2[2]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_3[2]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_4[2]",
+      "PLC_PRG.TraceDt[3]",
+      "PLC_PRG.TraceIn_THICKNESS_FAULT[3]",
+      "PLC_PRG.TraceIn_THICKNESS_SIGNAL_VALID[3]",
+      "PLC_PRG.TraceIn_CUTTING_RUN[3]",
+      "PLC_PRG.TraceIn_FaultTimestamp[3]",
+      "PLC_PRG.TraceIn_CycleTime[3]",
+      "PLC_PRG.TraceOut_THICKNESS_ALARM[3]",
+      "PLC_PRG.TraceOut_Slab_Fault_Counter[3]",
+      "PLC_PRG.TraceOut_Slab_Runtime_Accumulator[3]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_0[3]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_1[3]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_2[3]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_3[3]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_4[3]",
+      "PLC_PRG.TraceDt[4]",
+      "PLC_PRG.TraceIn_THICKNESS_FAULT[4]",
+      "PLC_PRG.TraceIn_THICKNESS_SIGNAL_VALID[4]",
+      "PLC_PRG.TraceIn_CUTTING_RUN[4]",
+      "PLC_PRG.TraceIn_FaultTimestamp[4]",
+      "PLC_PRG.TraceIn_CycleTime[4]",
+      "PLC_PRG.TraceOut_THICKNESS_ALARM[4]",
+      "PLC_PRG.TraceOut_Slab_Fault_Counter[4]",
+      "PLC_PRG.TraceOut_Slab_Runtime_Accumulator[4]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_0[4]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_1[4]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_2[4]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_3[4]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_4[4]",
+      "PLC_PRG.TraceDt[5]",
+      "PLC_PRG.TraceIn_THICKNESS_FAULT[5]",
+      "PLC_PRG.TraceIn_THICKNESS_SIGNAL_VALID[5]",
+      "PLC_PRG.TraceIn_CUTTING_RUN[5]",
+      "PLC_PRG.TraceIn_FaultTimestamp[5]",
+      "PLC_PRG.TraceIn_CycleTime[5]",
+      "PLC_PRG.TraceOut_THICKNESS_ALARM[5]",
+      "PLC_PRG.TraceOut_Slab_Fault_Counter[5]",
+      "PLC_PRG.TraceOut_Slab_Runtime_Accumulator[5]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_0[5]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_1[5]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_2[5]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_3[5]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_4[5]",
+      "PLC_PRG.TraceDt[6]",
+      "PLC_PRG.TraceIn_THICKNESS_FAULT[6]",
+      "PLC_PRG.TraceIn_THICKNESS_SIGNAL_VALID[6]",
+      "PLC_PRG.TraceIn_CUTTING_RUN[6]",
+      "PLC_PRG.TraceIn_FaultTimestamp[6]",
+      "PLC_PRG.TraceIn_CycleTime[6]",
+      "PLC_PRG.TraceOut_THICKNESS_ALARM[6]",
+      "PLC_PRG.TraceOut_Slab_Fault_Counter[6]",
+      "PLC_PRG.TraceOut_Slab_Runtime_Accumulator[6]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_0[6]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_1[6]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_2[6]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_3[6]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_4[6]",
+      "PLC_PRG.TraceDt[7]",
+      "PLC_PRG.TraceIn_THICKNESS_FAULT[7]",
+      "PLC_PRG.TraceIn_THICKNESS_SIGNAL_VALID[7]",
+      "PLC_PRG.TraceIn_CUTTING_RUN[7]",
+      "PLC_PRG.TraceIn_FaultTimestamp[7]",
+      "PLC_PRG.TraceIn_CycleTime[7]",
+      "PLC_PRG.TraceOut_THICKNESS_ALARM[7]",
+      "PLC_PRG.TraceOut_Slab_Fault_Counter[7]",
+      "PLC_PRG.TraceOut_Slab_Runtime_Accumulator[7]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_0[7]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_1[7]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_2[7]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_3[7]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_4[7]",
+      "PLC_PRG.TraceDt[8]",
+      "PLC_PRG.TraceIn_THICKNESS_FAULT[8]",
+      "PLC_PRG.TraceIn_THICKNESS_SIGNAL_VALID[8]",
+      "PLC_PRG.TraceIn_CUTTING_RUN[8]",
+      "PLC_PRG.TraceIn_FaultTimestamp[8]",
+      "PLC_PRG.TraceIn_CycleTime[8]",
+      "PLC_PRG.TraceOut_THICKNESS_ALARM[8]",
+      "PLC_PRG.TraceOut_Slab_Fault_Counter[8]",
+      "PLC_PRG.TraceOut_Slab_Runtime_Accumulator[8]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_0[8]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_1[8]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_2[8]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_3[8]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_4[8]",
+      "PLC_PRG.TraceDt[9]",
+      "PLC_PRG.TraceIn_THICKNESS_FAULT[9]",
+      "PLC_PRG.TraceIn_THICKNESS_SIGNAL_VALID[9]",
+      "PLC_PRG.TraceIn_CUTTING_RUN[9]",
+      "PLC_PRG.TraceIn_FaultTimestamp[9]",
+      "PLC_PRG.TraceIn_CycleTime[9]",
+      "PLC_PRG.TraceOut_THICKNESS_ALARM[9]",
+      "PLC_PRG.TraceOut_Slab_Fault_Counter[9]",
+      "PLC_PRG.TraceOut_Slab_Runtime_Accumulator[9]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_0[9]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_1[9]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_2[9]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_3[9]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_4[9]",
+      "PLC_PRG.TraceDt[10]",
+      "PLC_PRG.TraceIn_THICKNESS_FAULT[10]",
+      "PLC_PRG.TraceIn_THICKNESS_SIGNAL_VALID[10]",
+      "PLC_PRG.TraceIn_CUTTING_RUN[10]",
+      "PLC_PRG.TraceIn_FaultTimestamp[10]",
+      "PLC_PRG.TraceIn_CycleTime[10]",
+      "PLC_PRG.TraceOut_THICKNESS_ALARM[10]",
+      "PLC_PRG.TraceOut_Slab_Fault_Counter[10]",
+      "PLC_PRG.TraceOut_Slab_Runtime_Accumulator[10]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_0[10]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_1[10]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_2[10]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_3[10]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_4[10]",
+      "PLC_PRG.TraceDt[11]",
+      "PLC_PRG.TraceIn_THICKNESS_FAULT[11]",
+      "PLC_PRG.TraceIn_THICKNESS_SIGNAL_VALID[11]",
+      "PLC_PRG.TraceIn_CUTTING_RUN[11]",
+      "PLC_PRG.TraceIn_FaultTimestamp[11]",
+      "PLC_PRG.TraceIn_CycleTime[11]",
+      "PLC_PRG.TraceOut_THICKNESS_ALARM[11]",
+      "PLC_PRG.TraceOut_Slab_Fault_Counter[11]",
+      "PLC_PRG.TraceOut_Slab_Runtime_Accumulator[11]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_0[11]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_1[11]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_2[11]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_3[11]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_4[11]",
+      "PLC_PRG.TraceDt[12]",
+      "PLC_PRG.TraceIn_THICKNESS_FAULT[12]",
+      "PLC_PRG.TraceIn_THICKNESS_SIGNAL_VALID[12]",
+      "PLC_PRG.TraceIn_CUTTING_RUN[12]",
+      "PLC_PRG.TraceIn_FaultTimestamp[12]",
+      "PLC_PRG.TraceIn_CycleTime[12]",
+      "PLC_PRG.TraceOut_THICKNESS_ALARM[12]",
+      "PLC_PRG.TraceOut_Slab_Fault_Counter[12]",
+      "PLC_PRG.TraceOut_Slab_Runtime_Accumulator[12]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_0[12]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_1[12]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_2[12]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_3[12]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_4[12]",
+      "PLC_PRG.TraceDt[13]",
+      "PLC_PRG.TraceIn_THICKNESS_FAULT[13]",
+      "PLC_PRG.TraceIn_THICKNESS_SIGNAL_VALID[13]",
+      "PLC_PRG.TraceIn_CUTTING_RUN[13]",
+      "PLC_PRG.TraceIn_FaultTimestamp[13]",
+      "PLC_PRG.TraceIn_CycleTime[13]",
+      "PLC_PRG.TraceOut_THICKNESS_ALARM[13]",
+      "PLC_PRG.TraceOut_Slab_Fault_Counter[13]",
+      "PLC_PRG.TraceOut_Slab_Runtime_Accumulator[13]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_0[13]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_1[13]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_2[13]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_3[13]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_4[13]",
+      "PLC_PRG.TraceDt[14]",
+      "PLC_PRG.TraceIn_THICKNESS_FAULT[14]",
+      "PLC_PRG.TraceIn_THICKNESS_SIGNAL_VALID[14]",
+      "PLC_PRG.TraceIn_CUTTING_RUN[14]",
+      "PLC_PRG.TraceIn_FaultTimestamp[14]",
+      "PLC_PRG.TraceIn_CycleTime[14]",
+      "PLC_PRG.TraceOut_THICKNESS_ALARM[14]",
+      "PLC_PRG.TraceOut_Slab_Fault_Counter[14]",
+      "PLC_PRG.TraceOut_Slab_Runtime_Accumulator[14]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_0[14]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_1[14]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_2[14]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_3[14]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_4[14]",
+      "PLC_PRG.TraceDt[15]",
+      "PLC_PRG.TraceIn_THICKNESS_FAULT[15]",
+      "PLC_PRG.TraceIn_THICKNESS_SIGNAL_VALID[15]",
+      "PLC_PRG.TraceIn_CUTTING_RUN[15]",
+      "PLC_PRG.TraceIn_FaultTimestamp[15]",
+      "PLC_PRG.TraceIn_CycleTime[15]",
+      "PLC_PRG.TraceOut_THICKNESS_ALARM[15]",
+      "PLC_PRG.TraceOut_Slab_Fault_Counter[15]",
+      "PLC_PRG.TraceOut_Slab_Runtime_Accumulator[15]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_0[15]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_1[15]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_2[15]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_3[15]",
+      "PLC_PRG.TraceOut_Slab_Fault_History_4[15]"
+    ],
+    "trace_mapping": [
+      {
+        "step_index": 0,
+        "case_id": "case_1",
+        "case_step": 0,
+        "dt_expr": "PLC_PRG.TraceDt[0]",
+        "inputs": {
+          "THICKNESS_FAULT": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_THICKNESS_FAULT[0]",
+            "type": "BOOL"
+          },
+          "THICKNESS_SIGNAL_VALID": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_THICKNESS_SIGNAL_VALID[0]",
+            "type": "BOOL"
+          },
+          "CUTTING_RUN": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_CUTTING_RUN[0]",
+            "type": "BOOL"
+          },
+          "FaultTimestamp": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_FaultTimestamp[0]",
+            "type": "DINT"
+          },
+          "CycleTime": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_CycleTime[0]",
+            "type": "TIME"
+          }
+        },
+        "outputs": {
+          "THICKNESS_ALARM": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_THICKNESS_ALARM[0]",
+            "type": "BOOL"
+          },
+          "Slab_Fault_Counter": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Slab_Fault_Counter[0]",
+            "type": "UINT"
+          },
+          "Slab_Runtime_Accumulator": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Slab_Runtime_Accumulator[0]",
+            "type": "LTIME"
+          },
+          "Slab_Fault_History": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_0[0]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_1[0]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_2[0]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_3[0]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_4[0]",
+                "type": "DINT"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "step_index": 1,
+        "case_id": "case_1",
+        "case_step": 1,
+        "dt_expr": "PLC_PRG.TraceDt[1]",
+        "inputs": {
+          "THICKNESS_FAULT": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_THICKNESS_FAULT[1]",
+            "type": "BOOL"
+          },
+          "THICKNESS_SIGNAL_VALID": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_THICKNESS_SIGNAL_VALID[1]",
+            "type": "BOOL"
+          },
+          "CUTTING_RUN": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_CUTTING_RUN[1]",
+            "type": "BOOL"
+          },
+          "FaultTimestamp": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_FaultTimestamp[1]",
+            "type": "DINT"
+          },
+          "CycleTime": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_CycleTime[1]",
+            "type": "TIME"
+          }
+        },
+        "outputs": {
+          "THICKNESS_ALARM": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_THICKNESS_ALARM[1]",
+            "type": "BOOL"
+          },
+          "Slab_Fault_Counter": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Slab_Fault_Counter[1]",
+            "type": "UINT"
+          },
+          "Slab_Runtime_Accumulator": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Slab_Runtime_Accumulator[1]",
+            "type": "LTIME"
+          },
+          "Slab_Fault_History": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_0[1]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_1[1]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_2[1]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_3[1]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_4[1]",
+                "type": "DINT"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "step_index": 2,
+        "case_id": "case_1",
+        "case_step": 2,
+        "dt_expr": "PLC_PRG.TraceDt[2]",
+        "inputs": {
+          "THICKNESS_FAULT": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_THICKNESS_FAULT[2]",
+            "type": "BOOL"
+          },
+          "THICKNESS_SIGNAL_VALID": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_THICKNESS_SIGNAL_VALID[2]",
+            "type": "BOOL"
+          },
+          "CUTTING_RUN": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_CUTTING_RUN[2]",
+            "type": "BOOL"
+          },
+          "FaultTimestamp": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_FaultTimestamp[2]",
+            "type": "DINT"
+          },
+          "CycleTime": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_CycleTime[2]",
+            "type": "TIME"
+          }
+        },
+        "outputs": {
+          "THICKNESS_ALARM": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_THICKNESS_ALARM[2]",
+            "type": "BOOL"
+          },
+          "Slab_Fault_Counter": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Slab_Fault_Counter[2]",
+            "type": "UINT"
+          },
+          "Slab_Runtime_Accumulator": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Slab_Runtime_Accumulator[2]",
+            "type": "LTIME"
+          },
+          "Slab_Fault_History": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_0[2]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_1[2]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_2[2]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_3[2]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_4[2]",
+                "type": "DINT"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "step_index": 3,
+        "case_id": "case_1",
+        "case_step": 3,
+        "dt_expr": "PLC_PRG.TraceDt[3]",
+        "inputs": {
+          "THICKNESS_FAULT": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_THICKNESS_FAULT[3]",
+            "type": "BOOL"
+          },
+          "THICKNESS_SIGNAL_VALID": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_THICKNESS_SIGNAL_VALID[3]",
+            "type": "BOOL"
+          },
+          "CUTTING_RUN": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_CUTTING_RUN[3]",
+            "type": "BOOL"
+          },
+          "FaultTimestamp": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_FaultTimestamp[3]",
+            "type": "DINT"
+          },
+          "CycleTime": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_CycleTime[3]",
+            "type": "TIME"
+          }
+        },
+        "outputs": {
+          "THICKNESS_ALARM": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_THICKNESS_ALARM[3]",
+            "type": "BOOL"
+          },
+          "Slab_Fault_Counter": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Slab_Fault_Counter[3]",
+            "type": "UINT"
+          },
+          "Slab_Runtime_Accumulator": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Slab_Runtime_Accumulator[3]",
+            "type": "LTIME"
+          },
+          "Slab_Fault_History": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_0[3]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_1[3]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_2[3]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_3[3]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_4[3]",
+                "type": "DINT"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "step_index": 4,
+        "case_id": "case_1",
+        "case_step": 4,
+        "dt_expr": "PLC_PRG.TraceDt[4]",
+        "inputs": {
+          "THICKNESS_FAULT": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_THICKNESS_FAULT[4]",
+            "type": "BOOL"
+          },
+          "THICKNESS_SIGNAL_VALID": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_THICKNESS_SIGNAL_VALID[4]",
+            "type": "BOOL"
+          },
+          "CUTTING_RUN": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_CUTTING_RUN[4]",
+            "type": "BOOL"
+          },
+          "FaultTimestamp": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_FaultTimestamp[4]",
+            "type": "DINT"
+          },
+          "CycleTime": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_CycleTime[4]",
+            "type": "TIME"
+          }
+        },
+        "outputs": {
+          "THICKNESS_ALARM": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_THICKNESS_ALARM[4]",
+            "type": "BOOL"
+          },
+          "Slab_Fault_Counter": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Slab_Fault_Counter[4]",
+            "type": "UINT"
+          },
+          "Slab_Runtime_Accumulator": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Slab_Runtime_Accumulator[4]",
+            "type": "LTIME"
+          },
+          "Slab_Fault_History": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_0[4]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_1[4]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_2[4]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_3[4]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_4[4]",
+                "type": "DINT"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "step_index": 5,
+        "case_id": "case_1",
+        "case_step": 5,
+        "dt_expr": "PLC_PRG.TraceDt[5]",
+        "inputs": {
+          "THICKNESS_FAULT": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_THICKNESS_FAULT[5]",
+            "type": "BOOL"
+          },
+          "THICKNESS_SIGNAL_VALID": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_THICKNESS_SIGNAL_VALID[5]",
+            "type": "BOOL"
+          },
+          "CUTTING_RUN": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_CUTTING_RUN[5]",
+            "type": "BOOL"
+          },
+          "FaultTimestamp": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_FaultTimestamp[5]",
+            "type": "DINT"
+          },
+          "CycleTime": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_CycleTime[5]",
+            "type": "TIME"
+          }
+        },
+        "outputs": {
+          "THICKNESS_ALARM": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_THICKNESS_ALARM[5]",
+            "type": "BOOL"
+          },
+          "Slab_Fault_Counter": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Slab_Fault_Counter[5]",
+            "type": "UINT"
+          },
+          "Slab_Runtime_Accumulator": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Slab_Runtime_Accumulator[5]",
+            "type": "LTIME"
+          },
+          "Slab_Fault_History": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_0[5]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_1[5]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_2[5]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_3[5]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_4[5]",
+                "type": "DINT"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "step_index": 6,
+        "case_id": "case_1",
+        "case_step": 6,
+        "dt_expr": "PLC_PRG.TraceDt[6]",
+        "inputs": {
+          "THICKNESS_FAULT": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_THICKNESS_FAULT[6]",
+            "type": "BOOL"
+          },
+          "THICKNESS_SIGNAL_VALID": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_THICKNESS_SIGNAL_VALID[6]",
+            "type": "BOOL"
+          },
+          "CUTTING_RUN": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_CUTTING_RUN[6]",
+            "type": "BOOL"
+          },
+          "FaultTimestamp": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_FaultTimestamp[6]",
+            "type": "DINT"
+          },
+          "CycleTime": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_CycleTime[6]",
+            "type": "TIME"
+          }
+        },
+        "outputs": {
+          "THICKNESS_ALARM": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_THICKNESS_ALARM[6]",
+            "type": "BOOL"
+          },
+          "Slab_Fault_Counter": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Slab_Fault_Counter[6]",
+            "type": "UINT"
+          },
+          "Slab_Runtime_Accumulator": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Slab_Runtime_Accumulator[6]",
+            "type": "LTIME"
+          },
+          "Slab_Fault_History": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_0[6]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_1[6]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_2[6]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_3[6]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_4[6]",
+                "type": "DINT"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "step_index": 7,
+        "case_id": "case_1",
+        "case_step": 7,
+        "dt_expr": "PLC_PRG.TraceDt[7]",
+        "inputs": {
+          "THICKNESS_FAULT": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_THICKNESS_FAULT[7]",
+            "type": "BOOL"
+          },
+          "THICKNESS_SIGNAL_VALID": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_THICKNESS_SIGNAL_VALID[7]",
+            "type": "BOOL"
+          },
+          "CUTTING_RUN": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_CUTTING_RUN[7]",
+            "type": "BOOL"
+          },
+          "FaultTimestamp": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_FaultTimestamp[7]",
+            "type": "DINT"
+          },
+          "CycleTime": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_CycleTime[7]",
+            "type": "TIME"
+          }
+        },
+        "outputs": {
+          "THICKNESS_ALARM": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_THICKNESS_ALARM[7]",
+            "type": "BOOL"
+          },
+          "Slab_Fault_Counter": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Slab_Fault_Counter[7]",
+            "type": "UINT"
+          },
+          "Slab_Runtime_Accumulator": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Slab_Runtime_Accumulator[7]",
+            "type": "LTIME"
+          },
+          "Slab_Fault_History": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_0[7]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_1[7]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_2[7]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_3[7]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_4[7]",
+                "type": "DINT"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "step_index": 8,
+        "case_id": "case_2",
+        "case_step": 0,
+        "dt_expr": "PLC_PRG.TraceDt[8]",
+        "inputs": {
+          "THICKNESS_FAULT": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_THICKNESS_FAULT[8]",
+            "type": "BOOL"
+          },
+          "THICKNESS_SIGNAL_VALID": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_THICKNESS_SIGNAL_VALID[8]",
+            "type": "BOOL"
+          },
+          "CUTTING_RUN": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_CUTTING_RUN[8]",
+            "type": "BOOL"
+          },
+          "FaultTimestamp": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_FaultTimestamp[8]",
+            "type": "DINT"
+          },
+          "CycleTime": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_CycleTime[8]",
+            "type": "TIME"
+          }
+        },
+        "outputs": {
+          "THICKNESS_ALARM": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_THICKNESS_ALARM[8]",
+            "type": "BOOL"
+          },
+          "Slab_Fault_Counter": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Slab_Fault_Counter[8]",
+            "type": "UINT"
+          },
+          "Slab_Runtime_Accumulator": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Slab_Runtime_Accumulator[8]",
+            "type": "LTIME"
+          },
+          "Slab_Fault_History": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_0[8]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_1[8]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_2[8]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_3[8]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_4[8]",
+                "type": "DINT"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "step_index": 9,
+        "case_id": "case_2",
+        "case_step": 1,
+        "dt_expr": "PLC_PRG.TraceDt[9]",
+        "inputs": {
+          "THICKNESS_FAULT": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_THICKNESS_FAULT[9]",
+            "type": "BOOL"
+          },
+          "THICKNESS_SIGNAL_VALID": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_THICKNESS_SIGNAL_VALID[9]",
+            "type": "BOOL"
+          },
+          "CUTTING_RUN": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_CUTTING_RUN[9]",
+            "type": "BOOL"
+          },
+          "FaultTimestamp": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_FaultTimestamp[9]",
+            "type": "DINT"
+          },
+          "CycleTime": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_CycleTime[9]",
+            "type": "TIME"
+          }
+        },
+        "outputs": {
+          "THICKNESS_ALARM": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_THICKNESS_ALARM[9]",
+            "type": "BOOL"
+          },
+          "Slab_Fault_Counter": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Slab_Fault_Counter[9]",
+            "type": "UINT"
+          },
+          "Slab_Runtime_Accumulator": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Slab_Runtime_Accumulator[9]",
+            "type": "LTIME"
+          },
+          "Slab_Fault_History": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_0[9]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_1[9]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_2[9]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_3[9]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_4[9]",
+                "type": "DINT"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "step_index": 10,
+        "case_id": "case_2",
+        "case_step": 2,
+        "dt_expr": "PLC_PRG.TraceDt[10]",
+        "inputs": {
+          "THICKNESS_FAULT": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_THICKNESS_FAULT[10]",
+            "type": "BOOL"
+          },
+          "THICKNESS_SIGNAL_VALID": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_THICKNESS_SIGNAL_VALID[10]",
+            "type": "BOOL"
+          },
+          "CUTTING_RUN": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_CUTTING_RUN[10]",
+            "type": "BOOL"
+          },
+          "FaultTimestamp": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_FaultTimestamp[10]",
+            "type": "DINT"
+          },
+          "CycleTime": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_CycleTime[10]",
+            "type": "TIME"
+          }
+        },
+        "outputs": {
+          "THICKNESS_ALARM": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_THICKNESS_ALARM[10]",
+            "type": "BOOL"
+          },
+          "Slab_Fault_Counter": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Slab_Fault_Counter[10]",
+            "type": "UINT"
+          },
+          "Slab_Runtime_Accumulator": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Slab_Runtime_Accumulator[10]",
+            "type": "LTIME"
+          },
+          "Slab_Fault_History": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_0[10]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_1[10]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_2[10]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_3[10]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_4[10]",
+                "type": "DINT"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "step_index": 11,
+        "case_id": "case_2",
+        "case_step": 3,
+        "dt_expr": "PLC_PRG.TraceDt[11]",
+        "inputs": {
+          "THICKNESS_FAULT": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_THICKNESS_FAULT[11]",
+            "type": "BOOL"
+          },
+          "THICKNESS_SIGNAL_VALID": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_THICKNESS_SIGNAL_VALID[11]",
+            "type": "BOOL"
+          },
+          "CUTTING_RUN": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_CUTTING_RUN[11]",
+            "type": "BOOL"
+          },
+          "FaultTimestamp": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_FaultTimestamp[11]",
+            "type": "DINT"
+          },
+          "CycleTime": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_CycleTime[11]",
+            "type": "TIME"
+          }
+        },
+        "outputs": {
+          "THICKNESS_ALARM": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_THICKNESS_ALARM[11]",
+            "type": "BOOL"
+          },
+          "Slab_Fault_Counter": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Slab_Fault_Counter[11]",
+            "type": "UINT"
+          },
+          "Slab_Runtime_Accumulator": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Slab_Runtime_Accumulator[11]",
+            "type": "LTIME"
+          },
+          "Slab_Fault_History": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_0[11]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_1[11]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_2[11]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_3[11]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_4[11]",
+                "type": "DINT"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "step_index": 12,
+        "case_id": "case_2",
+        "case_step": 4,
+        "dt_expr": "PLC_PRG.TraceDt[12]",
+        "inputs": {
+          "THICKNESS_FAULT": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_THICKNESS_FAULT[12]",
+            "type": "BOOL"
+          },
+          "THICKNESS_SIGNAL_VALID": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_THICKNESS_SIGNAL_VALID[12]",
+            "type": "BOOL"
+          },
+          "CUTTING_RUN": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_CUTTING_RUN[12]",
+            "type": "BOOL"
+          },
+          "FaultTimestamp": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_FaultTimestamp[12]",
+            "type": "DINT"
+          },
+          "CycleTime": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_CycleTime[12]",
+            "type": "TIME"
+          }
+        },
+        "outputs": {
+          "THICKNESS_ALARM": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_THICKNESS_ALARM[12]",
+            "type": "BOOL"
+          },
+          "Slab_Fault_Counter": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Slab_Fault_Counter[12]",
+            "type": "UINT"
+          },
+          "Slab_Runtime_Accumulator": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Slab_Runtime_Accumulator[12]",
+            "type": "LTIME"
+          },
+          "Slab_Fault_History": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_0[12]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_1[12]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_2[12]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_3[12]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_4[12]",
+                "type": "DINT"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "step_index": 13,
+        "case_id": "case_2",
+        "case_step": 5,
+        "dt_expr": "PLC_PRG.TraceDt[13]",
+        "inputs": {
+          "THICKNESS_FAULT": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_THICKNESS_FAULT[13]",
+            "type": "BOOL"
+          },
+          "THICKNESS_SIGNAL_VALID": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_THICKNESS_SIGNAL_VALID[13]",
+            "type": "BOOL"
+          },
+          "CUTTING_RUN": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_CUTTING_RUN[13]",
+            "type": "BOOL"
+          },
+          "FaultTimestamp": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_FaultTimestamp[13]",
+            "type": "DINT"
+          },
+          "CycleTime": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_CycleTime[13]",
+            "type": "TIME"
+          }
+        },
+        "outputs": {
+          "THICKNESS_ALARM": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_THICKNESS_ALARM[13]",
+            "type": "BOOL"
+          },
+          "Slab_Fault_Counter": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Slab_Fault_Counter[13]",
+            "type": "UINT"
+          },
+          "Slab_Runtime_Accumulator": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Slab_Runtime_Accumulator[13]",
+            "type": "LTIME"
+          },
+          "Slab_Fault_History": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_0[13]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_1[13]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_2[13]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_3[13]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_4[13]",
+                "type": "DINT"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "step_index": 14,
+        "case_id": "case_2",
+        "case_step": 6,
+        "dt_expr": "PLC_PRG.TraceDt[14]",
+        "inputs": {
+          "THICKNESS_FAULT": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_THICKNESS_FAULT[14]",
+            "type": "BOOL"
+          },
+          "THICKNESS_SIGNAL_VALID": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_THICKNESS_SIGNAL_VALID[14]",
+            "type": "BOOL"
+          },
+          "CUTTING_RUN": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_CUTTING_RUN[14]",
+            "type": "BOOL"
+          },
+          "FaultTimestamp": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_FaultTimestamp[14]",
+            "type": "DINT"
+          },
+          "CycleTime": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_CycleTime[14]",
+            "type": "TIME"
+          }
+        },
+        "outputs": {
+          "THICKNESS_ALARM": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_THICKNESS_ALARM[14]",
+            "type": "BOOL"
+          },
+          "Slab_Fault_Counter": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Slab_Fault_Counter[14]",
+            "type": "UINT"
+          },
+          "Slab_Runtime_Accumulator": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Slab_Runtime_Accumulator[14]",
+            "type": "LTIME"
+          },
+          "Slab_Fault_History": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_0[14]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_1[14]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_2[14]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_3[14]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_4[14]",
+                "type": "DINT"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "step_index": 15,
+        "case_id": "case_2",
+        "case_step": 7,
+        "dt_expr": "PLC_PRG.TraceDt[15]",
+        "inputs": {
+          "THICKNESS_FAULT": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_THICKNESS_FAULT[15]",
+            "type": "BOOL"
+          },
+          "THICKNESS_SIGNAL_VALID": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_THICKNESS_SIGNAL_VALID[15]",
+            "type": "BOOL"
+          },
+          "CUTTING_RUN": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_CUTTING_RUN[15]",
+            "type": "BOOL"
+          },
+          "FaultTimestamp": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_FaultTimestamp[15]",
+            "type": "DINT"
+          },
+          "CycleTime": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_CycleTime[15]",
+            "type": "TIME"
+          }
+        },
+        "outputs": {
+          "THICKNESS_ALARM": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_THICKNESS_ALARM[15]",
+            "type": "BOOL"
+          },
+          "Slab_Fault_Counter": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Slab_Fault_Counter[15]",
+            "type": "UINT"
+          },
+          "Slab_Runtime_Accumulator": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_Slab_Runtime_Accumulator[15]",
+            "type": "LTIME"
+          },
+          "Slab_Fault_History": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_0[15]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_1[15]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_2[15]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_3[15]",
+                "type": "DINT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_Slab_Fault_History_4[15]",
+                "type": "DINT"
+              }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "result_path": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\d4f8708fe986e735\\simulation_evidence.json"
+}

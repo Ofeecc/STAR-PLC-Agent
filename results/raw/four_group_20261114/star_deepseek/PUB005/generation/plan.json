@@ -1,0 +1,108 @@
+{
+  "state_machine": {
+    "states": [
+      {
+        "name": "S_INITIALIZING",
+        "description": "Power-up monitoring inhibition active. Weld_Soft_Start_Active is TRUE. Operator_Alert is forced FALSE. Gap debounce timing is inhibited/reset."
+      },
+      {
+        "name": "S_MONITORING",
+        "description": "Post-startup normal monitoring. Gap_Exceeded may qualify after continuous DebounceTime when E-stop is inactive. Weld_Soft_Start_Active is FALSE."
+      }
+    ],
+    "transitions": [
+      {
+        "from": "S_INITIALIZING",
+        "to": "S_MONITORING",
+        "guard": "StartupTimer.Q == TRUE, i.e. startupActive == FALSE. State is supervisory; functional gating uses post-stage-3 startupActive derived from StartupTimer.Q."
+      },
+      {
+        "from": "S_MONITORING",
+        "to": "S_MONITORING",
+        "guard": "StartupTimer.Q == TRUE; no return to initialization without power cycle/fresh FB instance."
+      },
+      {
+        "from": "ANY_STATE",
+        "to": "SAME_STATE",
+        "guard": "Weld_E_Stop_NC == FALSE: E-stop priority override. Operator_Alert := FALSE; GapDebounceTimer reset. StartupTimer continues; Weld_Soft_Start_Active remains startupActive, so it can still be TRUE during E-stop if within the 5 s startup interval."
+      },
+      {
+        "from": "S_MONITORING",
+        "to": "S_MONITORING",
+        "guard": "Gap_Exceeded == FALSE: Operator_Alert := FALSE and GapDebounceTimer reset."
+      },
+      {
+        "from": "S_MONITORING",
+        "to": "S_MONITORING",
+        "guard": "startupActive == FALSE AND Weld_E_Stop_NC == TRUE AND Gap_Exceeded == TRUE AND GapDebounceTimer.Q == TRUE: Operator_Alert := TRUE."
+      }
+    ]
+  },
+  "timer_plan": [
+    {
+      "name": "StartupTimer",
+      "type": "TON",
+      "PT": "T#5s",
+      "IN": "TRUE after first FB invocation; remains TRUE through E-stop, gap changes, and state changes.",
+      "reset_conditions": "Fresh FB instance/power-up only. Not reset by Weld_E_Stop_NC, Gap_Exceeded, or state transition.",
+      "use": "StartupTimer.Q == TRUE means the 5 s initialization inhibition has completed. startupActive := NOT StartupTimer.Q. Weld_Soft_Start_Active := startupActive."
+    },
+    {
+      "name": "GapDebounceTimer",
+      "type": "TON",
+      "PT": "DebounceTime, sampled each scan; assumed strictly positive.",
+      "IN": "NOT startupActive AND Weld_E_Stop_NC AND Gap_Exceeded, evaluated after the unconditional StartupTimer call in stage 3.",
+      "reset_conditions": "IN == FALSE: resets ET to zero and Q to FALSE. This occurs during startup, on E-stop active, or when Gap_Exceeded is FALSE. Also reset on fresh FB/power-up.",
+      "use": "GapDebounceTimer.Q is TRUE only after Gap_Exceeded has remained TRUE continuously for DebounceTime while post-startup and E-stop inactive. At the exact scan startup clears, the first eligible gap invocation has ET = 0 and no debounce time is credited from the inhibition period."
+    }
+  ],
+  "priorities": [
+    "1. E-stop highest priority: Weld_E_Stop_NC == FALSE forces Operator_Alert := FALSE immediately and resets GapDebounceTimer. E-stop does not restart or reset StartupTimer, and does not change Weld_Soft_Start_Active except as determined by the continuing startup timer.",
+    "2. Power-up initialization priority: while startupActive == TRUE, Operator_Alert is forced FALSE, Weld_Soft_Start_Active is TRUE, and GapDebounceTimer is inhibited/reset.",
+    "3. Raw gap FALSE reset: Gap_Exceeded == FALSE forces Operator_Alert := FALSE and resets GapDebounceTimer immediately.",
+    "4. Normal qualified-gap alarm: Operator_Alert may be TRUE only when startupActive == FALSE, Weld_E_Stop_NC == TRUE, Gap_Exceeded == TRUE, and GapDebounceTimer.Q == TRUE.",
+    "5. Deterministic output stage: outputs are assigned once in stage 4 after safety, state, and timer execution."
+  ],
+  "initial_values": {
+    "Operator_Alert": false,
+    "Weld_Soft_Start_Active": true,
+    "state": "S_INITIALIZING",
+    "startupActive": true,
+    "gapQualified": false,
+    "firstScan": true,
+    "StartupTimer.IN": true,
+    "StartupTimer.PT": "T#5s",
+    "StartupTimer.ET": "T#0s",
+    "StartupTimer.Q": false,
+    "GapDebounceTimer.IN": false,
+    "GapDebounceTimer.PT_source": "DebounceTime",
+    "GapDebounceTimer.ET": "T#0s",
+    "GapDebounceTimer.Q": false,
+    "startupElapsed_ms": 0,
+    "gapElapsed_ms": 0
+  },
+  "scan_execution_order": [
+    "Stage 1 - Edge sampling: sample Gap_Exceeded, Weld_E_Stop_NC, and DebounceTime once per scan. Latch firstScan if needed for FB initialization; no hidden input-stability assumptions are used.",
+    "Stage 2 - Safety/reset priority and state transitions: evaluate E-stop first, then startup inhibition, then raw Gap_Exceeded FALSE reset. Set supervisory state transition requests using prior retained timer/state information; final functional startupActive is recomputed after the unconditional StartupTimer call.",
+    "Stage 3 - Unconditional top-level timer FB calls outside CASE/IF: call StartupTimer(IN := TRUE, PT := T#5s); update startupActive := NOT StartupTimer.Q; set GapDebounceTimer.PT := DebounceTime; call GapDebounceTimer(IN := NOT startupActive AND Weld_E_Stop_NC AND Gap_Exceeded, PT := DebounceTime).",
+    "Stage 4 - Unified output assignments: Operator_Alert := (NOT startupActive) AND Weld_E_Stop_NC AND Gap_Exceeded AND GapDebounceTimer.Q; Weld_Soft_Start_Active := startupActive. No other output assignments occur."
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G(!Weld_E_Stop_NC -> !Operator_Alert)"
+    },
+    {
+      "id": "A2",
+      "formula": "G(Weld_Soft_Start_Active -> !Operator_Alert)"
+    },
+    {
+      "id": "A3",
+      "formula": "G(!Gap_Exceeded -> !Operator_Alert)"
+    },
+    {
+      "id": "A4",
+      "formula": "G(Operator_Alert -> (Weld_E_Stop_NC AND Gap_Exceeded AND !Weld_Soft_Start_Active))"
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+{
+  "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    Gap_Exceeded : BOOL;\n    Weld_E_Stop_NC : BOOL;\n    DebounceTime : TIME;\nEND_VAR\nVAR_OUTPUT\n    Operator_Alert : BOOL := FALSE;\n    Weld_Soft_Start_Active : BOOL := TRUE;\nEND_VAR\nVAR\n    T_Startup : TON;\n    T_Gap : TON;\n    StartupComplete : BOOL := FALSE;\n    SampledGap : BOOL;\n    SampledEStopNC : BOOL;\n    SampledDebounceTime : TIME;\nEND_VAR",
+  "implementation": "SampledGap := Gap_Exceeded;\nSampledEStopNC := Weld_E_Stop_NC;\nSampledDebounceTime := DebounceTime;\n\n// Use elapsed time rather than the timer's done output for the 5-second boundary.\nT_Startup(IN := TRUE, PT := T#10000ms);\nIF T_Startup.ET >= T#5000ms THEN\n    StartupComplete := TRUE;\nEND_IF;\n\nT_Gap(IN := StartupComplete AND SampledEStopNC AND SampledGap,\n      PT := SampledDebounceTime);\n\nWeld_Soft_Start_Active := NOT StartupComplete;\nOperator_Alert := StartupComplete AND SampledEStopNC AND SampledGap AND T_Gap.Q;",
+  "supporting_objects": []
+}

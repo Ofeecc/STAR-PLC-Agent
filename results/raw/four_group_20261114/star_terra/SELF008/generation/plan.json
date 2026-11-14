@@ -1,0 +1,80 @@
+{
+  "state_machine": [
+    {
+      "state": "RESET",
+      "definition": "Post-scan Count = 0 and Ready = FALSE; also the initial state."
+    },
+    {
+      "state": "QUALIFYING",
+      "definition": "Post-scan Count > 0 and Ready = FALSE."
+    },
+    {
+      "state": "READY",
+      "definition": "Post-scan Ready = TRUE."
+    },
+    {
+      "transitions": [
+        "From any state, if Trip is TRUE, Request is FALSE, or Preset is outside 1..5, transition to RESET.",
+        "Otherwise, set next Count to min(previous Count + 1, sampled Preset). Transition to READY if next Count >= Preset; otherwise transition to QUALIFYING."
+      ],
+      "note": "States are descriptive classifications, not separately retained variables. Preset changes do not independently reset progress: lowering it clamps Count; raising it may clear Ready."
+    }
+  ],
+  "timer_plan": {
+    "timers_required": [],
+    "PT_durations": "None.",
+    "reset_conditions": "Not applicable; qualification counts scan invocations, not elapsed time."
+  },
+  "priorities": [
+    "Trip, missing Request, or invalid Preset clears Count and Ready in the same scan, with priority over qualification.",
+    "On every other scan, increment and saturate Count, then derive Ready from the updated Count.",
+    "Trip is evaluated from the once-per-scan sample; no asynchronous between-scan response is implied."
+  ],
+  "initial_values": {
+    "Count": 0,
+    "Ready": false,
+    "NextCount": 0,
+    "NextReady": false,
+    "notes": "Count is the retained prior-scan count. Initial values apply before the first invocation; the first scan executes normally."
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "Edge sampling",
+      "actions": "Sample Request, Trip, and Preset once into local snapshots. No edge detectors are required; qualification is level-based."
+    },
+    {
+      "stage": 2,
+      "name": "Safety/reset priority and state transitions",
+      "actions": "Read retained Count before output assignment. If sampled Trip, missing Request, or invalid Preset is present, set NextCount := 0 and NextReady := FALSE. Otherwise set NextCount := min(INT(Count) + 1, INT(sampled Preset)), converted to USINT, and NextReady := (NextCount >= sampled Preset)."
+    },
+    {
+      "stage": 3,
+      "name": "Unconditional top-level timer FB calls outside CASE/IF",
+      "actions": "No timer FBs are required or called."
+    },
+    {
+      "stage": 4,
+      "name": "Unified output assignments",
+      "actions": "Assign Count := NextCount and Ready := NextReady exactly once. These are the observed outputs for the current scan."
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G((Trip | !Request | (Preset < 1) | (Preset > 5)) -> (!Ready & (Count = 0)))"
+    },
+    {
+      "id": "A2",
+      "formula": "G(Ready <-> ((Preset >= 1) & (Preset <= 5) & (Count >= Preset)))"
+    },
+    {
+      "id": "A3",
+      "formula": "G(((Preset >= 1) & (Preset <= 5)) -> (Count <= Preset))"
+    },
+    {
+      "id": "A4",
+      "formula": "G((Request & !Trip & (Preset >= 1) & (Preset <= 5)) -> (Count >= 1))"
+    }
+  ]
+}

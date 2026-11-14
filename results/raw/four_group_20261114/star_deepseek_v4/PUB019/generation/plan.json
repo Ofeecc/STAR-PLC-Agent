@@ -1,0 +1,183 @@
+{
+  "state_machine": {
+    "states": [
+      "MANUAL",
+      "AUTO_IDLE",
+      "DOWN1",
+      "GRIP",
+      "UP1",
+      "RIGHT",
+      "DOWN2",
+      "RELEASE",
+      "UP2",
+      "LEFT",
+      "STEP_WAIT",
+      "ESTOP_CANCEL"
+    ],
+    "transitions": [
+      {
+        "from": "ANY",
+        "to": "ESTOP_CANCEL",
+        "priority": 1,
+        "guard": "EmergencyStop=FALSE",
+        "actions": "Force all command outputs OFF; clear busy, step_wait, automatic phase to AUTO_IDLE, next_step=1; retain selected mode; Start edge memory still updates."
+      },
+      {
+        "from": "ESTOP_CANCEL",
+        "to": "MANUAL",
+        "priority": 2,
+        "guard": "EmergencyStop=TRUE AND ManualMode",
+        "actions": "Sequence reset; manual combinational control enabled on later scans."
+      },
+      {
+        "from": "ESTOP_CANCEL",
+        "to": "AUTO_IDLE",
+        "priority": 2,
+        "guard": "EmergencyStop=TRUE AND (SingleStepMode OR SingleCycleMode OR ContinuousMode)",
+        "actions": "Sequence reset; wait for a fresh Start rising edge from top-left pose."
+      },
+      {
+        "from": "ANY",
+        "to": "MANUAL",
+        "priority": 3,
+        "guard": "EmergencyStop AND ManualMode AND (modeChanged OR state != MANUAL)",
+        "actions": "Reset automatic sequence and latches; if modeChanged, suppress all outputs for this invocation; new mode accepted next scan."
+      },
+      {
+        "from": "ANY",
+        "to": "AUTO_IDLE",
+        "priority": 3,
+        "guard": "EmergencyStop AND (SingleStepMode OR SingleCycleMode OR ContinuousMode) AND (modeChanged OR state = MANUAL)",
+        "actions": "Reset automatic sequence and latches; if modeChanged, suppress all outputs for this invocation; wait for Start."
+      },
+      {
+        "from": "ANY",
+        "to": "AUTO_IDLE",
+        "priority": 3,
+        "guard": "NOT (ManualMode OR SingleStepMode OR SingleCycleMode OR ContinuousMode)",
+        "actions": "Reset sequence and latches; force all outputs OFF."
+      },
+      {
+        "from": "AUTO_IDLE",
+        "to": "DOWN1",
+        "priority": 5,
+        "guard": "EmergencyStop AND !modeChanged AND (SingleStepMode OR SingleCycleMode OR ContinuousMode) AND StartRise AND UpLimitSwitch AND LeftLimitSwitch",
+        "actions": "busy=true; step_wait=false; next_step=2; begin automatic DOWN1."
+      },
+      {
+        "from": "STEP_WAIT",
+        "to": "next_step phase",
+        "priority": 5,
+        "guard": "EmergencyStop AND SingleStepMode AND !modeChanged AND StartRise AND (next_step != 1 OR (UpLimitSwitch AND LeftLimitSwitch))",
+        "actions": "busy=true; step_wait=false; execute next_step action."
+      },
+      {
+        "from": "automatic action state",
+        "to": "completion successor",
+        "priority": 6,
+        "guard": "EmergencyStop AND !modeChanged AND matching completion feedback",
+        "actions": "Apply mode_completion_rules; at most one automatic phase transition per scan, except continuous LEFT completion wraps once directly to DOWN1."
+      },
+      {
+        "from": "active automatic action",
+        "to": "same state",
+        "priority": 7,
+        "guard": "StartRise while busy",
+        "actions": "Ignore Start for transitions; Start edge history still updates in scan stage 1."
+      }
+    ],
+    "automatic_ordered_sequence": [
+      "DOWN1",
+      "GRIP",
+      "UP1",
+      "RIGHT",
+      "DOWN2",
+      "RELEASE",
+      "UP2",
+      "LEFT"
+    ],
+    "completion_feedback": {
+      "DOWN1": "DownLimitSwitch",
+      "GRIP": "GripLimitSwitch",
+      "UP1": "UpLimitSwitch",
+      "RIGHT": "RightLimitSwitch",
+      "DOWN2": "DownLimitSwitch",
+      "RELEASE": "ReleaseLimitSwitch",
+      "UP2": "UpLimitSwitch",
+      "LEFT": "LeftLimitSwitch"
+    },
+    "mode_completion_rules": [
+      "SingleStepMode: on matching completion, set busy=false, step_wait=true, next_step=successor(action), and force all command intents OFF; the next action requires a fresh Start rising edge on a later scan.",
+      "SingleCycleMode: on matching completion, move to successor; LEFT completion returns to AUTO_IDLE with busy=false and all outputs OFF.",
+      "ContinuousMode: on matching completion, move to successor; LEFT completion wraps directly to DOWN1 in the same scan with busy=true.",
+      "If an already-active next-state limit/feedback is TRUE, its command is suppressed in that scan but completion is processed on the next invocation."
+    ]
+  },
+  "timer_plan": {
+    "required": false,
+    "timers": [],
+    "reset_conditions": "Not applicable; no IEC timers are used. Start is handled by rising-edge memory; motion completion is by limit/feedback switches. Any future debounce/monitoring timer must be called unconditionally in scan stage 3 and reset when its raw input is FALSE."
+  },
+  "priorities": [
+    "1. EmergencyStop=FALSE: force all six outputs OFF, cancel busy/automatic sequence/step wait, retain selected mode; Start edge memory still updates.",
+    "2. No selected mode or more than one selected mode: force all outputs OFF and reset the sequence; caller contract supplies mutually exclusive mode inputs.",
+    "3. Mode change after first scan: clear sequence/latches and force all outputs OFF for that invocation; edge memories still update; the new mode takes effect on subsequent scans.",
+    "4. Matching limit/feedback immediately suppresses its own command in the same scan.",
+    "5. Opposed axis commands and grip/release are mutually exclusive; opposing manual buttons inhibit both commands.",
+    "6. Manual mode is combinational: command = selected manual mode AND safe AND !modeChanged AND button AND !opposing-button AND !matching-limit. Releasing the button or reaching the limit removes the command; non-opposing manual actions may run together.",
+    "7. A fresh Start rising edge starts automatic action 1 only from top-left pose (UpLimitSwitch AND LeftLimitSwitch); Start edges during active actions are ignored.",
+    "8. Single-step completion waits for a fresh Start; single-cycle stops at LEFT and returns to AUTO_IDLE; continuous wraps LEFT to DOWN1."
+  ],
+  "initial_values": {
+    "MoveDown": false,
+    "MoveUp": false,
+    "MoveLeft": false,
+    "MoveRight": false,
+    "ActivateGrip": false,
+    "ActivateRelease": false,
+    "arm_mode": "NONE",
+    "phase": "AUTO_IDLE",
+    "busy": false,
+    "step_wait": false,
+    "next_step": 1,
+    "start_mem": false,
+    "mode_prev": "NONE",
+    "first_scan": true,
+    "suppress_outputs": false,
+    "initial_pose": "TOP_LEFT",
+    "cmd_intent_down": false,
+    "cmd_intent_up": false,
+    "cmd_intent_left": false,
+    "cmd_intent_right": false,
+    "cmd_intent_grip": false,
+    "cmd_intent_release": false
+  },
+  "scan_execution_order": [
+    "1. Edge sampling: sample all inputs into I[k]; compute StartRise = Start AND NOT start_mem; compute modeChanged = (selected_mode != mode_prev) except first_scan; update start_mem, mode_prev, first_scan. Do not change outputs here.",
+    "2. Safety/reset priority and state transitions: apply EmergencyStop, no/invalid mode, and modeChanged resets first; then evaluate manual/auto state transitions and automatic phase completion using the retained pre-state and sampled inputs; allow at most one automatic phase transition per scan, except continuous LEFT completion wraps once directly to DOWN1.",
+    "3. Unconditional top-level timer FB calls outside CASE/IF: no timer FBs are required; if any debounce/monitoring timer is added, all timer instances are called unconditionally here every scan before output assignment.",
+    "4. Unified output assignment: compute command intents from post-transition manual/auto state; apply EmergencyStop, modeChanged, no-mode, mutual-exclusion, and matching-limit/feedback gates; assign each of the six outputs exactly once."
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G((!EmergencyStop | !(ManualMode | SingleStepMode | SingleCycleMode | ContinuousMode)) -> (!MoveDown & !MoveUp & !MoveLeft & !MoveRight & !ActivateGrip & !ActivateRelease))"
+    },
+    {
+      "id": "A2",
+      "formula": "G(!(MoveDown & MoveUp) & !(MoveLeft & MoveRight) & !(ActivateGrip & ActivateRelease))"
+    },
+    {
+      "id": "A3",
+      "formula": "G((DownLimitSwitch -> !MoveDown) & (UpLimitSwitch -> !MoveUp) & (LeftLimitSwitch -> !MoveLeft) & (RightLimitSwitch -> !MoveRight) & (GripLimitSwitch -> !ActivateGrip) & (ReleaseLimitSwitch -> !ActivateRelease))"
+    },
+    {
+      "id": "A4",
+      "formula": "G((MoveDown -> (EmergencyStop & !DownLimitSwitch)) & (MoveUp -> (EmergencyStop & !UpLimitSwitch)) & (MoveLeft -> (EmergencyStop & !LeftLimitSwitch)) & (MoveRight -> (EmergencyStop & !RightLimitSwitch)) & (ActivateGrip -> (EmergencyStop & !GripLimitSwitch)) & (ActivateRelease -> (EmergencyStop & !ReleaseLimitSwitch)))"
+    },
+    {
+      "id": "A5",
+      "formula": "G((MoveDown | MoveUp | MoveLeft | MoveRight | ActivateGrip | ActivateRelease) -> (ManualMode | SingleStepMode | SingleCycleMode | ContinuousMode))"
+    }
+  ]
+}

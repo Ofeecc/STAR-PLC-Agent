@@ -1,0 +1,155 @@
+{
+  "state_machine": {
+    "state_basis": "Logical queue condition is derived from internalCount: INIT before first binding, EMPTY when count=0, PARTIAL when 0<count<capacity, FULL when count=capacity. Reset always forces EMPTY.",
+    "states": [
+      {
+        "name": "INIT",
+        "description": "First invocation. Capacity is derived once from the actual nonempty one-dimensional buffer length and item type is checked against the buffer element type. No queue operation is performed until initialized."
+      },
+      {
+        "name": "EMPTY",
+        "description": "elementCount=0. Dequeue rising edge is rejected with 16#8001; enqueue rising edge is accepted unless reset is TRUE."
+      },
+      {
+        "name": "PARTIAL",
+        "description": "0<elementCount<capacity. Accepted enqueue appends at tail; accepted dequeue removes from head."
+      },
+      {
+        "name": "FULL",
+        "description": "elementCount=capacity. Enqueue rising edge is rejected with 16#8002; dequeue rising edge is accepted unless reset is TRUE."
+      }
+    ],
+    "transitions": [
+      {
+        "from": "INIT",
+        "to": "EMPTY",
+        "event": "first invocation",
+        "action": "Bind capacity from buffer actual length, initialize head=0, tail=0, internalCount=0, status=16#0000; update edge memories."
+      },
+      {
+        "from": "ANY",
+        "to": "EMPTY",
+        "event": "reset=TRUE",
+        "action": "Highest priority. Set internalCount=0, head=0, tail=0, status=16#0000. Suppress enqueue/dequeue processing. Update edge memories. Do not overwrite item or buffer contents."
+      },
+      {
+        "from": "EMPTY",
+        "to": "PARTIAL",
+        "event": "NOT reset AND rising(enqueue) AND capacity>1",
+        "action": "buffer[tail:=item; tail:=(tail+1) MOD capacity; internalCount:=internalCount+1; status:=16#0000; item remains caller value."
+      },
+      {
+        "from": "EMPTY",
+        "to": "FULL",
+        "event": "NOT reset AND rising(enqueue) AND capacity=1",
+        "action": "buffer[tail:=item; tail:=0; internalCount:=1; status:=16#0000; item remains caller value."
+      },
+      {
+        "from": "EMPTY",
+        "to": "EMPTY",
+        "event": "NOT reset AND rising(dequeue)",
+        "action": "Reject dequeue: status:=16#8001; queue and item unchanged."
+      },
+      {
+        "from": "PARTIAL",
+        "to": "PARTIAL",
+        "event": "NOT reset AND accepted enqueue or dequeue not crossing empty/full",
+        "action": "Perform exactly one accepted operation on a rising edge; status:=16#0000."
+      },
+      {
+        "from": "PARTIAL",
+        "to": "FULL",
+        "event": "NOT reset AND rising(enqueue) AND internalCount=capacity-1",
+        "action": "Append item at tail; tail:=(tail+1) MOD capacity; internalCount:=capacity; status:=16#0000."
+      },
+      {
+        "from": "PARTIAL",
+        "to": "EMPTY",
+        "event": "NOT reset AND rising(dequeue) AND internalCount=1",
+        "action": "item:=buffer[head]; head:=(head+1) MOD capacity; internalCount:=0; status:=16#0000."
+      },
+      {
+        "from": "FULL",
+        "to": "PARTIAL",
+        "event": "NOT reset AND rising(dequeue)",
+        "action": "item:=buffer[head]; head:=(head+1) MOD capacity; internalCount:=internalCount-1; status:=16#0000."
+      },
+      {
+        "from": "FULL",
+        "to": "FULL",
+        "event": "NOT reset AND rising(enqueue)",
+        "action": "Reject enqueue: status:=16#8002; queue and item unchanged."
+      },
+      {
+        "from": "EMPTY|PARTIAL|FULL",
+        "to": "same logical state",
+        "event": "idle, no rising enqueue/dequeue, and reset=FALSE",
+        "action": "No queue change. status:=16#0000. item and buffer unchanged."
+      }
+    ]
+  },
+  "timer_plan": {
+    "timers": [],
+    "PT_durations": "Not applicable; no IEC timers are required.",
+    "reset_conditions": "Not applicable; reset clears queue state immediately and performs no timer reset."
+  },
+  "priorities": [
+    "Reset is highest priority and suppresses enqueue/dequeue processing on the same scan.",
+    "Only rising edges of enqueue and dequeue request FIFO operations; held levels are idle.",
+    "Rejected operations must preserve the logical queue and item value.",
+    "Successful enqueue appends exactly one sampled item value at tail.",
+    "Successful dequeue removes exactly one front value, writes it to item, and advances head.",
+    "Status priority per scan: reset or idle/success = 16#0000; empty dequeue rejection = 16#8001; full enqueue rejection = 16#8002.",
+    "Capacity and element-type compatibility are established once from the caller-bound buffer; capacity is the actual array length and must fit in DINT.",
+    "Simultaneous enqueue and dequeue rising edges with reset=FALSE are outside the valid domain; the implementation must not silently corrupt queue state. Reset still has priority.",
+    "Edge memories are updated on every invocation, including reset scans, so a held request is not retriggered later."
+  ],
+  "initial_values": {
+    "elementCount": 0,
+    "status": "16#0000",
+    "head": 0,
+    "tail": 0,
+    "internalCount": 0,
+    "enqueuePrev": false,
+    "dequeuePrev": false,
+    "capacity": "DERIVED_ON_FIRST_INVOCATION_FROM_ACTUAL_BUFFER_LENGTH",
+    "item": "CALLER_OWNED; WRITTEN_ONLY_ON_SUCCESSFUL_DEQUEUE",
+    "buffer": "CALLER_BOUND; RESET_DOES_NOT_OVERWRITE_CONTENTS"
+  },
+  "scan_execution_order": {
+    "1_edge_sampling": "Sample enqueue, dequeue, reset, item, and buffer for the current invocation. Compute enqueueRise:=enqueue AND NOT enqueuePrev and dequeueRise:=dequeue AND NOT dequeuePrev. Capture preCount and preItem. Update enqueuePrev:=enqueue and dequeuePrev:=dequeue, including reset scans.",
+    "2_safety_reset_priority_and_state_transitions": "First evaluate reset. If reset=TRUE, set internalCount=0, head=0, tail=0, status=16#0000, suppress enqueue/dequeue, and leave item/buffer contents unchanged. Otherwise evaluate at most one valid request edge. Reject dequeue when preCount=0 with status=16#8001 and preserve item/queue. Reject enqueue when preCount=capacity with status=16#8002 and preserve item/queue. Otherwise perform exactly one accepted enqueue or dequeue using circular head/tail updates and set status=16#0000. Derive EMPTY/PARTIAL/FULL from updated internalCount.",
+    "3_unconditional_top_level_timer_FB_calls_outside_CASE_IF": "No timer function blocks are required. If future timing diagnostics are added, call them unconditionally at top level outside CASE/IF. They must not gate FIFO state transitions or output mapping.",
+    "4_unified_output_assignments": "Assign elementCount:=internalCount. Assign status from the single selected result of this scan. Write item only on a successful dequeue; otherwise preserve the sampled caller item. Write buffer only on a successful enqueue. No other assignment path may modify outputs."
+  },
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G(reset -> (elementCount = 0 AND status = 16#0000))"
+    },
+    {
+      "id": "A2",
+      "formula": "G((NOT reset AND rising(dequeue) AND pre(elementCount) = 0) -> (status = 16#8001))"
+    },
+    {
+      "id": "A3",
+      "formula": "G((NOT reset AND rising(enqueue) AND NOT rising(dequeue)) -> (status = 16#0000 OR status = 16#8002))"
+    },
+    {
+      "id": "A4",
+      "formula": "G((NOT reset AND rising(dequeue) AND NOT rising(enqueue)) -> (status = 16#0000 OR status = 16#8001))"
+    },
+    {
+      "id": "A5",
+      "formula": "G((NOT (NOT reset AND rising(dequeue) AND pre(elementCount) > 0)) -> item = pre(item))"
+    },
+    {
+      "id": "A6",
+      "formula": "G(elementCount >= 0)"
+    },
+    {
+      "id": "A7",
+      "formula": "G((NOT reset AND NOT rising(enqueue) AND NOT rising(dequeue)) -> (status = 16#0000))"
+    }
+  ]
+}

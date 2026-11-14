@@ -1,0 +1,90 @@
+{
+  "state_machine": [
+    {
+      "state": "RUN",
+      "description": "Single operational state; previousValue retains the prior sampled DWORD.",
+      "transitions": [
+        {
+          "to": "RUN",
+          "condition": "Every invocation, unconditionally",
+          "action": "After calculating both edge masks, set previousValue to the sampled value."
+        }
+      ]
+    }
+  ],
+  "timer_plan": {
+    "timers": [],
+    "PT_durations": "Not applicable",
+    "reset_conditions": "Not applicable"
+  },
+  "priorities": [
+    "Use the same pre-scan previousValue and sampled input for both edge masks; update previousValue only after both masks are calculated.",
+    "Process every invocation without gating. No safety, reset, or stop interface is specified.",
+    "Detect changes between consecutive samples only; changes occurring entirely between invocations are not observable."
+  ],
+  "initial_values": {
+    "previousValue": "DWORD#0",
+    "risingBits": "DWORD#0",
+    "fallingBits": "DWORD#0",
+    "noOfRisingBits": 0,
+    "noOfFallingBits": 0,
+    "hasChanged": false,
+    "hasRisingEdges": false,
+    "hasFallingEdges": false,
+    "note": "These are fresh-instance values before the first invocation. Nonzero input bits on the first scan are rising edges."
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "Edge sampling",
+      "actions": [
+        "Sample value once into a local DWORD.",
+        "Calculate local rising mask as sampledValue AND NOT previousValue.",
+        "Calculate local falling mask as previousValue AND NOT sampledValue; restrict complements to 32 bits."
+      ]
+    },
+    {
+      "stage": 2,
+      "name": "Safety/reset priority and state transitions",
+      "actions": [
+        "No safety or reset conditions are specified; remain in RUN.",
+        "After both masks are calculated, assign previousValue := sampledValue."
+      ]
+    },
+    {
+      "stage": 3,
+      "name": "Unconditional top-level timer FB calls outside CASE/IF",
+      "actions": [
+        "No timer FBs are required; there are no calls in this stage."
+      ]
+    },
+    {
+      "stage": 4,
+      "name": "Unified output assignments",
+      "actions": [
+        "Assign risingBits and fallingBits from the local masks.",
+        "Assign each USINT count to the population count of its mask, in the range 0 through 32.",
+        "Set each edge flag according to whether its mask is nonzero; set hasChanged according to whether either mask is nonzero.",
+        "Overwrite all outputs on every invocation."
+      ]
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G((risingBits AND fallingBits) = DWORD#0)"
+    },
+    {
+      "id": "A2",
+      "formula": "G(((risingBits AND value) = risingBits) & ((fallingBits AND value) = DWORD#0))"
+    },
+    {
+      "id": "A3",
+      "formula": "G((noOfRisingBits = popcount(risingBits)) & (noOfFallingBits = popcount(fallingBits)))"
+    },
+    {
+      "id": "A4",
+      "formula": "G((hasRisingEdges <-> risingBits <> DWORD#0) & (hasFallingEdges <-> fallingBits <> DWORD#0) & (hasChanged <-> (hasRisingEdges | hasFallingEdges)))"
+    }
+  ]
+}

@@ -1,0 +1,115 @@
+{
+  "state_machine": [
+    {
+      "state": "IDLE",
+      "description": "No automatic action is active. Manual control is a combinational output overlay, not a sequencer state.",
+      "transitions": [
+        "In an automatic mode, a fresh Start edge with UpLimitSwitch and LeftLimitSwitch TRUE starts action 1 and enters RUNNING.",
+        "Otherwise remain IDLE. A rejected Start edge is not queued."
+      ]
+    },
+    {
+      "state": "RUNNING",
+      "description": "Exactly one automatic action is active. Actions 1 through 8 are DOWN, GRIP, UP1, RIGHT, DOWN2, RELEASE, UP2, LEFT. Their respective completion inputs are DownLimitSwitch, GripLimitSwitch, UpLimitSwitch, RightLimitSwitch, DownLimitSwitch, ReleaseLimitSwitch, UpLimitSwitch, LeftLimitSwitch.",
+      "transitions": [
+        "Without matching completion feedback, remain in the current action; ignore Start edges.",
+        "On matching feedback in SingleStepMode, stop the action. After actions 1–7, increment next_step and enter WAIT_STEP; after action 8, set next_step to 1 and enter IDLE.",
+        "On matching feedback in SingleCycleMode or ContinuousMode after actions 1–7, advance to the next action in the same scan.",
+        "After action 8, SingleCycleMode enters IDLE with next_step 1; ContinuousMode wraps directly to action 1 in the same scan."
+      ]
+    },
+    {
+      "state": "WAIT_STEP",
+      "description": "Single-step action completed; all outputs are off and next_step identifies the next action.",
+      "transitions": [
+        "A fresh Start edge starts next_step and enters RUNNING.",
+        "Without a fresh edge, remain waiting. The top-left pose check applies to the start of action 1, not to intermediate steps."
+      ]
+    }
+  ],
+  "timer_plan": {
+    "required": [],
+    "PT_durations": "None.",
+    "reset_conditions": "Not applicable.",
+    "rationale": "All action completion is feedback-driven; no timeout or delay is specified."
+  },
+  "priorities": [
+    "EmergencyStop FALSE overrides everything: turn all outputs off and cancel the sequence. Do not clear a selected mode solely because of emergency stop. Automatic recovery requires a fresh Start edge and the top-left pose.",
+    "After emergency stop priority, a mode change after the first invocation resets the sequence and suppresses all commands for that invocation. No selected mode also resets the sequence and turns all outputs off. The first invocation establishes the selected mode without a mode-change suppression scan.",
+    "The caller must select at most one mode. A host/test wrapper rejects multiple selected modes with ValueError; a PLC implementation should also fail off if this contract is violated.",
+    "Opposing manual buttons inhibit both commands in their pair, regardless of limit states. Independent non-opposing manual actions may operate simultaneously.",
+    "Each completion input immediately suppresses its corresponding output. Automatic operation requests at most one action at a time.",
+    "Start edges during an active action, including its completion scan, are discarded. Edge history still updates during emergency stop, mode changes, and inactive modes.",
+    "Provide an independently engineered, safety-rated emergency-stop system and assess mechanical braking and payload retention; ordinary PLC command logic alone is not a safety function."
+  ],
+  "initial_values": {
+    "outputs": {
+      "MoveDown": false,
+      "MoveUp": false,
+      "MoveLeft": false,
+      "MoveRight": false,
+      "ActivateGrip": false,
+      "ActivateRelease": false
+    },
+    "state": "IDLE",
+    "next_step": 1,
+    "busy": false,
+    "previous_Start": false,
+    "arm_mode": "NONE until the first invocation establishes the sampled selection",
+    "first_invocation": true,
+    "initial_pose": "Top left; physical UpLimitSwitch and LeftLimitSwitch feedback must confirm the pose before starting a new automatic sequence."
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "Edge sampling",
+      "actions": [
+        "Sample all inputs once. Compute Start rising edge from sampled Start and previous_Start, then update previous_Start on every invocation.",
+        "Determine the selected mode and whether it differs from the previous invocation; modeChanged is FALSE on the first invocation. Update arm_mode even when emergency stop is active."
+      ]
+    },
+    {
+      "stage": 2,
+      "name": "Safety/reset priority and state transitions",
+      "actions": [
+        "Apply emergency stop first, then mode-change and no-mode resets. Each reset sets state to IDLE, next_step to 1, and busy to FALSE; suppress outputs for the applicable scan.",
+        "Otherwise evaluate at most one sequencer transition using the pre-scan state and sampled feedback. On an accepted start, enter RUNNING without also processing completion in that invocation.",
+        "On automatic completion, select the next phase in this scan where required. If its feedback is already TRUE, its output is suppressed now and its completion is processed on the next invocation.",
+        "In manual mode keep the sequencer reset; calculate manual requests from buttons and opposing-button interlocks."
+      ]
+    },
+    {
+      "stage": 3,
+      "name": "Unconditional top-level timer FB calls outside CASE/IF",
+      "actions": [
+        "No timer FBs are required, so there are no calls. Any timers added by a future approved design must be called unconditionally at this stage outside CASE/IF."
+      ]
+    },
+    {
+      "stage": 4,
+      "name": "Unified output assignments",
+      "actions": [
+        "Assign all six outputs exactly once from the post-transition automatic phase or manual requests, gated by emergency stop, mode-change suppression, valid mode, opposing-command interlocks, and each command's own completion feedback.",
+        "Single-step completion and single-cycle completion produce all outputs off in the completion scan; continuous wrapping requests DOWN in that scan subject to DownLimitSwitch."
+      ]
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G(!EmergencyStop -> (!MoveDown & !MoveUp & !MoveLeft & !MoveRight & !ActivateGrip & !ActivateRelease))"
+    },
+    {
+      "id": "A2",
+      "formula": "G((!ManualMode & !SingleStepMode & !SingleCycleMode & !ContinuousMode) -> (!MoveDown & !MoveUp & !MoveLeft & !MoveRight & !ActivateGrip & !ActivateRelease))"
+    },
+    {
+      "id": "A3",
+      "formula": "G(!(MoveDown & MoveUp) & !(MoveLeft & MoveRight) & !(ActivateGrip & ActivateRelease))"
+    },
+    {
+      "id": "A4",
+      "formula": "G((DownLimitSwitch -> !MoveDown) & (UpLimitSwitch -> !MoveUp) & (LeftLimitSwitch -> !MoveLeft) & (RightLimitSwitch -> !MoveRight) & (GripLimitSwitch -> !ActivateGrip) & (ReleaseLimitSwitch -> !ActivateRelease))"
+    }
+  ]
+}

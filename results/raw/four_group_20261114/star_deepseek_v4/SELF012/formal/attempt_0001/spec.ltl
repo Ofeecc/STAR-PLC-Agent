@@ -1,0 +1,46 @@
+-- Formal verification specification for Task SELF012
+-- Generated: 2026-11-14T11:01:15.388673+00:00
+
+-- Property: SELF012.P_init
+-- Description: Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
+LTLSPEC NAME SELF012.P_init := init;
+
+-- Property: SELF012.P1
+-- Description: A present fault cannot command the feeder.
+LTLSPEC NAME SELF012.P1 := G(Fault -> !Run);
+
+-- Property: SELF012.P2
+-- Description: Automatic restart count stays within the budget.
+LTLSPEC NAME SELF012.P2 := G((Attempts >= 0) & (Attempts <= 2));
+
+-- Property: SELF012.P3
+-- Description: Accepted reset clears history and leaves the feeder stopped.
+LTLSPEC NAME SELF012.P3 := G(validReset -> (!Run & !Locked & (Attempts = 0)));
+
+-- Property: SELF012.P4
+-- Description: Lockout requires a safe explicit reset.
+LTLSPEC NAME SELF012.P4 := G((qLocked & !validReset) -> (Locked & !Run));
+
+-- Property: SELF012.P5
+-- Description: Lock out on Fault from RUNNING once reference attempts already reached 2 (uses Spre.attempts to stay immune to candidate undercounting).
+LTLSPEC NAME SELF012.P5 := G((qRunning & Fault & normal & (refAttempts = 2)) -> Locked);
+
+-- Property: SELF012.P6
+-- Description: On fault-free retry dwell completion, restart Run and output Attempts = Spre.attempts + 1.
+LTLSPEC NAME SELF012.P6 := G((retryDue & normal) -> (Run & (Attempts = refAttempts + 1)));
+
+-- Property: SELF012.P7
+-- Description: A fault during recovery clears progress and prevents restart.
+LTLSPEC NAME SELF012.P7 := G((qWait & Fault & normal) -> !Run);
+
+-- Property: SELF012.P8
+-- Description: Eliminates vacuous under-counting and missing IDLE/RUNNING forward constraints.
+LTLSPEC NAME SELF012.P8 := G(((qIdle & normal & !(Start & !Fault)) -> (!Run & !Locked & Attempts=refAttempts)) & ((qIdle & normal & Start & !Fault) -> (Run & !Locked & Attempts=refAttempts)) & ((qRunning & !Fault & normal) -> (Run & !Locked & Attempts=refAttempts)));
+
+-- Property: SELF012.P9
+-- Description: Completes SELF012 independent safety closure.
+LTLSPEC NAME SELF012.P9 := G(((normal & qWait & !retryDue) -> (!Run & !Locked & Attempts=refAttempts)) & ((!qLocked & !(qRunning & Fault & normal & refAttempts=2)) -> !Locked) & (!(Run & Locked)));
+
+-- Property: SELF012.COMPLETE
+-- Description: Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed.
+LTLSPEC NAME SELF012.COMPLETE := G(CompleteBehavior);

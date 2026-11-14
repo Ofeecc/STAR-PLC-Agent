@@ -1,0 +1,247 @@
+PROGRAM PLC_PRG
+VAR
+ BenchStep : UDINT := 0;
+ BenchCalls : UDINT := 0;
+ BenchDone : BOOL := FALSE;
+ BenchUut0 : FB_Task;
+ BenchUut1 : FB_Task;
+ TraceIn_Start : ARRAY[0..15] OF BOOL;
+ TraceIn_Stop : ARRAY[0..15] OF BOOL;
+ TraceIn_Fault : ARRAY[0..15] OF BOOL;
+ TraceIn_Reset : ARRAY[0..15] OF BOOL;
+ TraceOut_Run : ARRAY[0..15] OF BOOL;
+ TraceOut_Locked : ARRAY[0..15] OF BOOL;
+ TraceOut_Attempts : ARRAY[0..15] OF USINT;
+END_VAR
+
+IF NOT BenchDone THEN
+ CASE BenchStep OF
+ 0:
+   BenchUut0.Start := TRUE;
+   BenchUut0.Stop := FALSE;
+   BenchUut0.Fault := FALSE;
+   BenchUut0.Reset := FALSE;
+   TraceIn_Start[0] := BenchUut0.Start;
+   TraceIn_Stop[0] := BenchUut0.Stop;
+   TraceIn_Fault[0] := BenchUut0.Fault;
+   TraceIn_Reset[0] := BenchUut0.Reset;
+   BenchUut0();
+   TraceOut_Run[0] := BenchUut0.Run;
+   TraceOut_Locked[0] := BenchUut0.Locked;
+   TraceOut_Attempts[0] := BenchUut0.Attempts;
+   BenchCalls := BenchCalls + 1;
+ 1:
+   BenchUut0.Start := FALSE;
+   BenchUut0.Stop := FALSE;
+   BenchUut0.Fault := TRUE;
+   BenchUut0.Reset := TRUE;
+   TraceIn_Start[1] := BenchUut0.Start;
+   TraceIn_Stop[1] := BenchUut0.Stop;
+   TraceIn_Fault[1] := BenchUut0.Fault;
+   TraceIn_Reset[1] := BenchUut0.Reset;
+   BenchUut0();
+   TraceOut_Run[1] := BenchUut0.Run;
+   TraceOut_Locked[1] := BenchUut0.Locked;
+   TraceOut_Attempts[1] := BenchUut0.Attempts;
+   BenchCalls := BenchCalls + 1;
+ 2:
+   BenchUut0.Start := TRUE;
+   BenchUut0.Stop := FALSE;
+   BenchUut0.Fault := FALSE;
+   BenchUut0.Reset := TRUE;
+   TraceIn_Start[2] := BenchUut0.Start;
+   TraceIn_Stop[2] := BenchUut0.Stop;
+   TraceIn_Fault[2] := BenchUut0.Fault;
+   TraceIn_Reset[2] := BenchUut0.Reset;
+   BenchUut0();
+   TraceOut_Run[2] := BenchUut0.Run;
+   TraceOut_Locked[2] := BenchUut0.Locked;
+   TraceOut_Attempts[2] := BenchUut0.Attempts;
+   BenchCalls := BenchCalls + 1;
+ 3:
+   BenchUut0.Start := TRUE;
+   BenchUut0.Stop := FALSE;
+   BenchUut0.Fault := FALSE;
+   BenchUut0.Reset := TRUE;
+   TraceIn_Start[3] := BenchUut0.Start;
+   TraceIn_Stop[3] := BenchUut0.Stop;
+   TraceIn_Fault[3] := BenchUut0.Fault;
+   TraceIn_Reset[3] := BenchUut0.Reset;
+   BenchUut0();
+   TraceOut_Run[3] := BenchUut0.Run;
+   TraceOut_Locked[3] := BenchUut0.Locked;
+   TraceOut_Attempts[3] := BenchUut0.Attempts;
+   BenchCalls := BenchCalls + 1;
+ 4:
+   BenchUut0.Start := FALSE;
+   BenchUut0.Stop := FALSE;
+   BenchUut0.Fault := TRUE;
+   BenchUut0.Reset := FALSE;
+   TraceIn_Start[4] := BenchUut0.Start;
+   TraceIn_Stop[4] := BenchUut0.Stop;
+   TraceIn_Fault[4] := BenchUut0.Fault;
+   TraceIn_Reset[4] := BenchUut0.Reset;
+   BenchUut0();
+   TraceOut_Run[4] := BenchUut0.Run;
+   TraceOut_Locked[4] := BenchUut0.Locked;
+   TraceOut_Attempts[4] := BenchUut0.Attempts;
+   BenchCalls := BenchCalls + 1;
+ 5:
+   BenchUut0.Start := FALSE;
+   BenchUut0.Stop := FALSE;
+   BenchUut0.Fault := FALSE;
+   BenchUut0.Reset := FALSE;
+   TraceIn_Start[5] := BenchUut0.Start;
+   TraceIn_Stop[5] := BenchUut0.Stop;
+   TraceIn_Fault[5] := BenchUut0.Fault;
+   TraceIn_Reset[5] := BenchUut0.Reset;
+   BenchUut0();
+   TraceOut_Run[5] := BenchUut0.Run;
+   TraceOut_Locked[5] := BenchUut0.Locked;
+   TraceOut_Attempts[5] := BenchUut0.Attempts;
+   BenchCalls := BenchCalls + 1;
+ 6:
+   BenchUut0.Start := FALSE;
+   BenchUut0.Stop := FALSE;
+   BenchUut0.Fault := FALSE;
+   BenchUut0.Reset := FALSE;
+   TraceIn_Start[6] := BenchUut0.Start;
+   TraceIn_Stop[6] := BenchUut0.Stop;
+   TraceIn_Fault[6] := BenchUut0.Fault;
+   TraceIn_Reset[6] := BenchUut0.Reset;
+   BenchUut0();
+   TraceOut_Run[6] := BenchUut0.Run;
+   TraceOut_Locked[6] := BenchUut0.Locked;
+   TraceOut_Attempts[6] := BenchUut0.Attempts;
+   BenchCalls := BenchCalls + 1;
+ 7:
+   BenchUut0.Start := FALSE;
+   BenchUut0.Stop := FALSE;
+   BenchUut0.Fault := TRUE;
+   BenchUut0.Reset := TRUE;
+   TraceIn_Start[7] := BenchUut0.Start;
+   TraceIn_Stop[7] := BenchUut0.Stop;
+   TraceIn_Fault[7] := BenchUut0.Fault;
+   TraceIn_Reset[7] := BenchUut0.Reset;
+   BenchUut0();
+   TraceOut_Run[7] := BenchUut0.Run;
+   TraceOut_Locked[7] := BenchUut0.Locked;
+   TraceOut_Attempts[7] := BenchUut0.Attempts;
+   BenchCalls := BenchCalls + 1;
+ 8:
+   BenchUut1.Start := TRUE;
+   BenchUut1.Stop := FALSE;
+   BenchUut1.Fault := FALSE;
+   BenchUut1.Reset := FALSE;
+   TraceIn_Start[8] := BenchUut1.Start;
+   TraceIn_Stop[8] := BenchUut1.Stop;
+   TraceIn_Fault[8] := BenchUut1.Fault;
+   TraceIn_Reset[8] := BenchUut1.Reset;
+   BenchUut1();
+   TraceOut_Run[8] := BenchUut1.Run;
+   TraceOut_Locked[8] := BenchUut1.Locked;
+   TraceOut_Attempts[8] := BenchUut1.Attempts;
+   BenchCalls := BenchCalls + 1;
+ 9:
+   BenchUut1.Start := FALSE;
+   BenchUut1.Stop := FALSE;
+   BenchUut1.Fault := TRUE;
+   BenchUut1.Reset := FALSE;
+   TraceIn_Start[9] := BenchUut1.Start;
+   TraceIn_Stop[9] := BenchUut1.Stop;
+   TraceIn_Fault[9] := BenchUut1.Fault;
+   TraceIn_Reset[9] := BenchUut1.Reset;
+   BenchUut1();
+   TraceOut_Run[9] := BenchUut1.Run;
+   TraceOut_Locked[9] := BenchUut1.Locked;
+   TraceOut_Attempts[9] := BenchUut1.Attempts;
+   BenchCalls := BenchCalls + 1;
+ 10:
+   BenchUut1.Start := FALSE;
+   BenchUut1.Stop := FALSE;
+   BenchUut1.Fault := FALSE;
+   BenchUut1.Reset := FALSE;
+   TraceIn_Start[10] := BenchUut1.Start;
+   TraceIn_Stop[10] := BenchUut1.Stop;
+   TraceIn_Fault[10] := BenchUut1.Fault;
+   TraceIn_Reset[10] := BenchUut1.Reset;
+   BenchUut1();
+   TraceOut_Run[10] := BenchUut1.Run;
+   TraceOut_Locked[10] := BenchUut1.Locked;
+   TraceOut_Attempts[10] := BenchUut1.Attempts;
+   BenchCalls := BenchCalls + 1;
+ 11:
+   BenchUut1.Start := FALSE;
+   BenchUut1.Stop := FALSE;
+   BenchUut1.Fault := FALSE;
+   BenchUut1.Reset := FALSE;
+   TraceIn_Start[11] := BenchUut1.Start;
+   TraceIn_Stop[11] := BenchUut1.Stop;
+   TraceIn_Fault[11] := BenchUut1.Fault;
+   TraceIn_Reset[11] := BenchUut1.Reset;
+   BenchUut1();
+   TraceOut_Run[11] := BenchUut1.Run;
+   TraceOut_Locked[11] := BenchUut1.Locked;
+   TraceOut_Attempts[11] := BenchUut1.Attempts;
+   BenchCalls := BenchCalls + 1;
+ 12:
+   BenchUut1.Start := TRUE;
+   BenchUut1.Stop := TRUE;
+   BenchUut1.Fault := TRUE;
+   BenchUut1.Reset := FALSE;
+   TraceIn_Start[12] := BenchUut1.Start;
+   TraceIn_Stop[12] := BenchUut1.Stop;
+   TraceIn_Fault[12] := BenchUut1.Fault;
+   TraceIn_Reset[12] := BenchUut1.Reset;
+   BenchUut1();
+   TraceOut_Run[12] := BenchUut1.Run;
+   TraceOut_Locked[12] := BenchUut1.Locked;
+   TraceOut_Attempts[12] := BenchUut1.Attempts;
+   BenchCalls := BenchCalls + 1;
+ 13:
+   BenchUut1.Start := TRUE;
+   BenchUut1.Stop := FALSE;
+   BenchUut1.Fault := FALSE;
+   BenchUut1.Reset := FALSE;
+   TraceIn_Start[13] := BenchUut1.Start;
+   TraceIn_Stop[13] := BenchUut1.Stop;
+   TraceIn_Fault[13] := BenchUut1.Fault;
+   TraceIn_Reset[13] := BenchUut1.Reset;
+   BenchUut1();
+   TraceOut_Run[13] := BenchUut1.Run;
+   TraceOut_Locked[13] := BenchUut1.Locked;
+   TraceOut_Attempts[13] := BenchUut1.Attempts;
+   BenchCalls := BenchCalls + 1;
+ 14:
+   BenchUut1.Start := FALSE;
+   BenchUut1.Stop := TRUE;
+   BenchUut1.Fault := FALSE;
+   BenchUut1.Reset := TRUE;
+   TraceIn_Start[14] := BenchUut1.Start;
+   TraceIn_Stop[14] := BenchUut1.Stop;
+   TraceIn_Fault[14] := BenchUut1.Fault;
+   TraceIn_Reset[14] := BenchUut1.Reset;
+   BenchUut1();
+   TraceOut_Run[14] := BenchUut1.Run;
+   TraceOut_Locked[14] := BenchUut1.Locked;
+   TraceOut_Attempts[14] := BenchUut1.Attempts;
+   BenchCalls := BenchCalls + 1;
+ 15:
+   BenchUut1.Start := TRUE;
+   BenchUut1.Stop := FALSE;
+   BenchUut1.Fault := FALSE;
+   BenchUut1.Reset := TRUE;
+   TraceIn_Start[15] := BenchUut1.Start;
+   TraceIn_Stop[15] := BenchUut1.Stop;
+   TraceIn_Fault[15] := BenchUut1.Fault;
+   TraceIn_Reset[15] := BenchUut1.Reset;
+   BenchUut1();
+   TraceOut_Run[15] := BenchUut1.Run;
+   TraceOut_Locked[15] := BenchUut1.Locked;
+   TraceOut_Attempts[15] := BenchUut1.Attempts;
+   BenchCalls := BenchCalls + 1;
+ END_CASE;
+ BenchStep := BenchStep + 1;
+ IF BenchStep >= 16 THEN BenchDone := TRUE; END_IF;
+END_IF;
+END_PROGRAM

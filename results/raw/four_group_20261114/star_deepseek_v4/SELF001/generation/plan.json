@@ -1,0 +1,93 @@
+{
+  "state_machine": {
+    "states": [
+      {
+        "name": "RunFalse",
+        "Run": false,
+        "description": "Motor run command is cleared."
+      },
+      {
+        "name": "RunTrue",
+        "Run": true,
+        "description": "Motor run command is latched/asserted."
+      }
+    ],
+    "transitions": [
+      {
+        "from": "any",
+        "to": "RunFalse",
+        "condition": "Stop || !GuardClosed",
+        "priority": 1,
+        "description": "Stop request or open guard overrides all other inputs and clears the latch."
+      },
+      {
+        "from": "RunFalse",
+        "to": "RunTrue",
+        "condition": "!Stop && GuardClosed && Start",
+        "priority": 2,
+        "description": "Permitted start sets the run command."
+      },
+      {
+        "from": "RunTrue",
+        "to": "RunTrue",
+        "condition": "!Stop && GuardClosed && Start",
+        "priority": 2,
+        "description": "Permitted start while running keeps the run command set."
+      },
+      {
+        "from": "RunTrue",
+        "to": "RunTrue",
+        "condition": "!Stop && GuardClosed && !Start",
+        "priority": 3,
+        "description": "Retain run when no stop, open guard, or start command is present."
+      },
+      {
+        "from": "RunFalse",
+        "to": "RunFalse",
+        "condition": "!Stop && GuardClosed && !Start",
+        "priority": 3,
+        "description": "Retain cleared state when no stop, open guard, or start command is present."
+      }
+    ]
+  },
+  "timer_plan": {
+    "timers": [],
+    "notes": "No timers or timer function blocks are required. All behavior is scan-level retained logic with same-scan safety override."
+  },
+  "priorities": [
+    "1. Stop = TRUE forces Run = FALSE regardless of Start or GuardClosed.",
+    "2. GuardClosed = FALSE forces Run = FALSE regardless of Start or Stop.",
+    "3. If not overridden, Start = TRUE and GuardClosed = TRUE sets Run = TRUE.",
+    "4. If no override and no Start request, retain the previous Run state.",
+    "5. Safety/reset conditions are evaluated before start/retention, so open guard and Stop override Start in the same scan."
+  ],
+  "initial_values": {
+    "Run": false,
+    "State": "RunFalse",
+    "RunPrev": false
+  },
+  "scan_execution_order": [
+    "1. Edge sampling: sample Start, Stop, and GuardClosed once per scan; capture retained pre-state RunPrev := Run. No edge detection is required because inputs are level-sensitive.",
+    "2. Safety/reset priority & state transitions: if Stop OR NOT GuardClosed then nextRun := FALSE; else if Start then nextRun := TRUE; else nextRun := RunPrev. Execute exactly one transition per scan.",
+    "3. Unconditional top-level timer FB calls outside CASE/IF: none; no timer function blocks are used.",
+    "4. Unified output assignments: Run := nextRun; update RunPrev := Run for the next scan. No output assignment occurs outside this stage."
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G((Stop | !GuardClosed) -> !Run)"
+    },
+    {
+      "id": "A2",
+      "formula": "G((Start & !Stop & GuardClosed) -> Run)"
+    },
+    {
+      "id": "A3",
+      "formula": "G((!X(Start) & !X(Stop) & X(GuardClosed)) -> (X(Run) <-> Run))"
+    },
+    {
+      "id": "A4",
+      "formula": "G(Run -> X(Stop | !GuardClosed | Run))"
+    }
+  ]
+}

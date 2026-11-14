@@ -1,0 +1,113 @@
+{
+  "state_machine": [
+    {
+      "state": "IDLE",
+      "transitions": [
+        "On a station1Start rising edge with sensor1 true, validate and snapshot the active recipe, set currentStation=1 and sequenceIndex=1, then select the first target.",
+        "If recipe validation fails, enter FAULT. Otherwise apply target selection immediately.",
+        "Ignore start edges when sensor1 is false or outside IDLE."
+      ]
+    },
+    {
+      "state": "MOVING",
+      "transitions": [
+        "Keep currentStation as the departure station and drive toward target until sensor[target] is true.",
+        "On target arrival, stop in the same scan and set currentStation=target.",
+        "If target=5, enter IDLE. Otherwise enter WAIT_PROCESS; a fresh matching completion edge on this arrival scan is accepted into DEFER."
+      ]
+    },
+    {
+      "state": "WAIT_PROCESS",
+      "transitions": [
+        "Keep both directions off until a fresh rising edge of the completion input matching currentStation.",
+        "On completion, increment sequenceIndex once and select the next target.",
+        "If the next target equals currentStation, remain in WAIT_PROCESS for a separate operation; do not reuse the consumed edge."
+      ]
+    },
+    {
+      "state": "DEFER",
+      "transitions": [
+        "This stopped state represents a completion accepted on an arrival scan. On the next invocation, increment sequenceIndex once and select the next target.",
+        "If selection immediately arrives at another processing station and its fresh completion edge is present, accept it and remain in DEFER."
+      ]
+    },
+    {
+      "state": "FAULT",
+      "transitions": [
+        "Keep both directions off. Reinitialization is required to clear the fault; no reset input is specified."
+      ]
+    },
+    {
+      "state": "target_selection",
+      "transitions": [
+        "Check index bounds before accessing the snapshot. For a different target, enter MOVING unless its sensor is already true; if true, process arrival immediately and keep motion off.",
+        "For an equal processing target, enter a fresh WAIT_PROCESS without moving or reusing the completion edge that selected it.",
+        "Accept a fresh matching completion on a processing arrival into DEFER, including when selection and arrival occur in the same invocation.",
+        "Perform no more than one sequence-index advancement per invocation. DEFER separates an arrival-scan completion from its subsequent advancement."
+      ]
+    }
+  ],
+  "timer_plan": {
+    "timers": [],
+    "note": "No timer is required by the specification. The unconditional top-level timer-call stage remains present but has no calls."
+  },
+  "priorities": [
+    "Initialize outputs off; enforce mutual exclusion by unified direction assignments.",
+    "Invalid recipe or invalid internal state enters FAULT with outputs off. There is no runtime reset or emergency-stop port in the interface.",
+    "Arrival stops motion in the same scan, including when a completion edge is also accepted.",
+    "Sample completion edges globally, but accept them only for the processing wait currently being entered or occupied. Do not reuse an edge for a subsequent operation.",
+    "Advance the sequence index at most once per invocation; a completion accepted on arrival is deferred.",
+    "Recipe validity is guaranteed by the caller and the active recipe remains fixed throughout the cycle."
+  ],
+  "initial_values": {
+    "phase": "IDLE",
+    "currentStation": 1,
+    "sequenceIndex": 0,
+    "target": 1,
+    "conveyorLeft": false,
+    "conveyorRight": false,
+    "previous_station1Start": false,
+    "previous_station2Complete": false,
+    "previous_station3Complete": false,
+    "previous_station4Complete": false,
+    "snapshotLength": 0,
+    "snapshotSequence": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "edge sampling",
+      "action": "Sample all inputs and compute rising edges for station1Start and station2Complete through station4Complete. Update their retained previous values every invocation, regardless of phase."
+    },
+    {
+      "stage": 2,
+      "name": "safety/reset priority and state transitions",
+      "action": "Apply fault and bounds checks, then perform the state transitions and immediate target-arrival handling. Validate the snapshot as length 1..8, final entry 5, and preceding active entries 2..4. There is no reset input. Track the one-advancement limit and preserve arrival-scan completions in DEFER."
+    },
+    {
+      "stage": 3,
+      "name": "unconditional top-level timer FB calls outside CASE/IF",
+      "action": "No timer FB calls are needed."
+    },
+    {
+      "stage": 4,
+      "name": "unified output assignments",
+      "action": "Assign conveyorRight true only when the post-transition phase is MOVING, target>currentStation, and sensor[target] is false. Assign conveyorLeft true only when the post-transition phase is MOVING, target<currentStation, and sensor[target] is false. Otherwise assign both false."
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G(!(conveyorLeft && conveyorRight))"
+    }
+  ]
+}

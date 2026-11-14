@@ -1,0 +1,96 @@
+{
+  "state_machine": [
+    {
+      "state": "OFF",
+      "transitions": [
+        {
+          "guard": "SensorFaultCalc OR Inhibit_s OR HighWet_s",
+          "next": "OFF"
+        },
+        {
+          "guard": "NOT SensorFaultCalc AND NOT Inhibit_s AND NOT HighWet_s AND NOT LowWet_s",
+          "next": "FILLING"
+        },
+        {
+          "guard": "NOT SensorFaultCalc AND NOT Inhibit_s AND NOT HighWet_s AND LowWet_s",
+          "next": "OFF"
+        }
+      ]
+    },
+    {
+      "state": "FILLING",
+      "transitions": [
+        {
+          "guard": "SensorFaultCalc OR Inhibit_s OR HighWet_s",
+          "next": "OFF"
+        },
+        {
+          "guard": "NOT SensorFaultCalc AND NOT Inhibit_s AND NOT HighWet_s",
+          "next": "FILLING"
+        }
+      ]
+    }
+  ],
+  "timer_plan": {
+    "timers_required": [],
+    "pt_durations": "None",
+    "reset_conditions": "Not applicable"
+  },
+  "priorities": [
+    "Sensor inconsistency or Inhibit forces OFF on the current scan.",
+    "HighWet forces OFF on the current scan.",
+    "If not stopped and LowWet is false, enter FILLING.",
+    "Otherwise retain the previous state in the middle band.",
+    "SensorFault is not latched; it clears immediately when the contradictory input combination clears."
+  ],
+  "initial_values": {
+    "state": "OFF",
+    "Fill": false,
+    "SensorFault": false,
+    "LowWet_s": false,
+    "HighWet_s": false,
+    "Inhibit_s": false,
+    "SensorFaultCalc": false,
+    "note": "These are pre-invocation values. The first scan executes normally and may set Fill true."
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "Edge sampling",
+      "actions": "Sample LowWet, HighWet and Inhibit once into their _s variables. No edge detection is required."
+    },
+    {
+      "stage": 2,
+      "name": "Safety/reset priority and state transitions",
+      "actions": "Calculate SensorFaultCalc := HighWet_s AND NOT LowWet_s. Apply the prioritized transition from the retained state using the sampled inputs. Instance initialization resets state to OFF; there is no reset input."
+    },
+    {
+      "stage": 3,
+      "name": "Unconditional top-level timer FB calls outside CASE/IF",
+      "actions": "No timer FBs are required, so this stage contains no calls."
+    },
+    {
+      "stage": 4,
+      "name": "Unified output assignments",
+      "actions": "Assign Fill := (state = FILLING) and SensorFault := SensorFaultCalc. Both reflect the current scan."
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G(SensorFault <-> (HighWet & !LowWet))"
+    },
+    {
+      "id": "A2",
+      "formula": "G((SensorFault | Inhibit | HighWet) -> !Fill)"
+    },
+    {
+      "id": "A3",
+      "formula": "G((!LowWet & !HighWet & !Inhibit) -> Fill)"
+    },
+    {
+      "id": "A4",
+      "formula": "G(X(LowWet & !HighWet & !Inhibit) -> (X(Fill) <-> Fill))"
+    }
+  ]
+}

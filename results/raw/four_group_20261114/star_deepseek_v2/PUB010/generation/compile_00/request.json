@@ -1,0 +1,13 @@
+{
+  "request_id": "7890516668064ac792c37453b91f5b5e",
+  "source_sha256": "543723e2259f364098d832707d0d98c5278354befd6228ae0285fb9499f54825",
+  "task_id": "PUB010",
+  "project": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\df0ee26a47baab1c\\task.project",
+  "candidate": {
+    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    TemperatureSensorInput : REAL;\n    SetTemperature : REAL;\nEND_VAR\nVAR_OUTPUT\n    CurrentTemperature : REAL := 0.0;\n    SetTempDisplay : REAL := 0.0;\n    HeaterStatus : BOOL := FALSE;\n    OverheatProtection : BOOL := FALSE;\n    HeaterOutput : BOOL := FALSE;\nEND_VAR\nVAR\n    HeatContinuityTimer : TON;\n    CooldownTimer : TON;\n    heatDemand : BOOL := FALSE;\n    sensorFault : BOOL := FALSE;\n    protectionLatched : BOOL := FALSE;\n    heatLimitReached : BOOL := FALSE;\n    cooldownDone : BOOL := FALSE;\n    tripNow : BOOL := FALSE;\n    heatEnable : BOOL := FALSE;\n    protectionNext : BOOL := FALSE;\n    heatCommand : BOOL := FALSE;\nEND_VAR",
+    "implementation": "sensorFault := (TemperatureSensorInput < 0.0) OR (TemperatureSensorInput > 100.0);\n\nIF NOT sensorFault THEN\n    IF TemperatureSensorInput < SetTemperature THEN\n        heatDemand := TRUE;\n    ELSIF TemperatureSensorInput > SetTemperature THEN\n        heatDemand := FALSE;\n    END_IF;\nEND_IF;\n\nCooldownTimer(IN := protectionLatched, PT := T#3S);\ncooldownDone := CooldownTimer.Q;\n\nIF protectionLatched AND cooldownDone THEN\n    protectionLatched := FALSE;\nEND_IF;\n\nheatEnable := (NOT sensorFault) AND heatDemand AND (NOT protectionLatched);\n\nHeatContinuityTimer(IN := heatEnable, PT := T#5S);\nheatLimitReached := HeatContinuityTimer.Q;\ntripNow := heatLimitReached AND (NOT protectionLatched);\n\nIF tripNow THEN\n    protectionLatched := TRUE;\nEND_IF;\n\nCooldownTimer(IN := (protectionLatched OR tripNow), PT := T#3S);\n\nprotectionNext := (protectionLatched AND (NOT cooldownDone)) OR tripNow;\nheatCommand := (NOT sensorFault) AND heatDemand AND (NOT protectionNext) AND (NOT heatLimitReached);\n\nCurrentTemperature := TemperatureSensorInput;\nSetTempDisplay := SetTemperature;\nOverheatProtection := protectionNext;\nHeaterOutput := heatCommand;\nHeaterStatus := HeaterOutput;",
+    "supporting_objects": []
+  },
+  "result_path": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\df0ee26a47baab1c\\codesys_evidence.json",
+  "started_utc": "2026-11-14T09:45:11.567439+00:00"
+}

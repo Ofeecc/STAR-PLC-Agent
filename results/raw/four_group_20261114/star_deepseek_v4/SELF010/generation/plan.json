@@ -1,0 +1,222 @@
+{
+  "state_machine": {
+    "edge_definition": "rise := Fault AND NOT previous_fault. previous_fault is initialized FALSE and updated to sampled Fault on every scan after rise is captured.",
+    "states": [
+      {
+        "name": "S0_CLEAR",
+        "invariant": "Alarm=FALSE, Acknowledged=FALSE"
+      },
+      {
+        "name": "S1_UNACK",
+        "invariant": "Alarm=TRUE, Acknowledged=FALSE"
+      },
+      {
+        "name": "S2_ACK",
+        "invariant": "Alarm=TRUE, Acknowledged=TRUE"
+      }
+    ],
+    "transitions": [
+      {
+        "from": "S0_CLEAR",
+        "to": "S1_UNACK",
+        "guard": "Fault & rise",
+        "actions": [
+          "Alarm:=TRUE",
+          "Acknowledged:=FALSE"
+        ]
+      },
+      {
+        "from": "S0_CLEAR",
+        "to": "S2_ACK",
+        "guard": "Fault & !rise & Ack",
+        "actions": [
+          "Alarm:=TRUE",
+          "Acknowledged:=TRUE"
+        ]
+      },
+      {
+        "from": "S0_CLEAR",
+        "to": "S1_UNACK",
+        "guard": "Fault & !rise & !Ack",
+        "actions": [
+          "Alarm:=TRUE",
+          "Acknowledged:=retain"
+        ]
+      },
+      {
+        "from": "S0_CLEAR",
+        "to": "S0_CLEAR",
+        "guard": "!Fault & Reset",
+        "actions": [
+          "Alarm:=FALSE",
+          "Acknowledged:=FALSE"
+        ]
+      },
+      {
+        "from": "S0_CLEAR",
+        "to": "S0_CLEAR",
+        "guard": "!Fault & !Reset",
+        "actions": [
+          "Alarm:=retain",
+          "Acknowledged:=retain"
+        ]
+      },
+      {
+        "from": "S1_UNACK",
+        "to": "S0_CLEAR",
+        "guard": "Reset & !Fault",
+        "actions": [
+          "Alarm:=FALSE",
+          "Acknowledged:=FALSE"
+        ]
+      },
+      {
+        "from": "S1_UNACK",
+        "to": "S1_UNACK",
+        "guard": "Fault & rise",
+        "actions": [
+          "Alarm:=TRUE",
+          "Acknowledged:=FALSE"
+        ]
+      },
+      {
+        "from": "S1_UNACK",
+        "to": "S2_ACK",
+        "guard": "Fault & !rise & Ack",
+        "actions": [
+          "Alarm:=TRUE",
+          "Acknowledged:=TRUE"
+        ]
+      },
+      {
+        "from": "S1_UNACK",
+        "to": "S1_UNACK",
+        "guard": "Fault & !rise & !Ack",
+        "actions": [
+          "Alarm:=TRUE",
+          "Acknowledged:=retain"
+        ]
+      },
+      {
+        "from": "S1_UNACK",
+        "to": "S2_ACK",
+        "guard": "!Fault & !Reset & Ack",
+        "actions": [
+          "Alarm:=retain",
+          "Acknowledged:=TRUE"
+        ]
+      },
+      {
+        "from": "S1_UNACK",
+        "to": "S1_UNACK",
+        "guard": "!Fault & !Reset & !Ack",
+        "actions": [
+          "Alarm:=retain",
+          "Acknowledged:=retain"
+        ]
+      },
+      {
+        "from": "S2_ACK",
+        "to": "S0_CLEAR",
+        "guard": "Reset & !Fault",
+        "actions": [
+          "Alarm:=FALSE",
+          "Acknowledged:=FALSE"
+        ]
+      },
+      {
+        "from": "S2_ACK",
+        "to": "S1_UNACK",
+        "guard": "Fault & rise",
+        "actions": [
+          "Alarm:=TRUE",
+          "Acknowledged:=FALSE"
+        ]
+      },
+      {
+        "from": "S2_ACK",
+        "to": "S2_ACK",
+        "guard": "Fault & !rise",
+        "actions": [
+          "Alarm:=TRUE",
+          "Acknowledged:=retain"
+        ]
+      },
+      {
+        "from": "S2_ACK",
+        "to": "S2_ACK",
+        "guard": "!Fault & !Reset",
+        "actions": [
+          "Alarm:=retain",
+          "Acknowledged:=retain"
+        ]
+      }
+    ]
+  },
+  "timer_plan": {
+    "timers": [],
+    "PT_durations": {},
+    "reset_conditions": "No timers are required. previous_fault is cleared only by instance initialization, not by the Reset input."
+  },
+  "priorities": {
+    "safety": [
+      "Fault presence dominates Reset: Reset is ignored whenever Fault=TRUE.",
+      "New Fault rising edge dominates Ack in the same scan: Alarm:=TRUE, Acknowledged:=FALSE, and Horn:=TRUE for that scan.",
+      "Valid Reset is only Reset=TRUE AND Fault=FALSE; it clears Alarm and Acknowledged before Horn is evaluated.",
+      "Horn is always computed from the final post-transition state as Alarm AND NOT Acknowledged."
+    ],
+    "operational": [
+      "Reset precedes Ack: if valid Reset and Ack occur together, the clear wins.",
+      "When Fault=FALSE without valid Reset, a latched Alarm is retained; Ack only acknowledges and silences Horn.",
+      "A new Fault rising edge reannunciates even when Ack is simultaneously TRUE.",
+      "previous_fault updates from sampled Fault on every scan, including scans where Reset is ignored."
+    ]
+  },
+  "initial_values": {
+    "Alarm": false,
+    "Acknowledged": false,
+    "previous_fault": false,
+    "Horn": false,
+    "rise": false
+  },
+  "scan_execution_order": [
+    "1. Edge sampling: sample Fault, Ack, and Reset once; compute rise := Fault AND NOT previous_fault using the retained previous-scan Fault; then update previous_fault := Fault for the next scan on every scan.",
+    "2. Safety/reset priority and state transitions: if Reset AND NOT Fault then Alarm:=FALSE and Acknowledged:=FALSE; else if Fault then Alarm:=TRUE, and set Acknowledged:=FALSE if rise, else set Acknowledged:=TRUE if Ack, else retain Acknowledged; else retain Alarm and set Acknowledged:=TRUE only if Alarm AND Ack; Reset is ignored while Fault=TRUE.",
+    "3. Unconditional top-level timer FB calls outside CASE/IF: no timer FBs are used in this task; if added later, call them unconditionally here before output assignment.",
+    "4. Unified output assignments: Horn := Alarm AND NOT Acknowledged; assign Alarm, Acknowledged, and Horn from the final post-transition state in one output section."
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G(Horn <-> (Alarm & !Acknowledged))"
+    },
+    {
+      "id": "A2",
+      "formula": "G(Fault -> Alarm)"
+    },
+    {
+      "id": "A3",
+      "formula": "G((!Fault & X(Fault)) -> X(Alarm & !Acknowledged & Horn))"
+    },
+    {
+      "id": "A4",
+      "formula": "G((Reset & !Fault) -> (!Alarm & !Acknowledged & !Horn))"
+    },
+    {
+      "id": "A5",
+      "formula": "G((!Fault & !Reset & Ack & Alarm) -> Acknowledged)"
+    },
+    {
+      "id": "A6",
+      "formula": "G(Acknowledged -> Alarm)"
+    },
+    {
+      "id": "A7",
+      "formula": "G((Reset & Fault) -> Alarm)"
+    },
+    {
+      "id": "A8",
+      "formula": "G((!Fault & !Alarm) -> !Horn)"
+    }
+  ]
+}

@@ -1,0 +1,274 @@
+{
+  "state_machine": [
+    {
+      "state": "RED",
+      "phase": 0,
+      "initial": true,
+      "outputs": {
+        "Red": true,
+        "Green": false,
+        "Amber": false
+      },
+      "transitions": [
+        {
+          "priority": 1,
+          "condition": "!Enable",
+          "target": "RED",
+          "actions": [
+            "phase := 0",
+            "age := 0"
+          ]
+        },
+        {
+          "priority": 2,
+          "condition": "Enable & !Tick",
+          "target": "RED",
+          "actions": [
+            "hold phase",
+            "hold age"
+          ]
+        },
+        {
+          "priority": 3,
+          "condition": "Enable & Tick & (age + 1 < 2)",
+          "target": "RED",
+          "actions": [
+            "age := age + 1"
+          ]
+        },
+        {
+          "priority": 4,
+          "condition": "Enable & Tick & (age + 1 >= 2)",
+          "target": "GREEN",
+          "actions": [
+            "phase := 1",
+            "age := 0"
+          ]
+        }
+      ]
+    },
+    {
+      "state": "GREEN",
+      "phase": 1,
+      "initial": false,
+      "outputs": {
+        "Red": false,
+        "Green": true,
+        "Amber": false
+      },
+      "transitions": [
+        {
+          "priority": 1,
+          "condition": "!Enable",
+          "target": "RED",
+          "actions": [
+            "phase := 0",
+            "age := 0"
+          ]
+        },
+        {
+          "priority": 2,
+          "condition": "Enable & !Tick",
+          "target": "GREEN",
+          "actions": [
+            "hold phase",
+            "hold age"
+          ]
+        },
+        {
+          "priority": 3,
+          "condition": "Enable & Tick & (age + 1 < 3)",
+          "target": "GREEN",
+          "actions": [
+            "age := age + 1"
+          ]
+        },
+        {
+          "priority": 4,
+          "condition": "Enable & Tick & (age + 1 >= 3)",
+          "target": "AMBER",
+          "actions": [
+            "phase := 2",
+            "age := 0"
+          ]
+        }
+      ]
+    },
+    {
+      "state": "AMBER",
+      "phase": 2,
+      "initial": false,
+      "outputs": {
+        "Red": false,
+        "Green": false,
+        "Amber": true
+      },
+      "transitions": [
+        {
+          "priority": 1,
+          "condition": "!Enable",
+          "target": "RED",
+          "actions": [
+            "phase := 0",
+            "age := 0"
+          ]
+        },
+        {
+          "priority": 2,
+          "condition": "Enable & !Tick",
+          "target": "AMBER",
+          "actions": [
+            "hold phase",
+            "hold age"
+          ]
+        },
+        {
+          "priority": 3,
+          "condition": "Enable & Tick",
+          "target": "RED",
+          "actions": [
+            "phase := 0",
+            "age := 0"
+          ]
+        }
+      ]
+    }
+  ],
+  "timer_plan": [
+    {
+      "name": "CommonPhaseAge",
+      "type": "logical tick counter, not a wall-clock timer",
+      "PT_ticks": {
+        "RED": 2,
+        "GREEN": 3,
+        "AMBER": 1
+      },
+      "count_when": "Enable & Tick",
+      "hold_when": "Enable & !Tick",
+      "reset_conditions": [
+        "!Enable",
+        "phase transition/advance",
+        "entry into RED from reset or AMBER",
+        "entry into GREEN from RED",
+        "entry into AMBER from GREEN"
+      ],
+      "implementation_note": "A single USINT age counter may implement all dwells; the active threshold is selected by phase."
+    },
+    {
+      "name": "RedDwell",
+      "PT_ticks": 2,
+      "reset_conditions": [
+        "!Enable",
+        "entry to RED",
+        "transition RED -> GREEN"
+      ]
+    },
+    {
+      "name": "GreenDwell",
+      "PT_ticks": 3,
+      "reset_conditions": [
+        "!Enable",
+        "entry to GREEN",
+        "transition GREEN -> AMBER"
+      ]
+    },
+    {
+      "name": "AmberDwell",
+      "PT_ticks": 1,
+      "reset_conditions": [
+        "!Enable",
+        "entry to AMBER",
+        "transition AMBER -> RED"
+      ]
+    }
+  ],
+  "priorities": {
+    "safety": [
+      "Enable = FALSE has highest priority and immediately forces RED with phase := 0 and age := 0.",
+      "Lamp outputs must remain one-hot and must match Phase: Red <-> Phase=0, Green <-> Phase=1, Amber <-> Phase=2.",
+      "Phase must remain in the valid range 0..2.",
+      "No phase skipping is permitted; RED requires 2 ticks, GREEN requires 3 ticks, AMBER requires 1 tick.",
+      "All outputs are assigned once, after state transition processing."
+    ],
+    "operational": [
+      "Tick is a logical scan-count pulse, not wall-clock time.",
+      "When Enable is TRUE and Tick is FALSE, phase and age are unchanged.",
+      "When Enable is TRUE and Tick is TRUE, age increments once per scan.",
+      "A phase advance occurs only when the post-increment age reaches the current phase threshold; age resets to 0 on advance.",
+      "Outputs reflect the post-transition phase in the same scan."
+    ]
+  },
+  "initial_values": {
+    "state": "RED",
+    "phase": 0,
+    "age": 0,
+    "elapsed_ticks": 0,
+    "Phase": 0,
+    "Red": true,
+    "Green": false,
+    "Amber": false,
+    "Enable": "sampled input; not forced by controller",
+    "Tick": "sampled input; not forced by controller"
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "edge sampling",
+      "actions": [
+        "Sample Enable and Tick once at the start of the scan.",
+        "Do not re-read Enable or Tick later in the scan.",
+        "Tick is treated as a logical invocation count: each scan with sampled Tick = TRUE counts as one tick when Enable = TRUE.",
+        "No separate physical edge detection or wall-clock timing is required."
+      ]
+    },
+    {
+      "stage": 2,
+      "name": "safety/reset priority and state transitions",
+      "actions": [
+        "First apply highest-priority safety reset: if !Enable, force state RED, phase := 0, age := 0, and skip Tick processing.",
+        "Else execute exactly one transition using the sampled Tick and current retained state.",
+        "If Enable & !Tick, hold phase and age.",
+        "If Enable & Tick, compute age + 1; if the new age reaches the active threshold, advance phase := (phase + 1) mod 3 and set age := 0; otherwise retain phase and assign age := age + 1.",
+        "Updated state becomes the retained state for the next scan q[k+1]."
+      ]
+    },
+    {
+      "stage": 3,
+      "name": "unconditional top-level timer FB calls outside CASE/IF",
+      "actions": [
+        "No IEC TON/TOF/TP timer FBs are required because all durations are logical tick counts.",
+        "If timer FBs are present for other purposes, call them unconditionally at top level outside CASE/IF; never place FB calls inside conditional state branches.",
+        "For this design, stage 3 contains no conditional timer FB calls."
+      ]
+    },
+    {
+      "stage": 4,
+      "name": "unified output assignments",
+      "actions": [
+        "Assign outputs exactly once after all transition processing.",
+        "Phase := phase;",
+        "Red := (phase = 0);",
+        "Green := (phase = 1);",
+        "Amber := (phase = 2);"
+      ]
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G((Red & !Green & !Amber) | (!Red & Green & !Amber) | (!Red & !Green & Amber))"
+    },
+    {
+      "id": "A2",
+      "formula": "G((Red <-> (Phase = 0)) & (Green <-> (Phase = 1)) & (Amber <-> (Phase = 2)) & (Phase >= 0) & (Phase <= 2))"
+    },
+    {
+      "id": "A3",
+      "formula": "G(!Enable -> (Red & !Green & !Amber & (Phase = 0)))"
+    },
+    {
+      "id": "A4",
+      "formula": "G((Red | Green | Amber))"
+    }
+  ]
+}

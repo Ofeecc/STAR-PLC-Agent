@@ -1,0 +1,128 @@
+{
+  "state_machine": {
+    "states": [
+      {
+        "name": "OFF",
+        "description": "Blower off; start delay reset; cycle count retained.",
+        "entry_actions": [
+          "BLOWER_RUN = FALSE",
+          "StartDelay reset request active"
+        ]
+      },
+      {
+        "name": "DELAY",
+        "description": "Permissive present; 5-second start delay timing in progress. Blower may turn on in this state when same-scan timer Q is TRUE, then transition to RUN next scan.",
+        "entry_actions": [
+          "BLOWER_RUN = FALSE until StartDelay.Q is TRUE",
+          "StartDelay enabled by permit"
+        ]
+      },
+      {
+        "name": "RUN",
+        "description": "Blower enabled because demand and safety permissive have remained TRUE for at least 5 seconds.",
+        "entry_actions": [
+          "BLOWER_RUN = TRUE while permit remains TRUE"
+        ]
+      }
+    ],
+    "transitions": [
+      {
+        "from": "OFF",
+        "to": "DELAY",
+        "condition": "DO_LOW && AERATION_E_STOP_NC",
+        "priority": 2
+      },
+      {
+        "from": "DELAY",
+        "to": "RUN",
+        "condition": "DO_LOW && AERATION_E_STOP_NC && StartDelay.Q",
+        "priority": 2
+      },
+      {
+        "from": "RUN",
+        "to": "RUN",
+        "condition": "DO_LOW && AERATION_E_STOP_NC",
+        "priority": 2
+      },
+      {
+        "from": "OFF",
+        "to": "OFF",
+        "condition": "!(DO_LOW && AERATION_E_STOP_NC)",
+        "priority": 1
+      },
+      {
+        "from": "DELAY",
+        "to": "OFF",
+        "condition": "!(DO_LOW && AERATION_E_STOP_NC)",
+        "priority": 1
+      },
+      {
+        "from": "RUN",
+        "to": "OFF",
+        "condition": "!(DO_LOW && AERATION_E_STOP_NC)",
+        "priority": 1
+      }
+    ]
+  },
+  "timer_plan": [
+    {
+      "name": "StartDelay",
+      "type": "TON",
+      "PT_ms": 5000,
+      "PT": "T#5s",
+      "call_location": "Stage 3 unconditional top-level call outside CASE/IF",
+      "IN_expression": "(State = DELAY) AND DO_LOW AND AERATION_E_STOP_NC",
+      "Q_meaning": "delayDone; TRUE when the permissive has been continuously enabled for at least 5000 ms",
+      "reset_conditions": [
+        "DO_LOW = FALSE",
+        "AERATION_E_STOP_NC = FALSE",
+        "State != DELAY",
+        "safety/reset priority forces State = OFF"
+      ],
+      "reset_behavior": "IN = FALSE causes TON reset: Q = FALSE and ET = 0 ms.",
+      "first_scan_behavior": "On the first eligible sampled invocation, ET = 0 ms; subsequent dt_ms accumulates."
+    }
+  ],
+  "priorities": [
+    "Highest priority: emergency-stop semantics. If AERATION_E_STOP_NC is FALSE, force State = OFF, force BLOWER_RUN = FALSE, and reset StartDelay immediately.",
+    "Next priority: loss of dissolved-oxygen demand. If DO_LOW is FALSE, force State = OFF, force BLOWER_RUN = FALSE, and reset StartDelay immediately.",
+    "Permissive priority: permit = DO_LOW AND AERATION_E_STOP_NC. Any FALSE permit overrides timing, state, and prior delay completion.",
+    "State-transition priority: only after safety/reset checks, allow OFF -> DELAY and DELAY -> RUN transitions.",
+    "Cycle-count priority: increment AERATION_BLOWER_CYCLE_COUNT once only on the observed FALSE-to-TRUE transition of final post-scan BLOWER_RUN.",
+    "Output priority: unified output stage applies BLOWER_RUN and count updates after the timer call, using safety-qualified values."
+  ],
+  "initial_values": {
+    "State": "OFF",
+    "BLOWER_RUN": false,
+    "AERATION_BLOWER_CYCLE_COUNT": 0,
+    "RunPrev": false,
+    "Permit": false,
+    "StartDelay": {
+      "IN": false,
+      "PT_ms": 5000,
+      "ET_ms": 0,
+      "Q": false
+    },
+    "delayElapsed_ms": 0
+  },
+  "scan_execution_order": [
+    "1. Edge sampling: sample DO_LOW and AERATION_E_STOP_NC once for this scan; latch RunPrev := BLOWER_RUN from the retained pre-scan observed output, initialized FALSE; compute Permit := DO_LOW AND AERATION_E_STOP_NC. No unobserved past input stability is assumed.",
+    "2. Safety/reset priority and state transitions: first apply reset priority. If Permit is FALSE, force State := OFF and request StartDelay reset. Otherwise execute state transitions using prior-scan timer Q where needed: OFF -> DELAY when Permit is TRUE; DELAY -> RUN when Permit is TRUE and StartDelay.Q from the prior scan is TRUE; RUN stays RUN while Permit is TRUE.",
+    "3. Unconditional top-level timer FB call outside CASE/IF: call StartDelay(IN := (State = DELAY) AND DO_LOW AND AERATION_E_STOP_NC, PT := T#5s) every scan. If IN is FALSE, the TON resets ET to 0 ms and Q to FALSE, including all emergency-stop and DO_LOW-loss cases.",
+    "4. Unified output assignments: compute final outputs once. BLOWER_RUN := (DO_LOW AND AERATION_E_STOP_NC) AND ((State = RUN) OR (State = DELAY AND StartDelay.Q)). Then if NOT RunPrev AND BLOWER_RUN, increment AERATION_BLOWER_CYCLE_COUNT by 1; otherwise retain the count. RunPrev is updated only by stage 1 of the next scan from the actual observed BLOWER_RUN."
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G((!DO_LOW || !AERATION_E_STOP_NC) -> !BLOWER_RUN)"
+    },
+    {
+      "id": "A2",
+      "formula": "G(BLOWER_RUN -> (DO_LOW && AERATION_E_STOP_NC))"
+    },
+    {
+      "id": "A3",
+      "formula": "G((!BLOWER_RUN && X(BLOWER_RUN)) -> X(AERATION_BLOWER_CYCLE_COUNT >= 1))"
+    }
+  ]
+}

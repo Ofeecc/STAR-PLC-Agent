@@ -1,0 +1,133 @@
+{
+  "state_machine": {
+    "states": [
+      {
+        "name": "STOPPED",
+        "meaning": "previous_direction=0; outputs neutral; also the one-scan neutral result for an opposite-direction request"
+      },
+      {
+        "name": "FORWARD",
+        "meaning": "previous_direction=+1; Forward commanded"
+      },
+      {
+        "name": "REVERSE",
+        "meaning": "previous_direction=-1; Reverse commanded"
+      }
+    ],
+    "transitions": [
+      {
+        "from": "STOPPED",
+        "condition": "Stop OR (ForwardButton == ReverseButton)",
+        "to": "STOPPED",
+        "action": "cmd_direction=0; next_previous_direction=0; outputs neutral"
+      },
+      {
+        "from": "STOPPED",
+        "condition": "ForwardButton AND NOT ReverseButton AND NOT Stop",
+        "to": "FORWARD",
+        "action": "cmd_direction=+1; next_previous_direction=+1; Forward only"
+      },
+      {
+        "from": "STOPPED",
+        "condition": "ReverseButton AND NOT ForwardButton AND NOT Stop",
+        "to": "REVERSE",
+        "action": "cmd_direction=-1; next_previous_direction=-1; Reverse only"
+      },
+      {
+        "from": "FORWARD",
+        "condition": "Stop OR (ForwardButton == ReverseButton)",
+        "to": "STOPPED",
+        "action": "cmd_direction=0; next_previous_direction=0; outputs neutral"
+      },
+      {
+        "from": "FORWARD",
+        "condition": "ForwardButton AND NOT ReverseButton AND NOT Stop",
+        "to": "FORWARD",
+        "action": "cmd_direction=+1; next_previous_direction=+1; Forward only"
+      },
+      {
+        "from": "FORWARD",
+        "condition": "ReverseButton AND NOT ForwardButton AND NOT Stop",
+        "to": "STOPPED",
+        "action": "opposite-direction interlock: cmd_direction=0; next_previous_direction=0; outputs neutral for this scan; next scan may enter REVERSE if request persists"
+      },
+      {
+        "from": "FORWARD",
+        "condition": "NOT ForwardButton AND NOT ReverseButton AND NOT Stop",
+        "to": "STOPPED",
+        "action": "cmd_direction=0; next_previous_direction=0; outputs neutral"
+      },
+      {
+        "from": "REVERSE",
+        "condition": "Stop OR (ForwardButton == ReverseButton)",
+        "to": "STOPPED",
+        "action": "cmd_direction=0; next_previous_direction=0; outputs neutral"
+      },
+      {
+        "from": "REVERSE",
+        "condition": "ReverseButton AND NOT ForwardButton AND NOT Stop",
+        "to": "REVERSE",
+        "action": "cmd_direction=-1; next_previous_direction=-1; Reverse only"
+      },
+      {
+        "from": "REVERSE",
+        "condition": "ForwardButton AND NOT ReverseButton AND NOT Stop",
+        "to": "STOPPED",
+        "action": "opposite-direction interlock: cmd_direction=0; next_previous_direction=0; outputs neutral for this scan; next scan may enter FORWARD if request persists"
+      },
+      {
+        "from": "REVERSE",
+        "condition": "NOT ForwardButton AND NOT ReverseButton AND NOT Stop",
+        "to": "STOPPED",
+        "action": "cmd_direction=0; next_previous_direction=0; outputs neutral"
+      }
+    ]
+  },
+  "timer_plan": {
+    "required": false,
+    "timers": [],
+    "PT_durations": "N/A; no TON/TOF/RTO used. The required one-scan neutral is implemented by state-transition memory, not by a timer.",
+    "reset_conditions": "On instance reset/initial scan: previous_direction:=0, qForward:=FALSE, qReverse:=FALSE, cmd_direction:=0, state:=STOPPED, Forward:=FALSE, Reverse:=FALSE. No timer reset is required because no timer FBs are used."
+  },
+  "priorities": [
+    "1. Safety: Stop=TRUE forces neutral and clears direction memory.",
+    "2. Safety: ambiguous input ForwardButton=ReverseButton forces neutral and clears direction memory.",
+    "3. Safety interlock: a valid request opposite to the last active direction forces a one-scan neutral output and clears direction memory to 0.",
+    "4. Operational: valid single-direction request from neutral or same direction is applied immediately in the same scan.",
+    "5. Outputs are mutually exclusive; Forward and Reverse are never TRUE simultaneously.",
+    "6. Retained direction memory is updated only from the final commanded direction; reset initializes all memory to stopped/neutral."
+  ],
+  "initial_values": {
+    "state": "STOPPED",
+    "previous_direction": 0,
+    "cmd_direction": 0,
+    "qForward": false,
+    "qReverse": false,
+    "Forward": false,
+    "Reverse": false
+  },
+  "scan_execution_order": [
+    "1. Edge sampling: sample ForwardButton, ReverseButton, and Stop once into the scan snapshot; latch qForward and qReverse from the previous observed outputs and latch previous_direction before any state/output changes. No edge timers are used; inputs are level-sensitive.",
+    "2. Safety/reset priority and state transitions: apply reset first; then evaluate Stop and ForwardButton==ReverseButton as highest-priority neutral commands; compute desired direction; if desired is nonzero and opposite to previous_direction, set cmd_direction=0 and transition to STOPPED with next_previous_direction=0 for the one-scan interlock; otherwise set cmd_direction=desired and transition to the corresponding STOPPED/FORWARD/REVERSE state with next_previous_direction=cmd_direction. Commit next state/memory for the next scan, not the current outputs.",
+    "3. Unconditional top-level timer FB calls outside CASE/IF: no timer FBs are required for SELF002. If any future timer is added, call every TON/TOF/RTO instance unconditionally at top level outside CASE/IF with fixed PT and explicit reset conditions.",
+    "4. Unified output assignments: in one block, assign Forward := (cmd_direction = +1) AND NOT reset; Reverse := (cmd_direction = -1) AND NOT reset; then store qForward := Forward and qReverse := Reverse for the next scan. No other writes to Forward or Reverse are permitted."
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G(!(Forward & Reverse))"
+    },
+    {
+      "id": "A2",
+      "formula": "G((Stop | (ForwardButton <-> ReverseButton)) -> (!Forward & !Reverse))"
+    },
+    {
+      "id": "A3",
+      "formula": "G((Reverse & X(ForwardButton & !ReverseButton & !Stop)) -> X(!Forward & !Reverse))"
+    },
+    {
+      "id": "A4",
+      "formula": "G((Forward & X(ReverseButton & !ForwardButton & !Stop)) -> X(!Forward & !Reverse))"
+    }
+  ]
+}

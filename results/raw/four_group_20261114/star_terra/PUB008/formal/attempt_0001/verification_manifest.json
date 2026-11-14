@@ -1,0 +1,84 @@
+{
+  "task_id": "PUB008",
+  "source_sha256": "be9a5ad511584acf526bb4ab00151db7dd18a2ab8db4e5794ee82f7a27518688",
+  "st_path": "candidate.st",
+  "ltl_path": "spec.ltl",
+  "properties": [
+    {
+      "id": "PUB008.P1",
+      "formula": "G(readonlyPreserved)",
+      "description": "Input arrays and configuration are never modified."
+    },
+    {
+      "id": "PUB008.P2",
+      "formula": "G(AllChannels_P2)",
+      "description": "Disabled and unprocessed channels are unchanged."
+    },
+    {
+      "id": "PUB008.P3",
+      "formula": "G(AllChannels_P3)",
+      "description": "Unsupported modes return the defined status without conversion."
+    },
+    {
+      "id": "PUB008.P4",
+      "formula": "G(AllChannels_P4)",
+      "description": "Invalid limits return their status without conversion."
+    },
+    {
+      "id": "PUB008.P5",
+      "formula": "G(AllChannels_P5)",
+      "description": "Successful enabled channels clear their status."
+    },
+    {
+      "id": "PUB008.P6",
+      "formula": "G(AllChannels_P6)",
+      "description": "Linear scale uses the correct unipolar or bipolar range."
+    },
+    {
+      "id": "PUB008.P7",
+      "formula": "G(AllChannels_P7)",
+      "description": "Standard-temperature resolution is one tenth."
+    },
+    {
+      "id": "PUB008.P8",
+      "formula": "G(AllChannels_P8)",
+      "description": "Climatic-temperature resolution is one hundredth."
+    },
+    {
+      "id": "PUB008.COMPLETE",
+      "formula": "G(CompleteBehavior)",
+      "description": "Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed."
+    }
+  ],
+  "atomic_propositions": {
+    "j": "An ordinal position starting at zero.",
+    "enabled(j)": "j<count and sampled channels[j].enable.",
+    "modeOK(j)": "Sampled measuringMode is 0,1,2.",
+    "limitsOK(j)": "Sampled hiLIM>loLIM.",
+    "raw(j)": "Sampled analogValues at its lower bound+j.",
+    "scaled(j)": "loLIM+(raw/27648)*(hiLIM-loLIM) for unipolar; loLIM+((raw+27648)/55296)*(hiLIM-loLIM) for bipolar.",
+    "preserved(j)": "The channel retVal/outputValue equal sampled values.",
+    "readonlyPreserved": "analogValues and channel configuration equal all their sampled values.",
+    "channel output names": "Post-scan fields of the channel at the indicated ordinal position.",
+    "sampledOutputValue(j)": "The caller-provided outputValue before this scan.",
+    "measuringMode(j)": "The sampled measuringMode configuration for ordinal j.",
+    "CompleteBehavior": "令(Sref[k+1], E[k])=T_PUB008(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\n序号j=0..len(channels)-1；仅j<count且enable处理，0<=count<=min两数组长度。非法mode优先报8001，否则hi<=lo报8002，均保留采样outputValue；成功清码，mode0按单极raw/27648或双极(raw+27648)/55296线性映射，mode1/2分别raw/10、raw/100。其他项及配置精确保留，仅成功outputValue使用abs=1e-5、rel=2e-6。",
+    "AllChannels_P2": "{\"operator\": \"finite_conjunction\", \"variable\": \"j\", \"lower_inclusive\": 0, \"upper_exclusive\": \"len(I[k].channels)\", \"empty_value\": true, \"body\": \"!enabled(j) -> preserved(j)\", \"instantiation\": \"For concrete caller binding N, substitute j=0,...,N-1 and join the Boolean bodies with &. N is binding length, never count.\", \"index_mapping\": \"j is zero-based ordinal; PLC index is each array own lower bound + j.\", \"guard\": \"enabled(j) := j<I[k].count AND I[k].channels[j].enable; short-circuit before raw(j) access.\", \"numeric_comparison\": \"Converted outputValue uses the comparison policy; status/config/preserved fields are exact.\"}",
+    "AllChannels_P3": "{\"operator\": \"finite_conjunction\", \"variable\": \"j\", \"lower_inclusive\": 0, \"upper_exclusive\": \"len(I[k].channels)\", \"empty_value\": true, \"body\": \"(enabled(j) & !modeOK(j)) -> (retVal(j)=16#8001 & outputValue(j)=sampledOutputValue(j))\", \"instantiation\": \"For concrete caller binding N, substitute j=0,...,N-1 and join the Boolean bodies with &. N is binding length, never count.\", \"index_mapping\": \"j is zero-based ordinal; PLC index is each array own lower bound + j.\", \"guard\": \"enabled(j) := j<I[k].count AND I[k].channels[j].enable; short-circuit before raw(j) access.\", \"numeric_comparison\": \"Converted outputValue uses the comparison policy; status/config/preserved fields are exact.\"}",
+    "AllChannels_P4": "{\"operator\": \"finite_conjunction\", \"variable\": \"j\", \"lower_inclusive\": 0, \"upper_exclusive\": \"len(I[k].channels)\", \"empty_value\": true, \"body\": \"(enabled(j) & modeOK(j) & !limitsOK(j)) -> (retVal(j)=16#8002 & outputValue(j)=sampledOutputValue(j))\", \"instantiation\": \"For concrete caller binding N, substitute j=0,...,N-1 and join the Boolean bodies with &. N is binding length, never count.\", \"index_mapping\": \"j is zero-based ordinal; PLC index is each array own lower bound + j.\", \"guard\": \"enabled(j) := j<I[k].count AND I[k].channels[j].enable; short-circuit before raw(j) access.\", \"numeric_comparison\": \"Converted outputValue uses the comparison policy; status/config/preserved fields are exact.\"}",
+    "AllChannels_P5": "{\"operator\": \"finite_conjunction\", \"variable\": \"j\", \"lower_inclusive\": 0, \"upper_exclusive\": \"len(I[k].channels)\", \"empty_value\": true, \"body\": \"(enabled(j) & modeOK(j) & limitsOK(j)) -> retVal(j)=0\", \"instantiation\": \"For concrete caller binding N, substitute j=0,...,N-1 and join the Boolean bodies with &. N is binding length, never count.\", \"index_mapping\": \"j is zero-based ordinal; PLC index is each array own lower bound + j.\", \"guard\": \"enabled(j) := j<I[k].count AND I[k].channels[j].enable; short-circuit before raw(j) access.\", \"numeric_comparison\": \"Converted outputValue uses the comparison policy; status/config/preserved fields are exact.\"}",
+    "AllChannels_P6": "{\"operator\": \"finite_conjunction\", \"variable\": \"j\", \"lower_inclusive\": 0, \"upper_exclusive\": \"len(I[k].channels)\", \"empty_value\": true, \"body\": \"(enabled(j) & limitsOK(j) & measuringMode(j)=0) -> outputValue(j)=scaled(j)\", \"instantiation\": \"For concrete caller binding N, substitute j=0,...,N-1 and join the Boolean bodies with &. N is binding length, never count.\", \"index_mapping\": \"j is zero-based ordinal; PLC index is each array own lower bound + j.\", \"guard\": \"enabled(j) := j<I[k].count AND I[k].channels[j].enable; short-circuit before raw(j) access.\", \"numeric_comparison\": \"Converted outputValue uses the comparison policy; status/config/preserved fields are exact.\"}",
+    "AllChannels_P7": "{\"operator\": \"finite_conjunction\", \"variable\": \"j\", \"lower_inclusive\": 0, \"upper_exclusive\": \"len(I[k].channels)\", \"empty_value\": true, \"body\": \"(enabled(j) & limitsOK(j) & measuringMode(j)=1) -> outputValue(j)=raw(j)/10\", \"instantiation\": \"For concrete caller binding N, substitute j=0,...,N-1 and join the Boolean bodies with &. N is binding length, never count.\", \"index_mapping\": \"j is zero-based ordinal; PLC index is each array own lower bound + j.\", \"guard\": \"enabled(j) := j<I[k].count AND I[k].channels[j].enable; short-circuit before raw(j) access.\", \"numeric_comparison\": \"Converted outputValue uses the comparison policy; status/config/preserved fields are exact.\"}",
+    "AllChannels_P8": "{\"operator\": \"finite_conjunction\", \"variable\": \"j\", \"lower_inclusive\": 0, \"upper_exclusive\": \"len(I[k].channels)\", \"empty_value\": true, \"body\": \"(enabled(j) & limitsOK(j) & measuringMode(j)=2) -> outputValue(j)=raw(j)/100\", \"instantiation\": \"For concrete caller binding N, substitute j=0,...,N-1 and join the Boolean bodies with &. N is binding length, never count.\", \"index_mapping\": \"j is zero-based ordinal; PLC index is each array own lower bound + j.\", \"guard\": \"enabled(j) := j<I[k].count AND I[k].channels[j].enable; short-circuit before raw(j) access.\", \"numeric_comparison\": \"Converted outputValue uses the comparison policy; status/config/preserved fields are exact.\"}",
+    "count": "I[k].count: sampled input (DINT).",
+    "analogValues": "O[k].analogValues: independently observed post-scan candidate value (ARRAY[*] OF INT); never defined as expected output. I[k].analogValues denotes separately captured caller value before invocation.",
+    "channels": "O[k].channels: independently observed post-scan candidate value (ARRAY[*] OF ST_AnalogChannel); never defined as expected output. I[k].channels denotes separately captured caller value before invocation."
+  },
+  "tools_supported": [],
+  "encoding_complete": false,
+  "task_sha256": "09886fc4a4f45d616c6e7f5415e853ed5ecc5ab3016b10582d1ef078e6963ca9",
+  "bundle_status": "UNSUPPORTED_ST",
+  "created_utc": "2026-11-14T11:19:54.279385+00:00",
+  "verification_status": "UNSUPPORTED_ST",
+  "reason": "Expected integer bound, got '*'"
+}

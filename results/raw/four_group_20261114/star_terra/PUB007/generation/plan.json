@@ -1,0 +1,72 @@
+{
+  "state_machine": [
+    {
+      "state": "COMMAND_VECTOR(c)",
+      "description": "Parameterized state covering all 32 command vectors. At each scan, c is read from the pre-scan pumpGroup[].RunComd values; there is no independent retained command shadow.",
+      "transitions": [
+        {
+          "condition": "stop",
+          "next": "All five commands FALSE."
+        },
+        {
+          "condition": "!stop AND start AND !mode",
+          "next": "For each i, command[i] := sampled pumpGroup[i].selection."
+        },
+        {
+          "condition": "!stop AND start AND mode",
+          "next": "Command exactly the three pumps with highest sampled priority. For each i, rank is 1 plus the number of pumps with greater priority, or equal priority and lower index; command[i] := rank <= 3."
+        },
+        {
+          "condition": "!stop AND !start",
+          "next": "Preserve the pre-scan command vector, regardless of mode or configuration changes."
+        }
+      ]
+    }
+  ],
+  "timer_plan": [],
+  "priorities": [
+    "Stop overrides start and clears every command in the same scan.",
+    "Start is level-sensitive: every scan with start TRUE and stop FALSE reselects from the current sampled configuration.",
+    "Manual selection is ignored in automatic mode; equal automatic priorities favor the lower array index.",
+    "Write only RunComd. Never modify priority or selection.",
+    "Commands do not establish actual pump availability or physical safety; the interface provides no feedback or interlocks."
+  ],
+  "initial_values": {
+    "pumpGroup[1..5].RunComd": "FALSE, initialized by the caller before the first operational scan.",
+    "internal_retained_command_state": "None; pre-scan RunComd values are authoritative.",
+    "temporary_values": "Assigned from the current scan snapshot before use.",
+    "inputs_and_read_only_fields": "Caller-owned; no initial values imposed."
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "Edge sampling",
+      "action": "Sample mode, start, stop, all priorities, selections and pre-scan RunComd values once. No edge detector is required; start and stop are level-sensitive."
+    },
+    {
+      "stage": 2,
+      "name": "Safety/reset priority and state transitions",
+      "action": "Compute a complete next-command vector using stop first, then manual or automatic start, otherwise the sampled pre-scan commands. Rank priorities without negating INT values."
+    },
+    {
+      "stage": 3,
+      "name": "Unconditional top-level timer FB calls outside CASE/IF",
+      "action": "No timer FBs are required; this stage is a no-op."
+    },
+    {
+      "stage": 4,
+      "name": "Unified output assignments",
+      "action": "Write the computed vector to pumpGroup[1..5].RunComd in one unified assignment section. Do not write other fields."
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G(stop -> (!pumpGroup[1].RunComd & !pumpGroup[2].RunComd & !pumpGroup[3].RunComd & !pumpGroup[4].RunComd & !pumpGroup[5].RunComd))"
+    },
+    {
+      "id": "A2",
+      "formula": "G((!stop & start & !mode) -> ((pumpGroup[1].RunComd = pumpGroup[1].selection) & (pumpGroup[2].RunComd = pumpGroup[2].selection) & (pumpGroup[3].RunComd = pumpGroup[3].selection) & (pumpGroup[4].RunComd = pumpGroup[4].selection) & (pumpGroup[5].RunComd = pumpGroup[5].selection)))"
+    }
+  ]
+}

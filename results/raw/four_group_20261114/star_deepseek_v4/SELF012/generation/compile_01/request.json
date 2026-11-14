@@ -1,0 +1,20 @@
+{
+  "request_id": "3b329e4919754f8b96c42cd3475a6ac3",
+  "source_sha256": "8a4071ef17b9614c790fff4cfd2502dc222a447fab1785c4398a993b68500f2c",
+  "task_id": "SELF012",
+  "project": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\521851ea3e005c4d\\task.project",
+  "candidate": {
+    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    Start : BOOL;\n    Stop : BOOL;\n    Fault : BOOL;\n    Reset : BOOL;\nEND_VAR\nVAR_OUTPUT\n    Run : BOOL := FALSE;\n    Locked : BOOL := FALSE;\n    Attempts : USINT := 0;\nEND_VAR\nVAR\n    mode : E_Mode := E_Mode.EM_IDLE;\n    free_scans : USINT := 0;\n    attempt_count : USINT := 0;\n    validReset : BOOL;\n    bStart : BOOL;\n    bStop : BOOL;\n    bFault : BOOL;\n    bReset : BOOL;\nEND_VAR",
+    "implementation": "// Stage 1: sample inputs once and derive valid reset\nbStart := Start;\nbStop := Stop;\nbFault := Fault;\nbReset := Reset;\nvalidReset := bReset AND NOT bFault AND NOT bStart;\n\n// Stage 2: priority transition using retained pre-state q[k]\nIF validReset THEN\n    mode := E_Mode.EM_IDLE;\n    attempt_count := 0;\n    free_scans := 0;\nELSIF mode = E_Mode.EM_LOCKED THEN\n    // Latched lockout: remain LOCKED absent valid reset\n    mode := E_Mode.EM_LOCKED;\n    free_scans := 0;\n    // attempt_count preserved\nELSIF bStop THEN\n    // Abort to IDLE without clearing retry count\n    mode := E_Mode.EM_IDLE;\n    free_scans := 0;\n    // attempt_count preserved\nELSE\n    CASE mode OF\n        E_Mode.EM_IDLE:\n            IF bStart AND NOT bFault THEN\n                mode := E_Mode.EM_RUNNING;\n                free_scans := 0;\n                // attempt_count preserved\n            ELSE\n                mode := E_Mode.EM_IDLE;\n                free_scans := 0;\n                // attempt_count preserved\n            END_IF;\n\n        E_Mode.EM_RUNNING:\n            IF bFault THEN\n                IF attempt_count >= 2 THEN\n                    mode := E_Mode.EM_LOCKED;\n                    free_scans := 0;\n                    // attempt_count preserved\n                ELSE\n                    mode := E_Mode.EM_WAIT;\n                    free_scans := 0;\n                    // attempt_count preserved\n                END_IF;\n            ELSE\n                mode := E_Mode.EM_RUNNING;\n                free_scans := 0;\n                // attempt_count preserved\n            END_IF;\n\n        E_Mode.EM_WAIT:\n            IF bFault THEN\n                mode := E_Mode.EM_WAIT;\n                free_scans := 0;\n                // attempt_count preserved\n            ELSIF free_scans >= 1 THEN\n                // Second consecutive fault-free dwell scan: issue one retry\n                IF attempt_count < 2 THEN\n                    attempt_count := attempt_count + 1;\n                END_IF;\n                free_scans := 0;\n                mode := E_Mode.EM_RUNNING;\n            ELSE\n                // First fault-free dwell scan\n                free_scans := free_scans + 1;\n                mode := E_Mode.EM_WAIT;\n                // attempt_count preserved\n            END_IF;\n\n        E_Mode.EM_LOCKED:\n            // Defensive latch branch; normally handled before CASE\n            mode := E_Mode.EM_LOCKED;\n            free_scans := 0;\n            // attempt_count preserved\n\n        ELSE\n            mode := E_Mode.EM_IDLE;\n            free_scans := 0;\n            // attempt_count preserved\n    END_CASE;\nEND_IF;\n\n// Stage 3: no timer FB calls for SELF012; recovery dwell is scan-count based\n\n// Stage 4: unified output assignments from post-transition state\nRun := (mode = E_Mode.EM_RUNNING);\nLocked := (mode = E_Mode.EM_LOCKED);\nAttempts := attempt_count;",
+    "supporting_objects": [
+      {
+        "name": "E_Mode",
+        "kind": "DUT",
+        "declaration": "TYPE E_Mode :\n(\n    EM_IDLE := 0,\n    EM_RUNNING := 1,\n    EM_WAIT := 2,\n    EM_LOCKED := 3\n);\nEND_TYPE",
+        "implementation": ""
+      }
+    ]
+  },
+  "result_path": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\521851ea3e005c4d\\codesys_evidence.json",
+  "started_utc": "2026-11-14T10:59:07.647858+00:00"
+}

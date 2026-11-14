@@ -1,0 +1,137 @@
+{
+  "state_machine": [
+    {
+      "state": "STOPPED",
+      "meaning": "Fill command is false; includes initial/reset, safety stop, high-level stop, inhibit, and middle-band retain-off.",
+      "outputs": {
+        "Fill": false
+      },
+      "transitions": [
+        {
+          "to": "STOPPED",
+          "guard": "SensorFault OR Inhibit OR HighWet",
+          "action": "force Fill := FALSE; remain stopped"
+        },
+        {
+          "to": "FILLING",
+          "guard": "NOT SensorFault AND NOT Inhibit AND NOT HighWet AND NOT LowWet",
+          "action": "start fill; Fill := TRUE"
+        },
+        {
+          "to": "STOPPED",
+          "guard": "otherwise, including LowWet AND NOT HighWet AND NOT Inhibit (middle band)",
+          "action": "retain Fill := FALSE"
+        }
+      ]
+    },
+    {
+      "state": "FILLING",
+      "meaning": "Fill command is true; active refill unless stopped by safety/operational priority.",
+      "outputs": {
+        "Fill": true
+      },
+      "transitions": [
+        {
+          "to": "STOPPED",
+          "guard": "SensorFault OR Inhibit OR HighWet",
+          "action": "force Fill := FALSE; stop fill"
+        },
+        {
+          "to": "FILLING",
+          "guard": "NOT SensorFault AND NOT Inhibit AND NOT HighWet AND NOT LowWet",
+          "action": "continue fill; Fill := TRUE"
+        },
+        {
+          "to": "FILLING",
+          "guard": "LowWet AND NOT HighWet AND NOT Inhibit",
+          "action": "retain Fill := TRUE in middle band"
+        },
+        {
+          "to": "FILLING",
+          "guard": "otherwise, with no stop condition and no low-dry start condition",
+          "action": "retain Fill := TRUE"
+        }
+      ]
+    }
+  ],
+  "timer_plan": {
+    "required_timers": [],
+    "pt_durations": {},
+    "reset_conditions": [
+      "No timers are used; hysteresis is state-based, not time-based.",
+      "Instance reset clears FillState to STOPPED, Fill to FALSE, SensorFault to FALSE, and qFill to FALSE."
+    ]
+  },
+  "priorities": [
+    "1. Safety override: SensorFault = HighWet AND NOT LowWet is always derived and forces Fill = FALSE.",
+    "2. Safety/operational override: Inhibit = TRUE forces Fill = FALSE.",
+    "3. Safety override: HighWet = TRUE forces Fill = FALSE.",
+    "4. Start request: if not stopped and LowWet = FALSE, Fill = TRUE.",
+    "5. Hysteresis retain: in the middle band LowWet = TRUE AND HighWet = FALSE AND Inhibit = FALSE, retain previous Fill.",
+    "6. Initial/reset default: Fill = FALSE and SensorFault = FALSE before the first scan and after reset."
+  ],
+  "initial_values": {
+    "Fill": false,
+    "SensorFault": false,
+    "FillState": "STOPPED",
+    "qFill": false,
+    "SensorFaultNext": false
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "edge_sampling",
+      "actions": [
+        "Sample LowWet, HighWet, and Inhibit exactly once into scan-local values.",
+        "Capture qFill from the previous observed O[k-1].Fill; at reset qFill = FALSE.",
+        "No edge flags are required for this task; sampled BOOL values are used directly."
+      ]
+    },
+    {
+      "stage": 2,
+      "name": "safety_reset_priority_and_state_transitions",
+      "actions": [
+        "Apply instance reset if present: FillState := STOPPED, Fill := FALSE, SensorFault := FALSE, qFill := FALSE.",
+        "Compute SensorFaultNext := HighWet AND NOT LowWet.",
+        "Evaluate stop priority first: if SensorFaultNext OR Inhibit OR HighWet, next state is STOPPED and Fill is forced FALSE.",
+        "Else evaluate start: if NOT LowWet AND NOT HighWet AND NOT Inhibit, next state is FILLING.",
+        "Else retain the current FillState for middle-band hysteresis."
+      ]
+    },
+    {
+      "stage": 3,
+      "name": "unconditional_timer_fb_calls_outside_case_if",
+      "actions": [
+        "No timer function blocks are required.",
+        "Stage intentionally contains no CASE/IF-gated timer calls; it is a no-op for this task."
+      ]
+    },
+    {
+      "stage": 4,
+      "name": "unified_output_assignments",
+      "actions": [
+        "SensorFault := SensorFaultNext.",
+        "Fill := (FillState = FILLING).",
+        "qFill := Fill, so qFill for the next scan equals the actual post-scan observed O[k].Fill."
+      ]
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G(SensorFault <-> (HighWet & !LowWet))"
+    },
+    {
+      "id": "A2",
+      "formula": "G((SensorFault | Inhibit | HighWet) -> !Fill)"
+    },
+    {
+      "id": "A3",
+      "formula": "G((!LowWet & !HighWet & !Inhibit) -> Fill)"
+    },
+    {
+      "id": "A4",
+      "formula": "G((LowWet & !HighWet & !Inhibit) -> (Fill <-> Y Fill))"
+    }
+  ]
+}

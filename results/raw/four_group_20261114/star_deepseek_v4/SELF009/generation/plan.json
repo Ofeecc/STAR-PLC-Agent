@@ -1,0 +1,149 @@
+{
+  "state_machine": [
+    {
+      "state": "COUNTING",
+      "description": "Valid Target and Reset FALSE. Count updates on rising edge, saturated to Target; Complete reflects Count >= Target."
+    },
+    {
+      "state": "RESETTING",
+      "description": "Valid Target and Reset TRUE. Count forced to 0 and Complete forced FALSE."
+    },
+    {
+      "state": "INVALID",
+      "description": "Target outside 1..20. Error TRUE, Count 0, Complete FALSE."
+    },
+    {
+      "from": "ANY",
+      "to": "INVALID",
+      "condition": "Target < 1 OR Target > 20",
+      "priority": 1
+    },
+    {
+      "from": "INVALID",
+      "to": "RESETTING",
+      "condition": "Target in 1..20 AND Reset TRUE",
+      "priority": 2
+    },
+    {
+      "from": "INVALID",
+      "to": "COUNTING",
+      "condition": "Target in 1..20 AND Reset FALSE",
+      "priority": 3
+    },
+    {
+      "from": "RESETTING",
+      "to": "INVALID",
+      "condition": "Target < 1 OR Target > 20",
+      "priority": 1
+    },
+    {
+      "from": "RESETTING",
+      "to": "COUNTING",
+      "condition": "Target in 1..20 AND Reset FALSE",
+      "priority": 2
+    },
+    {
+      "from": "RESETTING",
+      "to": "RESETTING",
+      "condition": "Target in 1..20 AND Reset TRUE",
+      "priority": 3
+    },
+    {
+      "from": "COUNTING",
+      "to": "INVALID",
+      "condition": "Target < 1 OR Target > 20",
+      "priority": 1
+    },
+    {
+      "from": "COUNTING",
+      "to": "RESETTING",
+      "condition": "Target in 1..20 AND Reset TRUE",
+      "priority": 2
+    },
+    {
+      "from": "COUNTING",
+      "to": "COUNTING",
+      "condition": "Target in 1..20 AND Reset FALSE",
+      "priority": 3
+    }
+  ],
+  "timer_plan": {
+    "timers_required": [],
+    "PT_durations": "N/A",
+    "reset_conditions": "N/A",
+    "note": "No timer function blocks are required. All behavior is scan/invocation based."
+  },
+  "priorities": [
+    "Safety first: validate Target exactly. Invalid Target (<1 or >20) forces Error=TRUE, Count=0, Complete=FALSE and overrides Reset and counting.",
+    "Reset next: with valid Target, Reset=TRUE forces Count=0 and Complete=FALSE; rising edges are not counted during Reset.",
+    "Edge memory is unconditional: previous_pulse samples PartPulse on every scan, including invalid Target, Reset, and Error conditions.",
+    "Normal counting last: only when Target is valid and Reset=FALSE, Count=min(previous Count + rising_edge, Target); Complete follows Count>=Target."
+  ],
+  "initial_values": {
+    "Count": 0,
+    "previous_pulse": false,
+    "Complete": false,
+    "Error": false,
+    "BatchState": "COUNTING",
+    "rise": false,
+    "next_Count": 0,
+    "next_Complete": false,
+    "next_Error": false
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "edge sampling",
+      "actions": [
+        "Sample PartPulse, Reset, and Target once into scan-local inputs.",
+        "rise := PartPulse AND NOT previous_pulse, using the retained previous_pulse value from before this scan.",
+        "previous_pulse := PartPulse immediately after rise is computed; this update executes on every scan, including Invalid and Reset scans."
+      ]
+    },
+    {
+      "stage": 2,
+      "name": "safety/reset priority & state transitions",
+      "actions": [
+        "invalid := (Target < 1) OR (Target > 20).",
+        "If invalid: BatchState_next := INVALID; next_Count := 0; next_Complete := FALSE; next_Error := TRUE.",
+        "Else if Reset: BatchState_next := RESETTING; next_Count := 0; next_Complete := FALSE; next_Error := FALSE.",
+        "Else: BatchState_next := COUNTING; next_Count := min(Count + (rise ? 1 : 0), Target); next_Complete := (next_Count >= Target); next_Error := FALSE."
+      ]
+    },
+    {
+      "stage": 3,
+      "name": "unconditional top-level timer FB calls outside CASE/IF",
+      "actions": [
+        "No timer FB calls are needed in this design."
+      ]
+    },
+    {
+      "stage": 4,
+      "name": "unified output assignments",
+      "actions": [
+        "Count := next_Count;",
+        "Complete := next_Complete;",
+        "Error := next_Error;",
+        "BatchState := BatchState_next;"
+      ]
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G(Error <-> (Target < 1 | Target > 20))"
+    },
+    {
+      "id": "A2",
+      "formula": "G((Reset | Target < 1 | Target > 20) -> (Count = 0 & !Complete))"
+    },
+    {
+      "id": "A3",
+      "formula": "G((!Reset & Target >= 1 & Target <= 20) -> (Complete <-> (Count >= Target)))"
+    },
+    {
+      "id": "A4",
+      "formula": "G((Target >= 1 & Target <= 20) -> (Count <= Target))"
+    }
+  ]
+}

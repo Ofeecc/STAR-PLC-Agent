@@ -1,0 +1,152 @@
+{
+  "state_machine": [
+    {
+      "state": "WAIT_A",
+      "transitions": [
+        {
+          "guard": "SensorA AND ButtonA",
+          "next": "MOVE_AB"
+        },
+        {
+          "guard": "otherwise",
+          "next": "WAIT_A"
+        }
+      ]
+    },
+    {
+      "state": "MOVE_AB",
+      "transitions": [
+        {
+          "guard": "SensorB",
+          "next": "WAIT_B"
+        },
+        {
+          "guard": "otherwise",
+          "next": "MOVE_AB"
+        }
+      ]
+    },
+    {
+      "state": "WAIT_B",
+      "transitions": [
+        {
+          "guard": "SensorB AND ButtonB",
+          "next": "MOVE_BC"
+        },
+        {
+          "guard": "otherwise",
+          "next": "WAIT_B"
+        }
+      ]
+    },
+    {
+      "state": "MOVE_BC",
+      "transitions": [
+        {
+          "guard": "SensorC",
+          "next": "WAIT_C"
+        },
+        {
+          "guard": "otherwise",
+          "next": "MOVE_BC"
+        }
+      ]
+    },
+    {
+      "state": "WAIT_C",
+      "transitions": [
+        {
+          "guard": "SensorC AND ButtonC",
+          "next": "DONE"
+        },
+        {
+          "guard": "otherwise",
+          "next": "WAIT_C"
+        }
+      ]
+    },
+    {
+      "state": "DONE",
+      "transitions": [
+        {
+          "guard": "NOT SensorC",
+          "next": "WAIT_A"
+        },
+        {
+          "guard": "otherwise",
+          "next": "DONE"
+        }
+      ]
+    }
+  ],
+  "timer_plan": {
+    "timers": [],
+    "PT_durations": "Not applicable.",
+    "reset_conditions": "Not applicable; no timing requirement is specified."
+  },
+  "priorities": [
+    "Forward and reverse outputs are mutually exclusive. Opposing manual requests produce neither direction.",
+    "In automatic mode, destination arrival transitions out of the corresponding MOVE state and stops the motor in the same scan; a station button cannot advance the next phase until a later scan.",
+    "Manual mode overrides automatic sequencing and resets phase to WAIT_A on every manual scan. Manual outputs follow button levels immediately.",
+    "Automatic transitions use the pre-scan phase and sampled inputs; accept at most one phase transition per scan. Station buttons are level-sensitive and accepted only in their corresponding wait state.",
+    "On return to automatic, start from WAIT_A; if SensorA and ButtonA are already true, their transition may occur in that scan.",
+    "The specified interface has no emergency-stop input or safety-rated functions. Provide appropriate independent safety circuitry and contactor interlocking in the physical installation."
+  ],
+  "initial_values": {
+    "phase": "WAIT_A",
+    "MotorForward": false,
+    "MotorReverse": false,
+    "CompletionLight": false,
+    "timers": "None",
+    "edge_memory": "None required"
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "Edge sampling",
+      "action": "Sample all input levels at invocation. No edge detection is required; do not edge-gate the level-sensitive buttons."
+    },
+    {
+      "stage": 2,
+      "name": "Safety/reset priority and state transitions",
+      "action": "If Mode is false, set phase to WAIT_A. Otherwise evaluate exactly one transition from the pre-scan phase using the sampled inputs. Arrival and completion-removal transitions take effect in this scan."
+    },
+    {
+      "stage": 3,
+      "name": "Unconditional top-level timer FB calls outside CASE/IF",
+      "action": "No timer FB calls are required. If timers are added later, call each once per scan unconditionally at top level."
+    },
+    {
+      "stage": 4,
+      "name": "Unified output assignments",
+      "action": "Assign outputs once using sampled inputs and the post-transition phase.",
+      "assignments": {
+        "MotorForward": "(NOT Mode AND ForwardButton AND NOT ReverseButton) OR (Mode AND (phase = MOVE_AB OR phase = MOVE_BC))",
+        "MotorReverse": "NOT Mode AND ReverseButton AND NOT ForwardButton",
+        "CompletionLight": "Mode AND phase = DONE"
+      }
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G(!(MotorForward & MotorReverse))"
+    },
+    {
+      "id": "A2",
+      "formula": "G(!Mode -> (MotorForward <-> (ForwardButton & !ReverseButton)))"
+    },
+    {
+      "id": "A3",
+      "formula": "G(!Mode -> (MotorReverse <-> (ReverseButton & !ForwardButton)))"
+    },
+    {
+      "id": "A4",
+      "formula": "G(Mode -> !MotorReverse)"
+    },
+    {
+      "id": "A5",
+      "formula": "G(CompletionLight -> (Mode & SensorC & !MotorForward & !MotorReverse))"
+    }
+  ]
+}

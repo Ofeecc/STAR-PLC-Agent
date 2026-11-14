@@ -1,0 +1,252 @@
+{
+  "state_machine": [
+    {
+      "state": "IDLE",
+      "description": "No accepted request. Default outputs are cleared.",
+      "transitions": [
+        {
+          "to": "ADD",
+          "condition": "rising(addRecipe) AND no other request rising",
+          "action": "latchedRecipeIn := recipeIn; requestType := ADD; clear one-scan success pulses, error, and status defaults"
+        },
+        {
+          "to": "DELETE",
+          "condition": "rising(deleteRecipe) AND no other request rising",
+          "action": "latchedRecipeIn := recipeIn; requestType := DELETE; clear one-scan success pulses, error, and status defaults"
+        },
+        {
+          "to": "MODIFY",
+          "condition": "rising(modifyRecipe) AND no other request rising",
+          "action": "latchedRecipeIn := recipeIn; requestType := MODIFY; clear one-scan success pulses, error, and status defaults"
+        },
+        {
+          "to": "QUERY",
+          "condition": "rising(queryRecipe) AND no other request rising",
+          "action": "latchedRecipeIn := recipeIn; requestType := QUERY; clear one-scan success pulses, error, and status defaults"
+        },
+        {
+          "to": "INVALID",
+          "condition": "more than one request rising",
+          "action": "no database mutation; invalidRequest diagnostic; simultaneous rising edges are outside the valid domain"
+        }
+      ]
+    },
+    {
+      "state": "ADD",
+      "description": "Atomic add: duplicate check precedes database-full check; commit uses lowest-index empty slot.",
+      "transitions": [
+        {
+          "to": "IDLE",
+          "condition": "latchedRecipeIn.recipeID = 0",
+          "action": "reject; no database mutation; invalid ID diagnostic; normal domain excludes recipeID 0 for add"
+        },
+        {
+          "to": "IDLE",
+          "condition": "latchedRecipeIn.recipeID exists in pre-scan recipe",
+          "action": "error := TRUE; status := 16#8002; no database mutation"
+        },
+        {
+          "to": "IDLE",
+          "condition": "latchedRecipeIn.recipeID absent AND all recipe[1..10].recipeID <> 0",
+          "action": "error := TRUE; status := 16#8003; no database mutation"
+        },
+        {
+          "to": "IDLE",
+          "condition": "latchedRecipeIn.recipeID nonzero, absent, and an empty slot exists",
+          "action": "i := lowest index with recipe[i].recipeID = 0; recipe[i] := latchedRecipeIn; recipeAdded := TRUE; error := FALSE; status := 0"
+        }
+      ]
+    },
+    {
+      "state": "DELETE",
+      "description": "Atomic delete by recipeID.",
+      "transitions": [
+        {
+          "to": "IDLE",
+          "condition": "latchedRecipeIn.recipeID absent from pre-scan recipe",
+          "action": "error := TRUE; status := 16#8004; no database mutation"
+        },
+        {
+          "to": "IDLE",
+          "condition": "latchedRecipeIn.recipeID exists in pre-scan recipe",
+          "action": "matching slot recipeID := 0; other fields remain unchanged/unconstrained; recipeDeleted := TRUE; error := FALSE; status := 0"
+        }
+      ]
+    },
+    {
+      "state": "MODIFY",
+      "description": "Atomic modify by recipeID.",
+      "transitions": [
+        {
+          "to": "IDLE",
+          "condition": "latchedRecipeIn.recipeID absent from pre-scan recipe",
+          "action": "error := TRUE; status := 16#8005; no database mutation"
+        },
+        {
+          "to": "IDLE",
+          "condition": "latchedRecipeIn.recipeID exists in pre-scan recipe",
+          "action": "matching slot := latchedRecipeIn; recipeModified := TRUE; error := FALSE; status := 0"
+        }
+      ]
+    },
+    {
+      "state": "QUERY",
+      "description": "Atomic query by recipeID.",
+      "transitions": [
+        {
+          "to": "IDLE",
+          "condition": "latchedRecipeIn.recipeID absent from pre-scan recipe",
+          "action": "error := TRUE; status := 16#8001; no database mutation"
+        },
+        {
+          "to": "IDLE",
+          "condition": "latchedRecipeIn.recipeID exists in pre-scan recipe",
+          "action": "recipeQueryResult := matching pre-scan record; error := FALSE; status := 0"
+        }
+      ]
+    },
+    {
+      "state": "INVALID",
+      "description": "Out-of-domain request arbitration.",
+      "transitions": [
+        {
+          "to": "IDLE",
+          "condition": "always on next evaluation",
+          "action": "no database mutation; success pulses cleared; invalidRequest diagnostic retained for diagnostics only"
+        }
+      ]
+    }
+  ],
+  "timer_plan": {
+    "required": false,
+    "timers": [],
+    "pt": "0 ms",
+    "reset_conditions": "No IEC timer FBs are required. Requests are handled by rising-edge detection. Success outputs are one-scan pulses; error and status clear combinationally on idle."
+  },
+  "priorities": [
+    "Reject invalid/multiple simultaneous rising requests before any database access or mutation.",
+    "On any error, preserve the recipe database exactly as sampled before the scan.",
+    "For add: duplicate-ID check has priority over database-full check.",
+    "For add: a nonzero recipeID is required; recipeID=0 denotes an empty slot and is rejected for add in the normal valid domain.",
+    "For add success: insert into the lowest-index empty slot, preserving uniqueness and all other slots.",
+    "For delete/modify/query: use the pre-scan database snapshot for search and target selection.",
+    "Only one accepted operation may execute per scan; at most one rising request is valid per invocation.",
+    "Success indicators are one-scan pulses; error=false and status=0 on successful or idle scans.",
+    "Compare REAL fields using absolute tolerance 1e-5.",
+    "The caller-owned recipe array persists across scans and must not be reinitialized per scan."
+  ],
+  "initial_values": {
+    "state": "IDLE",
+    "prevAddRecipe": false,
+    "prevDeleteRecipe": false,
+    "prevModifyRecipe": false,
+    "prevQueryRecipe": false,
+    "requestType": "NONE",
+    "latchedRecipeIn": {
+      "recipeID": 0,
+      "ingredientType": 0,
+      "ingredientRatio": 0.0,
+      "productionTemperature": 0.0
+    },
+    "recipeAdded": false,
+    "recipeDeleted": false,
+    "recipeModified": false,
+    "recipeQueryResult": {
+      "recipeID": 0,
+      "ingredientType": 0,
+      "ingredientRatio": 0.0,
+      "productionTemperature": 0.0
+    },
+    "error": false,
+    "status": 0,
+    "recipe": "caller-owned ARRAY[1..10] OF ST_Recipe; initial slots all have recipeID=0, ingredientType=0, ingredientRatio=0.0, productionTemperature=0.0; not reinitialized per scan",
+    "invalidRequest": false
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "edge sampling",
+      "actions": [
+        "Sample addRecipe, deleteRecipe, modifyRecipe, queryRecipe, and recipeIn at invocation.",
+        "Compute riseAdd, riseDelete, riseModify, riseQuery from current inputs versus retained previous-input booleans.",
+        "Latch recipeIn only when a single valid rising operation is selected.",
+        "Update retained previous-input booleans after edge computation for the next scan."
+      ]
+    },
+    {
+      "stage": 2,
+      "name": "safety/reset priority & state transitions",
+      "actions": [
+        "Set default internal result registers: no success pulses, error=false, status=0, no database mutation.",
+        "Detect invalid multiple rising requests; if present, enter INVALID and skip all database mutation.",
+        "Otherwise execute the single accepted state transition using the pre-scan recipe snapshot.",
+        "For add, evaluate recipeID validity, duplicate check, then full check, then commit to lowest empty slot.",
+        "For delete/modify/query, search the pre-scan snapshot and commit only if validation succeeds.",
+        "On any validation failure, set the specified error/status and preserve all recipe records."
+      ]
+    },
+    {
+      "stage": 3,
+      "name": "unconditional top-level timer FB calls outside CASE/IF",
+      "actions": [
+        "No IEC timer function blocks are used in this architecture; this stage is intentionally empty.",
+        "If timers are added later, call every timer FB unconditionally at top level outside CASE/IF and only use their outputs in stage 2/4."
+      ]
+    },
+    {
+      "stage": 4,
+      "name": "unified output assignments",
+      "actions": [
+        "Assign recipeAdded := internal add-success pulse.",
+        "Assign recipeDeleted := internal delete-success pulse.",
+        "Assign recipeModified := internal modify-success pulse.",
+        "Assign recipeQueryResult := retained query-result register.",
+        "Assign error := internal error register.",
+        "Assign status := internal status register.",
+        "Assign recipe IN_OUT only through the stage-2 atomic commit path; do not write outputs inside CASE/IF branches."
+      ]
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G((error = TRUE) -> (status = 16#8001 OR status = 16#8002 OR status = 16#8003 OR status = 16#8004 OR status = 16#8005))"
+    },
+    {
+      "id": "A2",
+      "formula": "G((error = FALSE) -> (status = 16#0000))"
+    },
+    {
+      "id": "A3",
+      "formula": "G((recipeAdded = TRUE) -> (error = FALSE AND status = 16#0000 AND recipeIn.recipeID /= 0))"
+    },
+    {
+      "id": "A4",
+      "formula": "G((recipeDeleted = TRUE) -> (error = FALSE AND status = 16#0000))"
+    },
+    {
+      "id": "A5",
+      "formula": "G((recipeModified = TRUE) -> (error = FALSE AND status = 16#0000))"
+    },
+    {
+      "id": "A6",
+      "formula": "G(forall i,j in 1..10: ((i < j AND recipe[i].recipeID /= 0 AND recipe[j].recipeID /= 0) -> recipe[i].recipeID /= recipe[j].recipeID))"
+    },
+    {
+      "id": "A7",
+      "formula": "G((recipeAdded = TRUE) -> (exists i in 1..10: recipe[i].recipeID = recipeIn.recipeID AND recipe[i].ingredientType = recipeIn.ingredientType AND abs(recipe[i].ingredientRatio - recipeIn.ingredientRatio) <= 1e-5 AND abs(recipe[i].productionTemperature - recipeIn.productionTemperature) <= 1e-5))"
+    },
+    {
+      "id": "A8",
+      "formula": "G((recipeModified = TRUE) -> (exists i in 1..10: recipe[i].recipeID = recipeIn.recipeID AND recipe[i].ingredientType = recipeIn.ingredientType AND abs(recipe[i].ingredientRatio - recipeIn.ingredientRatio) <= 1e-5 AND abs(recipe[i].productionTemperature - recipeIn.productionTemperature) <= 1e-5))"
+    },
+    {
+      "id": "A9",
+      "formula": "G((recipeDeleted = TRUE) -> (forall i in 1..10: recipe[i].recipeID /= recipeIn.recipeID))"
+    },
+    {
+      "id": "A10",
+      "formula": "G((addRecipe = FALSE AND deleteRecipe = FALSE AND modifyRecipe = FALSE AND queryRecipe = FALSE) -> (recipeAdded = FALSE AND recipeDeleted = FALSE AND recipeModified = FALSE AND error = FALSE AND status = 16#0000))"
+    }
+  ]
+}

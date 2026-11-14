@@ -1,0 +1,81 @@
+{
+  "state_machine": [
+    {
+      "state": "STOPPED",
+      "transitions": [
+        {
+          "condition": "Stop OR NOT GuardClosed",
+          "next_state": "STOPPED"
+        },
+        {
+          "condition": "NOT Stop AND GuardClosed AND Start",
+          "next_state": "RUNNING"
+        },
+        {
+          "condition": "NOT Stop AND GuardClosed AND NOT Start",
+          "next_state": "STOPPED"
+        }
+      ]
+    },
+    {
+      "state": "RUNNING",
+      "transitions": [
+        {
+          "condition": "Stop OR NOT GuardClosed",
+          "next_state": "STOPPED"
+        },
+        {
+          "condition": "NOT Stop AND GuardClosed",
+          "next_state": "RUNNING"
+        }
+      ]
+    }
+  ],
+  "timer_plan": [],
+  "priorities": [
+    "Stop or an open guard overrides Start and clears the retained run state in the same scan.",
+    "With Stop false and GuardClosed true, a level-sensitive Start sets the run state, including on the scan the guard closes.",
+    "Otherwise retain the previous run state.",
+    "This is not a safety-rated control circuit."
+  ],
+  "initial_values": {
+    "state": "STOPPED",
+    "Run": false
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "Edge sampling",
+      "action": "Sample Start, Stop and GuardClosed once. No edge detection is required; all inputs are level-sensitive."
+    },
+    {
+      "stage": 2,
+      "name": "Safety/reset priority and state transitions",
+      "action": "Apply the listed transitions using sampled inputs and the retained pre-scan state."
+    },
+    {
+      "stage": 3,
+      "name": "Unconditional top-level timer FB calls outside CASE/IF",
+      "action": "No timer FBs are required; this stage has no calls."
+    },
+    {
+      "stage": 4,
+      "name": "Unified output assignments",
+      "action": "Assign Run := (state = RUNNING) from the updated state, making the transition visible in the same scan."
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G((Stop | !GuardClosed) -> !Run)"
+    },
+    {
+      "id": "A2",
+      "formula": "G((Start & !Stop & GuardClosed) -> Run)"
+    },
+    {
+      "id": "A3",
+      "formula": "G(X(!Start & !Stop & GuardClosed) -> (X(Run) <-> Run))"
+    }
+  ]
+}

@@ -1,0 +1,3313 @@
+{
+  "request_id": "4d5e341ef2b04656acf09504c13dfe46",
+  "mode": "IDE_SIMULATION_ONLY",
+  "no_physical_connection": true,
+  "workspace": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\1969a10fd1a53145",
+  "project": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\1969a10fd1a53145\\simulation.project",
+  "template": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\1969a10fd1a53145\\benchmark.project",
+  "task_id": "PUB008",
+  "task_sha256": "09886fc4a4f45d616c6e7f5415e853ed5ecc5ab3016b10582d1ef078e6963ca9",
+  "source_sha256": "4a6cf5f0d589ebc7c6a3d624bd9ae8e4cd1444fbca3e3aabd5d180c4bce070ec",
+  "candidate": {
+    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    count : DINT;\nEND_VAR\nVAR_IN_OUT\n    analogValues : ARRAY[*] OF INT;\n    channels : ARRAY[*] OF ST_AnalogChannel;\nEND_VAR\nVAR\n    lbA : DINT;\n    ubA : DINT;\n    lenA : DINT;\n    lbC : DINT;\n    ubC : DINT;\n    lenC : DINT;\n    nProcess : DINT;\n    i : DINT;\n    idxA : DINT;\n    idxC : DINT;\n    mode : INT;\n    raw : INT;\n    lo : REAL;\n    hi : REAL;\nEND_VAR",
+    "implementation": "lbA := LOWER_BOUND(analogValues, 1);\nubA := UPPER_BOUND(analogValues, 1);\nlenA := ubA - lbA + 1;\nlbC := LOWER_BOUND(channels, 1);\nubC := UPPER_BOUND(channels, 1);\nlenC := ubC - lbC + 1;\n\nIF count < 0 THEN\n    nProcess := 0;\nELSIF count > lenA THEN\n    nProcess := lenA;\nELSE\n    nProcess := count;\nEND_IF;\n\nIF nProcess > lenC THEN\n    nProcess := lenC;\nEND_IF;\n\nIF nProcess < 0 THEN\n    nProcess := 0;\nEND_IF;\n\nIF nProcess > 0 THEN\n    FOR i := 0 TO nProcess - 1 DO\n        idxC := lbC + i;\n        IF channels[idxC].enable THEN\n            mode := channels[idxC].measuringMode;\n            lo := channels[idxC].loLIM;\n            hi := channels[idxC].hiLIM;\n            IF (mode <> 0) AND (mode <> 1) AND (mode <> 2) THEN\n                channels[idxC].retVal := 16#8001;\n            ELSIF hi <= lo THEN\n                channels[idxC].retVal := 16#8002;\n            ELSE\n                idxA := lbA + i;\n                raw := analogValues[idxA];\n                IF mode = 0 THEN\n                    IF channels[idxC].bipolar THEN\n                        channels[idxC].outputValue := lo + ((INT_TO_REAL(raw) + 27648.0) / 55296.0) * (hi - lo);\n                    ELSE\n                        channels[idxC].outputValue := lo + (INT_TO_REAL(raw) / 27648.0) * (hi - lo);\n                    END_IF;\n                ELSIF mode = 1 THEN\n                    channels[idxC].outputValue := INT_TO_REAL(raw) / 10.0;\n                ELSIF mode = 2 THEN\n                    channels[idxC].outputValue := INT_TO_REAL(raw) / 100.0;\n                END_IF;\n                channels[idxC].retVal := 0;\n            END_IF;\n        END_IF;\n    END_FOR;\nEND_IF;",
+    "supporting_objects": [
+      {
+        "name": "ST_AnalogChannel",
+        "kind": "DUT",
+        "declaration": "TYPE ST_AnalogChannel :\nSTRUCT\n    enable : BOOL;\n    hiLIM : REAL;\n    loLIM : REAL;\n    bipolar : BOOL;\n    measuringMode : INT;\n    retVal : WORD;\n    outputValue : REAL;\nEND_STRUCT\nEND_TYPE",
+        "implementation": ""
+      }
+    ]
+  },
+  "program": {
+    "declaration": "PROGRAM PLC_PRG\nVAR\n BenchStep : UDINT := 0;\n BenchCalls : UDINT := 0;\n BenchDone : BOOL := FALSE;\n BenchUut0 : FB_Task;\n BenchUut1 : FB_Task;\n BenchUut2 : FB_Task;\n BenchUut3 : FB_Task;\n BenchUut4 : FB_Task;\n BenchUut5 : FB_Task;\n BenchUut6 : FB_Task;\n BenchUut7 : FB_Task;\n BenchUut8 : FB_Task;\n Binding_0_analogValues : ARRAY[-2..4] OF INT;\n Binding_0_channels : ARRAY[7..13] OF ST_AnalogChannel;\n Binding_1_analogValues : ARRAY[1..5] OF INT;\n Binding_1_channels : ARRAY[1..5] OF ST_AnalogChannel;\n Binding_2_analogValues : ARRAY[1..1] OF INT;\n Binding_2_channels : ARRAY[1..1] OF ST_AnalogChannel;\n Binding_3_analogValues : ARRAY[-3..-3] OF INT;\n Binding_3_channels : ARRAY[9..10] OF ST_AnalogChannel;\n Binding_4_analogValues : ARRAY[-3..-1] OF INT;\n Binding_4_channels : ARRAY[7..9] OF ST_AnalogChannel;\n Binding_5_analogValues : ARRAY[-3..0] OF INT;\n Binding_5_channels : ARRAY[8..9] OF ST_AnalogChannel;\n Binding_6_analogValues : ARRAY[-3..-2] OF INT;\n Binding_6_channels : ARRAY[8..11] OF ST_AnalogChannel;\n Binding_7_analogValues : ARRAY[1..5] OF INT;\n Binding_7_channels : ARRAY[1..5] OF ST_AnalogChannel;\n Binding_8_analogValues : ARRAY[1..5] OF INT;\n Binding_8_channels : ARRAY[1..6] OF ST_AnalogChannel;\n TraceIn_count : ARRAY[0..11] OF DINT;\n TraceOut_analogValues_1 : ARRAY[0..11] OF INT;\n TraceOut_analogValues_2 : ARRAY[0..11] OF INT;\n TraceOut_analogValues_3 : ARRAY[0..11] OF INT;\n TraceOut_analogValues_4 : ARRAY[0..11] OF INT;\n TraceOut_analogValues_5 : ARRAY[0..11] OF INT;\n TraceOut_analogValues_6 : ARRAY[0..11] OF INT;\n TraceOut_analogValues_7 : ARRAY[0..11] OF INT;\n TraceOut_channels_1_enable : ARRAY[0..11] OF BOOL;\n TraceOut_channels_1_hiLIM : ARRAY[0..11] OF REAL;\n TraceOut_channels_1_loLIM : ARRAY[0..11] OF REAL;\n TraceOut_channels_1_bipolar : ARRAY[0..11] OF BOOL;\n TraceOut_channels_1_measuringMode : ARRAY[0..11] OF INT;\n TraceOut_channels_1_retVal : ARRAY[0..11] OF WORD;\n TraceOut_channels_1_outputValue : ARRAY[0..11] OF REAL;\n TraceOut_channels_2_enable : ARRAY[0..11] OF BOOL;\n TraceOut_channels_2_hiLIM : ARRAY[0..11] OF REAL;\n TraceOut_channels_2_loLIM : ARRAY[0..11] OF REAL;\n TraceOut_channels_2_bipolar : ARRAY[0..11] OF BOOL;\n TraceOut_channels_2_measuringMode : ARRAY[0..11] OF INT;\n TraceOut_channels_2_retVal : ARRAY[0..11] OF WORD;\n TraceOut_channels_2_outputValue : ARRAY[0..11] OF REAL;\n TraceOut_channels_3_enable : ARRAY[0..11] OF BOOL;\n TraceOut_channels_3_hiLIM : ARRAY[0..11] OF REAL;\n TraceOut_channels_3_loLIM : ARRAY[0..11] OF REAL;\n TraceOut_channels_3_bipolar : ARRAY[0..11] OF BOOL;\n TraceOut_channels_3_measuringMode : ARRAY[0..11] OF INT;\n TraceOut_channels_3_retVal : ARRAY[0..11] OF WORD;\n TraceOut_channels_3_outputValue : ARRAY[0..11] OF REAL;\n TraceOut_channels_4_enable : ARRAY[0..11] OF BOOL;\n TraceOut_channels_4_hiLIM : ARRAY[0..11] OF REAL;\n TraceOut_channels_4_loLIM : ARRAY[0..11] OF REAL;\n TraceOut_channels_4_bipolar : ARRAY[0..11] OF BOOL;\n TraceOut_channels_4_measuringMode : ARRAY[0..11] OF INT;\n TraceOut_channels_4_retVal : ARRAY[0..11] OF WORD;\n TraceOut_channels_4_outputValue : ARRAY[0..11] OF REAL;\n TraceOut_channels_5_enable : ARRAY[0..11] OF BOOL;\n TraceOut_channels_5_hiLIM : ARRAY[0..11] OF REAL;\n TraceOut_channels_5_loLIM : ARRAY[0..11] OF REAL;\n TraceOut_channels_5_bipolar : ARRAY[0..11] OF BOOL;\n TraceOut_channels_5_measuringMode : ARRAY[0..11] OF INT;\n TraceOut_channels_5_retVal : ARRAY[0..11] OF WORD;\n TraceOut_channels_5_outputValue : ARRAY[0..11] OF REAL;\n TraceOut_channels_6_enable : ARRAY[0..11] OF BOOL;\n TraceOut_channels_6_hiLIM : ARRAY[0..11] OF REAL;\n TraceOut_channels_6_loLIM : ARRAY[0..11] OF REAL;\n TraceOut_channels_6_bipolar : ARRAY[0..11] OF BOOL;\n TraceOut_channels_6_measuringMode : ARRAY[0..11] OF INT;\n TraceOut_channels_6_retVal : ARRAY[0..11] OF WORD;\n TraceOut_channels_6_outputValue : ARRAY[0..11] OF REAL;\n TraceOut_channels_7_enable : ARRAY[0..11] OF BOOL;\n TraceOut_channels_7_hiLIM : ARRAY[0..11] OF REAL;\n TraceOut_channels_7_loLIM : ARRAY[0..11] OF REAL;\n TraceOut_channels_7_bipolar : ARRAY[0..11] OF BOOL;\n TraceOut_channels_7_measuringMode : ARRAY[0..11] OF INT;\n TraceOut_channels_7_retVal : ARRAY[0..11] OF WORD;\n TraceOut_channels_7_outputValue : ARRAY[0..11] OF REAL;\nEND_VAR",
+    "implementation": "IF NOT BenchDone THEN\n CASE BenchStep OF\n 0:\n   Binding_0_analogValues[-2] := INT#0;\n   Binding_0_analogValues[-1] := INT#27648;\n   Binding_0_analogValues[0] := INT#-27648;\n   Binding_0_analogValues[1] := INT#0;\n   Binding_0_analogValues[2] := INT#27648;\n   Binding_0_analogValues[3] := INT#1234;\n   Binding_0_analogValues[4] := INT#-1234;\n   Binding_0_channels[7].enable := TRUE;\n   Binding_0_channels[7].hiLIM := REAL#100.0;\n   Binding_0_channels[7].loLIM := REAL#0.0;\n   Binding_0_channels[7].bipolar := FALSE;\n   Binding_0_channels[7].measuringMode := INT#0;\n   Binding_0_channels[7].retVal := WORD#7;\n   Binding_0_channels[7].outputValue := REAL#-999.0;\n   Binding_0_channels[8].enable := TRUE;\n   Binding_0_channels[8].hiLIM := REAL#100.0;\n   Binding_0_channels[8].loLIM := REAL#0.0;\n   Binding_0_channels[8].bipolar := FALSE;\n   Binding_0_channels[8].measuringMode := INT#0;\n   Binding_0_channels[8].retVal := WORD#7;\n   Binding_0_channels[8].outputValue := REAL#-999.0;\n   Binding_0_channels[9].enable := TRUE;\n   Binding_0_channels[9].hiLIM := REAL#100.0;\n   Binding_0_channels[9].loLIM := REAL#0.0;\n   Binding_0_channels[9].bipolar := TRUE;\n   Binding_0_channels[9].measuringMode := INT#0;\n   Binding_0_channels[9].retVal := WORD#7;\n   Binding_0_channels[9].outputValue := REAL#-999.0;\n   Binding_0_channels[10].enable := TRUE;\n   Binding_0_channels[10].hiLIM := REAL#100.0;\n   Binding_0_channels[10].loLIM := REAL#0.0;\n   Binding_0_channels[10].bipolar := TRUE;\n   Binding_0_channels[10].measuringMode := INT#0;\n   Binding_0_channels[10].retVal := WORD#7;\n   Binding_0_channels[10].outputValue := REAL#-999.0;\n   Binding_0_channels[11].enable := TRUE;\n   Binding_0_channels[11].hiLIM := REAL#100.0;\n   Binding_0_channels[11].loLIM := REAL#0.0;\n   Binding_0_channels[11].bipolar := TRUE;\n   Binding_0_channels[11].measuringMode := INT#0;\n   Binding_0_channels[11].retVal := WORD#7;\n   Binding_0_channels[11].outputValue := REAL#-999.0;\n   Binding_0_channels[12].enable := TRUE;\n   Binding_0_channels[12].hiLIM := REAL#100.0;\n   Binding_0_channels[12].loLIM := REAL#0.0;\n   Binding_0_channels[12].bipolar := FALSE;\n   Binding_0_channels[12].measuringMode := INT#1;\n   Binding_0_channels[12].retVal := WORD#7;\n   Binding_0_channels[12].outputValue := REAL#-999.0;\n   Binding_0_channels[13].enable := TRUE;\n   Binding_0_channels[13].hiLIM := REAL#100.0;\n   Binding_0_channels[13].loLIM := REAL#0.0;\n   Binding_0_channels[13].bipolar := FALSE;\n   Binding_0_channels[13].measuringMode := INT#2;\n   Binding_0_channels[13].retVal := WORD#7;\n   Binding_0_channels[13].outputValue := REAL#-999.0;\n   BenchUut0.count := DINT#7;\n   TraceIn_count[0] := BenchUut0.count;\n   BenchUut0(analogValues := Binding_0_analogValues, channels := Binding_0_channels);\n   TraceOut_analogValues_1[0] := Binding_0_analogValues[-2];\n   TraceOut_analogValues_2[0] := Binding_0_analogValues[-1];\n   TraceOut_analogValues_3[0] := Binding_0_analogValues[0];\n   TraceOut_analogValues_4[0] := Binding_0_analogValues[1];\n   TraceOut_analogValues_5[0] := Binding_0_analogValues[2];\n   TraceOut_analogValues_6[0] := Binding_0_analogValues[3];\n   TraceOut_analogValues_7[0] := Binding_0_analogValues[4];\n   TraceOut_channels_1_enable[0] := Binding_0_channels[7].enable;\n   TraceOut_channels_1_hiLIM[0] := Binding_0_channels[7].hiLIM;\n   TraceOut_channels_1_loLIM[0] := Binding_0_channels[7].loLIM;\n   TraceOut_channels_1_bipolar[0] := Binding_0_channels[7].bipolar;\n   TraceOut_channels_1_measuringMode[0] := Binding_0_channels[7].measuringMode;\n   TraceOut_channels_1_retVal[0] := Binding_0_channels[7].retVal;\n   TraceOut_channels_1_outputValue[0] := Binding_0_channels[7].outputValue;\n   TraceOut_channels_2_enable[0] := Binding_0_channels[8].enable;\n   TraceOut_channels_2_hiLIM[0] := Binding_0_channels[8].hiLIM;\n   TraceOut_channels_2_loLIM[0] := Binding_0_channels[8].loLIM;\n   TraceOut_channels_2_bipolar[0] := Binding_0_channels[8].bipolar;\n   TraceOut_channels_2_measuringMode[0] := Binding_0_channels[8].measuringMode;\n   TraceOut_channels_2_retVal[0] := Binding_0_channels[8].retVal;\n   TraceOut_channels_2_outputValue[0] := Binding_0_channels[8].outputValue;\n   TraceOut_channels_3_enable[0] := Binding_0_channels[9].enable;\n   TraceOut_channels_3_hiLIM[0] := Binding_0_channels[9].hiLIM;\n   TraceOut_channels_3_loLIM[0] := Binding_0_channels[9].loLIM;\n   TraceOut_channels_3_bipolar[0] := Binding_0_channels[9].bipolar;\n   TraceOut_channels_3_measuringMode[0] := Binding_0_channels[9].measuringMode;\n   TraceOut_channels_3_retVal[0] := Binding_0_channels[9].retVal;\n   TraceOut_channels_3_outputValue[0] := Binding_0_channels[9].outputValue;\n   TraceOut_channels_4_enable[0] := Binding_0_channels[10].enable;\n   TraceOut_channels_4_hiLIM[0] := Binding_0_channels[10].hiLIM;\n   TraceOut_channels_4_loLIM[0] := Binding_0_channels[10].loLIM;\n   TraceOut_channels_4_bipolar[0] := Binding_0_channels[10].bipolar;\n   TraceOut_channels_4_measuringMode[0] := Binding_0_channels[10].measuringMode;\n   TraceOut_channels_4_retVal[0] := Binding_0_channels[10].retVal;\n   TraceOut_channels_4_outputValue[0] := Binding_0_channels[10].outputValue;\n   TraceOut_channels_5_enable[0] := Binding_0_channels[11].enable;\n   TraceOut_channels_5_hiLIM[0] := Binding_0_channels[11].hiLIM;\n   TraceOut_channels_5_loLIM[0] := Binding_0_channels[11].loLIM;\n   TraceOut_channels_5_bipolar[0] := Binding_0_channels[11].bipolar;\n   TraceOut_channels_5_measuringMode[0] := Binding_0_channels[11].measuringMode;\n   TraceOut_channels_5_retVal[0] := Binding_0_channels[11].retVal;\n   TraceOut_channels_5_outputValue[0] := Binding_0_channels[11].outputValue;\n   TraceOut_channels_6_enable[0] := Binding_0_channels[12].enable;\n   TraceOut_channels_6_hiLIM[0] := Binding_0_channels[12].hiLIM;\n   TraceOut_channels_6_loLIM[0] := Binding_0_channels[12].loLIM;\n   TraceOut_channels_6_bipolar[0] := Binding_0_channels[12].bipolar;\n   TraceOut_channels_6_measuringMode[0] := Binding_0_channels[12].measuringMode;\n   TraceOut_channels_6_retVal[0] := Binding_0_channels[12].retVal;\n   TraceOut_channels_6_outputValue[0] := Binding_0_channels[12].outputValue;\n   TraceOut_channels_7_enable[0] := Binding_0_channels[13].enable;\n   TraceOut_channels_7_hiLIM[0] := Binding_0_channels[13].hiLIM;\n   TraceOut_channels_7_loLIM[0] := Binding_0_channels[13].loLIM;\n   TraceOut_channels_7_bipolar[0] := Binding_0_channels[13].bipolar;\n   TraceOut_channels_7_measuringMode[0] := Binding_0_channels[13].measuringMode;\n   TraceOut_channels_7_retVal[0] := Binding_0_channels[13].retVal;\n   TraceOut_channels_7_outputValue[0] := Binding_0_channels[13].outputValue;\n   BenchCalls := BenchCalls + 1;\n 1:\n   Binding_1_analogValues[1] := INT#1;\n   Binding_1_analogValues[2] := INT#2;\n   Binding_1_analogValues[3] := INT#3;\n   Binding_1_analogValues[4] := INT#4;\n   Binding_1_analogValues[5] := INT#5;\n   Binding_1_channels[1].enable := FALSE;\n   Binding_1_channels[1].hiLIM := REAL#100.0;\n   Binding_1_channels[1].loLIM := REAL#0.0;\n   Binding_1_channels[1].bipolar := FALSE;\n   Binding_1_channels[1].measuringMode := INT#0;\n   Binding_1_channels[1].retVal := WORD#7;\n   Binding_1_channels[1].outputValue := REAL#-999.0;\n   Binding_1_channels[2].enable := TRUE;\n   Binding_1_channels[2].hiLIM := REAL#0.0;\n   Binding_1_channels[2].loLIM := REAL#10.0;\n   Binding_1_channels[2].bipolar := FALSE;\n   Binding_1_channels[2].measuringMode := INT#9;\n   Binding_1_channels[2].retVal := WORD#7;\n   Binding_1_channels[2].outputValue := REAL#-999.0;\n   Binding_1_channels[3].enable := TRUE;\n   Binding_1_channels[3].hiLIM := REAL#10.0;\n   Binding_1_channels[3].loLIM := REAL#10.0;\n   Binding_1_channels[3].bipolar := FALSE;\n   Binding_1_channels[3].measuringMode := INT#0;\n   Binding_1_channels[3].retVal := WORD#7;\n   Binding_1_channels[3].outputValue := REAL#-999.0;\n   Binding_1_channels[4].enable := TRUE;\n   Binding_1_channels[4].hiLIM := REAL#100.0;\n   Binding_1_channels[4].loLIM := REAL#0.0;\n   Binding_1_channels[4].bipolar := FALSE;\n   Binding_1_channels[4].measuringMode := INT#2;\n   Binding_1_channels[4].retVal := WORD#7;\n   Binding_1_channels[4].outputValue := REAL#-999.0;\n   Binding_1_channels[5].enable := TRUE;\n   Binding_1_channels[5].hiLIM := REAL#100.0;\n   Binding_1_channels[5].loLIM := REAL#0.0;\n   Binding_1_channels[5].bipolar := FALSE;\n   Binding_1_channels[5].measuringMode := INT#0;\n   Binding_1_channels[5].retVal := WORD#7;\n   Binding_1_channels[5].outputValue := REAL#-999.0;\n   BenchUut1.count := DINT#4;\n   TraceIn_count[1] := BenchUut1.count;\n   BenchUut1(analogValues := Binding_1_analogValues, channels := Binding_1_channels);\n   TraceOut_analogValues_1[1] := Binding_1_analogValues[1];\n   TraceOut_analogValues_2[1] := Binding_1_analogValues[2];\n   TraceOut_analogValues_3[1] := Binding_1_analogValues[3];\n   TraceOut_analogValues_4[1] := Binding_1_analogValues[4];\n   TraceOut_analogValues_5[1] := Binding_1_analogValues[5];\n   TraceOut_channels_1_enable[1] := Binding_1_channels[1].enable;\n   TraceOut_channels_1_hiLIM[1] := Binding_1_channels[1].hiLIM;\n   TraceOut_channels_1_loLIM[1] := Binding_1_channels[1].loLIM;\n   TraceOut_channels_1_bipolar[1] := Binding_1_channels[1].bipolar;\n   TraceOut_channels_1_measuringMode[1] := Binding_1_channels[1].measuringMode;\n   TraceOut_channels_1_retVal[1] := Binding_1_channels[1].retVal;\n   TraceOut_channels_1_outputValue[1] := Binding_1_channels[1].outputValue;\n   TraceOut_channels_2_enable[1] := Binding_1_channels[2].enable;\n   TraceOut_channels_2_hiLIM[1] := Binding_1_channels[2].hiLIM;\n   TraceOut_channels_2_loLIM[1] := Binding_1_channels[2].loLIM;\n   TraceOut_channels_2_bipolar[1] := Binding_1_channels[2].bipolar;\n   TraceOut_channels_2_measuringMode[1] := Binding_1_channels[2].measuringMode;\n   TraceOut_channels_2_retVal[1] := Binding_1_channels[2].retVal;\n   TraceOut_channels_2_outputValue[1] := Binding_1_channels[2].outputValue;\n   TraceOut_channels_3_enable[1] := Binding_1_channels[3].enable;\n   TraceOut_channels_3_hiLIM[1] := Binding_1_channels[3].hiLIM;\n   TraceOut_channels_3_loLIM[1] := Binding_1_channels[3].loLIM;\n   TraceOut_channels_3_bipolar[1] := Binding_1_channels[3].bipolar;\n   TraceOut_channels_3_measuringMode[1] := Binding_1_channels[3].measuringMode;\n   TraceOut_channels_3_retVal[1] := Binding_1_channels[3].retVal;\n   TraceOut_channels_3_outputValue[1] := Binding_1_channels[3].outputValue;\n   TraceOut_channels_4_enable[1] := Binding_1_channels[4].enable;\n   TraceOut_channels_4_hiLIM[1] := Binding_1_channels[4].hiLIM;\n   TraceOut_channels_4_loLIM[1] := Binding_1_channels[4].loLIM;\n   TraceOut_channels_4_bipolar[1] := Binding_1_channels[4].bipolar;\n   TraceOut_channels_4_measuringMode[1] := Binding_1_channels[4].measuringMode;\n   TraceOut_channels_4_retVal[1] := Binding_1_channels[4].retVal;\n   TraceOut_channels_4_outputValue[1] := Binding_1_channels[4].outputValue;\n   TraceOut_channels_5_enable[1] := Binding_1_channels[5].enable;\n   TraceOut_channels_5_hiLIM[1] := Binding_1_channels[5].hiLIM;\n   TraceOut_channels_5_loLIM[1] := Binding_1_channels[5].loLIM;\n   TraceOut_channels_5_bipolar[1] := Binding_1_channels[5].bipolar;\n   TraceOut_channels_5_measuringMode[1] := Binding_1_channels[5].measuringMode;\n   TraceOut_channels_5_retVal[1] := Binding_1_channels[5].retVal;\n   TraceOut_channels_5_outputValue[1] := Binding_1_channels[5].outputValue;\n   BenchCalls := BenchCalls + 1;\n 2:\n   Binding_2_analogValues[1] := INT#-27648;\n   Binding_2_channels[1].enable := TRUE;\n   Binding_2_channels[1].hiLIM := REAL#100.0;\n   Binding_2_channels[1].loLIM := REAL#0.0;\n   Binding_2_channels[1].bipolar := FALSE;\n   Binding_2_channels[1].measuringMode := INT#0;\n   Binding_2_channels[1].retVal := WORD#7;\n   Binding_2_channels[1].outputValue := REAL#-999.0;\n   BenchUut2.count := DINT#0;\n   TraceIn_count[2] := BenchUut2.count;\n   BenchUut2(analogValues := Binding_2_analogValues, channels := Binding_2_channels);\n   TraceOut_analogValues_1[2] := Binding_2_analogValues[1];\n   TraceOut_channels_1_enable[2] := Binding_2_channels[1].enable;\n   TraceOut_channels_1_hiLIM[2] := Binding_2_channels[1].hiLIM;\n   TraceOut_channels_1_loLIM[2] := Binding_2_channels[1].loLIM;\n   TraceOut_channels_1_bipolar[2] := Binding_2_channels[1].bipolar;\n   TraceOut_channels_1_measuringMode[2] := Binding_2_channels[1].measuringMode;\n   TraceOut_channels_1_retVal[2] := Binding_2_channels[1].retVal;\n   TraceOut_channels_1_outputValue[2] := Binding_2_channels[1].outputValue;\n   BenchCalls := BenchCalls + 1;\n 3:\n   Binding_2_analogValues[1] := INT#-27648;\n   Binding_2_channels[1].enable := TRUE;\n   Binding_2_channels[1].hiLIM := REAL#100.0;\n   Binding_2_channels[1].loLIM := REAL#0.0;\n   Binding_2_channels[1].bipolar := FALSE;\n   Binding_2_channels[1].measuringMode := INT#0;\n   Binding_2_channels[1].retVal := WORD#7;\n   Binding_2_channels[1].outputValue := REAL#-999.0;\n   BenchUut2.count := DINT#1;\n   TraceIn_count[3] := BenchUut2.count;\n   BenchUut2(analogValues := Binding_2_analogValues, channels := Binding_2_channels);\n   TraceOut_analogValues_1[3] := Binding_2_analogValues[1];\n   TraceOut_channels_1_enable[3] := Binding_2_channels[1].enable;\n   TraceOut_channels_1_hiLIM[3] := Binding_2_channels[1].hiLIM;\n   TraceOut_channels_1_loLIM[3] := Binding_2_channels[1].loLIM;\n   TraceOut_channels_1_bipolar[3] := Binding_2_channels[1].bipolar;\n   TraceOut_channels_1_measuringMode[3] := Binding_2_channels[1].measuringMode;\n   TraceOut_channels_1_retVal[3] := Binding_2_channels[1].retVal;\n   TraceOut_channels_1_outputValue[3] := Binding_2_channels[1].outputValue;\n   BenchCalls := BenchCalls + 1;\n 4:\n   Binding_3_analogValues[-3] := INT#32767;\n   Binding_3_channels[9].enable := TRUE;\n   Binding_3_channels[9].hiLIM := REAL#27648.0;\n   Binding_3_channels[9].loLIM := REAL#-27648.0;\n   Binding_3_channels[9].bipolar := TRUE;\n   Binding_3_channels[9].measuringMode := INT#0;\n   Binding_3_channels[9].retVal := WORD#7;\n   Binding_3_channels[9].outputValue := REAL#-999.0;\n   Binding_3_channels[10].enable := TRUE;\n   Binding_3_channels[10].hiLIM := REAL#27648.0;\n   Binding_3_channels[10].loLIM := REAL#-27648.0;\n   Binding_3_channels[10].bipolar := TRUE;\n   Binding_3_channels[10].measuringMode := INT#0;\n   Binding_3_channels[10].retVal := WORD#7;\n   Binding_3_channels[10].outputValue := REAL#33.0;\n   BenchUut3.count := DINT#1;\n   TraceIn_count[4] := BenchUut3.count;\n   BenchUut3(analogValues := Binding_3_analogValues, channels := Binding_3_channels);\n   TraceOut_analogValues_1[4] := Binding_3_analogValues[-3];\n   TraceOut_channels_1_enable[4] := Binding_3_channels[9].enable;\n   TraceOut_channels_1_hiLIM[4] := Binding_3_channels[9].hiLIM;\n   TraceOut_channels_1_loLIM[4] := Binding_3_channels[9].loLIM;\n   TraceOut_channels_1_bipolar[4] := Binding_3_channels[9].bipolar;\n   TraceOut_channels_1_measuringMode[4] := Binding_3_channels[9].measuringMode;\n   TraceOut_channels_1_retVal[4] := Binding_3_channels[9].retVal;\n   TraceOut_channels_1_outputValue[4] := Binding_3_channels[9].outputValue;\n   TraceOut_channels_2_enable[4] := Binding_3_channels[10].enable;\n   TraceOut_channels_2_hiLIM[4] := Binding_3_channels[10].hiLIM;\n   TraceOut_channels_2_loLIM[4] := Binding_3_channels[10].loLIM;\n   TraceOut_channels_2_bipolar[4] := Binding_3_channels[10].bipolar;\n   TraceOut_channels_2_measuringMode[4] := Binding_3_channels[10].measuringMode;\n   TraceOut_channels_2_retVal[4] := Binding_3_channels[10].retVal;\n   TraceOut_channels_2_outputValue[4] := Binding_3_channels[10].outputValue;\n   BenchCalls := BenchCalls + 1;\n 5:\n   Binding_4_analogValues[-3] := INT#1000;\n   Binding_4_analogValues[-2] := INT#-1000;\n   Binding_4_analogValues[-1] := INT#30000;\n   Binding_4_channels[7].enable := FALSE;\n   Binding_4_channels[7].hiLIM := REAL#0.0;\n   Binding_4_channels[7].loLIM := REAL#100.0;\n   Binding_4_channels[7].bipolar := FALSE;\n   Binding_4_channels[7].measuringMode := INT#9;\n   Binding_4_channels[7].retVal := WORD#123;\n   Binding_4_channels[7].outputValue := REAL#-42.5;\n   Binding_4_channels[8].enable := TRUE;\n   Binding_4_channels[8].hiLIM := REAL#5.0;\n   Binding_4_channels[8].loLIM := REAL#5.0;\n   Binding_4_channels[8].bipolar := FALSE;\n   Binding_4_channels[8].measuringMode := INT#1;\n   Binding_4_channels[8].retVal := WORD#0;\n   Binding_4_channels[8].outputValue := REAL#12.25;\n   Binding_4_channels[9].enable := TRUE;\n   Binding_4_channels[9].hiLIM := REAL#100.0;\n   Binding_4_channels[9].loLIM := REAL#0.0;\n   Binding_4_channels[9].bipolar := FALSE;\n   Binding_4_channels[9].measuringMode := INT#0;\n   Binding_4_channels[9].retVal := WORD#0;\n   Binding_4_channels[9].outputValue := REAL#0.0;\n   BenchUut4.count := DINT#3;\n   TraceIn_count[5] := BenchUut4.count;\n   BenchUut4(analogValues := Binding_4_analogValues, channels := Binding_4_channels);\n   TraceOut_analogValues_1[5] := Binding_4_analogValues[-3];\n   TraceOut_analogValues_2[5] := Binding_4_analogValues[-2];\n   TraceOut_analogValues_3[5] := Binding_4_analogValues[-1];\n   TraceOut_channels_1_enable[5] := Binding_4_channels[7].enable;\n   TraceOut_channels_1_hiLIM[5] := Binding_4_channels[7].hiLIM;\n   TraceOut_channels_1_loLIM[5] := Binding_4_channels[7].loLIM;\n   TraceOut_channels_1_bipolar[5] := Binding_4_channels[7].bipolar;\n   TraceOut_channels_1_measuringMode[5] := Binding_4_channels[7].measuringMode;\n   TraceOut_channels_1_retVal[5] := Binding_4_channels[7].retVal;\n   TraceOut_channels_1_outputValue[5] := Binding_4_channels[7].outputValue;\n   TraceOut_channels_2_enable[5] := Binding_4_channels[8].enable;\n   TraceOut_channels_2_hiLIM[5] := Binding_4_channels[8].hiLIM;\n   TraceOut_channels_2_loLIM[5] := Binding_4_channels[8].loLIM;\n   TraceOut_channels_2_bipolar[5] := Binding_4_channels[8].bipolar;\n   TraceOut_channels_2_measuringMode[5] := Binding_4_channels[8].measuringMode;\n   TraceOut_channels_2_retVal[5] := Binding_4_channels[8].retVal;\n   TraceOut_channels_2_outputValue[5] := Binding_4_channels[8].outputValue;\n   TraceOut_channels_3_enable[5] := Binding_4_channels[9].enable;\n   TraceOut_channels_3_hiLIM[5] := Binding_4_channels[9].hiLIM;\n   TraceOut_channels_3_loLIM[5] := Binding_4_channels[9].loLIM;\n   TraceOut_channels_3_bipolar[5] := Binding_4_channels[9].bipolar;\n   TraceOut_channels_3_measuringMode[5] := Binding_4_channels[9].measuringMode;\n   TraceOut_channels_3_retVal[5] := Binding_4_channels[9].retVal;\n   TraceOut_channels_3_outputValue[5] := Binding_4_channels[9].outputValue;\n   BenchCalls := BenchCalls + 1;\n 6:\n   Binding_4_analogValues[-3] := INT#-30000;\n   Binding_4_analogValues[-2] := INT#1234;\n   Binding_4_analogValues[-1] := INT#0;\n   Binding_4_analogValues[0] := INT#999;\n   Binding_4_channels[7].enable := TRUE;\n   Binding_4_channels[7].hiLIM := REAL#10.0;\n   Binding_4_channels[7].loLIM := REAL#-10.0;\n   Binding_4_channels[7].bipolar := FALSE;\n   Binding_4_channels[7].measuringMode := INT#2;\n   Binding_4_channels[7].retVal := WORD#0;\n   Binding_4_channels[7].outputValue := REAL#1.0;\n   Binding_4_channels[8].enable := TRUE;\n   Binding_4_channels[8].hiLIM := REAL#10.0;\n   Binding_4_channels[8].loLIM := REAL#20.0;\n   Binding_4_channels[8].bipolar := FALSE;\n   Binding_4_channels[8].measuringMode := INT#2;\n   Binding_4_channels[8].retVal := WORD#0;\n   Binding_4_channels[8].outputValue := REAL#3.5;\n   Binding_4_channels[9].enable := TRUE;\n   Binding_4_channels[9].hiLIM := REAL#10.0;\n   Binding_4_channels[9].loLIM := REAL#0.0;\n   Binding_4_channels[9].bipolar := TRUE;\n   Binding_4_channels[9].measuringMode := INT#0;\n   Binding_4_channels[9].retVal := WORD#0;\n   Binding_4_channels[9].outputValue := REAL#0.0;\n   BenchUut4.count := DINT#3;\n   TraceIn_count[6] := BenchUut4.count;\n   BenchUut4(analogValues := Binding_4_analogValues, channels := Binding_4_channels);\n   TraceOut_analogValues_1[6] := Binding_4_analogValues[-3];\n   TraceOut_analogValues_2[6] := Binding_4_analogValues[-2];\n   TraceOut_analogValues_3[6] := Binding_4_analogValues[-1];\n   TraceOut_analogValues_4[6] := Binding_4_analogValues[0];\n   TraceOut_channels_1_enable[6] := Binding_4_channels[7].enable;\n   TraceOut_channels_1_hiLIM[6] := Binding_4_channels[7].hiLIM;\n   TraceOut_channels_1_loLIM[6] := Binding_4_channels[7].loLIM;\n   TraceOut_channels_1_bipolar[6] := Binding_4_channels[7].bipolar;\n   TraceOut_channels_1_measuringMode[6] := Binding_4_channels[7].measuringMode;\n   TraceOut_channels_1_retVal[6] := Binding_4_channels[7].retVal;\n   TraceOut_channels_1_outputValue[6] := Binding_4_channels[7].outputValue;\n   TraceOut_channels_2_enable[6] := Binding_4_channels[8].enable;\n   TraceOut_channels_2_hiLIM[6] := Binding_4_channels[8].hiLIM;\n   TraceOut_channels_2_loLIM[6] := Binding_4_channels[8].loLIM;\n   TraceOut_channels_2_bipolar[6] := Binding_4_channels[8].bipolar;\n   TraceOut_channels_2_measuringMode[6] := Binding_4_channels[8].measuringMode;\n   TraceOut_channels_2_retVal[6] := Binding_4_channels[8].retVal;\n   TraceOut_channels_2_outputValue[6] := Binding_4_channels[8].outputValue;\n   TraceOut_channels_3_enable[6] := Binding_4_channels[9].enable;\n   TraceOut_channels_3_hiLIM[6] := Binding_4_channels[9].hiLIM;\n   TraceOut_channels_3_loLIM[6] := Binding_4_channels[9].loLIM;\n   TraceOut_channels_3_bipolar[6] := Binding_4_channels[9].bipolar;\n   TraceOut_channels_3_measuringMode[6] := Binding_4_channels[9].measuringMode;\n   TraceOut_channels_3_retVal[6] := Binding_4_channels[9].retVal;\n   TraceOut_channels_3_outputValue[6] := Binding_4_channels[9].outputValue;\n   BenchCalls := BenchCalls + 1;\n 7:\n   Binding_5_analogValues[-3] := INT#0;\n   Binding_5_analogValues[-2] := INT#27648;\n   Binding_5_analogValues[-1] := INT#-27648;\n   Binding_5_analogValues[0] := INT#0;\n   Binding_5_channels[8].enable := TRUE;\n   Binding_5_channels[8].hiLIM := REAL#100.0;\n   Binding_5_channels[8].loLIM := REAL#0.0;\n   Binding_5_channels[8].bipolar := FALSE;\n   Binding_5_channels[8].measuringMode := INT#0;\n   Binding_5_channels[8].retVal := WORD#7;\n   Binding_5_channels[8].outputValue := REAL#-999.0;\n   Binding_5_channels[9].enable := TRUE;\n   Binding_5_channels[9].hiLIM := REAL#100.0;\n   Binding_5_channels[9].loLIM := REAL#0.0;\n   Binding_5_channels[9].bipolar := FALSE;\n   Binding_5_channels[9].measuringMode := INT#0;\n   Binding_5_channels[9].retVal := WORD#7;\n   Binding_5_channels[9].outputValue := REAL#-999.0;\n   BenchUut5.count := DINT#2;\n   TraceIn_count[7] := BenchUut5.count;\n   BenchUut5(analogValues := Binding_5_analogValues, channels := Binding_5_channels);\n   TraceOut_analogValues_1[7] := Binding_5_analogValues[-3];\n   TraceOut_analogValues_2[7] := Binding_5_analogValues[-2];\n   TraceOut_analogValues_3[7] := Binding_5_analogValues[-1];\n   TraceOut_analogValues_4[7] := Binding_5_analogValues[0];\n   TraceOut_channels_1_enable[7] := Binding_5_channels[8].enable;\n   TraceOut_channels_1_hiLIM[7] := Binding_5_channels[8].hiLIM;\n   TraceOut_channels_1_loLIM[7] := Binding_5_channels[8].loLIM;\n   TraceOut_channels_1_bipolar[7] := Binding_5_channels[8].bipolar;\n   TraceOut_channels_1_measuringMode[7] := Binding_5_channels[8].measuringMode;\n   TraceOut_channels_1_retVal[7] := Binding_5_channels[8].retVal;\n   TraceOut_channels_1_outputValue[7] := Binding_5_channels[8].outputValue;\n   TraceOut_channels_2_enable[7] := Binding_5_channels[9].enable;\n   TraceOut_channels_2_hiLIM[7] := Binding_5_channels[9].hiLIM;\n   TraceOut_channels_2_loLIM[7] := Binding_5_channels[9].loLIM;\n   TraceOut_channels_2_bipolar[7] := Binding_5_channels[9].bipolar;\n   TraceOut_channels_2_measuringMode[7] := Binding_5_channels[9].measuringMode;\n   TraceOut_channels_2_retVal[7] := Binding_5_channels[9].retVal;\n   TraceOut_channels_2_outputValue[7] := Binding_5_channels[9].outputValue;\n   BenchCalls := BenchCalls + 1;\n 8:\n   Binding_6_analogValues[-3] := INT#0;\n   Binding_6_analogValues[-2] := INT#27648;\n   Binding_6_channels[8].enable := TRUE;\n   Binding_6_channels[8].hiLIM := REAL#100.0;\n   Binding_6_channels[8].loLIM := REAL#0.0;\n   Binding_6_channels[8].bipolar := FALSE;\n   Binding_6_channels[8].measuringMode := INT#0;\n   Binding_6_channels[8].retVal := WORD#7;\n   Binding_6_channels[8].outputValue := REAL#-999.0;\n   Binding_6_channels[9].enable := TRUE;\n   Binding_6_channels[9].hiLIM := REAL#100.0;\n   Binding_6_channels[9].loLIM := REAL#0.0;\n   Binding_6_channels[9].bipolar := FALSE;\n   Binding_6_channels[9].measuringMode := INT#0;\n   Binding_6_channels[9].retVal := WORD#7;\n   Binding_6_channels[9].outputValue := REAL#-999.0;\n   Binding_6_channels[10].enable := TRUE;\n   Binding_6_channels[10].hiLIM := REAL#100.0;\n   Binding_6_channels[10].loLIM := REAL#0.0;\n   Binding_6_channels[10].bipolar := TRUE;\n   Binding_6_channels[10].measuringMode := INT#0;\n   Binding_6_channels[10].retVal := WORD#7;\n   Binding_6_channels[10].outputValue := REAL#-999.0;\n   Binding_6_channels[11].enable := TRUE;\n   Binding_6_channels[11].hiLIM := REAL#100.0;\n   Binding_6_channels[11].loLIM := REAL#0.0;\n   Binding_6_channels[11].bipolar := TRUE;\n   Binding_6_channels[11].measuringMode := INT#0;\n   Binding_6_channels[11].retVal := WORD#7;\n   Binding_6_channels[11].outputValue := REAL#-999.0;\n   BenchUut6.count := DINT#2;\n   TraceIn_count[8] := BenchUut6.count;\n   BenchUut6(analogValues := Binding_6_analogValues, channels := Binding_6_channels);\n   TraceOut_analogValues_1[8] := Binding_6_analogValues[-3];\n   TraceOut_analogValues_2[8] := Binding_6_analogValues[-2];\n   TraceOut_channels_1_enable[8] := Binding_6_channels[8].enable;\n   TraceOut_channels_1_hiLIM[8] := Binding_6_channels[8].hiLIM;\n   TraceOut_channels_1_loLIM[8] := Binding_6_channels[8].loLIM;\n   TraceOut_channels_1_bipolar[8] := Binding_6_channels[8].bipolar;\n   TraceOut_channels_1_measuringMode[8] := Binding_6_channels[8].measuringMode;\n   TraceOut_channels_1_retVal[8] := Binding_6_channels[8].retVal;\n   TraceOut_channels_1_outputValue[8] := Binding_6_channels[8].outputValue;\n   TraceOut_channels_2_enable[8] := Binding_6_channels[9].enable;\n   TraceOut_channels_2_hiLIM[8] := Binding_6_channels[9].hiLIM;\n   TraceOut_channels_2_loLIM[8] := Binding_6_channels[9].loLIM;\n   TraceOut_channels_2_bipolar[8] := Binding_6_channels[9].bipolar;\n   TraceOut_channels_2_measuringMode[8] := Binding_6_channels[9].measuringMode;\n   TraceOut_channels_2_retVal[8] := Binding_6_channels[9].retVal;\n   TraceOut_channels_2_outputValue[8] := Binding_6_channels[9].outputValue;\n   TraceOut_channels_3_enable[8] := Binding_6_channels[10].enable;\n   TraceOut_channels_3_hiLIM[8] := Binding_6_channels[10].hiLIM;\n   TraceOut_channels_3_loLIM[8] := Binding_6_channels[10].loLIM;\n   TraceOut_channels_3_bipolar[8] := Binding_6_channels[10].bipolar;\n   TraceOut_channels_3_measuringMode[8] := Binding_6_channels[10].measuringMode;\n   TraceOut_channels_3_retVal[8] := Binding_6_channels[10].retVal;\n   TraceOut_channels_3_outputValue[8] := Binding_6_channels[10].outputValue;\n   TraceOut_channels_4_enable[8] := Binding_6_channels[11].enable;\n   TraceOut_channels_4_hiLIM[8] := Binding_6_channels[11].hiLIM;\n   TraceOut_channels_4_loLIM[8] := Binding_6_channels[11].loLIM;\n   TraceOut_channels_4_bipolar[8] := Binding_6_channels[11].bipolar;\n   TraceOut_channels_4_measuringMode[8] := Binding_6_channels[11].measuringMode;\n   TraceOut_channels_4_retVal[8] := Binding_6_channels[11].retVal;\n   TraceOut_channels_4_outputValue[8] := Binding_6_channels[11].outputValue;\n   BenchCalls := BenchCalls + 1;\n 9:\n   Binding_7_analogValues[1] := INT#27648;\n   Binding_7_analogValues[2] := INT#13824;\n   Binding_7_analogValues[3] := INT#27648;\n   Binding_7_analogValues[4] := INT#27648;\n   Binding_7_analogValues[5] := INT#500;\n   Binding_7_channels[1].enable := TRUE;\n   Binding_7_channels[1].hiLIM := REAL#100.0;\n   Binding_7_channels[1].loLIM := REAL#0.0;\n   Binding_7_channels[1].bipolar := FALSE;\n   Binding_7_channels[1].measuringMode := INT#0;\n   Binding_7_channels[1].retVal := WORD#7;\n   Binding_7_channels[1].outputValue := REAL#-999.0;\n   Binding_7_channels[2].enable := TRUE;\n   Binding_7_channels[2].hiLIM := REAL#50.0;\n   Binding_7_channels[2].loLIM := REAL#-50.0;\n   Binding_7_channels[2].bipolar := FALSE;\n   Binding_7_channels[2].measuringMode := INT#0;\n   Binding_7_channels[2].retVal := WORD#7;\n   Binding_7_channels[2].outputValue := REAL#-999.0;\n   Binding_7_channels[3].enable := TRUE;\n   Binding_7_channels[3].hiLIM := REAL#100.0;\n   Binding_7_channels[3].loLIM := REAL#0.0;\n   Binding_7_channels[3].bipolar := FALSE;\n   Binding_7_channels[3].measuringMode := INT#0;\n   Binding_7_channels[3].retVal := WORD#7;\n   Binding_7_channels[3].outputValue := REAL#-999.0;\n   Binding_7_channels[4].enable := TRUE;\n   Binding_7_channels[4].hiLIM := REAL#100.0;\n   Binding_7_channels[4].loLIM := REAL#0.0;\n   Binding_7_channels[4].bipolar := FALSE;\n   Binding_7_channels[4].measuringMode := INT#0;\n   Binding_7_channels[4].retVal := WORD#7;\n   Binding_7_channels[4].outputValue := REAL#-999.0;\n   Binding_7_channels[5].enable := TRUE;\n   Binding_7_channels[5].hiLIM := REAL#100.0;\n   Binding_7_channels[5].loLIM := REAL#0.0;\n   Binding_7_channels[5].bipolar := FALSE;\n   Binding_7_channels[5].measuringMode := INT#1;\n   Binding_7_channels[5].retVal := WORD#7;\n   Binding_7_channels[5].outputValue := REAL#-999.0;\n   BenchUut7.count := DINT#5;\n   TraceIn_count[9] := BenchUut7.count;\n   BenchUut7(analogValues := Binding_7_analogValues, channels := Binding_7_channels);\n   TraceOut_analogValues_1[9] := Binding_7_analogValues[1];\n   TraceOut_analogValues_2[9] := Binding_7_analogValues[2];\n   TraceOut_analogValues_3[9] := Binding_7_analogValues[3];\n   TraceOut_analogValues_4[9] := Binding_7_analogValues[4];\n   TraceOut_analogValues_5[9] := Binding_7_analogValues[5];\n   TraceOut_channels_1_enable[9] := Binding_7_channels[1].enable;\n   TraceOut_channels_1_hiLIM[9] := Binding_7_channels[1].hiLIM;\n   TraceOut_channels_1_loLIM[9] := Binding_7_channels[1].loLIM;\n   TraceOut_channels_1_bipolar[9] := Binding_7_channels[1].bipolar;\n   TraceOut_channels_1_measuringMode[9] := Binding_7_channels[1].measuringMode;\n   TraceOut_channels_1_retVal[9] := Binding_7_channels[1].retVal;\n   TraceOut_channels_1_outputValue[9] := Binding_7_channels[1].outputValue;\n   TraceOut_channels_2_enable[9] := Binding_7_channels[2].enable;\n   TraceOut_channels_2_hiLIM[9] := Binding_7_channels[2].hiLIM;\n   TraceOut_channels_2_loLIM[9] := Binding_7_channels[2].loLIM;\n   TraceOut_channels_2_bipolar[9] := Binding_7_channels[2].bipolar;\n   TraceOut_channels_2_measuringMode[9] := Binding_7_channels[2].measuringMode;\n   TraceOut_channels_2_retVal[9] := Binding_7_channels[2].retVal;\n   TraceOut_channels_2_outputValue[9] := Binding_7_channels[2].outputValue;\n   TraceOut_channels_3_enable[9] := Binding_7_channels[3].enable;\n   TraceOut_channels_3_hiLIM[9] := Binding_7_channels[3].hiLIM;\n   TraceOut_channels_3_loLIM[9] := Binding_7_channels[3].loLIM;\n   TraceOut_channels_3_bipolar[9] := Binding_7_channels[3].bipolar;\n   TraceOut_channels_3_measuringMode[9] := Binding_7_channels[3].measuringMode;\n   TraceOut_channels_3_retVal[9] := Binding_7_channels[3].retVal;\n   TraceOut_channels_3_outputValue[9] := Binding_7_channels[3].outputValue;\n   TraceOut_channels_4_enable[9] := Binding_7_channels[4].enable;\n   TraceOut_channels_4_hiLIM[9] := Binding_7_channels[4].hiLIM;\n   TraceOut_channels_4_loLIM[9] := Binding_7_channels[4].loLIM;\n   TraceOut_channels_4_bipolar[9] := Binding_7_channels[4].bipolar;\n   TraceOut_channels_4_measuringMode[9] := Binding_7_channels[4].measuringMode;\n   TraceOut_channels_4_retVal[9] := Binding_7_channels[4].retVal;\n   TraceOut_channels_4_outputValue[9] := Binding_7_channels[4].outputValue;\n   TraceOut_channels_5_enable[9] := Binding_7_channels[5].enable;\n   TraceOut_channels_5_hiLIM[9] := Binding_7_channels[5].hiLIM;\n   TraceOut_channels_5_loLIM[9] := Binding_7_channels[5].loLIM;\n   TraceOut_channels_5_bipolar[9] := Binding_7_channels[5].bipolar;\n   TraceOut_channels_5_measuringMode[9] := Binding_7_channels[5].measuringMode;\n   TraceOut_channels_5_retVal[9] := Binding_7_channels[5].retVal;\n   TraceOut_channels_5_outputValue[9] := Binding_7_channels[5].outputValue;\n   BenchCalls := BenchCalls + 1;\n 10:\n   Binding_7_analogValues[1] := INT#0;\n   Binding_7_analogValues[2] := INT#0;\n   Binding_7_analogValues[3] := INT#0;\n   Binding_7_analogValues[4] := INT#0;\n   Binding_7_analogValues[5] := INT#9999;\n   Binding_7_channels[1].enable := FALSE;\n   Binding_7_channels[1].hiLIM := REAL#10.0;\n   Binding_7_channels[1].loLIM := REAL#20.0;\n   Binding_7_channels[1].bipolar := FALSE;\n   Binding_7_channels[1].measuringMode := INT#9;\n   Binding_7_channels[1].retVal := WORD#0;\n   Binding_7_channels[1].outputValue := REAL#100.0;\n   Binding_7_channels[2].enable := TRUE;\n   Binding_7_channels[2].hiLIM := REAL#10.0;\n   Binding_7_channels[2].loLIM := REAL#20.0;\n   Binding_7_channels[2].bipolar := FALSE;\n   Binding_7_channels[2].measuringMode := INT#9;\n   Binding_7_channels[2].retVal := WORD#0;\n   Binding_7_channels[2].outputValue := REAL#0.0;\n   Binding_7_channels[3].enable := TRUE;\n   Binding_7_channels[3].hiLIM := REAL#10.0;\n   Binding_7_channels[3].loLIM := REAL#10.0;\n   Binding_7_channels[3].bipolar := FALSE;\n   Binding_7_channels[3].measuringMode := INT#0;\n   Binding_7_channels[3].retVal := WORD#0;\n   Binding_7_channels[3].outputValue := REAL#100.0;\n   Binding_7_channels[4].enable := TRUE;\n   Binding_7_channels[4].hiLIM := REAL#200.0;\n   Binding_7_channels[4].loLIM := REAL#100.0;\n   Binding_7_channels[4].bipolar := FALSE;\n   Binding_7_channels[4].measuringMode := INT#0;\n   Binding_7_channels[4].retVal := WORD#0;\n   Binding_7_channels[4].outputValue := REAL#100.0;\n   Binding_7_channels[5].enable := TRUE;\n   Binding_7_channels[5].hiLIM := REAL#100.0;\n   Binding_7_channels[5].loLIM := REAL#0.0;\n   Binding_7_channels[5].bipolar := FALSE;\n   Binding_7_channels[5].measuringMode := INT#1;\n   Binding_7_channels[5].retVal := WORD#0;\n   Binding_7_channels[5].outputValue := REAL#50.0;\n   BenchUut7.count := DINT#4;\n   TraceIn_count[10] := BenchUut7.count;\n   BenchUut7(analogValues := Binding_7_analogValues, channels := Binding_7_channels);\n   TraceOut_analogValues_1[10] := Binding_7_analogValues[1];\n   TraceOut_analogValues_2[10] := Binding_7_analogValues[2];\n   TraceOut_analogValues_3[10] := Binding_7_analogValues[3];\n   TraceOut_analogValues_4[10] := Binding_7_analogValues[4];\n   TraceOut_analogValues_5[10] := Binding_7_analogValues[5];\n   TraceOut_channels_1_enable[10] := Binding_7_channels[1].enable;\n   TraceOut_channels_1_hiLIM[10] := Binding_7_channels[1].hiLIM;\n   TraceOut_channels_1_loLIM[10] := Binding_7_channels[1].loLIM;\n   TraceOut_channels_1_bipolar[10] := Binding_7_channels[1].bipolar;\n   TraceOut_channels_1_measuringMode[10] := Binding_7_channels[1].measuringMode;\n   TraceOut_channels_1_retVal[10] := Binding_7_channels[1].retVal;\n   TraceOut_channels_1_outputValue[10] := Binding_7_channels[1].outputValue;\n   TraceOut_channels_2_enable[10] := Binding_7_channels[2].enable;\n   TraceOut_channels_2_hiLIM[10] := Binding_7_channels[2].hiLIM;\n   TraceOut_channels_2_loLIM[10] := Binding_7_channels[2].loLIM;\n   TraceOut_channels_2_bipolar[10] := Binding_7_channels[2].bipolar;\n   TraceOut_channels_2_measuringMode[10] := Binding_7_channels[2].measuringMode;\n   TraceOut_channels_2_retVal[10] := Binding_7_channels[2].retVal;\n   TraceOut_channels_2_outputValue[10] := Binding_7_channels[2].outputValue;\n   TraceOut_channels_3_enable[10] := Binding_7_channels[3].enable;\n   TraceOut_channels_3_hiLIM[10] := Binding_7_channels[3].hiLIM;\n   TraceOut_channels_3_loLIM[10] := Binding_7_channels[3].loLIM;\n   TraceOut_channels_3_bipolar[10] := Binding_7_channels[3].bipolar;\n   TraceOut_channels_3_measuringMode[10] := Binding_7_channels[3].measuringMode;\n   TraceOut_channels_3_retVal[10] := Binding_7_channels[3].retVal;\n   TraceOut_channels_3_outputValue[10] := Binding_7_channels[3].outputValue;\n   TraceOut_channels_4_enable[10] := Binding_7_channels[4].enable;\n   TraceOut_channels_4_hiLIM[10] := Binding_7_channels[4].hiLIM;\n   TraceOut_channels_4_loLIM[10] := Binding_7_channels[4].loLIM;\n   TraceOut_channels_4_bipolar[10] := Binding_7_channels[4].bipolar;\n   TraceOut_channels_4_measuringMode[10] := Binding_7_channels[4].measuringMode;\n   TraceOut_channels_4_retVal[10] := Binding_7_channels[4].retVal;\n   TraceOut_channels_4_outputValue[10] := Binding_7_channels[4].outputValue;\n   TraceOut_channels_5_enable[10] := Binding_7_channels[5].enable;\n   TraceOut_channels_5_hiLIM[10] := Binding_7_channels[5].hiLIM;\n   TraceOut_channels_5_loLIM[10] := Binding_7_channels[5].loLIM;\n   TraceOut_channels_5_bipolar[10] := Binding_7_channels[5].bipolar;\n   TraceOut_channels_5_measuringMode[10] := Binding_7_channels[5].measuringMode;\n   TraceOut_channels_5_retVal[10] := Binding_7_channels[5].retVal;\n   TraceOut_channels_5_outputValue[10] := Binding_7_channels[5].outputValue;\n   BenchCalls := BenchCalls + 1;\n 11:\n   Binding_8_analogValues[1] := INT#-27648;\n   Binding_8_analogValues[2] := INT#30000;\n   Binding_8_analogValues[3] := INT#-13824;\n   Binding_8_analogValues[4] := INT#-255;\n   Binding_8_analogValues[5] := INT#12345;\n   Binding_8_channels[1].enable := TRUE;\n   Binding_8_channels[1].hiLIM := REAL#10.0;\n   Binding_8_channels[1].loLIM := REAL#-10.0;\n   Binding_8_channels[1].bipolar := TRUE;\n   Binding_8_channels[1].measuringMode := INT#0;\n   Binding_8_channels[1].retVal := WORD#7;\n   Binding_8_channels[1].outputValue := REAL#-999.0;\n   Binding_8_channels[2].enable := TRUE;\n   Binding_8_channels[2].hiLIM := REAL#100.0;\n   Binding_8_channels[2].loLIM := REAL#0.0;\n   Binding_8_channels[2].bipolar := FALSE;\n   Binding_8_channels[2].measuringMode := INT#0;\n   Binding_8_channels[2].retVal := WORD#7;\n   Binding_8_channels[2].outputValue := REAL#-999.0;\n   Binding_8_channels[3].enable := TRUE;\n   Binding_8_channels[3].hiLIM := REAL#100.0;\n   Binding_8_channels[3].loLIM := REAL#0.0;\n   Binding_8_channels[3].bipolar := FALSE;\n   Binding_8_channels[3].measuringMode := INT#0;\n   Binding_8_channels[3].retVal := WORD#7;\n   Binding_8_channels[3].outputValue := REAL#-999.0;\n   Binding_8_channels[4].enable := TRUE;\n   Binding_8_channels[4].hiLIM := REAL#100.0;\n   Binding_8_channels[4].loLIM := REAL#-100.0;\n   Binding_8_channels[4].bipolar := FALSE;\n   Binding_8_channels[4].measuringMode := INT#1;\n   Binding_8_channels[4].retVal := WORD#7;\n   Binding_8_channels[4].outputValue := REAL#-999.0;\n   Binding_8_channels[5].enable := TRUE;\n   Binding_8_channels[5].hiLIM := REAL#200.0;\n   Binding_8_channels[5].loLIM := REAL#-200.0;\n   Binding_8_channels[5].bipolar := TRUE;\n   Binding_8_channels[5].measuringMode := INT#2;\n   Binding_8_channels[5].retVal := WORD#7;\n   Binding_8_channels[5].outputValue := REAL#-999.0;\n   Binding_8_channels[6].enable := TRUE;\n   Binding_8_channels[6].hiLIM := REAL#100.0;\n   Binding_8_channels[6].loLIM := REAL#0.0;\n   Binding_8_channels[6].bipolar := FALSE;\n   Binding_8_channels[6].measuringMode := INT#0;\n   Binding_8_channels[6].retVal := WORD#42;\n   Binding_8_channels[6].outputValue := REAL#-123.0;\n   BenchUut8.count := DINT#5;\n   TraceIn_count[11] := BenchUut8.count;\n   BenchUut8(analogValues := Binding_8_analogValues, channels := Binding_8_channels);\n   TraceOut_analogValues_1[11] := Binding_8_analogValues[1];\n   TraceOut_analogValues_2[11] := Binding_8_analogValues[2];\n   TraceOut_analogValues_3[11] := Binding_8_analogValues[3];\n   TraceOut_analogValues_4[11] := Binding_8_analogValues[4];\n   TraceOut_analogValues_5[11] := Binding_8_analogValues[5];\n   TraceOut_channels_1_enable[11] := Binding_8_channels[1].enable;\n   TraceOut_channels_1_hiLIM[11] := Binding_8_channels[1].hiLIM;\n   TraceOut_channels_1_loLIM[11] := Binding_8_channels[1].loLIM;\n   TraceOut_channels_1_bipolar[11] := Binding_8_channels[1].bipolar;\n   TraceOut_channels_1_measuringMode[11] := Binding_8_channels[1].measuringMode;\n   TraceOut_channels_1_retVal[11] := Binding_8_channels[1].retVal;\n   TraceOut_channels_1_outputValue[11] := Binding_8_channels[1].outputValue;\n   TraceOut_channels_2_enable[11] := Binding_8_channels[2].enable;\n   TraceOut_channels_2_hiLIM[11] := Binding_8_channels[2].hiLIM;\n   TraceOut_channels_2_loLIM[11] := Binding_8_channels[2].loLIM;\n   TraceOut_channels_2_bipolar[11] := Binding_8_channels[2].bipolar;\n   TraceOut_channels_2_measuringMode[11] := Binding_8_channels[2].measuringMode;\n   TraceOut_channels_2_retVal[11] := Binding_8_channels[2].retVal;\n   TraceOut_channels_2_outputValue[11] := Binding_8_channels[2].outputValue;\n   TraceOut_channels_3_enable[11] := Binding_8_channels[3].enable;\n   TraceOut_channels_3_hiLIM[11] := Binding_8_channels[3].hiLIM;\n   TraceOut_channels_3_loLIM[11] := Binding_8_channels[3].loLIM;\n   TraceOut_channels_3_bipolar[11] := Binding_8_channels[3].bipolar;\n   TraceOut_channels_3_measuringMode[11] := Binding_8_channels[3].measuringMode;\n   TraceOut_channels_3_retVal[11] := Binding_8_channels[3].retVal;\n   TraceOut_channels_3_outputValue[11] := Binding_8_channels[3].outputValue;\n   TraceOut_channels_4_enable[11] := Binding_8_channels[4].enable;\n   TraceOut_channels_4_hiLIM[11] := Binding_8_channels[4].hiLIM;\n   TraceOut_channels_4_loLIM[11] := Binding_8_channels[4].loLIM;\n   TraceOut_channels_4_bipolar[11] := Binding_8_channels[4].bipolar;\n   TraceOut_channels_4_measuringMode[11] := Binding_8_channels[4].measuringMode;\n   TraceOut_channels_4_retVal[11] := Binding_8_channels[4].retVal;\n   TraceOut_channels_4_outputValue[11] := Binding_8_channels[4].outputValue;\n   TraceOut_channels_5_enable[11] := Binding_8_channels[5].enable;\n   TraceOut_channels_5_hiLIM[11] := Binding_8_channels[5].hiLIM;\n   TraceOut_channels_5_loLIM[11] := Binding_8_channels[5].loLIM;\n   TraceOut_channels_5_bipolar[11] := Binding_8_channels[5].bipolar;\n   TraceOut_channels_5_measuringMode[11] := Binding_8_channels[5].measuringMode;\n   TraceOut_channels_5_retVal[11] := Binding_8_channels[5].retVal;\n   TraceOut_channels_5_outputValue[11] := Binding_8_channels[5].outputValue;\n   TraceOut_channels_6_enable[11] := Binding_8_channels[6].enable;\n   TraceOut_channels_6_hiLIM[11] := Binding_8_channels[6].hiLIM;\n   TraceOut_channels_6_loLIM[11] := Binding_8_channels[6].loLIM;\n   TraceOut_channels_6_bipolar[11] := Binding_8_channels[6].bipolar;\n   TraceOut_channels_6_measuringMode[11] := Binding_8_channels[6].measuringMode;\n   TraceOut_channels_6_retVal[11] := Binding_8_channels[6].retVal;\n   TraceOut_channels_6_outputValue[11] := Binding_8_channels[6].outputValue;\n   BenchCalls := BenchCalls + 1;\n END_CASE;\n BenchStep := BenchStep + 1;\n IF BenchStep >= 12 THEN BenchDone := TRUE; END_IF;\nEND_IF;",
+    "step_count": 12,
+    "steps": [
+      {
+        "index": 0,
+        "case_id": "PUB008.T1",
+        "case_step": 0,
+        "dt_ms": 0
+      },
+      {
+        "index": 1,
+        "case_id": "PUB008.T2",
+        "case_step": 0,
+        "dt_ms": 0
+      },
+      {
+        "index": 2,
+        "case_id": "PUB008.T3",
+        "case_step": 0,
+        "dt_ms": 0
+      },
+      {
+        "index": 3,
+        "case_id": "PUB008.T3",
+        "case_step": 1,
+        "dt_ms": 0
+      },
+      {
+        "index": 4,
+        "case_id": "PUB008.T4",
+        "case_step": 0,
+        "dt_ms": 0
+      },
+      {
+        "index": 5,
+        "case_id": "PUB008.T5",
+        "case_step": 0,
+        "dt_ms": 0
+      },
+      {
+        "index": 6,
+        "case_id": "PUB008.T5",
+        "case_step": 1,
+        "dt_ms": 0
+      },
+      {
+        "index": 7,
+        "case_id": "PUB008.T6",
+        "case_step": 0,
+        "dt_ms": 0
+      },
+      {
+        "index": 8,
+        "case_id": "PUB008.T7",
+        "case_step": 0,
+        "dt_ms": 0
+      },
+      {
+        "index": 9,
+        "case_id": "PUB008.T8",
+        "case_step": 0,
+        "dt_ms": 0
+      },
+      {
+        "index": 10,
+        "case_id": "PUB008.T8",
+        "case_step": 1,
+        "dt_ms": 0
+      },
+      {
+        "index": 11,
+        "case_id": "PUB008.T9",
+        "case_step": 0,
+        "dt_ms": 0
+      }
+    ],
+    "inputs": [
+      {
+        "direction": "INPUT",
+        "name": "count",
+        "type": "DINT",
+        "description": "Number of channels to be converted"
+      }
+    ],
+    "outputs": [],
+    "trace_expressions": [
+      "PLC_PRG.TraceIn_count[0]",
+      "PLC_PRG.TraceOut_analogValues_1[0]",
+      "PLC_PRG.TraceOut_analogValues_2[0]",
+      "PLC_PRG.TraceOut_analogValues_3[0]",
+      "PLC_PRG.TraceOut_analogValues_4[0]",
+      "PLC_PRG.TraceOut_analogValues_5[0]",
+      "PLC_PRG.TraceOut_analogValues_6[0]",
+      "PLC_PRG.TraceOut_analogValues_7[0]",
+      "PLC_PRG.TraceOut_channels_1_enable[0]",
+      "PLC_PRG.TraceOut_channels_1_hiLIM[0]",
+      "PLC_PRG.TraceOut_channels_1_loLIM[0]",
+      "PLC_PRG.TraceOut_channels_1_bipolar[0]",
+      "PLC_PRG.TraceOut_channels_1_measuringMode[0]",
+      "PLC_PRG.TraceOut_channels_1_retVal[0]",
+      "PLC_PRG.TraceOut_channels_1_outputValue[0]",
+      "PLC_PRG.TraceOut_channels_2_enable[0]",
+      "PLC_PRG.TraceOut_channels_2_hiLIM[0]",
+      "PLC_PRG.TraceOut_channels_2_loLIM[0]",
+      "PLC_PRG.TraceOut_channels_2_bipolar[0]",
+      "PLC_PRG.TraceOut_channels_2_measuringMode[0]",
+      "PLC_PRG.TraceOut_channels_2_retVal[0]",
+      "PLC_PRG.TraceOut_channels_2_outputValue[0]",
+      "PLC_PRG.TraceOut_channels_3_enable[0]",
+      "PLC_PRG.TraceOut_channels_3_hiLIM[0]",
+      "PLC_PRG.TraceOut_channels_3_loLIM[0]",
+      "PLC_PRG.TraceOut_channels_3_bipolar[0]",
+      "PLC_PRG.TraceOut_channels_3_measuringMode[0]",
+      "PLC_PRG.TraceOut_channels_3_retVal[0]",
+      "PLC_PRG.TraceOut_channels_3_outputValue[0]",
+      "PLC_PRG.TraceOut_channels_4_enable[0]",
+      "PLC_PRG.TraceOut_channels_4_hiLIM[0]",
+      "PLC_PRG.TraceOut_channels_4_loLIM[0]",
+      "PLC_PRG.TraceOut_channels_4_bipolar[0]",
+      "PLC_PRG.TraceOut_channels_4_measuringMode[0]",
+      "PLC_PRG.TraceOut_channels_4_retVal[0]",
+      "PLC_PRG.TraceOut_channels_4_outputValue[0]",
+      "PLC_PRG.TraceOut_channels_5_enable[0]",
+      "PLC_PRG.TraceOut_channels_5_hiLIM[0]",
+      "PLC_PRG.TraceOut_channels_5_loLIM[0]",
+      "PLC_PRG.TraceOut_channels_5_bipolar[0]",
+      "PLC_PRG.TraceOut_channels_5_measuringMode[0]",
+      "PLC_PRG.TraceOut_channels_5_retVal[0]",
+      "PLC_PRG.TraceOut_channels_5_outputValue[0]",
+      "PLC_PRG.TraceOut_channels_6_enable[0]",
+      "PLC_PRG.TraceOut_channels_6_hiLIM[0]",
+      "PLC_PRG.TraceOut_channels_6_loLIM[0]",
+      "PLC_PRG.TraceOut_channels_6_bipolar[0]",
+      "PLC_PRG.TraceOut_channels_6_measuringMode[0]",
+      "PLC_PRG.TraceOut_channels_6_retVal[0]",
+      "PLC_PRG.TraceOut_channels_6_outputValue[0]",
+      "PLC_PRG.TraceOut_channels_7_enable[0]",
+      "PLC_PRG.TraceOut_channels_7_hiLIM[0]",
+      "PLC_PRG.TraceOut_channels_7_loLIM[0]",
+      "PLC_PRG.TraceOut_channels_7_bipolar[0]",
+      "PLC_PRG.TraceOut_channels_7_measuringMode[0]",
+      "PLC_PRG.TraceOut_channels_7_retVal[0]",
+      "PLC_PRG.TraceOut_channels_7_outputValue[0]",
+      "PLC_PRG.TraceIn_count[1]",
+      "PLC_PRG.TraceOut_analogValues_1[1]",
+      "PLC_PRG.TraceOut_analogValues_2[1]",
+      "PLC_PRG.TraceOut_analogValues_3[1]",
+      "PLC_PRG.TraceOut_analogValues_4[1]",
+      "PLC_PRG.TraceOut_analogValues_5[1]",
+      "PLC_PRG.TraceOut_channels_1_enable[1]",
+      "PLC_PRG.TraceOut_channels_1_hiLIM[1]",
+      "PLC_PRG.TraceOut_channels_1_loLIM[1]",
+      "PLC_PRG.TraceOut_channels_1_bipolar[1]",
+      "PLC_PRG.TraceOut_channels_1_measuringMode[1]",
+      "PLC_PRG.TraceOut_channels_1_retVal[1]",
+      "PLC_PRG.TraceOut_channels_1_outputValue[1]",
+      "PLC_PRG.TraceOut_channels_2_enable[1]",
+      "PLC_PRG.TraceOut_channels_2_hiLIM[1]",
+      "PLC_PRG.TraceOut_channels_2_loLIM[1]",
+      "PLC_PRG.TraceOut_channels_2_bipolar[1]",
+      "PLC_PRG.TraceOut_channels_2_measuringMode[1]",
+      "PLC_PRG.TraceOut_channels_2_retVal[1]",
+      "PLC_PRG.TraceOut_channels_2_outputValue[1]",
+      "PLC_PRG.TraceOut_channels_3_enable[1]",
+      "PLC_PRG.TraceOut_channels_3_hiLIM[1]",
+      "PLC_PRG.TraceOut_channels_3_loLIM[1]",
+      "PLC_PRG.TraceOut_channels_3_bipolar[1]",
+      "PLC_PRG.TraceOut_channels_3_measuringMode[1]",
+      "PLC_PRG.TraceOut_channels_3_retVal[1]",
+      "PLC_PRG.TraceOut_channels_3_outputValue[1]",
+      "PLC_PRG.TraceOut_channels_4_enable[1]",
+      "PLC_PRG.TraceOut_channels_4_hiLIM[1]",
+      "PLC_PRG.TraceOut_channels_4_loLIM[1]",
+      "PLC_PRG.TraceOut_channels_4_bipolar[1]",
+      "PLC_PRG.TraceOut_channels_4_measuringMode[1]",
+      "PLC_PRG.TraceOut_channels_4_retVal[1]",
+      "PLC_PRG.TraceOut_channels_4_outputValue[1]",
+      "PLC_PRG.TraceOut_channels_5_enable[1]",
+      "PLC_PRG.TraceOut_channels_5_hiLIM[1]",
+      "PLC_PRG.TraceOut_channels_5_loLIM[1]",
+      "PLC_PRG.TraceOut_channels_5_bipolar[1]",
+      "PLC_PRG.TraceOut_channels_5_measuringMode[1]",
+      "PLC_PRG.TraceOut_channels_5_retVal[1]",
+      "PLC_PRG.TraceOut_channels_5_outputValue[1]",
+      "PLC_PRG.TraceIn_count[2]",
+      "PLC_PRG.TraceOut_analogValues_1[2]",
+      "PLC_PRG.TraceOut_channels_1_enable[2]",
+      "PLC_PRG.TraceOut_channels_1_hiLIM[2]",
+      "PLC_PRG.TraceOut_channels_1_loLIM[2]",
+      "PLC_PRG.TraceOut_channels_1_bipolar[2]",
+      "PLC_PRG.TraceOut_channels_1_measuringMode[2]",
+      "PLC_PRG.TraceOut_channels_1_retVal[2]",
+      "PLC_PRG.TraceOut_channels_1_outputValue[2]",
+      "PLC_PRG.TraceIn_count[3]",
+      "PLC_PRG.TraceOut_analogValues_1[3]",
+      "PLC_PRG.TraceOut_channels_1_enable[3]",
+      "PLC_PRG.TraceOut_channels_1_hiLIM[3]",
+      "PLC_PRG.TraceOut_channels_1_loLIM[3]",
+      "PLC_PRG.TraceOut_channels_1_bipolar[3]",
+      "PLC_PRG.TraceOut_channels_1_measuringMode[3]",
+      "PLC_PRG.TraceOut_channels_1_retVal[3]",
+      "PLC_PRG.TraceOut_channels_1_outputValue[3]",
+      "PLC_PRG.TraceIn_count[4]",
+      "PLC_PRG.TraceOut_analogValues_1[4]",
+      "PLC_PRG.TraceOut_channels_1_enable[4]",
+      "PLC_PRG.TraceOut_channels_1_hiLIM[4]",
+      "PLC_PRG.TraceOut_channels_1_loLIM[4]",
+      "PLC_PRG.TraceOut_channels_1_bipolar[4]",
+      "PLC_PRG.TraceOut_channels_1_measuringMode[4]",
+      "PLC_PRG.TraceOut_channels_1_retVal[4]",
+      "PLC_PRG.TraceOut_channels_1_outputValue[4]",
+      "PLC_PRG.TraceOut_channels_2_enable[4]",
+      "PLC_PRG.TraceOut_channels_2_hiLIM[4]",
+      "PLC_PRG.TraceOut_channels_2_loLIM[4]",
+      "PLC_PRG.TraceOut_channels_2_bipolar[4]",
+      "PLC_PRG.TraceOut_channels_2_measuringMode[4]",
+      "PLC_PRG.TraceOut_channels_2_retVal[4]",
+      "PLC_PRG.TraceOut_channels_2_outputValue[4]",
+      "PLC_PRG.TraceIn_count[5]",
+      "PLC_PRG.TraceOut_analogValues_1[5]",
+      "PLC_PRG.TraceOut_analogValues_2[5]",
+      "PLC_PRG.TraceOut_analogValues_3[5]",
+      "PLC_PRG.TraceOut_channels_1_enable[5]",
+      "PLC_PRG.TraceOut_channels_1_hiLIM[5]",
+      "PLC_PRG.TraceOut_channels_1_loLIM[5]",
+      "PLC_PRG.TraceOut_channels_1_bipolar[5]",
+      "PLC_PRG.TraceOut_channels_1_measuringMode[5]",
+      "PLC_PRG.TraceOut_channels_1_retVal[5]",
+      "PLC_PRG.TraceOut_channels_1_outputValue[5]",
+      "PLC_PRG.TraceOut_channels_2_enable[5]",
+      "PLC_PRG.TraceOut_channels_2_hiLIM[5]",
+      "PLC_PRG.TraceOut_channels_2_loLIM[5]",
+      "PLC_PRG.TraceOut_channels_2_bipolar[5]",
+      "PLC_PRG.TraceOut_channels_2_measuringMode[5]",
+      "PLC_PRG.TraceOut_channels_2_retVal[5]",
+      "PLC_PRG.TraceOut_channels_2_outputValue[5]",
+      "PLC_PRG.TraceOut_channels_3_enable[5]",
+      "PLC_PRG.TraceOut_channels_3_hiLIM[5]",
+      "PLC_PRG.TraceOut_channels_3_loLIM[5]",
+      "PLC_PRG.TraceOut_channels_3_bipolar[5]",
+      "PLC_PRG.TraceOut_channels_3_measuringMode[5]",
+      "PLC_PRG.TraceOut_channels_3_retVal[5]",
+      "PLC_PRG.TraceOut_channels_3_outputValue[5]",
+      "PLC_PRG.TraceIn_count[6]",
+      "PLC_PRG.TraceOut_analogValues_1[6]",
+      "PLC_PRG.TraceOut_analogValues_2[6]",
+      "PLC_PRG.TraceOut_analogValues_3[6]",
+      "PLC_PRG.TraceOut_analogValues_4[6]",
+      "PLC_PRG.TraceOut_channels_1_enable[6]",
+      "PLC_PRG.TraceOut_channels_1_hiLIM[6]",
+      "PLC_PRG.TraceOut_channels_1_loLIM[6]",
+      "PLC_PRG.TraceOut_channels_1_bipolar[6]",
+      "PLC_PRG.TraceOut_channels_1_measuringMode[6]",
+      "PLC_PRG.TraceOut_channels_1_retVal[6]",
+      "PLC_PRG.TraceOut_channels_1_outputValue[6]",
+      "PLC_PRG.TraceOut_channels_2_enable[6]",
+      "PLC_PRG.TraceOut_channels_2_hiLIM[6]",
+      "PLC_PRG.TraceOut_channels_2_loLIM[6]",
+      "PLC_PRG.TraceOut_channels_2_bipolar[6]",
+      "PLC_PRG.TraceOut_channels_2_measuringMode[6]",
+      "PLC_PRG.TraceOut_channels_2_retVal[6]",
+      "PLC_PRG.TraceOut_channels_2_outputValue[6]",
+      "PLC_PRG.TraceOut_channels_3_enable[6]",
+      "PLC_PRG.TraceOut_channels_3_hiLIM[6]",
+      "PLC_PRG.TraceOut_channels_3_loLIM[6]",
+      "PLC_PRG.TraceOut_channels_3_bipolar[6]",
+      "PLC_PRG.TraceOut_channels_3_measuringMode[6]",
+      "PLC_PRG.TraceOut_channels_3_retVal[6]",
+      "PLC_PRG.TraceOut_channels_3_outputValue[6]",
+      "PLC_PRG.TraceIn_count[7]",
+      "PLC_PRG.TraceOut_analogValues_1[7]",
+      "PLC_PRG.TraceOut_analogValues_2[7]",
+      "PLC_PRG.TraceOut_analogValues_3[7]",
+      "PLC_PRG.TraceOut_analogValues_4[7]",
+      "PLC_PRG.TraceOut_channels_1_enable[7]",
+      "PLC_PRG.TraceOut_channels_1_hiLIM[7]",
+      "PLC_PRG.TraceOut_channels_1_loLIM[7]",
+      "PLC_PRG.TraceOut_channels_1_bipolar[7]",
+      "PLC_PRG.TraceOut_channels_1_measuringMode[7]",
+      "PLC_PRG.TraceOut_channels_1_retVal[7]",
+      "PLC_PRG.TraceOut_channels_1_outputValue[7]",
+      "PLC_PRG.TraceOut_channels_2_enable[7]",
+      "PLC_PRG.TraceOut_channels_2_hiLIM[7]",
+      "PLC_PRG.TraceOut_channels_2_loLIM[7]",
+      "PLC_PRG.TraceOut_channels_2_bipolar[7]",
+      "PLC_PRG.TraceOut_channels_2_measuringMode[7]",
+      "PLC_PRG.TraceOut_channels_2_retVal[7]",
+      "PLC_PRG.TraceOut_channels_2_outputValue[7]",
+      "PLC_PRG.TraceIn_count[8]",
+      "PLC_PRG.TraceOut_analogValues_1[8]",
+      "PLC_PRG.TraceOut_analogValues_2[8]",
+      "PLC_PRG.TraceOut_channels_1_enable[8]",
+      "PLC_PRG.TraceOut_channels_1_hiLIM[8]",
+      "PLC_PRG.TraceOut_channels_1_loLIM[8]",
+      "PLC_PRG.TraceOut_channels_1_bipolar[8]",
+      "PLC_PRG.TraceOut_channels_1_measuringMode[8]",
+      "PLC_PRG.TraceOut_channels_1_retVal[8]",
+      "PLC_PRG.TraceOut_channels_1_outputValue[8]",
+      "PLC_PRG.TraceOut_channels_2_enable[8]",
+      "PLC_PRG.TraceOut_channels_2_hiLIM[8]",
+      "PLC_PRG.TraceOut_channels_2_loLIM[8]",
+      "PLC_PRG.TraceOut_channels_2_bipolar[8]",
+      "PLC_PRG.TraceOut_channels_2_measuringMode[8]",
+      "PLC_PRG.TraceOut_channels_2_retVal[8]",
+      "PLC_PRG.TraceOut_channels_2_outputValue[8]",
+      "PLC_PRG.TraceOut_channels_3_enable[8]",
+      "PLC_PRG.TraceOut_channels_3_hiLIM[8]",
+      "PLC_PRG.TraceOut_channels_3_loLIM[8]",
+      "PLC_PRG.TraceOut_channels_3_bipolar[8]",
+      "PLC_PRG.TraceOut_channels_3_measuringMode[8]",
+      "PLC_PRG.TraceOut_channels_3_retVal[8]",
+      "PLC_PRG.TraceOut_channels_3_outputValue[8]",
+      "PLC_PRG.TraceOut_channels_4_enable[8]",
+      "PLC_PRG.TraceOut_channels_4_hiLIM[8]",
+      "PLC_PRG.TraceOut_channels_4_loLIM[8]",
+      "PLC_PRG.TraceOut_channels_4_bipolar[8]",
+      "PLC_PRG.TraceOut_channels_4_measuringMode[8]",
+      "PLC_PRG.TraceOut_channels_4_retVal[8]",
+      "PLC_PRG.TraceOut_channels_4_outputValue[8]",
+      "PLC_PRG.TraceIn_count[9]",
+      "PLC_PRG.TraceOut_analogValues_1[9]",
+      "PLC_PRG.TraceOut_analogValues_2[9]",
+      "PLC_PRG.TraceOut_analogValues_3[9]",
+      "PLC_PRG.TraceOut_analogValues_4[9]",
+      "PLC_PRG.TraceOut_analogValues_5[9]",
+      "PLC_PRG.TraceOut_channels_1_enable[9]",
+      "PLC_PRG.TraceOut_channels_1_hiLIM[9]",
+      "PLC_PRG.TraceOut_channels_1_loLIM[9]",
+      "PLC_PRG.TraceOut_channels_1_bipolar[9]",
+      "PLC_PRG.TraceOut_channels_1_measuringMode[9]",
+      "PLC_PRG.TraceOut_channels_1_retVal[9]",
+      "PLC_PRG.TraceOut_channels_1_outputValue[9]",
+      "PLC_PRG.TraceOut_channels_2_enable[9]",
+      "PLC_PRG.TraceOut_channels_2_hiLIM[9]",
+      "PLC_PRG.TraceOut_channels_2_loLIM[9]",
+      "PLC_PRG.TraceOut_channels_2_bipolar[9]",
+      "PLC_PRG.TraceOut_channels_2_measuringMode[9]",
+      "PLC_PRG.TraceOut_channels_2_retVal[9]",
+      "PLC_PRG.TraceOut_channels_2_outputValue[9]",
+      "PLC_PRG.TraceOut_channels_3_enable[9]",
+      "PLC_PRG.TraceOut_channels_3_hiLIM[9]",
+      "PLC_PRG.TraceOut_channels_3_loLIM[9]",
+      "PLC_PRG.TraceOut_channels_3_bipolar[9]",
+      "PLC_PRG.TraceOut_channels_3_measuringMode[9]",
+      "PLC_PRG.TraceOut_channels_3_retVal[9]",
+      "PLC_PRG.TraceOut_channels_3_outputValue[9]",
+      "PLC_PRG.TraceOut_channels_4_enable[9]",
+      "PLC_PRG.TraceOut_channels_4_hiLIM[9]",
+      "PLC_PRG.TraceOut_channels_4_loLIM[9]",
+      "PLC_PRG.TraceOut_channels_4_bipolar[9]",
+      "PLC_PRG.TraceOut_channels_4_measuringMode[9]",
+      "PLC_PRG.TraceOut_channels_4_retVal[9]",
+      "PLC_PRG.TraceOut_channels_4_outputValue[9]",
+      "PLC_PRG.TraceOut_channels_5_enable[9]",
+      "PLC_PRG.TraceOut_channels_5_hiLIM[9]",
+      "PLC_PRG.TraceOut_channels_5_loLIM[9]",
+      "PLC_PRG.TraceOut_channels_5_bipolar[9]",
+      "PLC_PRG.TraceOut_channels_5_measuringMode[9]",
+      "PLC_PRG.TraceOut_channels_5_retVal[9]",
+      "PLC_PRG.TraceOut_channels_5_outputValue[9]",
+      "PLC_PRG.TraceIn_count[10]",
+      "PLC_PRG.TraceOut_analogValues_1[10]",
+      "PLC_PRG.TraceOut_analogValues_2[10]",
+      "PLC_PRG.TraceOut_analogValues_3[10]",
+      "PLC_PRG.TraceOut_analogValues_4[10]",
+      "PLC_PRG.TraceOut_analogValues_5[10]",
+      "PLC_PRG.TraceOut_channels_1_enable[10]",
+      "PLC_PRG.TraceOut_channels_1_hiLIM[10]",
+      "PLC_PRG.TraceOut_channels_1_loLIM[10]",
+      "PLC_PRG.TraceOut_channels_1_bipolar[10]",
+      "PLC_PRG.TraceOut_channels_1_measuringMode[10]",
+      "PLC_PRG.TraceOut_channels_1_retVal[10]",
+      "PLC_PRG.TraceOut_channels_1_outputValue[10]",
+      "PLC_PRG.TraceOut_channels_2_enable[10]",
+      "PLC_PRG.TraceOut_channels_2_hiLIM[10]",
+      "PLC_PRG.TraceOut_channels_2_loLIM[10]",
+      "PLC_PRG.TraceOut_channels_2_bipolar[10]",
+      "PLC_PRG.TraceOut_channels_2_measuringMode[10]",
+      "PLC_PRG.TraceOut_channels_2_retVal[10]",
+      "PLC_PRG.TraceOut_channels_2_outputValue[10]",
+      "PLC_PRG.TraceOut_channels_3_enable[10]",
+      "PLC_PRG.TraceOut_channels_3_hiLIM[10]",
+      "PLC_PRG.TraceOut_channels_3_loLIM[10]",
+      "PLC_PRG.TraceOut_channels_3_bipolar[10]",
+      "PLC_PRG.TraceOut_channels_3_measuringMode[10]",
+      "PLC_PRG.TraceOut_channels_3_retVal[10]",
+      "PLC_PRG.TraceOut_channels_3_outputValue[10]",
+      "PLC_PRG.TraceOut_channels_4_enable[10]",
+      "PLC_PRG.TraceOut_channels_4_hiLIM[10]",
+      "PLC_PRG.TraceOut_channels_4_loLIM[10]",
+      "PLC_PRG.TraceOut_channels_4_bipolar[10]",
+      "PLC_PRG.TraceOut_channels_4_measuringMode[10]",
+      "PLC_PRG.TraceOut_channels_4_retVal[10]",
+      "PLC_PRG.TraceOut_channels_4_outputValue[10]",
+      "PLC_PRG.TraceOut_channels_5_enable[10]",
+      "PLC_PRG.TraceOut_channels_5_hiLIM[10]",
+      "PLC_PRG.TraceOut_channels_5_loLIM[10]",
+      "PLC_PRG.TraceOut_channels_5_bipolar[10]",
+      "PLC_PRG.TraceOut_channels_5_measuringMode[10]",
+      "PLC_PRG.TraceOut_channels_5_retVal[10]",
+      "PLC_PRG.TraceOut_channels_5_outputValue[10]",
+      "PLC_PRG.TraceIn_count[11]",
+      "PLC_PRG.TraceOut_analogValues_1[11]",
+      "PLC_PRG.TraceOut_analogValues_2[11]",
+      "PLC_PRG.TraceOut_analogValues_3[11]",
+      "PLC_PRG.TraceOut_analogValues_4[11]",
+      "PLC_PRG.TraceOut_analogValues_5[11]",
+      "PLC_PRG.TraceOut_channels_1_enable[11]",
+      "PLC_PRG.TraceOut_channels_1_hiLIM[11]",
+      "PLC_PRG.TraceOut_channels_1_loLIM[11]",
+      "PLC_PRG.TraceOut_channels_1_bipolar[11]",
+      "PLC_PRG.TraceOut_channels_1_measuringMode[11]",
+      "PLC_PRG.TraceOut_channels_1_retVal[11]",
+      "PLC_PRG.TraceOut_channels_1_outputValue[11]",
+      "PLC_PRG.TraceOut_channels_2_enable[11]",
+      "PLC_PRG.TraceOut_channels_2_hiLIM[11]",
+      "PLC_PRG.TraceOut_channels_2_loLIM[11]",
+      "PLC_PRG.TraceOut_channels_2_bipolar[11]",
+      "PLC_PRG.TraceOut_channels_2_measuringMode[11]",
+      "PLC_PRG.TraceOut_channels_2_retVal[11]",
+      "PLC_PRG.TraceOut_channels_2_outputValue[11]",
+      "PLC_PRG.TraceOut_channels_3_enable[11]",
+      "PLC_PRG.TraceOut_channels_3_hiLIM[11]",
+      "PLC_PRG.TraceOut_channels_3_loLIM[11]",
+      "PLC_PRG.TraceOut_channels_3_bipolar[11]",
+      "PLC_PRG.TraceOut_channels_3_measuringMode[11]",
+      "PLC_PRG.TraceOut_channels_3_retVal[11]",
+      "PLC_PRG.TraceOut_channels_3_outputValue[11]",
+      "PLC_PRG.TraceOut_channels_4_enable[11]",
+      "PLC_PRG.TraceOut_channels_4_hiLIM[11]",
+      "PLC_PRG.TraceOut_channels_4_loLIM[11]",
+      "PLC_PRG.TraceOut_channels_4_bipolar[11]",
+      "PLC_PRG.TraceOut_channels_4_measuringMode[11]",
+      "PLC_PRG.TraceOut_channels_4_retVal[11]",
+      "PLC_PRG.TraceOut_channels_4_outputValue[11]",
+      "PLC_PRG.TraceOut_channels_5_enable[11]",
+      "PLC_PRG.TraceOut_channels_5_hiLIM[11]",
+      "PLC_PRG.TraceOut_channels_5_loLIM[11]",
+      "PLC_PRG.TraceOut_channels_5_bipolar[11]",
+      "PLC_PRG.TraceOut_channels_5_measuringMode[11]",
+      "PLC_PRG.TraceOut_channels_5_retVal[11]",
+      "PLC_PRG.TraceOut_channels_5_outputValue[11]",
+      "PLC_PRG.TraceOut_channels_6_enable[11]",
+      "PLC_PRG.TraceOut_channels_6_hiLIM[11]",
+      "PLC_PRG.TraceOut_channels_6_loLIM[11]",
+      "PLC_PRG.TraceOut_channels_6_bipolar[11]",
+      "PLC_PRG.TraceOut_channels_6_measuringMode[11]",
+      "PLC_PRG.TraceOut_channels_6_retVal[11]",
+      "PLC_PRG.TraceOut_channels_6_outputValue[11]"
+    ],
+    "trace_mapping": [
+      {
+        "step_index": 0,
+        "case_id": "PUB008.T1",
+        "case_step": 0,
+        "dt_expr": null,
+        "inputs": {
+          "count": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_count[0]",
+            "type": "DINT"
+          },
+          "analogValues": {
+            "kind": "raw",
+            "value": [
+              0,
+              27648,
+              -27648,
+              0,
+              27648,
+              1234,
+              -1234
+            ]
+          },
+          "channels": {
+            "kind": "raw",
+            "value": [
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": false,
+                "measuringMode": 0,
+                "retVal": 7,
+                "outputValue": -999.0
+              },
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": false,
+                "measuringMode": 0,
+                "retVal": 7,
+                "outputValue": -999.0
+              },
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": true,
+                "measuringMode": 0,
+                "retVal": 7,
+                "outputValue": -999.0
+              },
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": true,
+                "measuringMode": 0,
+                "retVal": 7,
+                "outputValue": -999.0
+              },
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": true,
+                "measuringMode": 0,
+                "retVal": 7,
+                "outputValue": -999.0
+              },
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": false,
+                "measuringMode": 1,
+                "retVal": 7,
+                "outputValue": -999.0
+              },
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": false,
+                "measuringMode": 2,
+                "retVal": 7,
+                "outputValue": -999.0
+              }
+            ]
+          }
+        },
+        "outputs": {
+          "analogValues": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_analogValues_1[0]",
+                "type": "INT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_analogValues_2[0]",
+                "type": "INT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_analogValues_3[0]",
+                "type": "INT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_analogValues_4[0]",
+                "type": "INT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_analogValues_5[0]",
+                "type": "INT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_analogValues_6[0]",
+                "type": "INT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_analogValues_7[0]",
+                "type": "INT"
+              }
+            ]
+          },
+          "channels": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "struct",
+                "fields": {
+                  "enable": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_enable[0]",
+                    "type": "BOOL"
+                  },
+                  "hiLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_hiLIM[0]",
+                    "type": "REAL"
+                  },
+                  "loLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_loLIM[0]",
+                    "type": "REAL"
+                  },
+                  "bipolar": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_bipolar[0]",
+                    "type": "BOOL"
+                  },
+                  "measuringMode": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_measuringMode[0]",
+                    "type": "INT"
+                  },
+                  "retVal": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_retVal[0]",
+                    "type": "WORD"
+                  },
+                  "outputValue": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_outputValue[0]",
+                    "type": "REAL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "enable": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_enable[0]",
+                    "type": "BOOL"
+                  },
+                  "hiLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_hiLIM[0]",
+                    "type": "REAL"
+                  },
+                  "loLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_loLIM[0]",
+                    "type": "REAL"
+                  },
+                  "bipolar": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_bipolar[0]",
+                    "type": "BOOL"
+                  },
+                  "measuringMode": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_measuringMode[0]",
+                    "type": "INT"
+                  },
+                  "retVal": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_retVal[0]",
+                    "type": "WORD"
+                  },
+                  "outputValue": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_outputValue[0]",
+                    "type": "REAL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "enable": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_enable[0]",
+                    "type": "BOOL"
+                  },
+                  "hiLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_hiLIM[0]",
+                    "type": "REAL"
+                  },
+                  "loLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_loLIM[0]",
+                    "type": "REAL"
+                  },
+                  "bipolar": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_bipolar[0]",
+                    "type": "BOOL"
+                  },
+                  "measuringMode": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_measuringMode[0]",
+                    "type": "INT"
+                  },
+                  "retVal": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_retVal[0]",
+                    "type": "WORD"
+                  },
+                  "outputValue": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_outputValue[0]",
+                    "type": "REAL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "enable": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_4_enable[0]",
+                    "type": "BOOL"
+                  },
+                  "hiLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_4_hiLIM[0]",
+                    "type": "REAL"
+                  },
+                  "loLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_4_loLIM[0]",
+                    "type": "REAL"
+                  },
+                  "bipolar": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_4_bipolar[0]",
+                    "type": "BOOL"
+                  },
+                  "measuringMode": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_4_measuringMode[0]",
+                    "type": "INT"
+                  },
+                  "retVal": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_4_retVal[0]",
+                    "type": "WORD"
+                  },
+                  "outputValue": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_4_outputValue[0]",
+                    "type": "REAL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "enable": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_5_enable[0]",
+                    "type": "BOOL"
+                  },
+                  "hiLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_5_hiLIM[0]",
+                    "type": "REAL"
+                  },
+                  "loLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_5_loLIM[0]",
+                    "type": "REAL"
+                  },
+                  "bipolar": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_5_bipolar[0]",
+                    "type": "BOOL"
+                  },
+                  "measuringMode": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_5_measuringMode[0]",
+                    "type": "INT"
+                  },
+                  "retVal": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_5_retVal[0]",
+                    "type": "WORD"
+                  },
+                  "outputValue": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_5_outputValue[0]",
+                    "type": "REAL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "enable": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_6_enable[0]",
+                    "type": "BOOL"
+                  },
+                  "hiLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_6_hiLIM[0]",
+                    "type": "REAL"
+                  },
+                  "loLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_6_loLIM[0]",
+                    "type": "REAL"
+                  },
+                  "bipolar": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_6_bipolar[0]",
+                    "type": "BOOL"
+                  },
+                  "measuringMode": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_6_measuringMode[0]",
+                    "type": "INT"
+                  },
+                  "retVal": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_6_retVal[0]",
+                    "type": "WORD"
+                  },
+                  "outputValue": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_6_outputValue[0]",
+                    "type": "REAL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "enable": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_7_enable[0]",
+                    "type": "BOOL"
+                  },
+                  "hiLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_7_hiLIM[0]",
+                    "type": "REAL"
+                  },
+                  "loLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_7_loLIM[0]",
+                    "type": "REAL"
+                  },
+                  "bipolar": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_7_bipolar[0]",
+                    "type": "BOOL"
+                  },
+                  "measuringMode": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_7_measuringMode[0]",
+                    "type": "INT"
+                  },
+                  "retVal": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_7_retVal[0]",
+                    "type": "WORD"
+                  },
+                  "outputValue": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_7_outputValue[0]",
+                    "type": "REAL"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "step_index": 1,
+        "case_id": "PUB008.T2",
+        "case_step": 0,
+        "dt_expr": null,
+        "inputs": {
+          "count": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_count[1]",
+            "type": "DINT"
+          },
+          "analogValues": {
+            "kind": "raw",
+            "value": [
+              1,
+              2,
+              3,
+              4,
+              5
+            ]
+          },
+          "channels": {
+            "kind": "raw",
+            "value": [
+              {
+                "enable": false,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": false,
+                "measuringMode": 0,
+                "retVal": 7,
+                "outputValue": -999.0
+              },
+              {
+                "enable": true,
+                "hiLIM": 0.0,
+                "loLIM": 10.0,
+                "bipolar": false,
+                "measuringMode": 9,
+                "retVal": 7,
+                "outputValue": -999.0
+              },
+              {
+                "enable": true,
+                "hiLIM": 10.0,
+                "loLIM": 10.0,
+                "bipolar": false,
+                "measuringMode": 0,
+                "retVal": 7,
+                "outputValue": -999.0
+              },
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": false,
+                "measuringMode": 2,
+                "retVal": 7,
+                "outputValue": -999.0
+              },
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": false,
+                "measuringMode": 0,
+                "retVal": 7,
+                "outputValue": -999.0
+              }
+            ]
+          }
+        },
+        "outputs": {
+          "analogValues": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_analogValues_1[1]",
+                "type": "INT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_analogValues_2[1]",
+                "type": "INT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_analogValues_3[1]",
+                "type": "INT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_analogValues_4[1]",
+                "type": "INT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_analogValues_5[1]",
+                "type": "INT"
+              }
+            ]
+          },
+          "channels": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "struct",
+                "fields": {
+                  "enable": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_enable[1]",
+                    "type": "BOOL"
+                  },
+                  "hiLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_hiLIM[1]",
+                    "type": "REAL"
+                  },
+                  "loLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_loLIM[1]",
+                    "type": "REAL"
+                  },
+                  "bipolar": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_bipolar[1]",
+                    "type": "BOOL"
+                  },
+                  "measuringMode": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_measuringMode[1]",
+                    "type": "INT"
+                  },
+                  "retVal": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_retVal[1]",
+                    "type": "WORD"
+                  },
+                  "outputValue": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_outputValue[1]",
+                    "type": "REAL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "enable": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_enable[1]",
+                    "type": "BOOL"
+                  },
+                  "hiLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_hiLIM[1]",
+                    "type": "REAL"
+                  },
+                  "loLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_loLIM[1]",
+                    "type": "REAL"
+                  },
+                  "bipolar": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_bipolar[1]",
+                    "type": "BOOL"
+                  },
+                  "measuringMode": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_measuringMode[1]",
+                    "type": "INT"
+                  },
+                  "retVal": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_retVal[1]",
+                    "type": "WORD"
+                  },
+                  "outputValue": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_outputValue[1]",
+                    "type": "REAL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "enable": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_enable[1]",
+                    "type": "BOOL"
+                  },
+                  "hiLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_hiLIM[1]",
+                    "type": "REAL"
+                  },
+                  "loLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_loLIM[1]",
+                    "type": "REAL"
+                  },
+                  "bipolar": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_bipolar[1]",
+                    "type": "BOOL"
+                  },
+                  "measuringMode": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_measuringMode[1]",
+                    "type": "INT"
+                  },
+                  "retVal": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_retVal[1]",
+                    "type": "WORD"
+                  },
+                  "outputValue": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_outputValue[1]",
+                    "type": "REAL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "enable": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_4_enable[1]",
+                    "type": "BOOL"
+                  },
+                  "hiLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_4_hiLIM[1]",
+                    "type": "REAL"
+                  },
+                  "loLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_4_loLIM[1]",
+                    "type": "REAL"
+                  },
+                  "bipolar": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_4_bipolar[1]",
+                    "type": "BOOL"
+                  },
+                  "measuringMode": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_4_measuringMode[1]",
+                    "type": "INT"
+                  },
+                  "retVal": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_4_retVal[1]",
+                    "type": "WORD"
+                  },
+                  "outputValue": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_4_outputValue[1]",
+                    "type": "REAL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "enable": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_5_enable[1]",
+                    "type": "BOOL"
+                  },
+                  "hiLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_5_hiLIM[1]",
+                    "type": "REAL"
+                  },
+                  "loLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_5_loLIM[1]",
+                    "type": "REAL"
+                  },
+                  "bipolar": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_5_bipolar[1]",
+                    "type": "BOOL"
+                  },
+                  "measuringMode": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_5_measuringMode[1]",
+                    "type": "INT"
+                  },
+                  "retVal": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_5_retVal[1]",
+                    "type": "WORD"
+                  },
+                  "outputValue": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_5_outputValue[1]",
+                    "type": "REAL"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "step_index": 2,
+        "case_id": "PUB008.T3",
+        "case_step": 0,
+        "dt_expr": null,
+        "inputs": {
+          "count": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_count[2]",
+            "type": "DINT"
+          },
+          "analogValues": {
+            "kind": "raw",
+            "value": [
+              -27648
+            ]
+          },
+          "channels": {
+            "kind": "raw",
+            "value": [
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": false,
+                "measuringMode": 0,
+                "retVal": 7,
+                "outputValue": -999.0
+              }
+            ]
+          }
+        },
+        "outputs": {
+          "analogValues": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_analogValues_1[2]",
+                "type": "INT"
+              }
+            ]
+          },
+          "channels": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "struct",
+                "fields": {
+                  "enable": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_enable[2]",
+                    "type": "BOOL"
+                  },
+                  "hiLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_hiLIM[2]",
+                    "type": "REAL"
+                  },
+                  "loLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_loLIM[2]",
+                    "type": "REAL"
+                  },
+                  "bipolar": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_bipolar[2]",
+                    "type": "BOOL"
+                  },
+                  "measuringMode": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_measuringMode[2]",
+                    "type": "INT"
+                  },
+                  "retVal": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_retVal[2]",
+                    "type": "WORD"
+                  },
+                  "outputValue": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_outputValue[2]",
+                    "type": "REAL"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "step_index": 3,
+        "case_id": "PUB008.T3",
+        "case_step": 1,
+        "dt_expr": null,
+        "inputs": {
+          "count": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_count[3]",
+            "type": "DINT"
+          },
+          "analogValues": {
+            "kind": "raw",
+            "value": [
+              -27648
+            ]
+          },
+          "channels": {
+            "kind": "raw",
+            "value": [
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": false,
+                "measuringMode": 0,
+                "retVal": 7,
+                "outputValue": -999.0
+              }
+            ]
+          }
+        },
+        "outputs": {
+          "analogValues": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_analogValues_1[3]",
+                "type": "INT"
+              }
+            ]
+          },
+          "channels": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "struct",
+                "fields": {
+                  "enable": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_enable[3]",
+                    "type": "BOOL"
+                  },
+                  "hiLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_hiLIM[3]",
+                    "type": "REAL"
+                  },
+                  "loLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_loLIM[3]",
+                    "type": "REAL"
+                  },
+                  "bipolar": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_bipolar[3]",
+                    "type": "BOOL"
+                  },
+                  "measuringMode": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_measuringMode[3]",
+                    "type": "INT"
+                  },
+                  "retVal": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_retVal[3]",
+                    "type": "WORD"
+                  },
+                  "outputValue": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_outputValue[3]",
+                    "type": "REAL"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "step_index": 4,
+        "case_id": "PUB008.T4",
+        "case_step": 0,
+        "dt_expr": null,
+        "inputs": {
+          "count": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_count[4]",
+            "type": "DINT"
+          },
+          "analogValues": {
+            "kind": "raw",
+            "value": [
+              32767
+            ]
+          },
+          "channels": {
+            "kind": "raw",
+            "value": [
+              {
+                "enable": true,
+                "hiLIM": 27648.0,
+                "loLIM": -27648.0,
+                "bipolar": true,
+                "measuringMode": 0,
+                "retVal": 7,
+                "outputValue": -999.0
+              },
+              {
+                "enable": true,
+                "hiLIM": 27648.0,
+                "loLIM": -27648.0,
+                "bipolar": true,
+                "measuringMode": 0,
+                "retVal": 7,
+                "outputValue": 33.0
+              }
+            ]
+          }
+        },
+        "outputs": {
+          "analogValues": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_analogValues_1[4]",
+                "type": "INT"
+              }
+            ]
+          },
+          "channels": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "struct",
+                "fields": {
+                  "enable": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_enable[4]",
+                    "type": "BOOL"
+                  },
+                  "hiLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_hiLIM[4]",
+                    "type": "REAL"
+                  },
+                  "loLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_loLIM[4]",
+                    "type": "REAL"
+                  },
+                  "bipolar": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_bipolar[4]",
+                    "type": "BOOL"
+                  },
+                  "measuringMode": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_measuringMode[4]",
+                    "type": "INT"
+                  },
+                  "retVal": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_retVal[4]",
+                    "type": "WORD"
+                  },
+                  "outputValue": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_outputValue[4]",
+                    "type": "REAL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "enable": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_enable[4]",
+                    "type": "BOOL"
+                  },
+                  "hiLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_hiLIM[4]",
+                    "type": "REAL"
+                  },
+                  "loLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_loLIM[4]",
+                    "type": "REAL"
+                  },
+                  "bipolar": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_bipolar[4]",
+                    "type": "BOOL"
+                  },
+                  "measuringMode": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_measuringMode[4]",
+                    "type": "INT"
+                  },
+                  "retVal": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_retVal[4]",
+                    "type": "WORD"
+                  },
+                  "outputValue": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_outputValue[4]",
+                    "type": "REAL"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "step_index": 5,
+        "case_id": "PUB008.T5",
+        "case_step": 0,
+        "dt_expr": null,
+        "inputs": {
+          "count": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_count[5]",
+            "type": "DINT"
+          },
+          "analogValues": {
+            "kind": "raw",
+            "value": [
+              1000,
+              -1000,
+              30000
+            ]
+          },
+          "channels": {
+            "kind": "raw",
+            "value": [
+              {
+                "enable": false,
+                "hiLIM": 0.0,
+                "loLIM": 100.0,
+                "bipolar": false,
+                "measuringMode": 9,
+                "retVal": 123,
+                "outputValue": -42.5
+              },
+              {
+                "enable": true,
+                "hiLIM": 5.0,
+                "loLIM": 5.0,
+                "bipolar": false,
+                "measuringMode": 1,
+                "retVal": 0,
+                "outputValue": 12.25
+              },
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": false,
+                "measuringMode": 0,
+                "retVal": 0,
+                "outputValue": 0.0
+              }
+            ]
+          }
+        },
+        "outputs": {
+          "analogValues": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_analogValues_1[5]",
+                "type": "INT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_analogValues_2[5]",
+                "type": "INT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_analogValues_3[5]",
+                "type": "INT"
+              }
+            ]
+          },
+          "channels": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "struct",
+                "fields": {
+                  "enable": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_enable[5]",
+                    "type": "BOOL"
+                  },
+                  "hiLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_hiLIM[5]",
+                    "type": "REAL"
+                  },
+                  "loLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_loLIM[5]",
+                    "type": "REAL"
+                  },
+                  "bipolar": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_bipolar[5]",
+                    "type": "BOOL"
+                  },
+                  "measuringMode": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_measuringMode[5]",
+                    "type": "INT"
+                  },
+                  "retVal": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_retVal[5]",
+                    "type": "WORD"
+                  },
+                  "outputValue": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_outputValue[5]",
+                    "type": "REAL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "enable": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_enable[5]",
+                    "type": "BOOL"
+                  },
+                  "hiLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_hiLIM[5]",
+                    "type": "REAL"
+                  },
+                  "loLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_loLIM[5]",
+                    "type": "REAL"
+                  },
+                  "bipolar": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_bipolar[5]",
+                    "type": "BOOL"
+                  },
+                  "measuringMode": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_measuringMode[5]",
+                    "type": "INT"
+                  },
+                  "retVal": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_retVal[5]",
+                    "type": "WORD"
+                  },
+                  "outputValue": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_outputValue[5]",
+                    "type": "REAL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "enable": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_enable[5]",
+                    "type": "BOOL"
+                  },
+                  "hiLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_hiLIM[5]",
+                    "type": "REAL"
+                  },
+                  "loLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_loLIM[5]",
+                    "type": "REAL"
+                  },
+                  "bipolar": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_bipolar[5]",
+                    "type": "BOOL"
+                  },
+                  "measuringMode": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_measuringMode[5]",
+                    "type": "INT"
+                  },
+                  "retVal": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_retVal[5]",
+                    "type": "WORD"
+                  },
+                  "outputValue": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_outputValue[5]",
+                    "type": "REAL"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "step_index": 6,
+        "case_id": "PUB008.T5",
+        "case_step": 1,
+        "dt_expr": null,
+        "inputs": {
+          "count": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_count[6]",
+            "type": "DINT"
+          },
+          "analogValues": {
+            "kind": "raw",
+            "value": [
+              -30000,
+              1234,
+              0,
+              999
+            ]
+          },
+          "channels": {
+            "kind": "raw",
+            "value": [
+              {
+                "enable": true,
+                "hiLIM": 10.0,
+                "loLIM": -10.0,
+                "bipolar": false,
+                "measuringMode": 2,
+                "retVal": 0,
+                "outputValue": 1.0
+              },
+              {
+                "enable": true,
+                "hiLIM": 10.0,
+                "loLIM": 20.0,
+                "bipolar": false,
+                "measuringMode": 2,
+                "retVal": 0,
+                "outputValue": 3.5
+              },
+              {
+                "enable": true,
+                "hiLIM": 10.0,
+                "loLIM": 0.0,
+                "bipolar": true,
+                "measuringMode": 0,
+                "retVal": 0,
+                "outputValue": 0.0
+              }
+            ]
+          }
+        },
+        "outputs": {
+          "analogValues": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_analogValues_1[6]",
+                "type": "INT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_analogValues_2[6]",
+                "type": "INT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_analogValues_3[6]",
+                "type": "INT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_analogValues_4[6]",
+                "type": "INT"
+              }
+            ]
+          },
+          "channels": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "struct",
+                "fields": {
+                  "enable": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_enable[6]",
+                    "type": "BOOL"
+                  },
+                  "hiLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_hiLIM[6]",
+                    "type": "REAL"
+                  },
+                  "loLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_loLIM[6]",
+                    "type": "REAL"
+                  },
+                  "bipolar": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_bipolar[6]",
+                    "type": "BOOL"
+                  },
+                  "measuringMode": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_measuringMode[6]",
+                    "type": "INT"
+                  },
+                  "retVal": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_retVal[6]",
+                    "type": "WORD"
+                  },
+                  "outputValue": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_outputValue[6]",
+                    "type": "REAL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "enable": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_enable[6]",
+                    "type": "BOOL"
+                  },
+                  "hiLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_hiLIM[6]",
+                    "type": "REAL"
+                  },
+                  "loLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_loLIM[6]",
+                    "type": "REAL"
+                  },
+                  "bipolar": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_bipolar[6]",
+                    "type": "BOOL"
+                  },
+                  "measuringMode": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_measuringMode[6]",
+                    "type": "INT"
+                  },
+                  "retVal": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_retVal[6]",
+                    "type": "WORD"
+                  },
+                  "outputValue": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_outputValue[6]",
+                    "type": "REAL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "enable": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_enable[6]",
+                    "type": "BOOL"
+                  },
+                  "hiLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_hiLIM[6]",
+                    "type": "REAL"
+                  },
+                  "loLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_loLIM[6]",
+                    "type": "REAL"
+                  },
+                  "bipolar": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_bipolar[6]",
+                    "type": "BOOL"
+                  },
+                  "measuringMode": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_measuringMode[6]",
+                    "type": "INT"
+                  },
+                  "retVal": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_retVal[6]",
+                    "type": "WORD"
+                  },
+                  "outputValue": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_outputValue[6]",
+                    "type": "REAL"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "step_index": 7,
+        "case_id": "PUB008.T6",
+        "case_step": 0,
+        "dt_expr": null,
+        "inputs": {
+          "count": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_count[7]",
+            "type": "DINT"
+          },
+          "analogValues": {
+            "kind": "raw",
+            "value": [
+              0,
+              27648,
+              -27648,
+              0
+            ]
+          },
+          "channels": {
+            "kind": "raw",
+            "value": [
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": false,
+                "measuringMode": 0,
+                "retVal": 7,
+                "outputValue": -999.0
+              },
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": false,
+                "measuringMode": 0,
+                "retVal": 7,
+                "outputValue": -999.0
+              }
+            ]
+          }
+        },
+        "outputs": {
+          "analogValues": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_analogValues_1[7]",
+                "type": "INT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_analogValues_2[7]",
+                "type": "INT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_analogValues_3[7]",
+                "type": "INT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_analogValues_4[7]",
+                "type": "INT"
+              }
+            ]
+          },
+          "channels": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "struct",
+                "fields": {
+                  "enable": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_enable[7]",
+                    "type": "BOOL"
+                  },
+                  "hiLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_hiLIM[7]",
+                    "type": "REAL"
+                  },
+                  "loLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_loLIM[7]",
+                    "type": "REAL"
+                  },
+                  "bipolar": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_bipolar[7]",
+                    "type": "BOOL"
+                  },
+                  "measuringMode": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_measuringMode[7]",
+                    "type": "INT"
+                  },
+                  "retVal": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_retVal[7]",
+                    "type": "WORD"
+                  },
+                  "outputValue": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_outputValue[7]",
+                    "type": "REAL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "enable": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_enable[7]",
+                    "type": "BOOL"
+                  },
+                  "hiLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_hiLIM[7]",
+                    "type": "REAL"
+                  },
+                  "loLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_loLIM[7]",
+                    "type": "REAL"
+                  },
+                  "bipolar": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_bipolar[7]",
+                    "type": "BOOL"
+                  },
+                  "measuringMode": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_measuringMode[7]",
+                    "type": "INT"
+                  },
+                  "retVal": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_retVal[7]",
+                    "type": "WORD"
+                  },
+                  "outputValue": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_outputValue[7]",
+                    "type": "REAL"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "step_index": 8,
+        "case_id": "PUB008.T7",
+        "case_step": 0,
+        "dt_expr": null,
+        "inputs": {
+          "count": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_count[8]",
+            "type": "DINT"
+          },
+          "analogValues": {
+            "kind": "raw",
+            "value": [
+              0,
+              27648
+            ]
+          },
+          "channels": {
+            "kind": "raw",
+            "value": [
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": false,
+                "measuringMode": 0,
+                "retVal": 7,
+                "outputValue": -999.0
+              },
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": false,
+                "measuringMode": 0,
+                "retVal": 7,
+                "outputValue": -999.0
+              },
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": true,
+                "measuringMode": 0,
+                "retVal": 7,
+                "outputValue": -999.0
+              },
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": true,
+                "measuringMode": 0,
+                "retVal": 7,
+                "outputValue": -999.0
+              }
+            ]
+          }
+        },
+        "outputs": {
+          "analogValues": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_analogValues_1[8]",
+                "type": "INT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_analogValues_2[8]",
+                "type": "INT"
+              }
+            ]
+          },
+          "channels": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "struct",
+                "fields": {
+                  "enable": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_enable[8]",
+                    "type": "BOOL"
+                  },
+                  "hiLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_hiLIM[8]",
+                    "type": "REAL"
+                  },
+                  "loLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_loLIM[8]",
+                    "type": "REAL"
+                  },
+                  "bipolar": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_bipolar[8]",
+                    "type": "BOOL"
+                  },
+                  "measuringMode": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_measuringMode[8]",
+                    "type": "INT"
+                  },
+                  "retVal": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_retVal[8]",
+                    "type": "WORD"
+                  },
+                  "outputValue": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_outputValue[8]",
+                    "type": "REAL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "enable": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_enable[8]",
+                    "type": "BOOL"
+                  },
+                  "hiLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_hiLIM[8]",
+                    "type": "REAL"
+                  },
+                  "loLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_loLIM[8]",
+                    "type": "REAL"
+                  },
+                  "bipolar": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_bipolar[8]",
+                    "type": "BOOL"
+                  },
+                  "measuringMode": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_measuringMode[8]",
+                    "type": "INT"
+                  },
+                  "retVal": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_retVal[8]",
+                    "type": "WORD"
+                  },
+                  "outputValue": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_outputValue[8]",
+                    "type": "REAL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "enable": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_enable[8]",
+                    "type": "BOOL"
+                  },
+                  "hiLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_hiLIM[8]",
+                    "type": "REAL"
+                  },
+                  "loLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_loLIM[8]",
+                    "type": "REAL"
+                  },
+                  "bipolar": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_bipolar[8]",
+                    "type": "BOOL"
+                  },
+                  "measuringMode": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_measuringMode[8]",
+                    "type": "INT"
+                  },
+                  "retVal": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_retVal[8]",
+                    "type": "WORD"
+                  },
+                  "outputValue": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_outputValue[8]",
+                    "type": "REAL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "enable": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_4_enable[8]",
+                    "type": "BOOL"
+                  },
+                  "hiLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_4_hiLIM[8]",
+                    "type": "REAL"
+                  },
+                  "loLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_4_loLIM[8]",
+                    "type": "REAL"
+                  },
+                  "bipolar": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_4_bipolar[8]",
+                    "type": "BOOL"
+                  },
+                  "measuringMode": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_4_measuringMode[8]",
+                    "type": "INT"
+                  },
+                  "retVal": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_4_retVal[8]",
+                    "type": "WORD"
+                  },
+                  "outputValue": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_4_outputValue[8]",
+                    "type": "REAL"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "step_index": 9,
+        "case_id": "PUB008.T8",
+        "case_step": 0,
+        "dt_expr": null,
+        "inputs": {
+          "count": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_count[9]",
+            "type": "DINT"
+          },
+          "analogValues": {
+            "kind": "raw",
+            "value": [
+              27648,
+              13824,
+              27648,
+              27648,
+              500
+            ]
+          },
+          "channels": {
+            "kind": "raw",
+            "value": [
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": false,
+                "measuringMode": 0,
+                "retVal": 7,
+                "outputValue": -999.0
+              },
+              {
+                "enable": true,
+                "hiLIM": 50.0,
+                "loLIM": -50.0,
+                "bipolar": false,
+                "measuringMode": 0,
+                "retVal": 7,
+                "outputValue": -999.0
+              },
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": false,
+                "measuringMode": 0,
+                "retVal": 7,
+                "outputValue": -999.0
+              },
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": false,
+                "measuringMode": 0,
+                "retVal": 7,
+                "outputValue": -999.0
+              },
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": false,
+                "measuringMode": 1,
+                "retVal": 7,
+                "outputValue": -999.0
+              }
+            ]
+          }
+        },
+        "outputs": {
+          "analogValues": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_analogValues_1[9]",
+                "type": "INT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_analogValues_2[9]",
+                "type": "INT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_analogValues_3[9]",
+                "type": "INT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_analogValues_4[9]",
+                "type": "INT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_analogValues_5[9]",
+                "type": "INT"
+              }
+            ]
+          },
+          "channels": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "struct",
+                "fields": {
+                  "enable": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_enable[9]",
+                    "type": "BOOL"
+                  },
+                  "hiLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_hiLIM[9]",
+                    "type": "REAL"
+                  },
+                  "loLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_loLIM[9]",
+                    "type": "REAL"
+                  },
+                  "bipolar": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_bipolar[9]",
+                    "type": "BOOL"
+                  },
+                  "measuringMode": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_measuringMode[9]",
+                    "type": "INT"
+                  },
+                  "retVal": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_retVal[9]",
+                    "type": "WORD"
+                  },
+                  "outputValue": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_outputValue[9]",
+                    "type": "REAL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "enable": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_enable[9]",
+                    "type": "BOOL"
+                  },
+                  "hiLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_hiLIM[9]",
+                    "type": "REAL"
+                  },
+                  "loLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_loLIM[9]",
+                    "type": "REAL"
+                  },
+                  "bipolar": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_bipolar[9]",
+                    "type": "BOOL"
+                  },
+                  "measuringMode": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_measuringMode[9]",
+                    "type": "INT"
+                  },
+                  "retVal": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_retVal[9]",
+                    "type": "WORD"
+                  },
+                  "outputValue": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_outputValue[9]",
+                    "type": "REAL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "enable": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_enable[9]",
+                    "type": "BOOL"
+                  },
+                  "hiLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_hiLIM[9]",
+                    "type": "REAL"
+                  },
+                  "loLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_loLIM[9]",
+                    "type": "REAL"
+                  },
+                  "bipolar": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_bipolar[9]",
+                    "type": "BOOL"
+                  },
+                  "measuringMode": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_measuringMode[9]",
+                    "type": "INT"
+                  },
+                  "retVal": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_retVal[9]",
+                    "type": "WORD"
+                  },
+                  "outputValue": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_outputValue[9]",
+                    "type": "REAL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "enable": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_4_enable[9]",
+                    "type": "BOOL"
+                  },
+                  "hiLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_4_hiLIM[9]",
+                    "type": "REAL"
+                  },
+                  "loLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_4_loLIM[9]",
+                    "type": "REAL"
+                  },
+                  "bipolar": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_4_bipolar[9]",
+                    "type": "BOOL"
+                  },
+                  "measuringMode": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_4_measuringMode[9]",
+                    "type": "INT"
+                  },
+                  "retVal": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_4_retVal[9]",
+                    "type": "WORD"
+                  },
+                  "outputValue": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_4_outputValue[9]",
+                    "type": "REAL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "enable": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_5_enable[9]",
+                    "type": "BOOL"
+                  },
+                  "hiLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_5_hiLIM[9]",
+                    "type": "REAL"
+                  },
+                  "loLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_5_loLIM[9]",
+                    "type": "REAL"
+                  },
+                  "bipolar": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_5_bipolar[9]",
+                    "type": "BOOL"
+                  },
+                  "measuringMode": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_5_measuringMode[9]",
+                    "type": "INT"
+                  },
+                  "retVal": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_5_retVal[9]",
+                    "type": "WORD"
+                  },
+                  "outputValue": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_5_outputValue[9]",
+                    "type": "REAL"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "step_index": 10,
+        "case_id": "PUB008.T8",
+        "case_step": 1,
+        "dt_expr": null,
+        "inputs": {
+          "count": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_count[10]",
+            "type": "DINT"
+          },
+          "analogValues": {
+            "kind": "raw",
+            "value": [
+              0,
+              0,
+              0,
+              0,
+              9999
+            ]
+          },
+          "channels": {
+            "kind": "raw",
+            "value": [
+              {
+                "enable": false,
+                "hiLIM": 10.0,
+                "loLIM": 20.0,
+                "bipolar": false,
+                "measuringMode": 9,
+                "retVal": 0,
+                "outputValue": 100.0
+              },
+              {
+                "enable": true,
+                "hiLIM": 10.0,
+                "loLIM": 20.0,
+                "bipolar": false,
+                "measuringMode": 9,
+                "retVal": 0,
+                "outputValue": 0.0
+              },
+              {
+                "enable": true,
+                "hiLIM": 10.0,
+                "loLIM": 10.0,
+                "bipolar": false,
+                "measuringMode": 0,
+                "retVal": 0,
+                "outputValue": 100.0
+              },
+              {
+                "enable": true,
+                "hiLIM": 200.0,
+                "loLIM": 100.0,
+                "bipolar": false,
+                "measuringMode": 0,
+                "retVal": 0,
+                "outputValue": 100.0
+              },
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": false,
+                "measuringMode": 1,
+                "retVal": 0,
+                "outputValue": 50.0
+              }
+            ]
+          }
+        },
+        "outputs": {
+          "analogValues": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_analogValues_1[10]",
+                "type": "INT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_analogValues_2[10]",
+                "type": "INT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_analogValues_3[10]",
+                "type": "INT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_analogValues_4[10]",
+                "type": "INT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_analogValues_5[10]",
+                "type": "INT"
+              }
+            ]
+          },
+          "channels": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "struct",
+                "fields": {
+                  "enable": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_enable[10]",
+                    "type": "BOOL"
+                  },
+                  "hiLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_hiLIM[10]",
+                    "type": "REAL"
+                  },
+                  "loLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_loLIM[10]",
+                    "type": "REAL"
+                  },
+                  "bipolar": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_bipolar[10]",
+                    "type": "BOOL"
+                  },
+                  "measuringMode": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_measuringMode[10]",
+                    "type": "INT"
+                  },
+                  "retVal": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_retVal[10]",
+                    "type": "WORD"
+                  },
+                  "outputValue": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_outputValue[10]",
+                    "type": "REAL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "enable": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_enable[10]",
+                    "type": "BOOL"
+                  },
+                  "hiLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_hiLIM[10]",
+                    "type": "REAL"
+                  },
+                  "loLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_loLIM[10]",
+                    "type": "REAL"
+                  },
+                  "bipolar": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_bipolar[10]",
+                    "type": "BOOL"
+                  },
+                  "measuringMode": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_measuringMode[10]",
+                    "type": "INT"
+                  },
+                  "retVal": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_retVal[10]",
+                    "type": "WORD"
+                  },
+                  "outputValue": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_outputValue[10]",
+                    "type": "REAL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "enable": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_enable[10]",
+                    "type": "BOOL"
+                  },
+                  "hiLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_hiLIM[10]",
+                    "type": "REAL"
+                  },
+                  "loLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_loLIM[10]",
+                    "type": "REAL"
+                  },
+                  "bipolar": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_bipolar[10]",
+                    "type": "BOOL"
+                  },
+                  "measuringMode": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_measuringMode[10]",
+                    "type": "INT"
+                  },
+                  "retVal": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_retVal[10]",
+                    "type": "WORD"
+                  },
+                  "outputValue": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_outputValue[10]",
+                    "type": "REAL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "enable": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_4_enable[10]",
+                    "type": "BOOL"
+                  },
+                  "hiLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_4_hiLIM[10]",
+                    "type": "REAL"
+                  },
+                  "loLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_4_loLIM[10]",
+                    "type": "REAL"
+                  },
+                  "bipolar": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_4_bipolar[10]",
+                    "type": "BOOL"
+                  },
+                  "measuringMode": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_4_measuringMode[10]",
+                    "type": "INT"
+                  },
+                  "retVal": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_4_retVal[10]",
+                    "type": "WORD"
+                  },
+                  "outputValue": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_4_outputValue[10]",
+                    "type": "REAL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "enable": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_5_enable[10]",
+                    "type": "BOOL"
+                  },
+                  "hiLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_5_hiLIM[10]",
+                    "type": "REAL"
+                  },
+                  "loLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_5_loLIM[10]",
+                    "type": "REAL"
+                  },
+                  "bipolar": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_5_bipolar[10]",
+                    "type": "BOOL"
+                  },
+                  "measuringMode": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_5_measuringMode[10]",
+                    "type": "INT"
+                  },
+                  "retVal": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_5_retVal[10]",
+                    "type": "WORD"
+                  },
+                  "outputValue": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_5_outputValue[10]",
+                    "type": "REAL"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "step_index": 11,
+        "case_id": "PUB008.T9",
+        "case_step": 0,
+        "dt_expr": null,
+        "inputs": {
+          "count": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_count[11]",
+            "type": "DINT"
+          },
+          "analogValues": {
+            "kind": "raw",
+            "value": [
+              -27648,
+              30000,
+              -13824,
+              -255,
+              12345
+            ]
+          },
+          "channels": {
+            "kind": "raw",
+            "value": [
+              {
+                "enable": true,
+                "hiLIM": 10.0,
+                "loLIM": -10.0,
+                "bipolar": true,
+                "measuringMode": 0,
+                "retVal": 7,
+                "outputValue": -999.0
+              },
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": false,
+                "measuringMode": 0,
+                "retVal": 7,
+                "outputValue": -999.0
+              },
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": false,
+                "measuringMode": 0,
+                "retVal": 7,
+                "outputValue": -999.0
+              },
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": -100.0,
+                "bipolar": false,
+                "measuringMode": 1,
+                "retVal": 7,
+                "outputValue": -999.0
+              },
+              {
+                "enable": true,
+                "hiLIM": 200.0,
+                "loLIM": -200.0,
+                "bipolar": true,
+                "measuringMode": 2,
+                "retVal": 7,
+                "outputValue": -999.0
+              },
+              {
+                "enable": true,
+                "hiLIM": 100.0,
+                "loLIM": 0.0,
+                "bipolar": false,
+                "measuringMode": 0,
+                "retVal": 42,
+                "outputValue": -123.0
+              }
+            ]
+          }
+        },
+        "outputs": {
+          "analogValues": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_analogValues_1[11]",
+                "type": "INT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_analogValues_2[11]",
+                "type": "INT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_analogValues_3[11]",
+                "type": "INT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_analogValues_4[11]",
+                "type": "INT"
+              },
+              {
+                "kind": "scalar",
+                "expr": "PLC_PRG.TraceOut_analogValues_5[11]",
+                "type": "INT"
+              }
+            ]
+          },
+          "channels": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "struct",
+                "fields": {
+                  "enable": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_enable[11]",
+                    "type": "BOOL"
+                  },
+                  "hiLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_hiLIM[11]",
+                    "type": "REAL"
+                  },
+                  "loLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_loLIM[11]",
+                    "type": "REAL"
+                  },
+                  "bipolar": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_bipolar[11]",
+                    "type": "BOOL"
+                  },
+                  "measuringMode": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_measuringMode[11]",
+                    "type": "INT"
+                  },
+                  "retVal": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_retVal[11]",
+                    "type": "WORD"
+                  },
+                  "outputValue": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_1_outputValue[11]",
+                    "type": "REAL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "enable": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_enable[11]",
+                    "type": "BOOL"
+                  },
+                  "hiLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_hiLIM[11]",
+                    "type": "REAL"
+                  },
+                  "loLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_loLIM[11]",
+                    "type": "REAL"
+                  },
+                  "bipolar": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_bipolar[11]",
+                    "type": "BOOL"
+                  },
+                  "measuringMode": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_measuringMode[11]",
+                    "type": "INT"
+                  },
+                  "retVal": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_retVal[11]",
+                    "type": "WORD"
+                  },
+                  "outputValue": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_2_outputValue[11]",
+                    "type": "REAL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "enable": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_enable[11]",
+                    "type": "BOOL"
+                  },
+                  "hiLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_hiLIM[11]",
+                    "type": "REAL"
+                  },
+                  "loLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_loLIM[11]",
+                    "type": "REAL"
+                  },
+                  "bipolar": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_bipolar[11]",
+                    "type": "BOOL"
+                  },
+                  "measuringMode": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_measuringMode[11]",
+                    "type": "INT"
+                  },
+                  "retVal": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_retVal[11]",
+                    "type": "WORD"
+                  },
+                  "outputValue": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_3_outputValue[11]",
+                    "type": "REAL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "enable": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_4_enable[11]",
+                    "type": "BOOL"
+                  },
+                  "hiLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_4_hiLIM[11]",
+                    "type": "REAL"
+                  },
+                  "loLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_4_loLIM[11]",
+                    "type": "REAL"
+                  },
+                  "bipolar": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_4_bipolar[11]",
+                    "type": "BOOL"
+                  },
+                  "measuringMode": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_4_measuringMode[11]",
+                    "type": "INT"
+                  },
+                  "retVal": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_4_retVal[11]",
+                    "type": "WORD"
+                  },
+                  "outputValue": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_4_outputValue[11]",
+                    "type": "REAL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "enable": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_5_enable[11]",
+                    "type": "BOOL"
+                  },
+                  "hiLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_5_hiLIM[11]",
+                    "type": "REAL"
+                  },
+                  "loLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_5_loLIM[11]",
+                    "type": "REAL"
+                  },
+                  "bipolar": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_5_bipolar[11]",
+                    "type": "BOOL"
+                  },
+                  "measuringMode": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_5_measuringMode[11]",
+                    "type": "INT"
+                  },
+                  "retVal": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_5_retVal[11]",
+                    "type": "WORD"
+                  },
+                  "outputValue": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_5_outputValue[11]",
+                    "type": "REAL"
+                  }
+                }
+              },
+              {
+                "kind": "struct",
+                "fields": {
+                  "enable": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_6_enable[11]",
+                    "type": "BOOL"
+                  },
+                  "hiLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_6_hiLIM[11]",
+                    "type": "REAL"
+                  },
+                  "loLIM": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_6_loLIM[11]",
+                    "type": "REAL"
+                  },
+                  "bipolar": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_6_bipolar[11]",
+                    "type": "BOOL"
+                  },
+                  "measuringMode": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_6_measuringMode[11]",
+                    "type": "INT"
+                  },
+                  "retVal": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_6_retVal[11]",
+                    "type": "WORD"
+                  },
+                  "outputValue": {
+                    "kind": "scalar",
+                    "expr": "PLC_PRG.TraceOut_channels_6_outputValue[11]",
+                    "type": "REAL"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "result_path": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\1969a10fd1a53145\\simulation_evidence.json"
+}

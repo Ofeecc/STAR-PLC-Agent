@@ -1,0 +1,12 @@
+{
+  "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    {attribute 'analysis' := '-27'}\n    mode : BOOL;\n    start : BOOL;\n    stop : BOOL;\nEND_VAR\nVAR_IN_OUT\n    pumpGroup : ARRAY[1..5] OF ST_Pump;\nEND_VAR\nVAR\n    sampledMode : BOOL;\n    sampledStart : BOOL;\n    sampledStop : BOOL;\n    sampledPriority : ARRAY[1..5] OF INT;\n    sampledSelection : ARRAY[1..5] OF BOOL;\n    nextCommand : ARRAY[1..5] OF BOOL;\n    i : INT;\n    j : INT;\n    higherCount : INT;\nEND_VAR",
+  "implementation": "sampledMode := mode;\nsampledStart := start;\nsampledStop := stop;\nFOR i := 1 TO 5 DO\n    sampledPriority[i] := pumpGroup[i].priority;\n    sampledSelection[i] := pumpGroup[i].selection;\n    nextCommand[i] := pumpGroup[i].RunComd;\nEND_FOR;\n\nIF sampledStop THEN\n    FOR i := 1 TO 5 DO\n        nextCommand[i] := FALSE;\n    END_FOR;\nELSIF sampledStart THEN\n    IF sampledMode THEN\n        FOR i := 1 TO 5 DO\n            higherCount := 0;\n            FOR j := 1 TO 5 DO\n                IF (sampledPriority[j] > sampledPriority[i]) OR\n                   ((sampledPriority[j] = sampledPriority[i]) AND (j < i)) THEN\n                    higherCount := higherCount + 1;\n                END_IF;\n            END_FOR;\n            nextCommand[i] := (higherCount < 3);\n        END_FOR;\n    ELSE\n        FOR i := 1 TO 5 DO\n            nextCommand[i] := sampledSelection[i];\n        END_FOR;\n    END_IF;\nEND_IF;\n\nFOR i := 1 TO 5 DO\n    pumpGroup[i].RunComd := nextCommand[i];\nEND_FOR;",
+  "supporting_objects": [
+    {
+      "name": "ST_Pump",
+      "kind": "DUT",
+      "declaration": "TYPE ST_Pump :\nSTRUCT\n    priority : INT;\n    selection : BOOL;\n    RunComd : BOOL;\nEND_STRUCT\nEND_TYPE",
+      "implementation": ""
+    }
+  ]
+}

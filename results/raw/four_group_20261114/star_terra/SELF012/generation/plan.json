@@ -1,0 +1,126 @@
+{
+  "state_machine": [
+    {
+      "state": "IDLE",
+      "transitions": [
+        {
+          "guard": "Start AND NOT Fault",
+          "action": "Enter RUNNING; preserve attempt_count."
+        },
+        {
+          "guard": "Otherwise",
+          "action": "Remain IDLE."
+        }
+      ]
+    },
+    {
+      "state": "RUNNING",
+      "transitions": [
+        {
+          "guard": "Fault AND attempt_count >= 2",
+          "action": "Enter LOCKED."
+        },
+        {
+          "guard": "Fault AND attempt_count < 2",
+          "action": "Enter WAIT; set free_scans to 0."
+        },
+        {
+          "guard": "NOT Fault",
+          "action": "Remain RUNNING."
+        }
+      ]
+    },
+    {
+      "state": "WAIT",
+      "transitions": [
+        {
+          "guard": "Fault",
+          "action": "Remain WAIT; set free_scans to 0."
+        },
+        {
+          "guard": "NOT Fault AND free_scans + 1 < 2",
+          "action": "Increment free_scans; remain WAIT."
+        },
+        {
+          "guard": "NOT Fault AND free_scans + 1 >= 2",
+          "action": "Increment attempt_count, set free_scans to 0, and enter RUNNING."
+        }
+      ],
+      "invariant": "WAIT is reachable only with attempt_count < 2. Count only scans beginning in WAIT; the scan entering WAIT is not a dwell scan."
+    },
+    {
+      "state": "LOCKED",
+      "transitions": [
+        {
+          "guard": "No valid reset",
+          "action": "Remain LOCKED, including when Stop is true."
+        }
+      ]
+    }
+  ],
+  "timer_plan": {
+    "timers": [],
+    "pt_durations": "None; dwell is measured in scan invocations, not wall time.",
+    "reset_conditions": "No timer FBs. Reset free_scans on valid reset, Stop outside LOCKED, entry to WAIT, Fault in WAIT, and retry completion."
+  },
+  "priorities": [
+    "Highest: valid reset, defined as Reset AND NOT Fault AND NOT Start; enter IDLE and clear attempt_count and free_scans.",
+    "Otherwise, retain an existing LOCKED state.",
+    "Otherwise, Stop enters IDLE and clears free_scans while preserving attempt_count.",
+    "Otherwise, evaluate the pre-scan mode once: RUNNING fault, WAIT recovery dwell, or IDLE start.",
+    "Inputs are level-sensitive; holding Reset, Start, or Stop is not treated as an edge-only request."
+  ],
+  "initial_values": {
+    "mode": "IDLE",
+    "attempt_count": 0,
+    "free_scans": 0,
+    "Run": false,
+    "Locked": false,
+    "Attempts": 0,
+    "notes": "attempt_count is the retained internal USINT retry count mirrored to output Attempts. Initial values describe the pre-invocation instance; scan 0 executes normally."
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "Edge sampling",
+      "action": "Sample Start, Stop, Fault, and Reset once into scan-local values. No edge detector is required because all requests are level-sensitive."
+    },
+    {
+      "stage": 2,
+      "name": "Safety/reset priority and state transitions",
+      "action": "Using sampled inputs and retained pre-scan mode, apply the stated priorities and execute at most one transition. Update retained mode, attempt_count, and free_scans; preserve values not explicitly changed."
+    },
+    {
+      "stage": 3,
+      "name": "Unconditional top-level timer FB calls outside CASE/IF",
+      "action": "No timer FBs are required or called. This stage is an unconditional no-op."
+    },
+    {
+      "stage": 4,
+      "name": "Unified output assignments",
+      "action": "Assign Run := (mode = RUNNING), Locked := (mode = LOCKED), and Attempts := attempt_count from post-transition values."
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G(Fault -> !Run)"
+    },
+    {
+      "id": "A2",
+      "formula": "G(Attempts <= 2)"
+    },
+    {
+      "id": "A3",
+      "formula": "G((Reset & !Fault & !Start) -> (!Run & !Locked & (Attempts = 0)))"
+    },
+    {
+      "id": "A4",
+      "formula": "G(!(Run & Locked))"
+    },
+    {
+      "id": "A5",
+      "formula": "G(Stop -> !Run)"
+    }
+  ]
+}

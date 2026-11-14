@@ -1,0 +1,1004 @@
+{
+  "request_id": "f802ad14dc91401e84830c8d3f9f26c0",
+  "mode": "IDE_SIMULATION_ONLY",
+  "no_physical_connection": true,
+  "workspace": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\7b9bb4ea206c2615",
+  "project": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\7b9bb4ea206c2615\\simulation.project",
+  "template": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\7b9bb4ea206c2615\\benchmark.project",
+  "task_id": "PUB018",
+  "task_sha256": "4d6795e28c550440addd72a62bccc806e201ddf4f3f378aa6d303113ff30cb47",
+  "source_sha256": "2fad6227bf9cf4ccc052e978ca53944dd13c9cfa9d874b8250f95fec50770219",
+  "candidate": {
+    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    enqueue : BOOL;\n    dequeue : BOOL;\n    reset : BOOL;\nEND_VAR\nVAR_OUTPUT\n    elementCount : DINT := 0;\n    {attribute 'analysis' := '-27'}\n    status : WORD := 16#0000;\nEND_VAR\nVAR_IN_OUT\n    item : VARIANT;\n    buffer : VARIANT;\nEND_VAR\nVAR\n    initialized : BOOL := FALSE;\n    capacity : DINT := 0;\n    head : DINT := 0;\n    tail : DINT := 0;\n    internalCount : DINT := 0;\n    enqueuePrev : BOOL := FALSE;\n    dequeuePrev : BOOL := FALSE;\n    enqueueRise : BOOL;\n    dequeueRise : BOOL;\n    elementSize : UDINT;\n    pBuffer : POINTER TO BYTE;\n    pItem : POINTER TO BYTE;\n    pElem : POINTER TO BYTE;\n    idx : DINT;\n    offset : UDINT;\nEND_VAR",
+    "implementation": "IF NOT initialized THEN\n    elementSize := item.Size;\n    IF elementSize > 0 AND buffer.Size > 0 THEN\n        capacity := UDINT_TO_DINT(buffer.Size / elementSize);\n    ELSE\n        capacity := 0;\n    END_IF;\n    IF capacity < 0 THEN\n        capacity := 0;\n    END_IF;\n    head := 0;\n    tail := 0;\n    internalCount := 0;\n    status := 16#0000;\n    initialized := TRUE;\nEND_IF;\n\npBuffer := buffer.pData;\npItem := item.pData;\n\nenqueueRise := enqueue AND NOT enqueuePrev;\ndequeueRise := dequeue AND NOT dequeuePrev;\nenqueuePrev := enqueue;\ndequeuePrev := dequeue;\n\nIF reset THEN\n    internalCount := 0;\n    head := 0;\n    tail := 0;\n    status := 16#0000;\nELSIF enqueueRise AND dequeueRise THEN\n    status := 16#0000;\nELSIF enqueueRise THEN\n    IF internalCount >= capacity THEN\n        status := 16#8002;\n    ELSE\n        idx := tail;\n        offset := DINT_TO_UDINT(idx) * elementSize;\n        pElem := pBuffer + offset;\n        FIFO_CopyBytes(dest := pElem, src := pItem, size := elementSize);\n        tail := (tail + 1) MOD capacity;\n        internalCount := internalCount + 1;\n        status := 16#0000;\n    END_IF;\nELSIF dequeueRise THEN\n    IF internalCount <= 0 THEN\n        status := 16#8001;\n    ELSE\n        idx := head;\n        offset := DINT_TO_UDINT(idx) * elementSize;\n        pElem := pBuffer + offset;\n        FIFO_CopyBytes(dest := pItem, src := pElem, size := elementSize);\n        head := (head + 1) MOD capacity;\n        internalCount := internalCount - 1;\n        status := 16#0000;\n    END_IF;\nELSE\n    status := 16#0000;\nEND_IF;\n\nelementCount := internalCount;",
+    "supporting_objects": [
+      {
+        "name": "VARIANT",
+        "kind": "DUT",
+        "declaration": "TYPE VARIANT : STRUCT\n    pData : POINTER TO BYTE;\n    Size : UDINT;\nEND_STRUCT\nEND_TYPE",
+        "implementation": ""
+      },
+      {
+        "name": "FIFO_CopyBytes",
+        "kind": "FUNCTION",
+        "return_type": "BOOL",
+        "declaration": "FUNCTION FIFO_CopyBytes : BOOL\nVAR_INPUT\n    dest : POINTER TO BYTE;\n    src : POINTER TO BYTE;\n    size : UDINT;\nEND_VAR\nVAR\n    i : UDINT;\n    pD : POINTER TO BYTE;\n    pS : POINTER TO BYTE;\nEND_VAR",
+        "implementation": "FIFO_CopyBytes := FALSE;\nIF size > 0 THEN\n    pD := dest;\n    pS := src;\n    FOR i := 0 TO size - 1 DO\n        pD^ := pS^;\n        pD := pD + 1;\n        pS := pS + 1;\n    END_FOR;\nEND_IF;\nFIFO_CopyBytes := TRUE;"
+      }
+    ]
+  },
+  "program": {
+    "declaration": "PROGRAM PLC_PRG\nVAR\n BenchStep : UDINT := 0;\n BenchCalls : UDINT := 0;\n BenchDone : BOOL := FALSE;\n BenchUut0 : FB_Task;\n BenchUut1 : FB_Task;\n Binding_0_item : DINT;\n Binding_0_buffer : DINT;\n Binding_1_item : DINT;\n Binding_1_buffer : DINT;\n TraceIn_enqueue : ARRAY[0..15] OF BOOL;\n TraceIn_dequeue : ARRAY[0..15] OF BOOL;\n TraceIn_reset : ARRAY[0..15] OF BOOL;\n TraceOut_elementCount : ARRAY[0..15] OF DINT;\n TraceOut_status : ARRAY[0..15] OF WORD;\n TraceOut_item_DINT : ARRAY[0..15] OF DINT;\n TraceOut_item_BOOL : ARRAY[0..15] OF BOOL;\n TraceInIO_item_DINT : ARRAY[0..15] OF DINT;\nEND_VAR",
+    "implementation": "IF NOT BenchDone THEN\n CASE BenchStep OF\n 0:\n   Binding_0_item := DINT#0;\n   BenchUut0.enqueue := FALSE;\n   BenchUut0.dequeue := FALSE;\n   BenchUut0.reset := FALSE;\n   TraceIn_enqueue[0] := BenchUut0.enqueue;\n   TraceIn_dequeue[0] := BenchUut0.dequeue;\n   TraceIn_reset[0] := BenchUut0.reset;\n   TraceInIO_item_DINT[0] := Binding_0_item;\n   BenchUut0(item := Binding_0_item, buffer := Binding_0_buffer);\n   TraceOut_elementCount[0] := BenchUut0.elementCount;\n   TraceOut_status[0] := BenchUut0.status;\n   TraceOut_item_DINT[0] := Binding_0_item;\n   BenchCalls := BenchCalls + 1;\n 1:\n   Binding_0_item := DINT#11;\n   BenchUut0.enqueue := TRUE;\n   BenchUut0.dequeue := FALSE;\n   BenchUut0.reset := FALSE;\n   TraceIn_enqueue[1] := BenchUut0.enqueue;\n   TraceIn_dequeue[1] := BenchUut0.dequeue;\n   TraceIn_reset[1] := BenchUut0.reset;\n   TraceInIO_item_DINT[1] := Binding_0_item;\n   BenchUut0(item := Binding_0_item, buffer := Binding_0_buffer);\n   TraceOut_elementCount[1] := BenchUut0.elementCount;\n   TraceOut_status[1] := BenchUut0.status;\n   TraceOut_item_DINT[1] := Binding_0_item;\n   BenchCalls := BenchCalls + 1;\n 2:\n   Binding_0_item := DINT#12;\n   BenchUut0.enqueue := FALSE;\n   BenchUut0.dequeue := FALSE;\n   BenchUut0.reset := FALSE;\n   TraceIn_enqueue[2] := BenchUut0.enqueue;\n   TraceIn_dequeue[2] := BenchUut0.dequeue;\n   TraceIn_reset[2] := BenchUut0.reset;\n   TraceInIO_item_DINT[2] := Binding_0_item;\n   BenchUut0(item := Binding_0_item, buffer := Binding_0_buffer);\n   TraceOut_elementCount[2] := BenchUut0.elementCount;\n   TraceOut_status[2] := BenchUut0.status;\n   TraceOut_item_DINT[2] := Binding_0_item;\n   BenchCalls := BenchCalls + 1;\n 3:\n   Binding_0_item := DINT#22;\n   BenchUut0.enqueue := TRUE;\n   BenchUut0.dequeue := FALSE;\n   BenchUut0.reset := FALSE;\n   TraceIn_enqueue[3] := BenchUut0.enqueue;\n   TraceIn_dequeue[3] := BenchUut0.dequeue;\n   TraceIn_reset[3] := BenchUut0.reset;\n   TraceInIO_item_DINT[3] := Binding_0_item;\n   BenchUut0(item := Binding_0_item, buffer := Binding_0_buffer);\n   TraceOut_elementCount[3] := BenchUut0.elementCount;\n   TraceOut_status[3] := BenchUut0.status;\n   TraceOut_item_DINT[3] := Binding_0_item;\n   BenchCalls := BenchCalls + 1;\n 4:\n   Binding_0_item := DINT#0;\n   BenchUut0.enqueue := FALSE;\n   BenchUut0.dequeue := TRUE;\n   BenchUut0.reset := FALSE;\n   TraceIn_enqueue[4] := BenchUut0.enqueue;\n   TraceIn_dequeue[4] := BenchUut0.dequeue;\n   TraceIn_reset[4] := BenchUut0.reset;\n   TraceInIO_item_DINT[4] := Binding_0_item;\n   BenchUut0(item := Binding_0_item, buffer := Binding_0_buffer);\n   TraceOut_elementCount[4] := BenchUut0.elementCount;\n   TraceOut_status[4] := BenchUut0.status;\n   TraceOut_item_DINT[4] := Binding_0_item;\n   BenchCalls := BenchCalls + 1;\n 5:\n   Binding_0_item := DINT#33;\n   BenchUut0.enqueue := TRUE;\n   BenchUut0.dequeue := FALSE;\n   BenchUut0.reset := FALSE;\n   TraceIn_enqueue[5] := BenchUut0.enqueue;\n   TraceIn_dequeue[5] := BenchUut0.dequeue;\n   TraceIn_reset[5] := BenchUut0.reset;\n   TraceInIO_item_DINT[5] := Binding_0_item;\n   BenchUut0(item := Binding_0_item, buffer := Binding_0_buffer);\n   TraceOut_elementCount[5] := BenchUut0.elementCount;\n   TraceOut_status[5] := BenchUut0.status;\n   TraceOut_item_DINT[5] := Binding_0_item;\n   BenchCalls := BenchCalls + 1;\n 6:\n   Binding_0_item := DINT#0;\n   BenchUut0.enqueue := FALSE;\n   BenchUut0.dequeue := FALSE;\n   BenchUut0.reset := FALSE;\n   TraceIn_enqueue[6] := BenchUut0.enqueue;\n   TraceIn_dequeue[6] := BenchUut0.dequeue;\n   TraceIn_reset[6] := BenchUut0.reset;\n   TraceInIO_item_DINT[6] := Binding_0_item;\n   BenchUut0(item := Binding_0_item, buffer := Binding_0_buffer);\n   TraceOut_elementCount[6] := BenchUut0.elementCount;\n   TraceOut_status[6] := BenchUut0.status;\n   TraceOut_item_DINT[6] := Binding_0_item;\n   BenchCalls := BenchCalls + 1;\n 7:\n   Binding_0_item := DINT#0;\n   BenchUut0.enqueue := FALSE;\n   BenchUut0.dequeue := TRUE;\n   BenchUut0.reset := FALSE;\n   TraceIn_enqueue[7] := BenchUut0.enqueue;\n   TraceIn_dequeue[7] := BenchUut0.dequeue;\n   TraceIn_reset[7] := BenchUut0.reset;\n   TraceInIO_item_DINT[7] := Binding_0_item;\n   BenchUut0(item := Binding_0_item, buffer := Binding_0_buffer);\n   TraceOut_elementCount[7] := BenchUut0.elementCount;\n   TraceOut_status[7] := BenchUut0.status;\n   TraceOut_item_DINT[7] := Binding_0_item;\n   BenchCalls := BenchCalls + 1;\n 8:\n   Binding_1_item := DINT#0;\n   BenchUut1.enqueue := FALSE;\n   BenchUut1.dequeue := FALSE;\n   BenchUut1.reset := FALSE;\n   TraceIn_enqueue[8] := BenchUut1.enqueue;\n   TraceIn_dequeue[8] := BenchUut1.dequeue;\n   TraceIn_reset[8] := BenchUut1.reset;\n   TraceInIO_item_DINT[8] := Binding_1_item;\n   BenchUut1(item := Binding_1_item, buffer := Binding_1_buffer);\n   TraceOut_elementCount[8] := BenchUut1.elementCount;\n   TraceOut_status[8] := BenchUut1.status;\n   TraceOut_item_DINT[8] := Binding_1_item;\n   BenchCalls := BenchCalls + 1;\n 9:\n   Binding_1_item := DINT#5;\n   BenchUut1.enqueue := FALSE;\n   BenchUut1.dequeue := TRUE;\n   BenchUut1.reset := FALSE;\n   TraceIn_enqueue[9] := BenchUut1.enqueue;\n   TraceIn_dequeue[9] := BenchUut1.dequeue;\n   TraceIn_reset[9] := BenchUut1.reset;\n   TraceInIO_item_DINT[9] := Binding_1_item;\n   BenchUut1(item := Binding_1_item, buffer := Binding_1_buffer);\n   TraceOut_elementCount[9] := BenchUut1.elementCount;\n   TraceOut_status[9] := BenchUut1.status;\n   TraceOut_item_DINT[9] := Binding_1_item;\n   BenchCalls := BenchCalls + 1;\n 10:\n   Binding_1_item := DINT#11;\n   BenchUut1.enqueue := TRUE;\n   BenchUut1.dequeue := FALSE;\n   BenchUut1.reset := FALSE;\n   TraceIn_enqueue[10] := BenchUut1.enqueue;\n   TraceIn_dequeue[10] := BenchUut1.dequeue;\n   TraceIn_reset[10] := BenchUut1.reset;\n   TraceInIO_item_DINT[10] := Binding_1_item;\n   BenchUut1(item := Binding_1_item, buffer := Binding_1_buffer);\n   TraceOut_elementCount[10] := BenchUut1.elementCount;\n   TraceOut_status[10] := BenchUut1.status;\n   TraceOut_item_DINT[10] := Binding_1_item;\n   BenchCalls := BenchCalls + 1;\n 11:\n   Binding_1_item := DINT#12;\n   BenchUut1.enqueue := FALSE;\n   BenchUut1.dequeue := FALSE;\n   BenchUut1.reset := FALSE;\n   TraceIn_enqueue[11] := BenchUut1.enqueue;\n   TraceIn_dequeue[11] := BenchUut1.dequeue;\n   TraceIn_reset[11] := BenchUut1.reset;\n   TraceInIO_item_DINT[11] := Binding_1_item;\n   BenchUut1(item := Binding_1_item, buffer := Binding_1_buffer);\n   TraceOut_elementCount[11] := BenchUut1.elementCount;\n   TraceOut_status[11] := BenchUut1.status;\n   TraceOut_item_DINT[11] := Binding_1_item;\n   BenchCalls := BenchCalls + 1;\n 12:\n   Binding_1_item := DINT#22;\n   BenchUut1.enqueue := TRUE;\n   BenchUut1.dequeue := FALSE;\n   BenchUut1.reset := FALSE;\n   TraceIn_enqueue[12] := BenchUut1.enqueue;\n   TraceIn_dequeue[12] := BenchUut1.dequeue;\n   TraceIn_reset[12] := BenchUut1.reset;\n   TraceInIO_item_DINT[12] := Binding_1_item;\n   BenchUut1(item := Binding_1_item, buffer := Binding_1_buffer);\n   TraceOut_elementCount[12] := BenchUut1.elementCount;\n   TraceOut_status[12] := BenchUut1.status;\n   TraceOut_item_DINT[12] := Binding_1_item;\n   BenchCalls := BenchCalls + 1;\n 13:\n   Binding_1_item := DINT#33;\n   BenchUut1.enqueue := FALSE;\n   BenchUut1.dequeue := FALSE;\n   BenchUut1.reset := FALSE;\n   TraceIn_enqueue[13] := BenchUut1.enqueue;\n   TraceIn_dequeue[13] := BenchUut1.dequeue;\n   TraceIn_reset[13] := BenchUut1.reset;\n   TraceInIO_item_DINT[13] := Binding_1_item;\n   BenchUut1(item := Binding_1_item, buffer := Binding_1_buffer);\n   TraceOut_elementCount[13] := BenchUut1.elementCount;\n   TraceOut_status[13] := BenchUut1.status;\n   TraceOut_item_DINT[13] := Binding_1_item;\n   BenchCalls := BenchCalls + 1;\n 14:\n   Binding_1_item := DINT#33;\n   BenchUut1.enqueue := TRUE;\n   BenchUut1.dequeue := FALSE;\n   BenchUut1.reset := FALSE;\n   TraceIn_enqueue[14] := BenchUut1.enqueue;\n   TraceIn_dequeue[14] := BenchUut1.dequeue;\n   TraceIn_reset[14] := BenchUut1.reset;\n   TraceInIO_item_DINT[14] := Binding_1_item;\n   BenchUut1(item := Binding_1_item, buffer := Binding_1_buffer);\n   TraceOut_elementCount[14] := BenchUut1.elementCount;\n   TraceOut_status[14] := BenchUut1.status;\n   TraceOut_item_DINT[14] := Binding_1_item;\n   BenchCalls := BenchCalls + 1;\n 15:\n   Binding_1_item := DINT#99;\n   BenchUut1.enqueue := FALSE;\n   BenchUut1.dequeue := TRUE;\n   BenchUut1.reset := TRUE;\n   TraceIn_enqueue[15] := BenchUut1.enqueue;\n   TraceIn_dequeue[15] := BenchUut1.dequeue;\n   TraceIn_reset[15] := BenchUut1.reset;\n   TraceInIO_item_DINT[15] := Binding_1_item;\n   BenchUut1(item := Binding_1_item, buffer := Binding_1_buffer);\n   TraceOut_elementCount[15] := BenchUut1.elementCount;\n   TraceOut_status[15] := BenchUut1.status;\n   TraceOut_item_DINT[15] := Binding_1_item;\n   BenchCalls := BenchCalls + 1;\n END_CASE;\n BenchStep := BenchStep + 1;\n IF BenchStep >= 16 THEN BenchDone := TRUE; END_IF;\nEND_IF;",
+    "step_count": 16,
+    "steps": [
+      {
+        "index": 0,
+        "case_id": "case_1",
+        "case_step": 0,
+        "dt_ms": 0
+      },
+      {
+        "index": 1,
+        "case_id": "case_1",
+        "case_step": 1,
+        "dt_ms": 0
+      },
+      {
+        "index": 2,
+        "case_id": "case_1",
+        "case_step": 2,
+        "dt_ms": 0
+      },
+      {
+        "index": 3,
+        "case_id": "case_1",
+        "case_step": 3,
+        "dt_ms": 0
+      },
+      {
+        "index": 4,
+        "case_id": "case_1",
+        "case_step": 4,
+        "dt_ms": 0
+      },
+      {
+        "index": 5,
+        "case_id": "case_1",
+        "case_step": 5,
+        "dt_ms": 0
+      },
+      {
+        "index": 6,
+        "case_id": "case_1",
+        "case_step": 6,
+        "dt_ms": 0
+      },
+      {
+        "index": 7,
+        "case_id": "case_1",
+        "case_step": 7,
+        "dt_ms": 0
+      },
+      {
+        "index": 8,
+        "case_id": "case_2",
+        "case_step": 0,
+        "dt_ms": 0
+      },
+      {
+        "index": 9,
+        "case_id": "case_2",
+        "case_step": 1,
+        "dt_ms": 0
+      },
+      {
+        "index": 10,
+        "case_id": "case_2",
+        "case_step": 2,
+        "dt_ms": 0
+      },
+      {
+        "index": 11,
+        "case_id": "case_2",
+        "case_step": 3,
+        "dt_ms": 0
+      },
+      {
+        "index": 12,
+        "case_id": "case_2",
+        "case_step": 4,
+        "dt_ms": 0
+      },
+      {
+        "index": 13,
+        "case_id": "case_2",
+        "case_step": 5,
+        "dt_ms": 0
+      },
+      {
+        "index": 14,
+        "case_id": "case_2",
+        "case_step": 6,
+        "dt_ms": 0
+      },
+      {
+        "index": 15,
+        "case_id": "case_2",
+        "case_step": 7,
+        "dt_ms": 0
+      }
+    ],
+    "inputs": [
+      {
+        "direction": "INPUT",
+        "name": "enqueue",
+        "type": "BOOL",
+        "description": "Enqueue request; one operation per rising edge."
+      },
+      {
+        "direction": "INPUT",
+        "name": "dequeue",
+        "type": "BOOL",
+        "description": "Dequeue request; one operation per rising edge."
+      },
+      {
+        "direction": "INPUT",
+        "name": "reset",
+        "type": "BOOL",
+        "description": "TRUE resets the queue to empty; takes priority over enqueue and dequeue."
+      }
+    ],
+    "outputs": [
+      {
+        "direction": "OUTPUT",
+        "name": "elementCount",
+        "type": "DINT",
+        "description": "Current number of valid elements, from zero through the queue capacity."
+      },
+      {
+        "direction": "OUTPUT",
+        "name": "status",
+        "type": "WORD",
+        "description": "Invocation status: 16#0000 no error, 16#8001 dequeue from an empty queue, 16#8002 enqueue into a full queue."
+      }
+    ],
+    "trace_expressions": [
+      "PLC_PRG.TraceIn_enqueue[0]",
+      "PLC_PRG.TraceIn_dequeue[0]",
+      "PLC_PRG.TraceIn_reset[0]",
+      "PLC_PRG.TraceInIO_item_DINT[0]",
+      "PLC_PRG.TraceOut_elementCount[0]",
+      "PLC_PRG.TraceOut_status[0]",
+      "PLC_PRG.TraceOut_item_DINT[0]",
+      "PLC_PRG.TraceIn_enqueue[1]",
+      "PLC_PRG.TraceIn_dequeue[1]",
+      "PLC_PRG.TraceIn_reset[1]",
+      "PLC_PRG.TraceInIO_item_DINT[1]",
+      "PLC_PRG.TraceOut_elementCount[1]",
+      "PLC_PRG.TraceOut_status[1]",
+      "PLC_PRG.TraceOut_item_DINT[1]",
+      "PLC_PRG.TraceIn_enqueue[2]",
+      "PLC_PRG.TraceIn_dequeue[2]",
+      "PLC_PRG.TraceIn_reset[2]",
+      "PLC_PRG.TraceInIO_item_DINT[2]",
+      "PLC_PRG.TraceOut_elementCount[2]",
+      "PLC_PRG.TraceOut_status[2]",
+      "PLC_PRG.TraceOut_item_DINT[2]",
+      "PLC_PRG.TraceIn_enqueue[3]",
+      "PLC_PRG.TraceIn_dequeue[3]",
+      "PLC_PRG.TraceIn_reset[3]",
+      "PLC_PRG.TraceInIO_item_DINT[3]",
+      "PLC_PRG.TraceOut_elementCount[3]",
+      "PLC_PRG.TraceOut_status[3]",
+      "PLC_PRG.TraceOut_item_DINT[3]",
+      "PLC_PRG.TraceIn_enqueue[4]",
+      "PLC_PRG.TraceIn_dequeue[4]",
+      "PLC_PRG.TraceIn_reset[4]",
+      "PLC_PRG.TraceInIO_item_DINT[4]",
+      "PLC_PRG.TraceOut_elementCount[4]",
+      "PLC_PRG.TraceOut_status[4]",
+      "PLC_PRG.TraceOut_item_DINT[4]",
+      "PLC_PRG.TraceIn_enqueue[5]",
+      "PLC_PRG.TraceIn_dequeue[5]",
+      "PLC_PRG.TraceIn_reset[5]",
+      "PLC_PRG.TraceInIO_item_DINT[5]",
+      "PLC_PRG.TraceOut_elementCount[5]",
+      "PLC_PRG.TraceOut_status[5]",
+      "PLC_PRG.TraceOut_item_DINT[5]",
+      "PLC_PRG.TraceIn_enqueue[6]",
+      "PLC_PRG.TraceIn_dequeue[6]",
+      "PLC_PRG.TraceIn_reset[6]",
+      "PLC_PRG.TraceInIO_item_DINT[6]",
+      "PLC_PRG.TraceOut_elementCount[6]",
+      "PLC_PRG.TraceOut_status[6]",
+      "PLC_PRG.TraceOut_item_DINT[6]",
+      "PLC_PRG.TraceIn_enqueue[7]",
+      "PLC_PRG.TraceIn_dequeue[7]",
+      "PLC_PRG.TraceIn_reset[7]",
+      "PLC_PRG.TraceInIO_item_DINT[7]",
+      "PLC_PRG.TraceOut_elementCount[7]",
+      "PLC_PRG.TraceOut_status[7]",
+      "PLC_PRG.TraceOut_item_DINT[7]",
+      "PLC_PRG.TraceIn_enqueue[8]",
+      "PLC_PRG.TraceIn_dequeue[8]",
+      "PLC_PRG.TraceIn_reset[8]",
+      "PLC_PRG.TraceInIO_item_DINT[8]",
+      "PLC_PRG.TraceOut_elementCount[8]",
+      "PLC_PRG.TraceOut_status[8]",
+      "PLC_PRG.TraceOut_item_DINT[8]",
+      "PLC_PRG.TraceIn_enqueue[9]",
+      "PLC_PRG.TraceIn_dequeue[9]",
+      "PLC_PRG.TraceIn_reset[9]",
+      "PLC_PRG.TraceInIO_item_DINT[9]",
+      "PLC_PRG.TraceOut_elementCount[9]",
+      "PLC_PRG.TraceOut_status[9]",
+      "PLC_PRG.TraceOut_item_DINT[9]",
+      "PLC_PRG.TraceIn_enqueue[10]",
+      "PLC_PRG.TraceIn_dequeue[10]",
+      "PLC_PRG.TraceIn_reset[10]",
+      "PLC_PRG.TraceInIO_item_DINT[10]",
+      "PLC_PRG.TraceOut_elementCount[10]",
+      "PLC_PRG.TraceOut_status[10]",
+      "PLC_PRG.TraceOut_item_DINT[10]",
+      "PLC_PRG.TraceIn_enqueue[11]",
+      "PLC_PRG.TraceIn_dequeue[11]",
+      "PLC_PRG.TraceIn_reset[11]",
+      "PLC_PRG.TraceInIO_item_DINT[11]",
+      "PLC_PRG.TraceOut_elementCount[11]",
+      "PLC_PRG.TraceOut_status[11]",
+      "PLC_PRG.TraceOut_item_DINT[11]",
+      "PLC_PRG.TraceIn_enqueue[12]",
+      "PLC_PRG.TraceIn_dequeue[12]",
+      "PLC_PRG.TraceIn_reset[12]",
+      "PLC_PRG.TraceInIO_item_DINT[12]",
+      "PLC_PRG.TraceOut_elementCount[12]",
+      "PLC_PRG.TraceOut_status[12]",
+      "PLC_PRG.TraceOut_item_DINT[12]",
+      "PLC_PRG.TraceIn_enqueue[13]",
+      "PLC_PRG.TraceIn_dequeue[13]",
+      "PLC_PRG.TraceIn_reset[13]",
+      "PLC_PRG.TraceInIO_item_DINT[13]",
+      "PLC_PRG.TraceOut_elementCount[13]",
+      "PLC_PRG.TraceOut_status[13]",
+      "PLC_PRG.TraceOut_item_DINT[13]",
+      "PLC_PRG.TraceIn_enqueue[14]",
+      "PLC_PRG.TraceIn_dequeue[14]",
+      "PLC_PRG.TraceIn_reset[14]",
+      "PLC_PRG.TraceInIO_item_DINT[14]",
+      "PLC_PRG.TraceOut_elementCount[14]",
+      "PLC_PRG.TraceOut_status[14]",
+      "PLC_PRG.TraceOut_item_DINT[14]",
+      "PLC_PRG.TraceIn_enqueue[15]",
+      "PLC_PRG.TraceIn_dequeue[15]",
+      "PLC_PRG.TraceIn_reset[15]",
+      "PLC_PRG.TraceInIO_item_DINT[15]",
+      "PLC_PRG.TraceOut_elementCount[15]",
+      "PLC_PRG.TraceOut_status[15]",
+      "PLC_PRG.TraceOut_item_DINT[15]"
+    ],
+    "trace_mapping": [
+      {
+        "step_index": 0,
+        "case_id": "case_1",
+        "case_step": 0,
+        "dt_expr": null,
+        "inputs": {
+          "enqueue": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_enqueue[0]",
+            "type": "BOOL"
+          },
+          "dequeue": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_dequeue[0]",
+            "type": "BOOL"
+          },
+          "reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_reset[0]",
+            "type": "BOOL"
+          },
+          "item": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceInIO_item_DINT[0]",
+            "type": "DINT"
+          }
+        },
+        "outputs": {
+          "elementCount": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_elementCount[0]",
+            "type": "DINT"
+          },
+          "status": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_status[0]",
+            "type": "WORD"
+          },
+          "item": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_item_DINT[0]",
+            "type": "DINT"
+          }
+        }
+      },
+      {
+        "step_index": 1,
+        "case_id": "case_1",
+        "case_step": 1,
+        "dt_expr": null,
+        "inputs": {
+          "enqueue": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_enqueue[1]",
+            "type": "BOOL"
+          },
+          "dequeue": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_dequeue[1]",
+            "type": "BOOL"
+          },
+          "reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_reset[1]",
+            "type": "BOOL"
+          },
+          "item": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceInIO_item_DINT[1]",
+            "type": "DINT"
+          }
+        },
+        "outputs": {
+          "elementCount": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_elementCount[1]",
+            "type": "DINT"
+          },
+          "status": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_status[1]",
+            "type": "WORD"
+          },
+          "item": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_item_DINT[1]",
+            "type": "DINT"
+          }
+        }
+      },
+      {
+        "step_index": 2,
+        "case_id": "case_1",
+        "case_step": 2,
+        "dt_expr": null,
+        "inputs": {
+          "enqueue": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_enqueue[2]",
+            "type": "BOOL"
+          },
+          "dequeue": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_dequeue[2]",
+            "type": "BOOL"
+          },
+          "reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_reset[2]",
+            "type": "BOOL"
+          },
+          "item": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceInIO_item_DINT[2]",
+            "type": "DINT"
+          }
+        },
+        "outputs": {
+          "elementCount": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_elementCount[2]",
+            "type": "DINT"
+          },
+          "status": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_status[2]",
+            "type": "WORD"
+          },
+          "item": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_item_DINT[2]",
+            "type": "DINT"
+          }
+        }
+      },
+      {
+        "step_index": 3,
+        "case_id": "case_1",
+        "case_step": 3,
+        "dt_expr": null,
+        "inputs": {
+          "enqueue": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_enqueue[3]",
+            "type": "BOOL"
+          },
+          "dequeue": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_dequeue[3]",
+            "type": "BOOL"
+          },
+          "reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_reset[3]",
+            "type": "BOOL"
+          },
+          "item": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceInIO_item_DINT[3]",
+            "type": "DINT"
+          }
+        },
+        "outputs": {
+          "elementCount": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_elementCount[3]",
+            "type": "DINT"
+          },
+          "status": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_status[3]",
+            "type": "WORD"
+          },
+          "item": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_item_DINT[3]",
+            "type": "DINT"
+          }
+        }
+      },
+      {
+        "step_index": 4,
+        "case_id": "case_1",
+        "case_step": 4,
+        "dt_expr": null,
+        "inputs": {
+          "enqueue": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_enqueue[4]",
+            "type": "BOOL"
+          },
+          "dequeue": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_dequeue[4]",
+            "type": "BOOL"
+          },
+          "reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_reset[4]",
+            "type": "BOOL"
+          },
+          "item": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceInIO_item_DINT[4]",
+            "type": "DINT"
+          }
+        },
+        "outputs": {
+          "elementCount": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_elementCount[4]",
+            "type": "DINT"
+          },
+          "status": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_status[4]",
+            "type": "WORD"
+          },
+          "item": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_item_DINT[4]",
+            "type": "DINT"
+          }
+        }
+      },
+      {
+        "step_index": 5,
+        "case_id": "case_1",
+        "case_step": 5,
+        "dt_expr": null,
+        "inputs": {
+          "enqueue": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_enqueue[5]",
+            "type": "BOOL"
+          },
+          "dequeue": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_dequeue[5]",
+            "type": "BOOL"
+          },
+          "reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_reset[5]",
+            "type": "BOOL"
+          },
+          "item": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceInIO_item_DINT[5]",
+            "type": "DINT"
+          }
+        },
+        "outputs": {
+          "elementCount": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_elementCount[5]",
+            "type": "DINT"
+          },
+          "status": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_status[5]",
+            "type": "WORD"
+          },
+          "item": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_item_DINT[5]",
+            "type": "DINT"
+          }
+        }
+      },
+      {
+        "step_index": 6,
+        "case_id": "case_1",
+        "case_step": 6,
+        "dt_expr": null,
+        "inputs": {
+          "enqueue": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_enqueue[6]",
+            "type": "BOOL"
+          },
+          "dequeue": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_dequeue[6]",
+            "type": "BOOL"
+          },
+          "reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_reset[6]",
+            "type": "BOOL"
+          },
+          "item": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceInIO_item_DINT[6]",
+            "type": "DINT"
+          }
+        },
+        "outputs": {
+          "elementCount": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_elementCount[6]",
+            "type": "DINT"
+          },
+          "status": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_status[6]",
+            "type": "WORD"
+          },
+          "item": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_item_DINT[6]",
+            "type": "DINT"
+          }
+        }
+      },
+      {
+        "step_index": 7,
+        "case_id": "case_1",
+        "case_step": 7,
+        "dt_expr": null,
+        "inputs": {
+          "enqueue": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_enqueue[7]",
+            "type": "BOOL"
+          },
+          "dequeue": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_dequeue[7]",
+            "type": "BOOL"
+          },
+          "reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_reset[7]",
+            "type": "BOOL"
+          },
+          "item": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceInIO_item_DINT[7]",
+            "type": "DINT"
+          }
+        },
+        "outputs": {
+          "elementCount": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_elementCount[7]",
+            "type": "DINT"
+          },
+          "status": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_status[7]",
+            "type": "WORD"
+          },
+          "item": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_item_DINT[7]",
+            "type": "DINT"
+          }
+        }
+      },
+      {
+        "step_index": 8,
+        "case_id": "case_2",
+        "case_step": 0,
+        "dt_expr": null,
+        "inputs": {
+          "enqueue": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_enqueue[8]",
+            "type": "BOOL"
+          },
+          "dequeue": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_dequeue[8]",
+            "type": "BOOL"
+          },
+          "reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_reset[8]",
+            "type": "BOOL"
+          },
+          "item": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceInIO_item_DINT[8]",
+            "type": "DINT"
+          }
+        },
+        "outputs": {
+          "elementCount": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_elementCount[8]",
+            "type": "DINT"
+          },
+          "status": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_status[8]",
+            "type": "WORD"
+          },
+          "item": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_item_DINT[8]",
+            "type": "DINT"
+          }
+        }
+      },
+      {
+        "step_index": 9,
+        "case_id": "case_2",
+        "case_step": 1,
+        "dt_expr": null,
+        "inputs": {
+          "enqueue": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_enqueue[9]",
+            "type": "BOOL"
+          },
+          "dequeue": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_dequeue[9]",
+            "type": "BOOL"
+          },
+          "reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_reset[9]",
+            "type": "BOOL"
+          },
+          "item": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceInIO_item_DINT[9]",
+            "type": "DINT"
+          }
+        },
+        "outputs": {
+          "elementCount": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_elementCount[9]",
+            "type": "DINT"
+          },
+          "status": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_status[9]",
+            "type": "WORD"
+          },
+          "item": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_item_DINT[9]",
+            "type": "DINT"
+          }
+        }
+      },
+      {
+        "step_index": 10,
+        "case_id": "case_2",
+        "case_step": 2,
+        "dt_expr": null,
+        "inputs": {
+          "enqueue": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_enqueue[10]",
+            "type": "BOOL"
+          },
+          "dequeue": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_dequeue[10]",
+            "type": "BOOL"
+          },
+          "reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_reset[10]",
+            "type": "BOOL"
+          },
+          "item": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceInIO_item_DINT[10]",
+            "type": "DINT"
+          }
+        },
+        "outputs": {
+          "elementCount": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_elementCount[10]",
+            "type": "DINT"
+          },
+          "status": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_status[10]",
+            "type": "WORD"
+          },
+          "item": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_item_DINT[10]",
+            "type": "DINT"
+          }
+        }
+      },
+      {
+        "step_index": 11,
+        "case_id": "case_2",
+        "case_step": 3,
+        "dt_expr": null,
+        "inputs": {
+          "enqueue": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_enqueue[11]",
+            "type": "BOOL"
+          },
+          "dequeue": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_dequeue[11]",
+            "type": "BOOL"
+          },
+          "reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_reset[11]",
+            "type": "BOOL"
+          },
+          "item": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceInIO_item_DINT[11]",
+            "type": "DINT"
+          }
+        },
+        "outputs": {
+          "elementCount": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_elementCount[11]",
+            "type": "DINT"
+          },
+          "status": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_status[11]",
+            "type": "WORD"
+          },
+          "item": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_item_DINT[11]",
+            "type": "DINT"
+          }
+        }
+      },
+      {
+        "step_index": 12,
+        "case_id": "case_2",
+        "case_step": 4,
+        "dt_expr": null,
+        "inputs": {
+          "enqueue": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_enqueue[12]",
+            "type": "BOOL"
+          },
+          "dequeue": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_dequeue[12]",
+            "type": "BOOL"
+          },
+          "reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_reset[12]",
+            "type": "BOOL"
+          },
+          "item": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceInIO_item_DINT[12]",
+            "type": "DINT"
+          }
+        },
+        "outputs": {
+          "elementCount": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_elementCount[12]",
+            "type": "DINT"
+          },
+          "status": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_status[12]",
+            "type": "WORD"
+          },
+          "item": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_item_DINT[12]",
+            "type": "DINT"
+          }
+        }
+      },
+      {
+        "step_index": 13,
+        "case_id": "case_2",
+        "case_step": 5,
+        "dt_expr": null,
+        "inputs": {
+          "enqueue": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_enqueue[13]",
+            "type": "BOOL"
+          },
+          "dequeue": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_dequeue[13]",
+            "type": "BOOL"
+          },
+          "reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_reset[13]",
+            "type": "BOOL"
+          },
+          "item": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceInIO_item_DINT[13]",
+            "type": "DINT"
+          }
+        },
+        "outputs": {
+          "elementCount": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_elementCount[13]",
+            "type": "DINT"
+          },
+          "status": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_status[13]",
+            "type": "WORD"
+          },
+          "item": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_item_DINT[13]",
+            "type": "DINT"
+          }
+        }
+      },
+      {
+        "step_index": 14,
+        "case_id": "case_2",
+        "case_step": 6,
+        "dt_expr": null,
+        "inputs": {
+          "enqueue": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_enqueue[14]",
+            "type": "BOOL"
+          },
+          "dequeue": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_dequeue[14]",
+            "type": "BOOL"
+          },
+          "reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_reset[14]",
+            "type": "BOOL"
+          },
+          "item": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceInIO_item_DINT[14]",
+            "type": "DINT"
+          }
+        },
+        "outputs": {
+          "elementCount": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_elementCount[14]",
+            "type": "DINT"
+          },
+          "status": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_status[14]",
+            "type": "WORD"
+          },
+          "item": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_item_DINT[14]",
+            "type": "DINT"
+          }
+        }
+      },
+      {
+        "step_index": 15,
+        "case_id": "case_2",
+        "case_step": 7,
+        "dt_expr": null,
+        "inputs": {
+          "enqueue": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_enqueue[15]",
+            "type": "BOOL"
+          },
+          "dequeue": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_dequeue[15]",
+            "type": "BOOL"
+          },
+          "reset": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_reset[15]",
+            "type": "BOOL"
+          },
+          "item": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceInIO_item_DINT[15]",
+            "type": "DINT"
+          }
+        },
+        "outputs": {
+          "elementCount": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_elementCount[15]",
+            "type": "DINT"
+          },
+          "status": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_status[15]",
+            "type": "WORD"
+          },
+          "item": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_item_DINT[15]",
+            "type": "DINT"
+          }
+        }
+      }
+    ]
+  },
+  "result_path": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\7b9bb4ea206c2615\\simulation_evidence.json"
+}

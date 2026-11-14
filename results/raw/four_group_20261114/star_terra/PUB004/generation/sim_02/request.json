@@ -1,0 +1,664 @@
+{
+  "request_id": "24d6d00ded8244aa8dea844f0207a079",
+  "mode": "IDE_SIMULATION_ONLY",
+  "no_physical_connection": true,
+  "workspace": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\2beb89607289163a",
+  "project": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\2beb89607289163a\\simulation.project",
+  "template": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\2beb89607289163a\\benchmark.project",
+  "task_id": "PUB004",
+  "task_sha256": "0b54e8d02c93676ec59cae887c572c337a97158483698d7efe06c036991472e5",
+  "source_sha256": "3cce1133041eb984f3ed884b8f375b67628365cb3401cca35e44186a5c6642fc",
+  "candidate": {
+    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    VISCOSITY_OK : BOOL;\n    PASTE_E_STOP_NC : BOOL;\n    DebounceTime : TIME;\n    CycleTime : TIME;\nEND_VAR\nVAR_OUTPUT\n    VFD_RUN : BOOL := FALSE;\n    PUMP_MAINT_DUE : BOOL := FALSE;\n    PUMP_RUNTIME_ACC : LTIME := LTIME#0ns;\nEND_VAR\nVAR\n    permitted : BOOL := FALSE;\n    wasPermitted : BOOL := FALSE;\n    debounceElapsed : LTIME := LTIME#0ns;\n    debounceLimit : LTIME := LTIME#0ns;\n    runNext : BOOL := FALSE;\n    accNext : LTIME := LTIME#0ns;\nEND_VAR",
+    "implementation": "permitted := PASTE_E_STOP_NC AND VISCOSITY_OK;\ndebounceLimit := TIME_TO_LTIME(DebounceTime);\n\nIF NOT permitted THEN\n    debounceElapsed := LTIME#0ns;\n    wasPermitted := FALSE;\nELSIF NOT wasPermitted THEN\n    debounceElapsed := LTIME#0ns;\n    wasPermitted := TRUE;\nELSIF debounceElapsed < debounceLimit THEN\n    debounceElapsed := debounceElapsed + TIME_TO_LTIME(CycleTime);\n    IF debounceElapsed > debounceLimit THEN\n        debounceElapsed := debounceLimit;\n    END_IF;\nEND_IF;\n\nrunNext := permitted AND (debounceElapsed >= debounceLimit);\naccNext := PUMP_RUNTIME_ACC;\nIF runNext THEN\n    accNext := accNext + TIME_TO_LTIME(CycleTime);\nEND_IF;\n\nVFD_RUN := runNext;\nPUMP_RUNTIME_ACC := accNext;\nPUMP_MAINT_DUE := accNext >= LTIME#500h;",
+    "supporting_objects": []
+  },
+  "program": {
+    "declaration": "PROGRAM PLC_PRG\nVAR\n BenchStep : UDINT := 0;\n BenchCalls : UDINT := 0;\n BenchDone : BOOL := FALSE;\n BenchLastTime : TIME := T#0ms;\n BenchClockReady : BOOL := FALSE;\n BenchCurrentTime : TIME := T#0ms;\n TraceDt : ARRAY[0..9] OF UDINT;\n BenchUut0 : FB_Task;\n BenchUut1 : FB_Task;\n TraceIn_VISCOSITY_OK : ARRAY[0..9] OF BOOL;\n TraceIn_PASTE_E_STOP_NC : ARRAY[0..9] OF BOOL;\n TraceIn_DebounceTime : ARRAY[0..9] OF TIME;\n TraceIn_CycleTime : ARRAY[0..9] OF TIME;\n TraceOut_VFD_RUN : ARRAY[0..9] OF BOOL;\n TraceOut_PUMP_MAINT_DUE : ARRAY[0..9] OF BOOL;\n TraceOut_PUMP_RUNTIME_ACC : ARRAY[0..9] OF LTIME;\nEND_VAR",
+    "implementation": "IF NOT BenchDone THEN\n BenchCurrentTime := TIME();\n IF NOT BenchClockReady THEN\n  BenchLastTime := BenchCurrentTime;\n  BenchClockReady := TRUE;\n ELSE\n CASE BenchStep OF\n 0:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(10) THEN\n   TraceDt[0] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut0.VISCOSITY_OK := TRUE;\n   BenchUut0.PASTE_E_STOP_NC := TRUE;\n   BenchUut0.DebounceTime := TIME#100ms;\n   BenchUut0.CycleTime := TIME#10ms;\n   TraceIn_VISCOSITY_OK[0] := BenchUut0.VISCOSITY_OK;\n   TraceIn_PASTE_E_STOP_NC[0] := BenchUut0.PASTE_E_STOP_NC;\n   TraceIn_DebounceTime[0] := BenchUut0.DebounceTime;\n   TraceIn_CycleTime[0] := BenchUut0.CycleTime;\n   BenchUut0();\n   TraceOut_VFD_RUN[0] := BenchUut0.VFD_RUN;\n   TraceOut_PUMP_MAINT_DUE[0] := BenchUut0.PUMP_MAINT_DUE;\n   TraceOut_PUMP_RUNTIME_ACC[0] := BenchUut0.PUMP_RUNTIME_ACC;\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 1:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(99) THEN\n   TraceDt[1] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut0.VISCOSITY_OK := TRUE;\n   BenchUut0.PASTE_E_STOP_NC := TRUE;\n   BenchUut0.DebounceTime := TIME#100ms;\n   BenchUut0.CycleTime := TIME#99ms;\n   TraceIn_VISCOSITY_OK[1] := BenchUut0.VISCOSITY_OK;\n   TraceIn_PASTE_E_STOP_NC[1] := BenchUut0.PASTE_E_STOP_NC;\n   TraceIn_DebounceTime[1] := BenchUut0.DebounceTime;\n   TraceIn_CycleTime[1] := BenchUut0.CycleTime;\n   BenchUut0();\n   TraceOut_VFD_RUN[1] := BenchUut0.VFD_RUN;\n   TraceOut_PUMP_MAINT_DUE[1] := BenchUut0.PUMP_MAINT_DUE;\n   TraceOut_PUMP_RUNTIME_ACC[1] := BenchUut0.PUMP_RUNTIME_ACC;\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 2:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(1) THEN\n   TraceDt[2] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut0.VISCOSITY_OK := TRUE;\n   BenchUut0.PASTE_E_STOP_NC := TRUE;\n   BenchUut0.DebounceTime := TIME#100ms;\n   BenchUut0.CycleTime := TIME#1ms;\n   TraceIn_VISCOSITY_OK[2] := BenchUut0.VISCOSITY_OK;\n   TraceIn_PASTE_E_STOP_NC[2] := BenchUut0.PASTE_E_STOP_NC;\n   TraceIn_DebounceTime[2] := BenchUut0.DebounceTime;\n   TraceIn_CycleTime[2] := BenchUut0.CycleTime;\n   BenchUut0();\n   TraceOut_VFD_RUN[2] := BenchUut0.VFD_RUN;\n   TraceOut_PUMP_MAINT_DUE[2] := BenchUut0.PUMP_MAINT_DUE;\n   TraceOut_PUMP_RUNTIME_ACC[2] := BenchUut0.PUMP_RUNTIME_ACC;\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 3:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(25) THEN\n   TraceDt[3] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut0.VISCOSITY_OK := TRUE;\n   BenchUut0.PASTE_E_STOP_NC := TRUE;\n   BenchUut0.DebounceTime := TIME#100ms;\n   BenchUut0.CycleTime := TIME#25ms;\n   TraceIn_VISCOSITY_OK[3] := BenchUut0.VISCOSITY_OK;\n   TraceIn_PASTE_E_STOP_NC[3] := BenchUut0.PASTE_E_STOP_NC;\n   TraceIn_DebounceTime[3] := BenchUut0.DebounceTime;\n   TraceIn_CycleTime[3] := BenchUut0.CycleTime;\n   BenchUut0();\n   TraceOut_VFD_RUN[3] := BenchUut0.VFD_RUN;\n   TraceOut_PUMP_MAINT_DUE[3] := BenchUut0.PUMP_MAINT_DUE;\n   TraceOut_PUMP_RUNTIME_ACC[3] := BenchUut0.PUMP_RUNTIME_ACC;\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 4:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(5) THEN\n   TraceDt[4] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut0.VISCOSITY_OK := TRUE;\n   BenchUut0.PASTE_E_STOP_NC := FALSE;\n   BenchUut0.DebounceTime := TIME#100ms;\n   BenchUut0.CycleTime := TIME#5ms;\n   TraceIn_VISCOSITY_OK[4] := BenchUut0.VISCOSITY_OK;\n   TraceIn_PASTE_E_STOP_NC[4] := BenchUut0.PASTE_E_STOP_NC;\n   TraceIn_DebounceTime[4] := BenchUut0.DebounceTime;\n   TraceIn_CycleTime[4] := BenchUut0.CycleTime;\n   BenchUut0();\n   TraceOut_VFD_RUN[4] := BenchUut0.VFD_RUN;\n   TraceOut_PUMP_MAINT_DUE[4] := BenchUut0.PUMP_MAINT_DUE;\n   TraceOut_PUMP_RUNTIME_ACC[4] := BenchUut0.PUMP_RUNTIME_ACC;\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 5:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(100) THEN\n   TraceDt[5] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut0.VISCOSITY_OK := TRUE;\n   BenchUut0.PASTE_E_STOP_NC := TRUE;\n   BenchUut0.DebounceTime := TIME#100ms;\n   BenchUut0.CycleTime := TIME#100ms;\n   TraceIn_VISCOSITY_OK[5] := BenchUut0.VISCOSITY_OK;\n   TraceIn_PASTE_E_STOP_NC[5] := BenchUut0.PASTE_E_STOP_NC;\n   TraceIn_DebounceTime[5] := BenchUut0.DebounceTime;\n   TraceIn_CycleTime[5] := BenchUut0.CycleTime;\n   BenchUut0();\n   TraceOut_VFD_RUN[5] := BenchUut0.VFD_RUN;\n   TraceOut_PUMP_MAINT_DUE[5] := BenchUut0.PUMP_MAINT_DUE;\n   TraceOut_PUMP_RUNTIME_ACC[5] := BenchUut0.PUMP_RUNTIME_ACC;\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 6:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(99) THEN\n   TraceDt[6] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut0.VISCOSITY_OK := TRUE;\n   BenchUut0.PASTE_E_STOP_NC := TRUE;\n   BenchUut0.DebounceTime := TIME#100ms;\n   BenchUut0.CycleTime := TIME#99ms;\n   TraceIn_VISCOSITY_OK[6] := BenchUut0.VISCOSITY_OK;\n   TraceIn_PASTE_E_STOP_NC[6] := BenchUut0.PASTE_E_STOP_NC;\n   TraceIn_DebounceTime[6] := BenchUut0.DebounceTime;\n   TraceIn_CycleTime[6] := BenchUut0.CycleTime;\n   BenchUut0();\n   TraceOut_VFD_RUN[6] := BenchUut0.VFD_RUN;\n   TraceOut_PUMP_MAINT_DUE[6] := BenchUut0.PUMP_MAINT_DUE;\n   TraceOut_PUMP_RUNTIME_ACC[6] := BenchUut0.PUMP_RUNTIME_ACC;\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 7:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(1) THEN\n   TraceDt[7] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut0.VISCOSITY_OK := TRUE;\n   BenchUut0.PASTE_E_STOP_NC := TRUE;\n   BenchUut0.DebounceTime := TIME#100ms;\n   BenchUut0.CycleTime := TIME#1ms;\n   TraceIn_VISCOSITY_OK[7] := BenchUut0.VISCOSITY_OK;\n   TraceIn_PASTE_E_STOP_NC[7] := BenchUut0.PASTE_E_STOP_NC;\n   TraceIn_DebounceTime[7] := BenchUut0.DebounceTime;\n   TraceIn_CycleTime[7] := BenchUut0.CycleTime;\n   BenchUut0();\n   TraceOut_VFD_RUN[7] := BenchUut0.VFD_RUN;\n   TraceOut_PUMP_MAINT_DUE[7] := BenchUut0.PUMP_MAINT_DUE;\n   TraceOut_PUMP_RUNTIME_ACC[7] := BenchUut0.PUMP_RUNTIME_ACC;\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 8:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(1) THEN\n   TraceDt[8] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut1.VISCOSITY_OK := TRUE;\n   BenchUut1.PASTE_E_STOP_NC := TRUE;\n   BenchUut1.DebounceTime := TIME#1ms;\n   BenchUut1.CycleTime := TIME#1ms;\n   TraceIn_VISCOSITY_OK[8] := BenchUut1.VISCOSITY_OK;\n   TraceIn_PASTE_E_STOP_NC[8] := BenchUut1.PASTE_E_STOP_NC;\n   TraceIn_DebounceTime[8] := BenchUut1.DebounceTime;\n   TraceIn_CycleTime[8] := BenchUut1.CycleTime;\n   BenchUut1();\n   TraceOut_VFD_RUN[8] := BenchUut1.VFD_RUN;\n   TraceOut_PUMP_MAINT_DUE[8] := BenchUut1.PUMP_MAINT_DUE;\n   TraceOut_PUMP_RUNTIME_ACC[8] := BenchUut1.PUMP_RUNTIME_ACC;\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n 9:\n  IF BenchCurrentTime - BenchLastTime >= UDINT_TO_TIME(1) THEN\n   TraceDt[9] := TIME_TO_UDINT(BenchCurrentTime - BenchLastTime);\n   BenchLastTime := BenchCurrentTime;\n   BenchUut1.VISCOSITY_OK := TRUE;\n   BenchUut1.PASTE_E_STOP_NC := TRUE;\n   BenchUut1.DebounceTime := TIME#1ms;\n   BenchUut1.CycleTime := TIME#1ms;\n   TraceIn_VISCOSITY_OK[9] := BenchUut1.VISCOSITY_OK;\n   TraceIn_PASTE_E_STOP_NC[9] := BenchUut1.PASTE_E_STOP_NC;\n   TraceIn_DebounceTime[9] := BenchUut1.DebounceTime;\n   TraceIn_CycleTime[9] := BenchUut1.CycleTime;\n   BenchUut1();\n   TraceOut_VFD_RUN[9] := BenchUut1.VFD_RUN;\n   TraceOut_PUMP_MAINT_DUE[9] := BenchUut1.PUMP_MAINT_DUE;\n   TraceOut_PUMP_RUNTIME_ACC[9] := BenchUut1.PUMP_RUNTIME_ACC;\n   BenchCalls := BenchCalls + 1;\n   BenchStep := BenchStep + 1;\n  END_IF;\n END_CASE;\n END_IF;\n IF BenchStep >= 10 THEN BenchDone := TRUE; END_IF;\nEND_IF;",
+    "step_count": 10,
+    "steps": [
+      {
+        "index": 0,
+        "case_id": "case_1",
+        "case_step": 0,
+        "dt_ms": 10
+      },
+      {
+        "index": 1,
+        "case_id": "case_1",
+        "case_step": 1,
+        "dt_ms": 99
+      },
+      {
+        "index": 2,
+        "case_id": "case_1",
+        "case_step": 2,
+        "dt_ms": 1
+      },
+      {
+        "index": 3,
+        "case_id": "case_1",
+        "case_step": 3,
+        "dt_ms": 25
+      },
+      {
+        "index": 4,
+        "case_id": "case_1",
+        "case_step": 4,
+        "dt_ms": 5
+      },
+      {
+        "index": 5,
+        "case_id": "case_1",
+        "case_step": 5,
+        "dt_ms": 100
+      },
+      {
+        "index": 6,
+        "case_id": "case_1",
+        "case_step": 6,
+        "dt_ms": 99
+      },
+      {
+        "index": 7,
+        "case_id": "case_1",
+        "case_step": 7,
+        "dt_ms": 1
+      },
+      {
+        "index": 8,
+        "case_id": "case_2",
+        "case_step": 0,
+        "dt_ms": 1
+      },
+      {
+        "index": 9,
+        "case_id": "case_2",
+        "case_step": 1,
+        "dt_ms": 1
+      }
+    ],
+    "inputs": [
+      {
+        "direction": "INPUT",
+        "name": "VISCOSITY_OK",
+        "type": "BOOL",
+        "description": "Raw signal indicating that viscosity is within the permitted range."
+      },
+      {
+        "direction": "INPUT",
+        "name": "PASTE_E_STOP_NC",
+        "type": "BOOL",
+        "description": "Normally closed emergency-stop circuit; TRUE permits operation and FALSE means emergency stop."
+      },
+      {
+        "direction": "INPUT",
+        "name": "DebounceTime",
+        "type": "TIME",
+        "description": "Required continuous valid duration for the viscosity signal; must be positive."
+      },
+      {
+        "direction": "INPUT",
+        "name": "CycleTime",
+        "type": "TIME",
+        "description": "Actual elapsed interval represented by this invocation; must be positive."
+      }
+    ],
+    "outputs": [
+      {
+        "direction": "OUTPUT",
+        "name": "VFD_RUN",
+        "type": "BOOL",
+        "description": "Pump variable-frequency-drive run command."
+      },
+      {
+        "direction": "OUTPUT",
+        "name": "PUMP_MAINT_DUE",
+        "type": "BOOL",
+        "description": "Maintenance indication when accumulated runtime reaches 500 hours."
+      },
+      {
+        "direction": "OUTPUT",
+        "name": "PUMP_RUNTIME_ACC",
+        "type": "LTIME",
+        "description": "Accumulated enabled runtime, using a long-duration time type."
+      }
+    ],
+    "trace_expressions": [
+      "PLC_PRG.TraceDt[0]",
+      "PLC_PRG.TraceIn_VISCOSITY_OK[0]",
+      "PLC_PRG.TraceIn_PASTE_E_STOP_NC[0]",
+      "PLC_PRG.TraceIn_DebounceTime[0]",
+      "PLC_PRG.TraceIn_CycleTime[0]",
+      "PLC_PRG.TraceOut_VFD_RUN[0]",
+      "PLC_PRG.TraceOut_PUMP_MAINT_DUE[0]",
+      "PLC_PRG.TraceOut_PUMP_RUNTIME_ACC[0]",
+      "PLC_PRG.TraceDt[1]",
+      "PLC_PRG.TraceIn_VISCOSITY_OK[1]",
+      "PLC_PRG.TraceIn_PASTE_E_STOP_NC[1]",
+      "PLC_PRG.TraceIn_DebounceTime[1]",
+      "PLC_PRG.TraceIn_CycleTime[1]",
+      "PLC_PRG.TraceOut_VFD_RUN[1]",
+      "PLC_PRG.TraceOut_PUMP_MAINT_DUE[1]",
+      "PLC_PRG.TraceOut_PUMP_RUNTIME_ACC[1]",
+      "PLC_PRG.TraceDt[2]",
+      "PLC_PRG.TraceIn_VISCOSITY_OK[2]",
+      "PLC_PRG.TraceIn_PASTE_E_STOP_NC[2]",
+      "PLC_PRG.TraceIn_DebounceTime[2]",
+      "PLC_PRG.TraceIn_CycleTime[2]",
+      "PLC_PRG.TraceOut_VFD_RUN[2]",
+      "PLC_PRG.TraceOut_PUMP_MAINT_DUE[2]",
+      "PLC_PRG.TraceOut_PUMP_RUNTIME_ACC[2]",
+      "PLC_PRG.TraceDt[3]",
+      "PLC_PRG.TraceIn_VISCOSITY_OK[3]",
+      "PLC_PRG.TraceIn_PASTE_E_STOP_NC[3]",
+      "PLC_PRG.TraceIn_DebounceTime[3]",
+      "PLC_PRG.TraceIn_CycleTime[3]",
+      "PLC_PRG.TraceOut_VFD_RUN[3]",
+      "PLC_PRG.TraceOut_PUMP_MAINT_DUE[3]",
+      "PLC_PRG.TraceOut_PUMP_RUNTIME_ACC[3]",
+      "PLC_PRG.TraceDt[4]",
+      "PLC_PRG.TraceIn_VISCOSITY_OK[4]",
+      "PLC_PRG.TraceIn_PASTE_E_STOP_NC[4]",
+      "PLC_PRG.TraceIn_DebounceTime[4]",
+      "PLC_PRG.TraceIn_CycleTime[4]",
+      "PLC_PRG.TraceOut_VFD_RUN[4]",
+      "PLC_PRG.TraceOut_PUMP_MAINT_DUE[4]",
+      "PLC_PRG.TraceOut_PUMP_RUNTIME_ACC[4]",
+      "PLC_PRG.TraceDt[5]",
+      "PLC_PRG.TraceIn_VISCOSITY_OK[5]",
+      "PLC_PRG.TraceIn_PASTE_E_STOP_NC[5]",
+      "PLC_PRG.TraceIn_DebounceTime[5]",
+      "PLC_PRG.TraceIn_CycleTime[5]",
+      "PLC_PRG.TraceOut_VFD_RUN[5]",
+      "PLC_PRG.TraceOut_PUMP_MAINT_DUE[5]",
+      "PLC_PRG.TraceOut_PUMP_RUNTIME_ACC[5]",
+      "PLC_PRG.TraceDt[6]",
+      "PLC_PRG.TraceIn_VISCOSITY_OK[6]",
+      "PLC_PRG.TraceIn_PASTE_E_STOP_NC[6]",
+      "PLC_PRG.TraceIn_DebounceTime[6]",
+      "PLC_PRG.TraceIn_CycleTime[6]",
+      "PLC_PRG.TraceOut_VFD_RUN[6]",
+      "PLC_PRG.TraceOut_PUMP_MAINT_DUE[6]",
+      "PLC_PRG.TraceOut_PUMP_RUNTIME_ACC[6]",
+      "PLC_PRG.TraceDt[7]",
+      "PLC_PRG.TraceIn_VISCOSITY_OK[7]",
+      "PLC_PRG.TraceIn_PASTE_E_STOP_NC[7]",
+      "PLC_PRG.TraceIn_DebounceTime[7]",
+      "PLC_PRG.TraceIn_CycleTime[7]",
+      "PLC_PRG.TraceOut_VFD_RUN[7]",
+      "PLC_PRG.TraceOut_PUMP_MAINT_DUE[7]",
+      "PLC_PRG.TraceOut_PUMP_RUNTIME_ACC[7]",
+      "PLC_PRG.TraceDt[8]",
+      "PLC_PRG.TraceIn_VISCOSITY_OK[8]",
+      "PLC_PRG.TraceIn_PASTE_E_STOP_NC[8]",
+      "PLC_PRG.TraceIn_DebounceTime[8]",
+      "PLC_PRG.TraceIn_CycleTime[8]",
+      "PLC_PRG.TraceOut_VFD_RUN[8]",
+      "PLC_PRG.TraceOut_PUMP_MAINT_DUE[8]",
+      "PLC_PRG.TraceOut_PUMP_RUNTIME_ACC[8]",
+      "PLC_PRG.TraceDt[9]",
+      "PLC_PRG.TraceIn_VISCOSITY_OK[9]",
+      "PLC_PRG.TraceIn_PASTE_E_STOP_NC[9]",
+      "PLC_PRG.TraceIn_DebounceTime[9]",
+      "PLC_PRG.TraceIn_CycleTime[9]",
+      "PLC_PRG.TraceOut_VFD_RUN[9]",
+      "PLC_PRG.TraceOut_PUMP_MAINT_DUE[9]",
+      "PLC_PRG.TraceOut_PUMP_RUNTIME_ACC[9]"
+    ],
+    "trace_mapping": [
+      {
+        "step_index": 0,
+        "case_id": "case_1",
+        "case_step": 0,
+        "dt_expr": "PLC_PRG.TraceDt[0]",
+        "inputs": {
+          "VISCOSITY_OK": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_VISCOSITY_OK[0]",
+            "type": "BOOL"
+          },
+          "PASTE_E_STOP_NC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_PASTE_E_STOP_NC[0]",
+            "type": "BOOL"
+          },
+          "DebounceTime": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DebounceTime[0]",
+            "type": "TIME"
+          },
+          "CycleTime": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_CycleTime[0]",
+            "type": "TIME"
+          }
+        },
+        "outputs": {
+          "VFD_RUN": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_VFD_RUN[0]",
+            "type": "BOOL"
+          },
+          "PUMP_MAINT_DUE": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_PUMP_MAINT_DUE[0]",
+            "type": "BOOL"
+          },
+          "PUMP_RUNTIME_ACC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_PUMP_RUNTIME_ACC[0]",
+            "type": "LTIME"
+          }
+        }
+      },
+      {
+        "step_index": 1,
+        "case_id": "case_1",
+        "case_step": 1,
+        "dt_expr": "PLC_PRG.TraceDt[1]",
+        "inputs": {
+          "VISCOSITY_OK": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_VISCOSITY_OK[1]",
+            "type": "BOOL"
+          },
+          "PASTE_E_STOP_NC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_PASTE_E_STOP_NC[1]",
+            "type": "BOOL"
+          },
+          "DebounceTime": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DebounceTime[1]",
+            "type": "TIME"
+          },
+          "CycleTime": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_CycleTime[1]",
+            "type": "TIME"
+          }
+        },
+        "outputs": {
+          "VFD_RUN": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_VFD_RUN[1]",
+            "type": "BOOL"
+          },
+          "PUMP_MAINT_DUE": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_PUMP_MAINT_DUE[1]",
+            "type": "BOOL"
+          },
+          "PUMP_RUNTIME_ACC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_PUMP_RUNTIME_ACC[1]",
+            "type": "LTIME"
+          }
+        }
+      },
+      {
+        "step_index": 2,
+        "case_id": "case_1",
+        "case_step": 2,
+        "dt_expr": "PLC_PRG.TraceDt[2]",
+        "inputs": {
+          "VISCOSITY_OK": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_VISCOSITY_OK[2]",
+            "type": "BOOL"
+          },
+          "PASTE_E_STOP_NC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_PASTE_E_STOP_NC[2]",
+            "type": "BOOL"
+          },
+          "DebounceTime": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DebounceTime[2]",
+            "type": "TIME"
+          },
+          "CycleTime": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_CycleTime[2]",
+            "type": "TIME"
+          }
+        },
+        "outputs": {
+          "VFD_RUN": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_VFD_RUN[2]",
+            "type": "BOOL"
+          },
+          "PUMP_MAINT_DUE": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_PUMP_MAINT_DUE[2]",
+            "type": "BOOL"
+          },
+          "PUMP_RUNTIME_ACC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_PUMP_RUNTIME_ACC[2]",
+            "type": "LTIME"
+          }
+        }
+      },
+      {
+        "step_index": 3,
+        "case_id": "case_1",
+        "case_step": 3,
+        "dt_expr": "PLC_PRG.TraceDt[3]",
+        "inputs": {
+          "VISCOSITY_OK": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_VISCOSITY_OK[3]",
+            "type": "BOOL"
+          },
+          "PASTE_E_STOP_NC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_PASTE_E_STOP_NC[3]",
+            "type": "BOOL"
+          },
+          "DebounceTime": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DebounceTime[3]",
+            "type": "TIME"
+          },
+          "CycleTime": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_CycleTime[3]",
+            "type": "TIME"
+          }
+        },
+        "outputs": {
+          "VFD_RUN": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_VFD_RUN[3]",
+            "type": "BOOL"
+          },
+          "PUMP_MAINT_DUE": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_PUMP_MAINT_DUE[3]",
+            "type": "BOOL"
+          },
+          "PUMP_RUNTIME_ACC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_PUMP_RUNTIME_ACC[3]",
+            "type": "LTIME"
+          }
+        }
+      },
+      {
+        "step_index": 4,
+        "case_id": "case_1",
+        "case_step": 4,
+        "dt_expr": "PLC_PRG.TraceDt[4]",
+        "inputs": {
+          "VISCOSITY_OK": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_VISCOSITY_OK[4]",
+            "type": "BOOL"
+          },
+          "PASTE_E_STOP_NC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_PASTE_E_STOP_NC[4]",
+            "type": "BOOL"
+          },
+          "DebounceTime": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DebounceTime[4]",
+            "type": "TIME"
+          },
+          "CycleTime": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_CycleTime[4]",
+            "type": "TIME"
+          }
+        },
+        "outputs": {
+          "VFD_RUN": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_VFD_RUN[4]",
+            "type": "BOOL"
+          },
+          "PUMP_MAINT_DUE": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_PUMP_MAINT_DUE[4]",
+            "type": "BOOL"
+          },
+          "PUMP_RUNTIME_ACC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_PUMP_RUNTIME_ACC[4]",
+            "type": "LTIME"
+          }
+        }
+      },
+      {
+        "step_index": 5,
+        "case_id": "case_1",
+        "case_step": 5,
+        "dt_expr": "PLC_PRG.TraceDt[5]",
+        "inputs": {
+          "VISCOSITY_OK": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_VISCOSITY_OK[5]",
+            "type": "BOOL"
+          },
+          "PASTE_E_STOP_NC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_PASTE_E_STOP_NC[5]",
+            "type": "BOOL"
+          },
+          "DebounceTime": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DebounceTime[5]",
+            "type": "TIME"
+          },
+          "CycleTime": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_CycleTime[5]",
+            "type": "TIME"
+          }
+        },
+        "outputs": {
+          "VFD_RUN": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_VFD_RUN[5]",
+            "type": "BOOL"
+          },
+          "PUMP_MAINT_DUE": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_PUMP_MAINT_DUE[5]",
+            "type": "BOOL"
+          },
+          "PUMP_RUNTIME_ACC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_PUMP_RUNTIME_ACC[5]",
+            "type": "LTIME"
+          }
+        }
+      },
+      {
+        "step_index": 6,
+        "case_id": "case_1",
+        "case_step": 6,
+        "dt_expr": "PLC_PRG.TraceDt[6]",
+        "inputs": {
+          "VISCOSITY_OK": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_VISCOSITY_OK[6]",
+            "type": "BOOL"
+          },
+          "PASTE_E_STOP_NC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_PASTE_E_STOP_NC[6]",
+            "type": "BOOL"
+          },
+          "DebounceTime": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DebounceTime[6]",
+            "type": "TIME"
+          },
+          "CycleTime": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_CycleTime[6]",
+            "type": "TIME"
+          }
+        },
+        "outputs": {
+          "VFD_RUN": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_VFD_RUN[6]",
+            "type": "BOOL"
+          },
+          "PUMP_MAINT_DUE": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_PUMP_MAINT_DUE[6]",
+            "type": "BOOL"
+          },
+          "PUMP_RUNTIME_ACC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_PUMP_RUNTIME_ACC[6]",
+            "type": "LTIME"
+          }
+        }
+      },
+      {
+        "step_index": 7,
+        "case_id": "case_1",
+        "case_step": 7,
+        "dt_expr": "PLC_PRG.TraceDt[7]",
+        "inputs": {
+          "VISCOSITY_OK": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_VISCOSITY_OK[7]",
+            "type": "BOOL"
+          },
+          "PASTE_E_STOP_NC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_PASTE_E_STOP_NC[7]",
+            "type": "BOOL"
+          },
+          "DebounceTime": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DebounceTime[7]",
+            "type": "TIME"
+          },
+          "CycleTime": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_CycleTime[7]",
+            "type": "TIME"
+          }
+        },
+        "outputs": {
+          "VFD_RUN": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_VFD_RUN[7]",
+            "type": "BOOL"
+          },
+          "PUMP_MAINT_DUE": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_PUMP_MAINT_DUE[7]",
+            "type": "BOOL"
+          },
+          "PUMP_RUNTIME_ACC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_PUMP_RUNTIME_ACC[7]",
+            "type": "LTIME"
+          }
+        }
+      },
+      {
+        "step_index": 8,
+        "case_id": "case_2",
+        "case_step": 0,
+        "dt_expr": "PLC_PRG.TraceDt[8]",
+        "inputs": {
+          "VISCOSITY_OK": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_VISCOSITY_OK[8]",
+            "type": "BOOL"
+          },
+          "PASTE_E_STOP_NC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_PASTE_E_STOP_NC[8]",
+            "type": "BOOL"
+          },
+          "DebounceTime": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DebounceTime[8]",
+            "type": "TIME"
+          },
+          "CycleTime": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_CycleTime[8]",
+            "type": "TIME"
+          }
+        },
+        "outputs": {
+          "VFD_RUN": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_VFD_RUN[8]",
+            "type": "BOOL"
+          },
+          "PUMP_MAINT_DUE": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_PUMP_MAINT_DUE[8]",
+            "type": "BOOL"
+          },
+          "PUMP_RUNTIME_ACC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_PUMP_RUNTIME_ACC[8]",
+            "type": "LTIME"
+          }
+        }
+      },
+      {
+        "step_index": 9,
+        "case_id": "case_2",
+        "case_step": 1,
+        "dt_expr": "PLC_PRG.TraceDt[9]",
+        "inputs": {
+          "VISCOSITY_OK": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_VISCOSITY_OK[9]",
+            "type": "BOOL"
+          },
+          "PASTE_E_STOP_NC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_PASTE_E_STOP_NC[9]",
+            "type": "BOOL"
+          },
+          "DebounceTime": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_DebounceTime[9]",
+            "type": "TIME"
+          },
+          "CycleTime": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceIn_CycleTime[9]",
+            "type": "TIME"
+          }
+        },
+        "outputs": {
+          "VFD_RUN": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_VFD_RUN[9]",
+            "type": "BOOL"
+          },
+          "PUMP_MAINT_DUE": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_PUMP_MAINT_DUE[9]",
+            "type": "BOOL"
+          },
+          "PUMP_RUNTIME_ACC": {
+            "kind": "scalar",
+            "expr": "PLC_PRG.TraceOut_PUMP_RUNTIME_ACC[9]",
+            "type": "LTIME"
+          }
+        }
+      }
+    ]
+  },
+  "result_path": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\2beb89607289163a\\simulation_evidence.json"
+}

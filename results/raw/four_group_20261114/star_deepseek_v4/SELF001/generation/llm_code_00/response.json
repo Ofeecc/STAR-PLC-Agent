@@ -1,0 +1,54 @@
+{
+  "caching": {
+    "type": "disabled"
+  },
+  "created_at": 1794652775,
+  "id": "resp_02179465277503807ebaf30756c4961bf6a829967aba650724a0b",
+  "max_output_tokens": 24576,
+  "model": "deepseek-v4.1-flash-1017",
+  "object": "response",
+  "output": [
+    {
+      "id": "rs_02179465277563000000000000000000000ffffac1538703c43c2",
+      "type": "reasoning",
+      "summary": [
+        {
+          "type": "summary_text",
+          "text": "We need answer JSON object with declaration, implementation, supporting_objects. Need implement CODESYS FB_Task per spec. Need include exact interface names/types, all behavior. Likely simple latch. Need consider declaration includes VAR_INPUT Start, Stop, GuardClosed BOOL; VAR_OUTPUT Run BOOL; maybe VAR internal RunPrev or no need. Initial Run false via default. Need implementation ST body. Need ensure P3 etc. Logic:\n\nIF Stop OR NOT GuardClosed THEN\n    Run := FALSE;\nELSIF Start THEN\n    Run := TRUE;\nEND_IF;\nNo else retains. Does this satisfy P4 retain? If no Start, no Stop, GuardClosed, Run unchanged. Yes. P5: G(Run -> X(Stop | !GuardClosed | Run)). Does this hold? If Run true at scan k. At next scan, if Stop or open guard => Run false; else if Start true => Run true; else retain qRun = true => Run true. Yes. Since qRun previous Run. So okay.\n\nNeed maybe initial Run false via VAR_OUTPUT Run : BOOL := FALSE; CODESYS allows initialization. Need exact declaration: FUNCTION_BLOCK FB_Task followed by VAR sections; omit END_FUNCTION_BLOCK. Should include VAR_INPUT and VAR_OUTPUT. Could include no internal. The task mentions \"retained run command\", initial Run false. We can write:\n\nFUNCTION_BLOCK FB_Task\nVAR_INPUT\n    Start : BOOL;\n    Stop : BOOL;\n    GuardClosed : BOOL;\nEND_VAR\nVAR_OUTPUT\n    Run : BOOL := FALSE;\nEND_VAR\n\nImplementation:\nIF Stop OR NOT GuardClosed THEN\n    Run := FALSE;\nELSIF Start THEN\n    Run := TRUE;\nEND_IF;\n\nNeed supporting_objects list empty? Referenced DUTs none. So [].\n\nBut let's be cautious: Requirements say if Stop = TRUE or GuardClosed = FALSE force Run FALSE. Otherwise if Start TRUE set Run TRUE including when Start stays TRUE on scan GuardClosed closes. Otherwise retain. If Stop false, GuardClosed true, Start true => Run true. If Start true and Stop true => false due priority. Good.\n\nNeed return only JSON object. Ensure no Markdown. The \"declaration\" string includes newline escapes. We output valid JSON. Need no trailing. supporting_objects [] .\n\nBut maybe they expect declaration as string exactly? yes.\n\nCould there be need to include `VAR` internal `RunPrev`? Not needed. But if use qRun? No. Minimal.\n\nNeed consider initialization of output in declaration. In CODESYS, VAR_OUTPUT Run : BOOL := FALSE; is okay. The task says initial values Run=false. Good.\n\nNo supporting objects.\n\nLet's craft final JSON. Ensure valid escaping newline. Use pretty JSON."
+        }
+      ],
+      "status": "completed"
+    },
+    {
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "output_text",
+          "text": "{\n  \"declaration\": \"FUNCTION_BLOCK FB_Task\\nVAR_INPUT\\n    Start : BOOL;\\n    Stop : BOOL;\\n    GuardClosed : BOOL;\\nEND_VAR\\nVAR_OUTPUT\\n    Run : BOOL := FALSE;\\nEND_VAR\",\n  \"implementation\": \"IF Stop OR NOT GuardClosed THEN\\n    Run := FALSE;\\nELSIF Start THEN\\n    Run := TRUE;\\nEND_IF;\",\n  \"supporting_objects\": []\n}"
+        }
+      ],
+      "status": "completed",
+      "id": "msg_02179465277946000000000000000000000ffffac1538702f4ee7",
+      "phase": "final_answer"
+    }
+  ],
+  "reasoning": {
+    "effort": "high"
+  },
+  "service_tier": "default",
+  "status": "completed",
+  "store": false,
+  "usage": {
+    "input_tokens": 2730,
+    "output_tokens": 694,
+    "total_tokens": 3424,
+    "input_tokens_details": {
+      "cached_tokens": 0
+    },
+    "output_tokens_details": {
+      "reasoning_tokens": 587
+    },
+    "cost": "¥0.00435"
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "caching": {
+    "type": "disabled"
+  },
+  "created_at": 1794653481,
+  "id": "resp_0217946534811004b8de4e4bcc885b4197a5e365ab4902ca7fd96",
+  "max_output_tokens": 24576,
+  "model": "deepseek-v4.1-flash-1017",
+  "object": "response",
+  "output": [
+    {
+      "id": "rs_02179465348186800000000000000000000ffffac183b6afb2c41",
+      "type": "reasoning",
+      "summary": [
+        {
+          "type": "summary_text",
+          "text": "We need answer only JSON object with declaration, implementation, supporting_objects. Need implement FB_Task. Need exact interface names/types. Preset USINT, Count USINT, Ready BOOL, Request/Trip BOOL. Need behavior per scan: sample inputs once; reset if Trip or not Request or invalid Preset (<1 or >5) -> Count=0 Ready=false. Else count = min(prev Count +1, Preset), Ready=(Count>=Preset). Need use USINT arithmetic. Preset valid 1..5. Count previous retained. Potential overflow Count+1 if Count=255 but Count constrained and reset. But if Preset valid 1..5, Count <=5. For invalid reset. Use temp USINT newCount. Need avoid USINT overflow when Count 255? Since Count only within valid. But on first invalid resets. Fine.\n\nNeed declaration format \"CODESYS FUNCTION_BLOCK FB_Task followed by all VAR sections; omit END_FUNCTION_BLOCK.\" So declaration string should be:\n\nFUNCTION_BLOCK FB_Task\nVAR_INPUT\n    Request : BOOL;\n    Trip : BOOL;\n    Preset : USINT;\nEND_VAR\nVAR_OUTPUT\n    Ready : BOOL;\n    Count : USINT;\nEND_VAR\nVAR\n    tmpCount : USINT;\n    validPreset : BOOL;\nEND_VAR\n\nMaybe Count output initialized? In CODESYS outputs have init. Need initial Count=0 Ready=false. Could set VAR_OUTPUT Count : USINT := 0; Ready : BOOL := FALSE; Is that allowed? yes. But declaration initial values. For FB instance initial state. Do.\n\nImplementation:\nvalidPreset := (Preset >= 1) AND (Preset <= 5);\nIF Trip OR NOT Request OR NOT validPreset THEN\n    Count := 0;\n    Ready := FALSE;\nELSE\n    IF Count < Preset THEN\n        tmpCount := Count + 1;\n        // min\n        IF tmpCount > Preset THEN tmpCount := Preset; END_IF;\n        Count := tmpCount;\n    ELSE\n        Count := Preset;\n    END_IF;\n    Ready := (Count >= Preset);\nEND_IF;\n\nNeed ensure Count = min(prev+1, Preset) for valid. If Count < Preset, Count+1 could be > preset only if Count = Preset-? Actually if Count < Preset and integer, Count+1 <= Preset. So no need min, but include. If Count >= Preset, newCount = min(Count+1, Preset)=Preset. So Count := Preset. Good.\n\nBut if Count is e.g. 250 and Preset=5, Count<Preset false, Count := 5. Good. If Count=0 Preset=5, Count+1=1. Good. If Preset=1, Count<1? if Count=0 yes tmp=1 min=1, ready true. Good.\n\nNeed perhaps compute Count with INT to avoid USINT overflow. But Count in valid range and <=5; first invalid resets. If Count somehow corrupted, Count < Preset false. If Count = 255 and Preset=5, Count := Preset. No overflow. If Count=4 Preset=5, Count+1=5. Fine. So safe.\n\nBut formal says Ready <-> qualified = Count >= Preset and Preset valid. In reset invalid, Ready false and Count 0; Since invalid, qualified false due Preset invalid. Good. If valid and Count saturated ready true. Good. If valid and count < preset false. Good.\n\nNeed maybe use \"Request = FALSE\" syntax. fine.\n\nSupporting objects: none. Need include empty list.\n\nNeed output JSON only. Ensure strings escape. Need include declaration and implementation as strings. The implementation is ST body alone. No markdown.\n\nDouble-check declaration: They say \"declaration is CODESYS FUNCTION_BLOCK FB_Task followed by all VAR sections; omit END_FUNCTION_BLOCK.\" So include FUNC block header. No END_FUNCTION_BLOCK. It may be okay. supporting_objects list.\n\nNeed no extra text.\n\nPotential CODESYS syntax: USINT literal 1 ok. Count + 1 may promote? In ST, Count + 1 expression type maybe USINT? It might compile. To be safer use integer temp? We can use USINT tmpCount and assign Count + 1. Standard. Could use IF Count < Preset THEN Count := Count + 1; ELSE Count := Preset; END_IF; Then Ready. This exactly min for valid. But if Count < Preset, Count+1 <= Preset. If Count >= Preset, set Preset. Good. Simpler. The requirement min(Count+1,Preset). Equivalent. Need no tmp. In invalid branch no arithmetic.\n\nPotential issue if Count=255 and Preset=255 invalid (Preset>5) so reset. Good.\n\nCould compute validPreset variable. Need avoid NOT validPreset? Fine.\n\nImplementation body:\nvalidPreset := (Preset >= 1) AND (Preset <= 5);\n\nIF Trip OR (NOT Request) OR (NOT validPreset) THEN\n    Count := 0;\n    Ready := FALSE;\nELSE\n    IF Count < Preset THEN\n        Count := Count + 1;\n    ELSE\n        Count := Preset;\n    END_IF;\n    Ready := (Count >= Preset);\nEND_IF;\n\nThis matches. But consider P2 when healthy and prev Count maybe greater than Preset but <=? If prev Count > Preset and valid, nextCount = min(prev+1, Preset)=Preset. Our Count:=Preset. Good. Ready true. Good.\n\nNeed initial Count/Ready. Declaration output init. Maybe in CODESYS output initial values in VAR_OUTPUT allowed:\nReady : BOOL := FALSE;\nCount : USINT := 0;\nThis is accepted.\n\nCould include ValidPreset local BOOL. fine.\n\nNeed supporting objects maybe none. If no DUT referenced. Good.\n\nNeed final JSON with exact keys.\n\nOne nuance: \"declaration is CODESYS FUNCTION_BLOCK FB_Task followed by all VAR sections; omit END_FUNCTION_BLOCK.\" They likely expect declaration string containing \"FUNCTION_BLOCK FB_Task\\nVAR_INPUT...\". Yes.\n\nLet's craft JSON. Ensure no markdown. Use escaped newlines."
+        }
+      ],
+      "status": "completed"
+    },
+    {
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "output_text",
+          "text": "{\n  \"declaration\": \"FUNCTION_BLOCK FB_Task\\nVAR_INPUT\\n    Request : BOOL;\\n    Trip : BOOL;\\n    Preset : USINT;\\nEND_VAR\\nVAR_OUTPUT\\n    Ready : BOOL := FALSE;\\n    Count : USINT := 0;\\nEND_VAR\\nVAR\\n    validPreset : BOOL;\\nEND_VAR\",\n  \"implementation\": \"validPreset := (Preset >= 1) AND (Preset <= 5);\\n\\nIF Trip OR (NOT Request) OR (NOT validPreset) THEN\\n    Count := 0;\\n    Ready := FALSE;\\nELSE\\n    IF Count < Preset THEN\\n        Count := Count + 1;\\n    ELSE\\n        Count := Preset;\\n    END_IF;\\n    Ready := (Count >= Preset);\\nEND_IF;\",\n  \"supporting_objects\": []\n}"
+        }
+      ],
+      "status": "completed",
+      "id": "msg_02179465348949300000000000000000000ffffac183b6ab17cd8",
+      "phase": "final_answer"
+    }
+  ],
+  "reasoning": {
+    "effort": "high"
+  },
+  "service_tier": "default",
+  "status": "completed",
+  "store": false,
+  "usage": {
+    "input_tokens": 3412,
+    "output_tokens": 1561,
+    "total_tokens": 4973,
+    "input_tokens_details": {
+      "cached_tokens": 0
+    },
+    "output_tokens_details": {
+      "reasoning_tokens": 1357
+    },
+    "cost": "¥0.007628"
+  }
+}

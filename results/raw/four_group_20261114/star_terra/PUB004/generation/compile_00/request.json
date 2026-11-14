@@ -1,0 +1,20 @@
+{
+  "request_id": "8908042efe5e4827947c7978b407a82e",
+  "source_sha256": "edf9a9f0db1044c25a099c08ddb7d381a34d7ed189beaec6fb73815affb9b08b",
+  "task_id": "PUB004",
+  "project": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\e10e20bad943561d\\task.project",
+  "candidate": {
+    "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    VISCOSITY_OK : BOOL;\n    PASTE_E_STOP_NC : BOOL;\n    DebounceTime : TIME;\n    CycleTime : TIME;\nEND_VAR\nVAR_OUTPUT\n    VFD_RUN : BOOL := FALSE;\n    PUMP_MAINT_DUE : BOOL := FALSE;\n    PUMP_RUNTIME_ACC : LTIME := LTIME#0ns;\nEND_VAR\nVAR\n    permitted : BOOL := FALSE;\n    ViscosityDebounce : FB_ViscosityDebounce;\n    runNext : BOOL := FALSE;\n    accNext : LTIME := LTIME#0ns;\nEND_VAR",
+    "implementation": "permitted := PASTE_E_STOP_NC AND VISCOSITY_OK;\n\nViscosityDebounce(IN := permitted, PT := DebounceTime, CycleTime := CycleTime);\n\nrunNext := permitted AND ViscosityDebounce.Q;\naccNext := PUMP_RUNTIME_ACC;\nIF runNext THEN\n    accNext := accNext + TIME_TO_LTIME(CycleTime);\nEND_IF;\n\nVFD_RUN := runNext;\nPUMP_RUNTIME_ACC := accNext;\nPUMP_MAINT_DUE := accNext >= LTIME#500h;",
+    "supporting_objects": [
+      {
+        "name": "FB_ViscosityDebounce",
+        "kind": "FUNCTION_BLOCK",
+        "declaration": "FUNCTION_BLOCK FB_ViscosityDebounce\nVAR_INPUT\n    IN : BOOL;\n    PT : TIME;\n    CycleTime : TIME;\nEND_VAR\nVAR_OUTPUT\n    Q : BOOL := FALSE;\nEND_VAR\nVAR\n    started : BOOL := FALSE;\n    elapsed : LTIME := LTIME#0ns;\nEND_VAR",
+        "implementation": "IF NOT IN THEN\n    started := FALSE;\n    elapsed := LTIME#0ns;\nELSIF NOT started THEN\n    started := TRUE;\n    elapsed := LTIME#0ns;\nELSIF elapsed < TIME_TO_LTIME(PT) THEN\n    elapsed := elapsed + TIME_TO_LTIME(CycleTime);\n    IF elapsed > TIME_TO_LTIME(PT) THEN\n        elapsed := TIME_TO_LTIME(PT);\n    END_IF;\nEND_IF;\n\nQ := IN AND (elapsed >= TIME_TO_LTIME(PT));"
+      }
+    ]
+  },
+  "result_path": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\plc_work\\e10e20bad943561d\\codesys_evidence.json",
+  "started_utc": "2026-11-14T11:10:36.494054+00:00"
+}

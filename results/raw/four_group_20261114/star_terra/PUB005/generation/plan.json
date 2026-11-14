@@ -1,0 +1,101 @@
+{
+  "state_machine": [
+    {
+      "state": "E_STOP",
+      "initial": true,
+      "description": "Conservative initial state; after input sampling, indicates an active E-stop. Startup inhibition runs independently.",
+      "transitions": [
+        {
+          "condition": "Weld_E_Stop_NC = TRUE",
+          "target": "READY"
+        },
+        {
+          "condition": "Weld_E_Stop_NC = FALSE",
+          "target": "E_STOP"
+        }
+      ]
+    },
+    {
+      "state": "READY",
+      "description": "E-stop is inactive. Gap monitoring is permitted only after startup inhibition expires.",
+      "transitions": [
+        {
+          "condition": "Weld_E_Stop_NC = FALSE",
+          "target": "E_STOP"
+        },
+        {
+          "condition": "Weld_E_Stop_NC = TRUE",
+          "target": "READY"
+        }
+      ]
+    }
+  ],
+  "timer_plan": [
+    {
+      "name": "T_Startup",
+      "type": "TON",
+      "PT": "T#5s",
+      "input": "TRUE",
+      "reset_conditions": "Fresh instance or power-up reinitialization only; E-stop does not reset it.",
+      "semantics": "Starts with elapsed time zero on the first FB invocation. Q becomes TRUE at elapsed time >= 5 seconds and remains TRUE. Time advances monotonically through E-stop."
+    },
+    {
+      "name": "T_Gap",
+      "type": "TON",
+      "PT": "DebounceTime",
+      "input": "T_Startup.Q AND Weld_E_Stop_NC AND Gap_Exceeded",
+      "reset_conditions": "Reset on any invocation where startup is active, E-stop is active, or Gap_Exceeded is FALSE.",
+      "semantics": "The first eligible sampled invocation has elapsed time zero, including the scan that completes startup. Q becomes TRUE after a continuous eligible interval of at least DebounceTime. DebounceTime is assumed positive and constant within a test."
+    }
+  ],
+  "priorities": [
+    "E-stop immediately suppresses Operator_Alert and clears gap timing; it does not interrupt or restart startup timing.",
+    "Startup inhibition suppresses Operator_Alert and prevents gap timing. Weld_Soft_Start_Active reports startup independently of E-stop.",
+    "A FALSE gap input immediately suppresses the alert and clears gap timing.",
+    "Only a continuously qualified gap after startup with E-stop inactive permits the alert."
+  ],
+  "initial_values": {
+    "Operator_Alert": false,
+    "Weld_Soft_Start_Active": true,
+    "state": "E_STOP",
+    "T_Startup.ET": "T#0ms",
+    "T_Startup.Q": false,
+    "T_Gap.ET": "T#0ms",
+    "T_Gap.Q": false,
+    "startupElapsed_ms": 0,
+    "gapElapsed_ms": 0,
+    "note": "Elapsed values are timer state, not separate accumulating counters. These values apply to a fresh instance before its first invocation."
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "Edge sampling",
+      "actions": "Sample all inputs once. Timer enable transitions are determined from these sampled values; no unobserved input stability is assumed."
+    },
+    {
+      "stage": 2,
+      "name": "Safety/reset priority and state transitions",
+      "actions": "Set state to E_STOP when sampled Weld_E_Stop_NC is FALSE, otherwise READY. Establish gap suppression for active E-stop or FALSE gap; startup suppression is resolved using the current startup timer result in stage 3."
+    },
+    {
+      "stage": 3,
+      "name": "Unconditional top-level timer FB calls",
+      "actions": "Outside all CASE/IF branches, call T_Startup(IN := TRUE, PT := T#5s), then call T_Gap(IN := T_Startup.Q AND Weld_E_Stop_NC AND Gap_Exceeded, PT := DebounceTime). The second call uses the current-scan T_Startup.Q, so the startup-expiry scan is the first eligible gap sample."
+    },
+    {
+      "stage": 4,
+      "name": "Unified output assignments",
+      "actions": "Assign Weld_Soft_Start_Active := NOT T_Startup.Q. Assign Operator_Alert := T_Startup.Q AND Weld_E_Stop_NC AND Gap_Exceeded AND T_Gap.Q, using current-scan timer results and sampled inputs."
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G((Weld_Soft_Start_Active | !Weld_E_Stop_NC | !Gap_Exceeded) -> !Operator_Alert)"
+    },
+    {
+      "id": "A2",
+      "formula": "G(!Weld_Soft_Start_Active -> X(!Weld_Soft_Start_Active))"
+    }
+  ]
+}

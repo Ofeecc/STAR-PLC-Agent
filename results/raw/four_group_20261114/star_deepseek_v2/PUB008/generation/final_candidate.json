@@ -1,0 +1,12 @@
+{
+  "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    count : DINT;\nEND_VAR\nVAR_IN_OUT\n    analogValues : ARRAY[*] OF INT;\n    channels : ARRAY[*] OF ST_AnalogChannel;\nEND_VAR\nVAR\n    lbA : DINT;\n    ubA : DINT;\n    lenA : DINT;\n    lbC : DINT;\n    ubC : DINT;\n    lenC : DINT;\n    nProcess : DINT;\n    i : DINT;\n    idxA : DINT;\n    idxC : DINT;\n    mode : INT;\n    raw : INT;\n    lo : REAL;\n    hi : REAL;\nEND_VAR",
+  "implementation": "lbA := LOWER_BOUND(analogValues, 1);\nubA := UPPER_BOUND(analogValues, 1);\nlenA := ubA - lbA + 1;\nlbC := LOWER_BOUND(channels, 1);\nubC := UPPER_BOUND(channels, 1);\nlenC := ubC - lbC + 1;\n\nIF count < 0 THEN\n    nProcess := 0;\nELSIF count > lenA THEN\n    nProcess := lenA;\nELSE\n    nProcess := count;\nEND_IF;\n\nIF nProcess > lenC THEN\n    nProcess := lenC;\nEND_IF;\n\nIF nProcess < 0 THEN\n    nProcess := 0;\nEND_IF;\n\nIF nProcess > 0 THEN\n    FOR i := 0 TO nProcess - 1 DO\n        idxC := lbC + i;\n        IF channels[idxC].enable THEN\n            mode := channels[idxC].measuringMode;\n            lo := channels[idxC].loLIM;\n            hi := channels[idxC].hiLIM;\n            IF (mode <> 0) AND (mode <> 1) AND (mode <> 2) THEN\n                channels[idxC].retVal := 16#8001;\n            ELSIF hi <= lo THEN\n                channels[idxC].retVal := 16#8002;\n            ELSE\n                idxA := lbA + i;\n                raw := analogValues[idxA];\n                IF mode = 0 THEN\n                    IF channels[idxC].bipolar THEN\n                        channels[idxC].outputValue := lo + ((INT_TO_REAL(raw) + 27648.0) / 55296.0) * (hi - lo);\n                    ELSE\n                        channels[idxC].outputValue := lo + (INT_TO_REAL(raw) / 27648.0) * (hi - lo);\n                    END_IF;\n                ELSIF mode = 1 THEN\n                    channels[idxC].outputValue := INT_TO_REAL(raw) / 10.0;\n                ELSIF mode = 2 THEN\n                    channels[idxC].outputValue := INT_TO_REAL(raw) / 100.0;\n                END_IF;\n                channels[idxC].retVal := 0;\n            END_IF;\n        END_IF;\n    END_FOR;\nEND_IF;",
+  "supporting_objects": [
+    {
+      "name": "ST_AnalogChannel",
+      "kind": "DUT",
+      "declaration": "TYPE ST_AnalogChannel :\nSTRUCT\n    enable : BOOL;\n    hiLIM : REAL;\n    loLIM : REAL;\n    bipolar : BOOL;\n    measuringMode : INT;\n    retVal : WORD;\n    outputValue : REAL;\nEND_STRUCT\nEND_TYPE",
+      "implementation": ""
+    }
+  ]
+}

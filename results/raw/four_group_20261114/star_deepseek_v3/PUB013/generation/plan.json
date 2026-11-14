@@ -1,0 +1,172 @@
+{
+  "state_machine": [
+    {
+      "state": "S0_RESET_OFF",
+      "initial": true,
+      "purpose": "Power-up/reset. Fan command is OFF and the occupancy delay is reset while permit is FALSE. Temperature adjustment is still computed each scan.",
+      "transitions": [
+        {
+          "to": "S1_DELAY_RUNNING",
+          "guard": "permit = TRUE AND TON_OccupancyDelay.Q = FALSE"
+        },
+        {
+          "to": "S2_FAN_ON",
+          "guard": "permit = TRUE AND TON_OccupancyDelay.Q = TRUE"
+        },
+        {
+          "to": "S0_RESET_OFF",
+          "guard": "permit = FALSE"
+        }
+      ]
+    },
+    {
+      "state": "S1_DELAY_RUNNING",
+      "purpose": "Occupied non-Night operation before 30 s maturity. Fan remains OFF; TON accumulates continuously.",
+      "transitions": [
+        {
+          "to": "S0_RESET_OFF",
+          "guard": "permit = FALSE"
+        },
+        {
+          "to": "S2_FAN_ON",
+          "guard": "permit = TRUE AND TON_OccupancyDelay.Q = TRUE"
+        },
+        {
+          "to": "S1_DELAY_RUNNING",
+          "guard": "permit = TRUE AND TON_OccupancyDelay.Q = FALSE"
+        }
+      ]
+    },
+    {
+      "state": "S2_FAN_ON",
+      "purpose": "Occupied non-Night operation after the delay has matured. Fan is ON while permit remains TRUE.",
+      "transitions": [
+        {
+          "to": "S0_RESET_OFF",
+          "guard": "permit = FALSE"
+        },
+        {
+          "to": "S2_FAN_ON",
+          "guard": "permit = TRUE AND TON_OccupancyDelay.Q = TRUE"
+        },
+        {
+          "to": "S1_DELAY_RUNNING",
+          "guard": "permit = TRUE AND TON_OccupancyDelay.Q = FALSE"
+        }
+      ]
+    }
+  ],
+  "timer_plan": [
+    {
+      "name": "TON_OccupancyDelay",
+      "type": "TON",
+      "PT": "T#30S",
+      "IN": "permit := OCCUPANCY_DETECTED AND HVAC_MODE_SELECTOR <> 3",
+      "Q": "TRUE only after permit has been continuously TRUE for at least 30 s; FALSE otherwise.",
+      "reset_conditions": [
+        "OCCUPANCY_DETECTED = FALSE",
+        "HVAC_MODE_SELECTOR = 3 (Night)",
+        "permit changes TRUE to FALSE",
+        "power-up/first-scan initialization"
+      ],
+      "notes": "Call unconditionally at top level every scan outside CASE/IF. The first non-Night occupied invocation starts ET at zero; the first observation at or after 30 s may assert Q and fan in the same scan. Recovery after any reset requires a new full 30 s."
+    }
+  ],
+  "priorities": [
+    "1. Immediate safety/reset: if occupancy is lost or Night mode is selected, force SUPPLY_FAN_RUN = FALSE, reset the 30 s delay, and return the fan state machine to S0_RESET_OFF.",
+    "2. Initialization: pre-invocation outputs are SUPPLY_FAN_RUN = FALSE and TEMP_SETPOINT_ADJUST = 0; normal scan calculation updates them immediately from current inputs.",
+    "3. Night override: HVAC_MODE_SELECTOR = 3 gives TEMP_SETPOINT_ADJUST = +4 regardless of occupancy and energy saving.",
+    "4. Occupied non-Night: TEMP_SETPOINT_ADJUST = 0.",
+    "5. Unoccupied non-Night: Auto uses +3 when ENERGY_SAVING_MODE is TRUE, otherwise +2; Comfort uses +1; Economy uses +4. Energy saving affects Auto only.",
+    "6. Always clamp TEMP_SETPOINT_ADJUST to [-4, +4].",
+    "7. The delay only gates the BOOL SUPPLY_FAN_RUN; no speed ramp is generated."
+  ],
+  "initial_values": {
+    "SUPPLY_FAN_RUN": false,
+    "TEMP_SETPOINT_ADJUST": 0,
+    "state": "S0_RESET_OFF",
+    "permit": false,
+    "TON_OccupancyDelay.IN": false,
+    "TON_OccupancyDelay.ET": "T#0S",
+    "TON_OccupancyDelay.Q": false
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "edge sampling",
+      "actions": [
+        "Sample OCCUPANCY_DETECTED, ENERGY_SAVING_MODE, and HVAC_MODE_SELECTOR.",
+        "Compute permit := OCCUPANCY_DETECTED AND HVAC_MODE_SELECTOR <> 3.",
+        "Record previous sampled values for reset/diagnostic edge detection; no outputs are written."
+      ]
+    },
+    {
+      "stage": 2,
+      "name": "safety/reset priority and state transitions",
+      "actions": [
+        "If NOT permit, force state := S0_RESET_OFF and request delay reset.",
+        "Else evaluate state transitions using permit, current state, and timer maturity.",
+        "State transitions occur before the timer FB call; no timer FB call is made here."
+      ]
+    },
+    {
+      "stage": 3,
+      "name": "unconditional top-level timer FB calls outside CASE/IF",
+      "actions": [
+        "Call TON_OccupancyDelay(IN := permit, PT := T#30S) once every scan at top level.",
+        "When permit is FALSE, the timer resets ET/Q. When permit is TRUE after a reset, timing restarts from zero."
+      ]
+    },
+    {
+      "stage": 4,
+      "name": "unified output assignments",
+      "actions": [
+        "Compute tempAdjCalc from current inputs: Night => +4; else occupied => 0; else Auto unoccupied => +3 with energy saving or +2 without; Comfort unoccupied => +1; Economy unoccupied => +4.",
+        "Clamp tempAdjCalc to [-4, +4] and assign TEMP_SETPOINT_ADJUST once.",
+        "Assign SUPPLY_FAN_RUN := (state <> S0_RESET_OFF) AND permit AND TON_OccupancyDelay.Q, giving immediate OFF on permit loss and same-scan ON at timer maturity."
+      ]
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G((NOT OCCUPANCY_DETECTED OR HVAC_MODE_SELECTOR = 3) -> (SUPPLY_FAN_RUN = FALSE))"
+    },
+    {
+      "id": "A2",
+      "formula": "G((SUPPLY_FAN_RUN = TRUE) -> (OCCUPANCY_DETECTED AND HVAC_MODE_SELECTOR <> 3))"
+    },
+    {
+      "id": "A3",
+      "formula": "G(TEMP_SETPOINT_ADJUST >= -4 AND TEMP_SETPOINT_ADJUST <= 4)"
+    },
+    {
+      "id": "A4",
+      "formula": "G((HVAC_MODE_SELECTOR = 3) -> (TEMP_SETPOINT_ADJUST = 4))"
+    },
+    {
+      "id": "A5",
+      "formula": "G((OCCUPANCY_DETECTED AND HVAC_MODE_SELECTOR <> 3) -> (TEMP_SETPOINT_ADJUST = 0))"
+    },
+    {
+      "id": "A6",
+      "formula": "G((HVAC_MODE_SELECTOR = 0 AND NOT OCCUPANCY_DETECTED AND ENERGY_SAVING_MODE) -> (TEMP_SETPOINT_ADJUST = 3))"
+    },
+    {
+      "id": "A7",
+      "formula": "G((HVAC_MODE_SELECTOR = 0 AND NOT OCCUPANCY_DETECTED AND NOT ENERGY_SAVING_MODE) -> (TEMP_SETPOINT_ADJUST = 2))"
+    },
+    {
+      "id": "A8",
+      "formula": "G((HVAC_MODE_SELECTOR = 1 AND NOT OCCUPANCY_DETECTED) -> (TEMP_SETPOINT_ADJUST = 1))"
+    },
+    {
+      "id": "A9",
+      "formula": "G((HVAC_MODE_SELECTOR = 2 AND NOT OCCUPANCY_DETECTED) -> (TEMP_SETPOINT_ADJUST = 4))"
+    },
+    {
+      "id": "A10",
+      "formula": "G((G(OCCUPANCY_DETECTED AND HVAC_MODE_SELECTOR <> 3)) -> F(SUPPLY_FAN_RUN))"
+    }
+  ]
+}

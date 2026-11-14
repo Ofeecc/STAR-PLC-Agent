@@ -1,0 +1,239 @@
+{
+  "state_machine": {
+    "states": [
+      {
+        "name": "IDLE",
+        "outputs": {
+          "Extend": false,
+          "Clamp": false,
+          "Release": false,
+          "Retract": false,
+          "Busy": false,
+          "Done": false
+        },
+        "description": "Home/idle. No commands active."
+      },
+      {
+        "name": "EXTEND",
+        "outputs": {
+          "Extend": true,
+          "Clamp": false,
+          "Release": false,
+          "Retract": false,
+          "Busy": true,
+          "Done": false
+        },
+        "description": "Slide extend command active; waits for ExtendDone."
+      },
+      {
+        "name": "CLAMP",
+        "outputs": {
+          "Extend": false,
+          "Clamp": true,
+          "Release": false,
+          "Retract": false,
+          "Busy": true,
+          "Done": false
+        },
+        "description": "Clamp command active; waits for ClampDone."
+      },
+      {
+        "name": "RELEASE",
+        "outputs": {
+          "Extend": false,
+          "Clamp": false,
+          "Release": true,
+          "Retract": false,
+          "Busy": true,
+          "Done": false
+        },
+        "description": "Release command active; waits for ReleaseDone."
+      },
+      {
+        "name": "RETRACT",
+        "outputs": {
+          "Extend": false,
+          "Clamp": false,
+          "Release": false,
+          "Retract": true,
+          "Busy": true,
+          "Done": false
+        },
+        "description": "Slide retract command active; waits for RetractDone."
+      },
+      {
+        "name": "DONE",
+        "outputs": {
+          "Extend": false,
+          "Clamp": false,
+          "Release": false,
+          "Retract": false,
+          "Busy": false,
+          "Done": true
+        },
+        "description": "Cycle complete. Holds until Stop or Reset."
+      }
+    ],
+    "transitions": [
+      {
+        "id": "T_ABORT_ANY",
+        "from": "ANY",
+        "to": "IDLE",
+        "priority": 0,
+        "guard": "Stop OR Reset",
+        "action": "clear all commands/state to IDLE",
+        "notes": "Safety override. At most one transition per scan."
+      },
+      {
+        "id": "T_IDLE_EXTEND",
+        "from": "IDLE",
+        "to": "EXTEND",
+        "priority": 1,
+        "guard": "NOT Stop AND NOT Reset AND Start AND RetractDone",
+        "action": "enter EXTEND; post-transition outputs use EXTEND"
+      },
+      {
+        "id": "T_EXTEND_CLAMP",
+        "from": "EXTEND",
+        "to": "CLAMP",
+        "priority": 1,
+        "guard": "NOT Stop AND NOT Reset AND ExtendDone",
+        "action": "enter CLAMP; post-transition outputs use CLAMP"
+      },
+      {
+        "id": "T_CLAMP_RELEASE",
+        "from": "CLAMP",
+        "to": "RELEASE",
+        "priority": 1,
+        "guard": "NOT Stop AND NOT Reset AND ClampDone",
+        "action": "enter RELEASE; post-transition outputs use RELEASE"
+      },
+      {
+        "id": "T_RELEASE_RETRACT",
+        "from": "RELEASE",
+        "to": "RETRACT",
+        "priority": 1,
+        "guard": "NOT Stop AND NOT Reset AND ReleaseDone",
+        "action": "enter RETRACT; post-transition outputs use RETRACT"
+      },
+      {
+        "id": "T_RETRACT_DONE",
+        "from": "RETRACT",
+        "to": "DONE",
+        "priority": 1,
+        "guard": "NOT Stop AND NOT Reset AND RetractDone",
+        "action": "enter DONE; post-transition outputs use DONE"
+      },
+      {
+        "id": "T_DONE_HOLD",
+        "from": "DONE",
+        "to": "DONE",
+        "priority": 1,
+        "guard": "NOT Stop AND NOT Reset",
+        "action": "hold DONE; no automatic restart"
+      },
+      {
+        "id": "T_ACTIVE_HOLD",
+        "from": "EXTEND/CLAMP/RELEASE/RETRACT",
+        "to": "same state",
+        "priority": 1,
+        "guard": "NOT Stop AND NOT Reset AND matching completion feedback is FALSE",
+        "action": "hold active stage and continue commanding its actuator"
+      }
+    ],
+    "notes": [
+      "State evaluation uses retained pre-scan state q[k].",
+      "Only one normal state transition may execute per scan; Stop/Reset abort overrides all transitions.",
+      "Outputs O[k] are assigned from the post-transition state at end of scan, except abort always forces IDLE/all-off outputs.",
+      "No edge-based transitions are required; all handshake inputs are level-sensitive."
+    ]
+  },
+  "timer_plan": {
+    "timers": [],
+    "pt_durations": "N/A - no timers required",
+    "reset_conditions": "N/A - no timer instances exist",
+    "stage_3_timer_calls": "No unconditional timer FB calls; stage 3 is a no-op",
+    "notes": "No timeout is included. Missing completion handshakes intentionally stall the active step indefinitely until Stop/Reset."
+  },
+  "priorities": {
+    "safety": [
+      "Stop OR Reset has highest priority and forces IDLE with all outputs FALSE.",
+      "Stop/Reset override any simultaneous Start, handshake, or active-stage transition.",
+      "At most one state transition per scan invocation.",
+      "Actuator commands Extend, Clamp, Release, Retract are mutually exclusive.",
+      "Busy is TRUE exactly when one of the four active commands is TRUE; Busy and Done are mutually exclusive."
+    ],
+    "operational": [
+      "Sample all inputs once at the start of each scan.",
+      "Evaluate safety/reset before normal sequence transitions.",
+      "Normal transitions advance only on matching level-sensitive completion feedback.",
+      "IDLE to EXTEND requires Start TRUE and RetractDone TRUE.",
+      "DONE holds until Stop or Reset; Start does not restart from DONE without clear.",
+      "Outputs are computed from the final post-transition state in the same scan."
+    ]
+  },
+  "initial_values": {
+    "internal": {
+      "state": "IDLE",
+      "all_commands": false
+    },
+    "outputs": {
+      "Extend": false,
+      "Clamp": false,
+      "Release": false,
+      "Retract": false,
+      "Busy": false,
+      "Done": false
+    }
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "edge sampling",
+      "actions": [
+        "Sample every declared input exactly once and retain the scan-local values.",
+        "No edge-dependent behavior is used by this specification; level-sensitive values are used by later stages."
+      ]
+    },
+    {
+      "stage": 2,
+      "name": "safety/reset priority and state transitions",
+      "actions": [
+        "If Stop OR Reset is TRUE, force state := IDLE and mark all commands cleared; do not evaluate normal transitions.",
+        "Else evaluate exactly one normal transition using retained pre-scan state q[k] and sampled inputs.",
+        "If no transition condition is met, retain q[k] unchanged for the next scan."
+      ]
+    },
+    {
+      "stage": 3,
+      "name": "unconditional top-level timer FB calls",
+      "actions": [
+        "No timer function blocks are required.",
+        "This stage executes unconditionally but contains no timer calls."
+      ]
+    },
+    {
+      "stage": 4,
+      "name": "unified output assignments",
+      "actions": [
+        "Assign Extend, Clamp, Release, Retract, Busy, and Done from the final post-transition state.",
+        "If Stop or Reset was TRUE in stage 2, all outputs are forced FALSE.",
+        "Use a single output section so every output reflects the same scan-final state."
+      ]
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G(!(Extend & Clamp) & !(Extend & Release) & !(Extend & Retract) & !(Clamp & Release) & !(Clamp & Retract) & !(Release & Retract))"
+    },
+    {
+      "id": "A2",
+      "formula": "G((Stop | Reset) -> (!Busy & !Done & !Extend & !Clamp & !Release & !Retract))"
+    },
+    {
+      "id": "A3",
+      "formula": "G((Busy <-> (Extend | Clamp | Release | Retract)) & !(Busy & Done))"
+    }
+  ]
+}

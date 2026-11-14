@@ -1,0 +1,83 @@
+{
+  "task_id": "PUB013",
+  "source_sha256": "daf544a4d0c6e5d5c089993d548890fe7cc4ac255a74ec43aa29d183439475c8",
+  "st_path": "candidate.st",
+  "ltl_path": "spec.ltl",
+  "properties": [
+    {
+      "id": "PUB013.P_init",
+      "formula": "init",
+      "description": "Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope)."
+    },
+    {
+      "id": "PUB013.P1",
+      "formula": "G(fan <-> (permit & mature))",
+      "description": "Fan follows the complete uninterrupted delay."
+    },
+    {
+      "id": "PUB013.P2",
+      "formula": "G(bounded)",
+      "description": "Legal outputs satisfy the required range."
+    },
+    {
+      "id": "PUB013.P3",
+      "formula": "G((occupied -> zero) & (night -> four))",
+      "description": "Night overrides occupied setback."
+    },
+    {
+      "id": "PUB013.P4",
+      "formula": "G((auto_save -> three) & (auto_standard -> two))",
+      "description": "Auto unoccupied setback follows energy saving."
+    },
+    {
+      "id": "PUB013.P5",
+      "formula": "G((comfort -> one) & (economy -> four))",
+      "description": "Comfort and Economy ignore energy saving."
+    },
+    {
+      "id": "PUB013.P6",
+      "formula": "(G(F(TimeTick))) -> (G((G permit) -> F fan))",
+      "description": "If permit stays TRUE from any scan onward, the fan eventually runs, assuming continued calls and diverging physical time. Explicit non-Zeno environment premise: physical elapsed time crosses infinitely many 1ms boundaries."
+    },
+    {
+      "id": "PUB013.COMPLETE",
+      "formula": "G(CompleteBehavior)",
+      "description": "Every constrained ACTUAL output satisfies the exact pinned input-driven reference transition and comparison policy. Finite observations can falsify this predicate; no completed unbounded proof is claimed."
+    }
+  ],
+  "atomic_propositions": {
+    "permit": "OCCUPANCY_DETECTED AND HVAC_MODE_SELECTOR<>3",
+    "mature": "continuous permit elapsed>=30s",
+    "fan": "SUPPLY_FAN_RUN",
+    "bounded": "-4<=TEMP_SETPOINT_ADJUST<=4",
+    "occupied": "OCCUPANCY_DETECTED AND mode<>3",
+    "zero": "TEMP_SETPOINT_ADJUST=0",
+    "night": "mode=3",
+    "four": "adjust=4",
+    "auto_save": "mode=0 AND NOT occupancy AND ENERGY_SAVING_MODE",
+    "three": "adjust=3",
+    "auto_standard": "mode=0 AND NOT occupancy AND NOT ENERGY_SAVING_MODE",
+    "two": "adjust=2",
+    "comfort": "mode=1 AND NOT occupancy",
+    "one": "adjust=1",
+    "economy": "mode=2 AND NOT occupancy",
+    "CompleteBehavior": "令(Sref[k+1], E[k])=T_PUB013(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehavior[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\nmode域0..3；permit=occupied & mode!=3，首次许可年龄0、失去立即清计时；fan=permit且年龄>=30s。adjust=mode3则4，否则有人则0，否则mode0取节能3/普通2、mode1取1、mode2取4。初始化adjust=0与首次调用计算分开。",
+    "TimeTick": "Boolean: floor(t[k]/1ms)>floor(t[k-1]/1ms), with t[0]=0, TimeTick[0]=FALSE, t[k]=sum(dt_ms[1..k]). G(F(TimeTick)) states unbounded physical time progress; merely positive dt is insufficient.",
+    "OCCUPANCY_DETECTED": "I[k].OCCUPANCY_DETECTED: sampled input (BOOL).",
+    "ENERGY_SAVING_MODE": "I[k].ENERGY_SAVING_MODE: sampled input (BOOL).",
+    "HVAC_MODE_SELECTOR": "I[k].HVAC_MODE_SELECTOR: sampled input (INT).",
+    "SUPPLY_FAN_RUN": "O[k].SUPPLY_FAN_RUN: independently observed post-scan candidate value (BOOL); never defined as expected output.",
+    "TEMP_SETPOINT_ADJUST": "O[k].TEMP_SETPOINT_ADJUST: independently observed post-scan candidate value (INT); never defined as expected output.",
+    "mode": "I[k].HVAC_MODE_SELECTOR",
+    "occupancy": "I[k].OCCUPANCY_DETECTED",
+    "adjust": "O[k].TEMP_SETPOINT_ADJUST",
+    "init": "At the separate pre-invocation initial observation before scan k=0: O_init.SUPPLY_FAN_RUN=false, O_init.TEMP_SETPOINT_ADJUST=0."
+  },
+  "tools_supported": [],
+  "encoding_complete": false,
+  "task_sha256": "9cea0bd9c41d5f17ba359e10638db15b3ef6a07a4a6d0225d3bce7122b748486",
+  "bundle_status": "UNSUPPORTED_ST",
+  "created_utc": "2026-11-14T11:36:05.017327+00:00",
+  "verification_status": "UNSUPPORTED_ST",
+  "reason": "Candidate input HVAC_MODE_SELECTOR and observer binding have incompatible types"
+}

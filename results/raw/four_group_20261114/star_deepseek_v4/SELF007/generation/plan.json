@@ -1,0 +1,144 @@
+{
+  "state_machine": {
+    "states": [
+      {
+        "name": "OFF",
+        "description": "No demand; pump commands false; served cleared after falling-edge handling."
+      },
+      {
+        "name": "DEMAND",
+        "description": "Demand true; run healthy preferred pump or healthy fallback; latch served if a pump runs."
+      }
+    ],
+    "transitions": [
+      {
+        "from": "OFF",
+        "to": "OFF",
+        "guard": "NOT scanDemand",
+        "actions": [
+          "PumpCmdA := FALSE; PumpCmdB := FALSE",
+          "IF fallingEdge AND served THEN LeadA_State := NOT LeadA_State END_IF",
+          "served := FALSE",
+          "previous_demand := FALSE"
+        ]
+      },
+      {
+        "from": "OFF",
+        "to": "DEMAND",
+        "guard": "scanDemand",
+        "actions": [
+          "SelectHealthyPump()",
+          "IF PumpCmdA OR PumpCmdB THEN served := TRUE END_IF",
+          "previous_demand := TRUE"
+        ]
+      },
+      {
+        "from": "DEMAND",
+        "to": "DEMAND",
+        "guard": "scanDemand",
+        "actions": [
+          "SelectHealthyPump()",
+          "IF PumpCmdA OR PumpCmdB THEN served := TRUE END_IF",
+          "previous_demand := TRUE"
+        ]
+      },
+      {
+        "from": "DEMAND",
+        "to": "OFF",
+        "guard": "NOT scanDemand",
+        "actions": [
+          "PumpCmdA := FALSE; PumpCmdB := FALSE",
+          "IF fallingEdge AND served THEN LeadA_State := NOT LeadA_State END_IF",
+          "served := FALSE",
+          "previous_demand := FALSE"
+        ]
+      }
+    ],
+    "SelectHealthyPump": "IF scanDemand THEN IF LeadA_State THEN IF NOT scanFaultA THEN PumpCmdA:=TRUE; PumpCmdB:=FALSE ELSIF NOT scanFaultB THEN PumpCmdA:=FALSE; PumpCmdB:=TRUE ELSE PumpCmdA:=FALSE; PumpCmdB:=FALSE END_IF ELSE IF NOT scanFaultB THEN PumpCmdA:=FALSE; PumpCmdB:=TRUE ELSIF NOT scanFaultA THEN PumpCmdA:=TRUE; PumpCmdB:=FALSE ELSE PumpCmdA:=FALSE; PumpCmdB:=FALSE END_IF END_IF ELSE PumpCmdA:=FALSE; PumpCmdB:=FALSE END_IF"
+  },
+  "timer_plan": {
+    "timers_required": [],
+    "pt_durations": {},
+    "reset_conditions": "No timers used. Non-timer scan state: served resets FALSE on Demand=FALSE; previous_demand is set to sampled Demand each scan; LeadA_State toggles only on fallingEdge AND served."
+  },
+  "priorities": [
+    "Safety: never energize a pump while its fault input is TRUE.",
+    "Safety: no demand forces PumpA and PumpB OFF.",
+    "Safety: at most one pump command may be active.",
+    "Operational: with demand, run the preferred healthy lead; if the lead is faulted, run the healthy standby; if both are faulted, run neither.",
+    "State: toggle LeadA only on the falling edge of a demand episode that latched served TRUE; toggle at most once per served episode.",
+    "State: served latches TRUE whenever any pump runs during Demand and clears on Demand FALSE; previous_demand tracks sampled Demand every scan."
+  ],
+  "initial_values": {
+    "LeadA": true,
+    "LeadA_State": true,
+    "previous_demand": false,
+    "served": false,
+    "episode_served": false,
+    "PumpA": false,
+    "PumpB": false,
+    "PumpCmdA": false,
+    "PumpCmdB": false,
+    "fallingEdge": false
+  },
+  "scan_execution_order": [
+    {
+      "stage": 1,
+      "name": "edge sampling",
+      "actions": "Sample Demand, FaultA, FaultB once into scanDemand, scanFaultA, scanFaultB. Compute fallingEdge := previous_demand AND NOT scanDemand. Do not write outputs."
+    },
+    {
+      "stage": 2,
+      "name": "safety/reset priority and state transitions",
+      "actions": "Apply no-demand reset first: if NOT scanDemand, force PumpCmdA/PumpCmdB false; if fallingEdge AND served, toggle LeadA_State; clear served. If scanDemand, select healthy pump using LeadA_State and faults; latch served if PumpCmdA OR PumpCmdB. Update previous_demand := scanDemand after using fallingEdge. Retain updated state for next scan; LeadA reflects post-transition LeadA_State."
+    },
+    {
+      "stage": 3,
+      "name": "unconditional top-level timer FB calls outside CASE/IF",
+      "actions": "No timer function blocks exist; this stage is a no-op. If timers are added later, call all timer FBs here unconditionally, outside CASE/IF."
+    },
+    {
+      "stage": 4,
+      "name": "unified output assignments",
+      "actions": "Assign outputs once: PumpA := PumpCmdA; PumpB := PumpCmdB; LeadA := LeadA_State. No other output writes in the scan."
+    }
+  ],
+  "formal_assertions": [
+    {
+      "id": "A1",
+      "formula": "G(!(PumpA & PumpB))"
+    },
+    {
+      "id": "A2",
+      "formula": "G(!Demand -> (!PumpA & !PumpB))"
+    },
+    {
+      "id": "A3",
+      "formula": "G((!Demand | FaultA) -> !PumpA)"
+    },
+    {
+      "id": "A4",
+      "formula": "G((!Demand | FaultB) -> !PumpB)"
+    },
+    {
+      "id": "A5",
+      "formula": "G((Demand & LeadA & !FaultA) -> PumpA)"
+    },
+    {
+      "id": "A6",
+      "formula": "G((Demand & !LeadA & !FaultB) -> PumpB)"
+    },
+    {
+      "id": "A7",
+      "formula": "G((Demand & FaultA & !FaultB) -> PumpB)"
+    },
+    {
+      "id": "A8",
+      "formula": "G((Demand & FaultB & !FaultA) -> PumpA)"
+    },
+    {
+      "id": "A9",
+      "formula": "G((Demand & FaultA & FaultB) -> (!PumpA & !PumpB))"
+    }
+  ]
+}

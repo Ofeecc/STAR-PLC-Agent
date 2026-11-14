@@ -1,0 +1,12 @@
+{
+  "declaration": "FUNCTION_BLOCK FB_Task\nVAR_INPUT\n    Start : BOOL;\n    Stop : BOOL;\n    AtExit : BOOL;\n    Jam : BOOL;\n    Reset : BOOL;\nEND_VAR\nVAR_OUTPUT\n    Belt : BOOL := FALSE;\n    Complete : BOOL := FALSE;\n    Fault : BOOL := FALSE;\nEND_VAR\nVAR\n    state : E_TaskState := E_TaskState.IDLE;\n    startSample : BOOL;\n    stopSample : BOOL;\n    atExitSample : BOOL;\n    jamSample : BOOL;\n    resetSample : BOOL;\nEND_VAR",
+  "implementation": "startSample := Start;\nstopSample := Stop;\natExitSample := AtExit;\njamSample := Jam;\nresetSample := Reset;\n\nIF jamSample THEN\n    state := E_TaskState.FAULT;\nELSIF resetSample THEN\n    state := E_TaskState.IDLE;\nELSIF state = E_TaskState.FAULT THEN\n    state := E_TaskState.FAULT;\nELSIF stopSample THEN\n    state := E_TaskState.IDLE;\nELSIF (state = E_TaskState.MOVING) AND atExitSample THEN\n    state := E_TaskState.COMPLETE;\nELSIF (state = E_TaskState.IDLE) AND startSample AND NOT atExitSample THEN\n    state := E_TaskState.MOVING;\nEND_IF;\n\nBelt := (state = E_TaskState.MOVING);\nComplete := (state = E_TaskState.COMPLETE);\nFault := (state = E_TaskState.FAULT);",
+  "supporting_objects": [
+    {
+      "name": "E_TaskState",
+      "kind": "DUT",
+      "declaration": "{attribute 'qualified_only'}\n{attribute 'strict'}\nTYPE E_TaskState :\n(\n    IDLE := 0,\n    MOVING := 1,\n    COMPLETE := 2,\n    FAULT := 3\n) := IDLE;\nEND_TYPE",
+      "implementation": ""
+    }
+  ]
+}
