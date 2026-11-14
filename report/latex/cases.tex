@@ -1,67 +1,39 @@
-\section{Case studies from actual records}
-\subsection{Compiler-guided repair: E1/PUB014}
+% Section 5.3: Deep-Dive Case Studies Across E1-E4
 
-PUB014 asks for strict dotted-decimal IPv4 parsing into a network-order UDINT, returning zero for malformed input. The E1 baseline's first candidate declared a local integer \pathcode{len} and used \pathcode{len := LEN(ipText)}. CODESYS reported two errors:
-\begin{lstlisting}
-Cannot convert type 'Unknown type: 'LEN(ipText)'' to type 'INT'
-Program name, function or function block instance expected instead of 'LEN'
+\subsection{Deep-Dive Case Studies}
+
+\subsubsection{Case Study 1: Hidden Single-Scan Delay Masked by 100\% Simulation Pass (\code{PUB011})}
+\code{PUB011} specifies a three-station transfer trolley toggling between manual and automatic operation. Cross-condition inspection contrasts both runtime-vs.-formal coverage and per-run synthesis variance:
+\begin{itemize}
+  \item \textbf{E3 Passes 8/8 Fixed Tests Yet Fails 8/14 NuSMV Properties}: DeepSeek under STAR (\pathcode{results/raw/four_group_20261114/star_deepseek_v3/PUB011/generation/compile_00/FB_Task.st}) achieves \textbf{8/8 (100\%)} pass on real CODESYS~1\,ms simulation tests. During Stage~3 verification, however, \code{NuSMV} proves only 6/14 LTLs and builds deterministic counterexamples against 8 transition obligations (incl.\ \code{SMV_4}, \code{SMV_8}, \code{SMV_9}) due to an intermediate \code{E_Phase.MANUAL} state inserted before the dispatcher:
+\begin{lstlisting}[caption={Relevant E3 (\code{PUB011}) mode-switch logic introducing a one-scan startup delay.},float=htbp]
+IF NOT Mode THEN
+    phase := E_Phase.MANUAL;
+ELSIF phase = E_Phase.MANUAL THEN
+    phase := E_Phase.WAIT_A;
+ELSE
+    CASE phase OF ...
 \end{lstlisting}
-The diagnostic links to the local declaration. A likely explanation is that \pathcode{len} hides the case-insensitive library function; this is an interpretation of the actual declaration and messages. The next model candidate removed the local variable and replaced the length-based loop with a bounded scan terminating at the string's zero byte:
-\begin{lstlisting}
-(* First candidate; local len : INT *)
-len := LEN(ipText);
-FOR i := 1 TO len DO
-    c := ipText[i];
-    (* segment validation *)
-END_FOR
+  On the exact rising-edge scan transitioning from \code{Mode = FALSE} to \code{TRUE} with \code{SensorA} and \code{ButtonA} asserted, one scan is spent resetting \code{phase} from \code{MANUAL} to \code{WAIT_A}, delaying \code{MotorForward} by one scan cycle---a corner case never triggered by the 8 finite test sequences.
+  \item \textbf{E1, E2, and E4 Preserve Same-Scan Entry Semantics}: By contrast, \textbf{E4} (\pathcode{results/raw/four_group_20261114/star_terra/PUB011/generation/compile_00/FB_Task.st}, maintaining \code{E_TaskPhase.WAIT_A} during \code{NOT Mode}) as well as both \code{Codex CLI} baselines (\textbf{E1} and \textbf{E2}) stay directly in their \code{WAIT_A} phase while in manual mode, allowing immediate same-scan transition and simultaneously passing \textbf{8/8 simulation cases and 14/14 formal LTLs}.
+\end{itemize}
 
-(* Repaired candidate; local len removed *)
-i := 1;
-WHILE (i <= 254) AND ok DO
-    c := ipText[i];
-    IF c = 0 THEN EXIT; END_IF
-    (* segment validation *)
-    i := i + 1;
-END_WHILE
-\end{lstlisting}
-The second actual build had zero errors and warnings after one repair. The source digests changed from \pathcode{b6638e0b22e5635b...} to \pathcode{3b43179efdf7cdb5...}, and both builds have separate nonces and project evidence. Both processes exited zero. This is evidence of compiler-feedback repair in the existing-agent baseline, not a repair success attributable to our harness. Both subsequent runtime cases fail (13/19 scan observations match), including a zero result for input \texttt{1.2.3.4}. Compiler-guided repair therefore solved a build problem without establishing the required parser behavior.
+\subsubsection{Case Study 2: Universal Transient Latching and Priority Arbitrations (\code{PUB019})}
+On the 18-input, 6-output multi-mode robotic arm controller \code{PUB019} (Hard), \textbf{all four conditions (\textbf{E1}--\textbf{E4}) converge on the exact same residual flaw}: every group scores \textbf{16/17} on fixed cases, failing exclusively at scan~1 of \code{PUB019.T6} (\code{MoveUp} expected \code{TRUE}, measured \code{FALSE}), and every group terminates with Stage~3 \code{COUNTEREXAMPLE} (\textbf{E1}: 4/8, \textbf{E2}: 3/8, \textbf{E3}: 5/10, \textbf{E4}: 6/10 properties satisfied). Two common failure mechanisms explain this convergence:
+\begin{enumerate}
+  \item \textbf{Over-Suppression on Entry From Idle}: At scan~0 of \code{PUB019.T6}, no mode is active; scan~1 raises \code{ManualMode} alongside \code{UpButton}. Across all four conditions, models detect \code{modeChanged} against quiescent idle state and blank actuator outputs for one scan, rather than gating only active-to-active mode switches.
+  \item \textbf{Conservative Mutual Lockout vs.\ Manual Preemption}: When \code{ManualMode} and an auto-mode selector activate concurrently, all four candidates apply \code{modeCount > 1} to freeze all axes safely, whereas the specification's observer defines explicit manual override precedence, triggering immediate scan-0 formal counterexamples.
+\end{enumerate}
 
-\subsection{Compilation does not establish task fidelity: E1/PUB018}
+\subsubsection{Case Study 3: Formal Catch on Bare Codex (\code{PUB020}), Model Divergence (\code{PUB016}), and Indexing Nuance (\code{PUB014})}
+\begin{itemize}
+  \item \textbf{\code{PUB020} (Multi-Station Production Line)}: Both \code{gpt-6.1-terra} conditions (\textbf{E2} and \textbf{E4}) pass \textbf{11/11 fixed cases and Stage~3 \code{PASS}}. Conversely, both DeepSeek runs draw Stage~3 counterexamples: critically, \textbf{E1} passes \textbf{all 11/11 finite simulation cases} yet satisfies only 3/11 \code{NuSMV} properties (exposing mutual-exclusion violations in \code{REJECT} reachable states, complementing \textbf{E3}/\code{PUB011}), while \textbf{E3} drops late progression in \code{PUB020.T9} (\code{10/11} cases, \code{3/10} formal).
+  \item \textbf{\code{PUB016} (Analog Ramp/Step Control)}: Inverting overall model rank order, both DeepSeek groups (\textbf{E1} and \textbf{E3}) pass \textbf{8/8} tests, whereas both GPT groups (\textbf{E2} and \textbf{E4}) fail identically on \code{PUB016.T4} (\textbf{7/8}).
+  \item \textbf{\code{PUB014} (Dotted-Decimal IPv4 Parser)}: Both DeepSeek runs (\textbf{E1} and \textbf{E3}) compile on the first attempt yet score \textbf{0/8} at runtime because indexing \code{ipText[i]} defaults to 1-based \code{1..LEN(ipText)} instead of CODESYS's \textbf{0-based} \code{STRING} byte offset \code{s[i]}, reading past the terminator and clearing output. (Both GPT conditions hit compiler-lock timeouts before simulation.) Targeted updates to \pathcode{dialect_cards.py} subsequently codify this 0-based vs.\ 1-based distinction explicitly.
+\end{itemize}
 
-The official FIFO interface has caller-owned \pathcode{item : VARIANT} and \pathcode{buffer : VARIANT} storage and requires generic element types and array bounds. E1's initial source produced 38 CODESYS errors, including unknown types and invalid pointer/conversion expressions. After feedback, it added this helper DUT and rewrote byte-copy loops:
-\begin{lstlisting}
-TYPE VARIANT :
-STRUCT
-    pData : POINTER TO BYTE;
-    udiSize : UDINT;
-END_STRUCT
-END_TYPE
-\end{lstlisting}
-The repaired candidate compiled with zero errors and warnings. That is a build success under the stated metric. However, a caller must now supply a custom pointer-and-size structure. Preserving the word \pathcode{VARIANT} does not establish native generic compatibility, array-bound behavior or correct FIFO execution. The agent disclosed this substitution in its final answer. This task remains functionally unverified because the current adapter cannot validate its IN\_OUT/composite binding. We do not describe it as a verified generic FIFO.
-
-\subsection{Early agent termination: E2/PUB018}
-
-The Kimi-route baseline made one build attempt, receiving two unknown-VARIANT type errors. It then called \pathcode{final_answer} and declined to substitute an adapter. No repairs occurred. Three build attempts were available, so this was early agent termination, not budget exhaustion. The candidate also omitted the full data-copy implementation. Its \pathcode{COMPILE_FAIL} result cannot be interpreted as an otherwise complete implementation failing only because of platform portability.
-
-\subsection{A successful repair by our harness: E4/SELF012}
-
-The final generation run provides a separate harness example. SELF012 specifies bounded automatic fault retries with a recovery dwell. The first candidate introduced enum literal \pathcode{LOCKED} and required BOOL output \pathcode{Locked}. CODESYS reported three errors: two INT/BOOL comparison errors at implementation lines 5 and 40, and a BOOL-to-\pathcode{E_TASKSTATE} conversion error at line 23. This is consistent with case-insensitive identifier collision in the candidate's expressions.
-
-\begin{lstlisting}
-(* Initial helper enum and assignment *)
-(IDLE, RUNNING, WAIT, LOCKED)
-State := LOCKED;
-
-(* After compiler-guided repair *)
-(TASK_IDLE, TASK_RUNNING, TASK_WAIT, TASK_LOCKED)
-State := TASK_LOCKED;
-(* Required output remains Locked : BOOL *)
-\end{lstlisting}
-
-The repair prefixes all enum literals and also adds an explicit locked-state CASE branch. The next real build reports zero errors and warnings after one repair. Candidate hashes change from \pathcode{6337eb8fb5e63ea6...} to \pathcode{7c914ea2dd50a9c4...}. This third recovered build belongs to our harness, while the preceding two repair successes belong to baseline E1. Both subsequent simulator cases pass. This demonstrates the implemented feedback loop and finite behavior checks without claiming an ablation or unbounded correctness.
-
-\subsection{Transport failure: E3/PUB010}
-
-This run saved a real model request, but the stream ended with an upstream-closed-before-terminal-event error. No complete candidate was accepted and no CODESYS build occurred. It is \pathcode{TOOL_ERROR}, not a compiler rejection. The task remains in the planned denominator, while compiler coverage shows the missing evaluation.
-
-The saved request also establishes one attempted call even though the harness's stored counter is zero. Independent request-file accounting corrects the comparison without silently rewriting raw records. Missing usage does not prove zero upstream computation or zero charge, and the interruption alone does not prove its cause. Full case links, source versions and diagnostics are in \pathcode{report/case_studies.md}.
+\subsubsection{Case Study 4: Vendor Static-Analysis Guardrails (\code{SA0027}/\code{SA0033}) and Generic Reflection (\code{PUB018})}
+\begin{itemize}
+  \item \textbf{Same-Root \code{SA0027} Elimination Across \textbf{E1} vs.\ \textbf{E3}}: All four compilation failures in \textbf{E1} (\code{Codex + DeepSeek}: \code{PUB003}, \code{PUB009}, \code{PUB017}, \code{SELF009}) failed on the exact same CODESYS static-analysis collision---\code{SA0027} (\code{Variable name 'error' in 'FB_Task'} \code{already used for an object in Library} \code{'caa device diagnosis, 3.5.22.0'}), compounded by \code{SA0033} on \code{PUB017}---despite multiple multi-turn repair iterations. By contrast, \textbf{E3} (\textbf{STAR} + DeepSeek) compiled \textbf{4/4 with zero \code{SA0027} failures} (three on first attempt, \code{PUB017} after one repair) via dialect cards and \code{compact_diagnostics()}, while \textbf{E2} (\code{Codex + Terra}) resolved the first three after 1--2 iterative fixes.
+  \item \textbf{\code{PUB018} (Generic Circular Byte Queue)}: Binding caller-owned \code{DINT} variables and fixed arrays via \code{VAR_IN_OUT VARIANT} / \code{VAR_INFO} marks an infrastructure and abstraction frontier: GPT conditions (\textbf{E2}, \textbf{E4}) hit \code{COMPILE_FAIL} (\code{Unknown type: 'VARIANT'}), whereas DeepSeek conditions (\textbf{E1}, \textbf{E3}) compile cleanly yet incur external harness \code{TOOL_ERROR} during simulation type binding.
+\end{itemize}

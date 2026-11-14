@@ -1,38 +1,132 @@
 \documentclass[11pt,a4paper]{article}
-\usepackage[margin=23mm]{geometry}
+\usepackage[margin=21mm]{geometry}
 \usepackage[T1]{fontenc}
-\usepackage{lmodern,microtype,booktabs,tabularx,array,graphicx,amsmath,amssymb,xcolor}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{booktabs,tabularx,array,multirow,makecell}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{subcaption}
+\usepackage{amsmath,amssymb}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{seqsplit}
+\usepackage{xurl}
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta,positioning}
 \usepackage{listings}
 \usepackage[hidelinks]{hyperref}
 \usepackage{fancyhdr}
 \usepackage{placeins}
+
+\graphicspath{{../figures/}}
+
 \definecolor{navy}{HTML}{16324F}
 \definecolor{teal}{HTML}{007F82}
 \definecolor{pale}{HTML}{F0F5F8}
-\lstset{basicstyle=\ttfamily\small,breaklines=true,backgroundcolor=\color{pale},frame=single,rulecolor=\color{teal},columns=fullflexible,keepspaces=true}
+\definecolor{amber}{HTML}{D97706}
+\definecolor{coral}{HTML}{DC2626}
+\definecolor{mint}{HTML}{059669}
+\definecolor{slate}{HTML}{64748B}
+
+\lstdefinelanguage{iecst}{
+  morekeywords={FUNCTION_BLOCK,END_FUNCTION_BLOCK,VAR_INPUT,VAR_OUTPUT,VAR_IN_OUT,VAR,END_VAR,
+    TYPE,STRUCT,END_STRUCT,END_TYPE,IF,THEN,ELSIF,ELSE,END_IF,CASE,OF,END_CASE,FOR,TO,DO,END_FOR,
+    WHILE,END_WHILE,EXIT,RETURN,TRUE,FALSE,AND,OR,NOT,XOR,MOD,BOOL,INT,DINT,UDINT,UINT,USINT,
+    REAL,LREAL,WORD,DWORD,TIME,LTIME,STRING,ARRAY,VARIANT},
+  sensitive=false,
+  morecomment=[s]{(*}{*)},
+  morecomment=[l]{//},
+  morestring=[b]'
+}
+
+\lstset{
+  language=iecst,
+  basicstyle=\ttfamily\small,
+  keywordstyle=\bfseries\color{navy},
+  commentstyle=\itshape\color{slate},
+  stringstyle=\color{teal},
+  breaklines=true,
+  backgroundcolor=\color{pale},
+  frame=single,
+  rulecolor=\color{teal},
+  columns=fullflexible,
+  keepspaces=true,
+  xleftmargin=2mm,
+  xrightmargin=2mm
+}
+
+\setlist[itemize]{nosep,leftmargin=1.4em,itemsep=2pt}
+\setlist[enumerate]{nosep,leftmargin=1.4em,itemsep=2pt}
 \setlength{\parindent}{0pt}
-\setlength{\parskip}{5pt}
+\setlength{\parskip}{4.5pt}
 \setlength{\headheight}{14pt}
+
 \pagestyle{fancy}
 \fancyhf{}
-\fancyhead[L]{\small PLC Structured Text Coding Agent}
-\fancyhead[R]{\small Course final project}
-\fancyfoot[C]{\thepage}
+\fancyhead[L]{\small\color{slate} STAR: Industrial PLC Structured Text Agent}
+\fancyhead[R]{\small\color{slate} Course Final Project Report}
+\fancyfoot[C]{\small\thepage}
+
 \newcommand{\pathcode}[1]{\nolinkurl{#1}}
-\title{\color{navy}\textbf{PLC Structured Text Coding Agent}\\[4pt]\large Implementation and a Four-Condition CODESYS Benchmark}
+\DeclareRobustCommand{\code}[1]{\texttt{\small\detokenize{#1}}}
+\pdfstringdefDisableCommands{\def\code#1{\detokenize{#1}}\def\pathcode#1{\detokenize{#1}}}
+\newcommand{\tbd}{\textcolor{amber}{\textbf{[TBD]}}}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+
+\title{%
+  {\color{navy}\Large\bfseries STAR: A Decoupled Agent Framework for Industrial IEC~61131-3 Structured Text Synthesis}\\[6pt]
+  {\large\color{teal} Benchmark Construction, Scan-Aligned Formal Verification, and Controlled CODESYS~V3.5 Evaluation}
+}
 \author{Generative AI Course Final Project}
-\date{27 October 2026}
+\date{14 November 2026}
+
 \begin{document}
 \maketitle
+
 \begin{abstract}
-This project implements a lightweight agent harness that generates Structured Text, invokes the actual CODESYS compiler, and applies bounded repairs using compiler diagnostics. We compare it with the unmodified smolagents ToolCallingAgent using two available relay model identifiers on all 20 official tasks and 12 independently constructed tasks. The dataset contains explicit scan semantics, 207 LTL properties and 81 fixed functional cases. The experiment preserves failed requests, every candidate, compiler evidence and real IDE-simulation traces. Compilation and finite functional correctness are evaluated separately. Results, coverage and limitations are reported from manifest-selected records, without treating Python reference checks or unexecuted cases as PLC successes.
+Automatic synthesis of IEC~61131-3 Structured Text (ST) for industrial programmable logic controllers (PLCs) differs sharply from general-purpose software generation: candidate programs must conform to deterministic scan-cycle execution, retain internal edge and timer state across cycles, enforce same-scan safety preemption, and satisfy platform-specific CODESYS~V3.5 compiler and static-analysis contracts. Moreover, code that compiles and passes finite test suites can still conceal single-scan mode-transition delays or priority regressions. This work presents an end-to-end engineering methodology and full 128-run empirical evaluation spanning three pillars: (1) a frozen 32-task benchmark (\code{normalized-20261114}, \code{dataset_sha256: d305f96c...}) combining 20 verbatim public tasks (\code{PUB001}--\code{PUB020}) and 12 AI-assisted, human-reviewed independent synthesis tasks (\code{SELF001}--\code{SELF012}), paired with 276 held-out fixed test cases (2,994 scan steps), 294 end-of-scan-aligned LTL specifications, and positive/negative dual-control \code{.smv} verification (32/32 reference models proven true; 32/32 mutant controls refuted); (2) \textbf{STAR}, a decoupled, leak-free agent harness combining a four-stage scan contract planner, relevance-ranked dialect cards, hash-guarded compiler repair, assertion-isolated in-loop symbolic verification (\code{Scheme A}, \code{ST->SMV} over \code{NuSMV} BDD and \code{nuXmv} SMT), and anti-lazy lexicographic ratchet simulation repair; and (3) a symmetric $2 \times 2$ benchmark comparing unmodified \code{Codex CLI v0.142.5} (\textbf{E1}, \textbf{E2}) against \textbf{STAR} (\textbf{E3}, \textbf{E4}) across \code{deepseek-v4.1-flash-1017} and \code{gpt-6.1-terra} under uniform maximum reasoning effort (\code{reasoning.effort = "high"}) and shared quotas. On \code{deepseek-v4.1-flash-1017}, \textbf{STAR} (\textbf{E3}) eliminates dialect collisions, elevating final compilation from \textbf{E1}'s 28/32 (87.5\%) to \textbf{32/32 (100\%)}, increasing evaluated fixed-case passes from 196/208 (94.2\%) to \textbf{226/238 (95.0\%, 81.9\% of all 276 planned cases)} and task-level passes from 23/32 to \textbf{27/32}, while compressing cumulative context input nearly 11-fold (4.74M down to 433k tokens). On \code{gpt-6.1-terra}, unmodified \code{Codex CLI} (\textbf{E2}) achieves 29/32 (90.6\%) compilation, the highest evaluated case pass rate (\textbf{220/222 = 99.1\%}), 27/32 task pass, and 18 Stage~3 formal \code{PASS} verdicts with compact outputs (72.8k tokens, \textyen 5.21), whereas \textbf{STAR} (\textbf{E4}) matches \textbf{18} formal passes and 98.2\% (217/221) evaluated cases using fewer inputs (366k tokens) but higher structured output cost (\textyen 7.38) alongside three pre-patch compiler-lock timeouts. Finally, symbolic checking uncovers single-scan transition and exclusion defects in both \textbf{E3} (\code{PUB011}, passing 8/8 fixed tests) and \textbf{E1} (\code{PUB020}, passing 11/11 fixed tests), empirically validating dual runtime and formal verification.
 \end{abstract}
+
+\section{Introduction and Problem Statement}
+
+\subsection{Industrial Control Background and Core Challenges}
+Programmable logic controllers (PLCs) execute sequential interlocks, mode arbitration, timing supervision, and continuous regulation across manufacturing lines using IEC~61131-3 languages, with Structured Text (ST) serving as the primary high-level textual notation. Unlike stateless function evaluation in general software engineering, controller correctness depends on cyclic scan-cycle semantics and strict safety guarantees:
+\begin{enumerate}
+  \item \textbf{Single-Scan Sampling and Persistent State}: Each \code{FUNCTION_BLOCK} invocation samples external inputs once per cycle, reconciles them against retained pre-scan internal state (edge memories, latches, timers), and updates outputs deterministically. Built-in stateful blocks such as \code{TON}, \code{TOF}, \code{TP}, \code{R_TRIG}, and \code{F_TRIG} must execute unconditionally on the top-level scan path rather than inside conditional branches where skipped calls freeze internal elapsed timers or edge histories.
+  \item \textbf{Same-Scan Safety Preemption and Dialect Contracts}: Emergency stops and protection interlocks must override motor or actuator commands within the exact scan cycle they assert. In addition, industrial deployment requires satisfying target compiler rules and static-analysis checks (\code{CODESYS V3.5 SP22 Patch 4}), including caller-owned \code{VAR_IN_OUT} composite storage, \code{ARRAY[*]} variable-length bounds, 0-based \code{STRING} element indexing, nanosecond \code{LTIME} literals, and \code{VARIANT} reflection.
+  \item \textbf{Insufficiency of Compilation and Finite Testing}: Large language models frequently emit syntactically valid ST code that compiles cleanly and passes representative test cases, yet fails on unobserved edge combinations---such as asserting a manual start signal on the exact rising scan where operating mode switches from manual to automatic.
+\end{enumerate}
+
+\subsection{Research Objectives and Scope Alignment}
+Table~\ref{tab:objectives} maps the core engineering objectives and deliverables of this project to their implemented artifacts and current evaluation status.
+
+\begin{table}[htbp]
+\centering
+\caption{Alignment of core project objectives, artifacts, and verification status as of 14 November 2026.}
+\label{tab:objectives}
+\footnotesize
+\begin{tabularx}{\textwidth}{@{}L{0.23\textwidth}L{0.34\textwidth}Y@{}}
+\toprule
+\textbf{Project Dimension} & \textbf{Core Technical Requirement} & \textbf{Implemented Artifacts \& Current Status} \\
+\midrule
+\textbf{Benchmark \& LTL Specifications} & Curate official + independent tasks ($\ge 10$), preserve provenance, verify scan semantics & \textbf{Completed}: 32 tasks (20 verbatim public + 12 AI-generated, human-reviewed self-built); 276 cases, 2,994 scans, 294 LTLs; 32/32 reference and 32/32 mutant SMVs verified. \\
+\textbf{STAR vs.\ Baseline Frameworks} & Compare self-designed harness against established tool-using baseline across $\ge 2$ models & \textbf{Completed}: Decoupled \textbf{STAR} harness vs.\ unmodified \code{Codex CLI v0.142.5} evaluated on \code{deepseek-v4.1-flash-1017} and \code{gpt-6.1-terra} at max reasoning. \\
+\textbf{Simulation \& Formal Tooling} & Integrate real PLC compilation/simulation and symbolic model checking & \textbf{Completed}: Real CODESYS~SP22 compilation + 1\,ms cyclic simulation, 5-stage \code{ST->SMV} compiler (\code{NuSMV} BDD / \code{nuXmv} SMT), \code{ScanContract}, and WebUI. \\
+\textbf{Controlled Empirical Evaluation} & Execute $2\times 2$ crossed matrix (128 runs), stratified analysis, deep-dive case studies & \textbf{Completed (128/128 Runs)}: All four groups (\textbf{E1}--\textbf{E4}, 32 tasks each) archived under unified \pathcode{batch.py} adjudication with cross-condition quantitative and case analysis. \\
+\textbf{Cross-Platform Boundary} & Optional extension toward Siemens TIA Portal or secondary targets & \textbf{Scoped Boundary}: Deep validation focused on \code{CODESYS V3.5 SP22 Patch 4}, with decoupled backend interfaces reserved for future targets. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
 \input{methods}
 \clearpage
 \input{results}
+\IfFileExists{results_interpretation.tex}{\input{results_interpretation}}{}
 \FloatBarrier
 \input{cases}
 \input{discussion}
+
 \end{document}
