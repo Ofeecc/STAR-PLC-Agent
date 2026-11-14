@@ -1545,91 +1545,121 @@ function renderStageDetailHtml(stage, trace) {
           )
           .join('')}</div>`
       : `<div class="muted" style="font-size:12px;">${escapeHtml(t('No dialect cards recorded.', '暂无注入的方言卡记录。'))}</div>`;
-  } else if (stage.id === 'coder') {
-    const attempts = Array.isArray(detail.compilation_attempts) ? detail.compilation_attempts : [];
-    body = attempts.length
-      ? `<div class="stage-rich-grid">${attempts
-          .map((a, idx) => {
-            const diags = (a.diagnostics || [])
-              .filter(d => {
-                const txt = String(d.text || d.message || '');
-                const sev = String(d.severity || '').toLowerCase();
-                return (
-                  sev.includes('error') ||
-                  sev.includes('warn') ||
-                  txt.includes('Build complete') ||
-                  txt.includes('errors') ||
-                  (a.diagnostics || []).length <= 4
-                );
-              })
-              .slice(0, 6);
-            const diagStr = diags.map(d => `[${d.severity || 'Msg'}] ${d.text || d.message || ''}`).join('\n');
+  }
+
+  const renderCompileAttemptsHtml = attempts => {
+    if (!attempts || !attempts.length) {
+      return `<div class="muted" style="font-size:12px;">${escapeHtml(t('Awaiting compilation attempt...', '等待 CODESYS 编译...'))}</div>`;
+    }
+    return `<div class="stage-rich-grid">${attempts
+      .map((a, idx) => {
+        const diags = (a.diagnostics || [])
+          .filter(d => {
+            const txt = String(d.text || d.message || '');
+            const sev = String(d.severity || '').toLowerCase();
             return (
-              `<div class="stage-subcard">` +
-              `<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:4px;">` +
-              `<strong>${escapeHtml(t(`Compile #${idx + 1}`, `第 ${idx + 1} 次编译`))}</strong>` +
-              `<span class="pill ${statusPillClass(a.status)}">${escapeHtml(a.status || '')}</span>` +
-              `</div>` +
-              `<div class="muted mono" style="font-size:11.5px;margin-bottom:4px;">` +
-              `${escapeHtml(a.backend || 'CODESYS')}` +
-              (a.elapsed_seconds != null ? ` · ${Number(a.elapsed_seconds).toFixed(1)}s` : '') +
-              (a.source_sha256 ? ` · SHA ${escapeHtml(String(a.source_sha256).slice(0, 10))}` : '') +
-              `</div>` +
-              (diagStr ? `<pre class="mono" style="margin:0;font-size:11px;white-space:pre-wrap;color:var(--text-secondary);">${escapeHtml(diagStr)}</pre>` : '') +
-              `</div>`
+              sev.includes('error') ||
+              sev.includes('warn') ||
+              txt.includes('Build complete') ||
+              txt.includes('errors') ||
+              (a.diagnostics || []).length <= 4
             );
           })
-          .join('')}</div>`
-      : `<div class="muted" style="font-size:12px;">${escapeHtml(t('Awaiting compilation attempt...', '等待 CODESYS 编译...'))}</div>`;
+          .slice(0, 6);
+        const diagStr = diags.map(d => `[${d.severity || 'Msg'}] ${d.text || d.message || ''}`).join('\n');
+        return (
+          `<div class="stage-subcard">` +
+          `<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:4px;">` +
+          `<strong>${escapeHtml(t(`Compile #${idx + 1}`, `第 ${idx + 1} 次编译`))}</strong>` +
+          `<span class="pill ${statusPillClass(a.status)}">${escapeHtml(a.status || '')}</span>` +
+          `</div>` +
+          `<div class="muted mono" style="font-size:11.5px;margin-bottom:4px;">` +
+          `${escapeHtml(a.backend || 'CODESYS')}` +
+          (a.elapsed_seconds != null ? ` · ${Number(a.elapsed_seconds).toFixed(1)}s` : '') +
+          (a.source_sha256 ? ` · SHA ${escapeHtml(String(a.source_sha256).slice(0, 10))}` : '') +
+          `</div>` +
+          (diagStr ? `<pre class="mono" style="margin:0;font-size:11px;white-space:pre-wrap;color:var(--text-secondary);">${escapeHtml(diagStr)}</pre>` : '') +
+          `</div>`
+        );
+      })
+      .join('')}</div>`;
+  };
+
+  const renderVerBlockHtml = (label, v) => {
+    if (!v) return '';
+    const cov = (v.specification_coverage || {}).status || '—';
+    const props = (v.property_results || []).slice(0, 14);
+    const ces = v.counterexamples || [];
+    const warns = (v.warnings || []).slice(0, 6);
+    return (
+      `<div class="stage-subcard">` +
+      `<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px;">` +
+      `<strong>${escapeHtml(label)}</strong>` +
+      `<div style="display:flex;gap:5px;flex-wrap:wrap;">` +
+      `<span class="pill ${statusPillClass(v.status)}">${escapeHtml(v.status || '')}</span>` +
+      (v.tool ? `<span class="pill mono">${escapeHtml(v.tool)}${v.engine ? ' / ' + escapeHtml(v.engine) : ''}</span>` : '') +
+      (v.total_properties != null ? `<span class="pill">${escapeHtml(`${v.passed_properties || 0}/${v.total_properties} props`)}</span>` : '') +
+      `<span class="pill">${escapeHtml(cov)}</span>` +
+      `</div></div>` +
+      (v.reason ? `<div class="muted" style="font-size:12px;margin-bottom:6px;">${escapeHtml(v.reason)}</div>` : '') +
+      (props.length
+        ? `<div style="max-height:160px;overflow:auto;margin-bottom:6px;"><table class="clean-table"><thead><tr><th>ID</th><th>${escapeHtml(t('Status', '状态'))}</th><th>Expression</th></tr></thead><tbody>` +
+          props
+            .map(
+              p =>
+                `<tr><td class="mono">${escapeHtml(p.id || '')}</td><td><span class="pill ${statusPillClass(p.status)}">${escapeHtml(p.status || '')}</span></td><td class="mono" style="font-size:11px;">${escapeHtml(p.expression || '')}</td></tr>`
+            )
+            .join('') +
+          `</tbody></table></div>`
+        : '') +
+      (ces.length
+        ? `<div style="margin-top:6px;"><div class="stage-subcard-title">${escapeHtml(t('Counterexample Witness', '反例轨迹'))}: ${escapeHtml(ces[0].property || '')}</div>` +
+          `<div style="max-height:160px;overflow:auto;"><table class="clean-table"><thead><tr><th>Step</th><th>Inputs</th><th>Observed</th><th>Internal State</th></tr></thead><tbody>` +
+          (ces[0].trace || [])
+            .slice(0, 8)
+            .map(
+              st =>
+                `<tr><td class="mono">${escapeHtml(String(st.step ?? ''))}</td><td class="mono" style="font-size:11px;">${escapeHtml(JSON.stringify(st.inputs || {}))}</td><td class="mono" style="font-size:11px;">${escapeHtml(JSON.stringify(st.observed || {}))}</td><td class="mono" style="font-size:11px;">${escapeHtml(JSON.stringify(st.internal_state || {}))}</td></tr>`
+            )
+            .join('') +
+          `</tbody></table></div></div>`
+        : '') +
+      (warns.length
+        ? `<div class="muted" style="font-size:11.5px;margin-top:4px;">${warns.map(w => `• ${escapeHtml(w)}`).join('<br>')}</div>`
+        : '') +
+      `</div>`
+    );
+  };
+
+  const renderFunctionalCardHtml = (fn, rollbackCount) => {
+    if (!fn || (!fn.evaluated_cases && !fn.status)) return '';
+    const detList = Array.isArray(fn.details) ? fn.details : [];
+    const extraMeta =
+      rollbackCount != null
+        ? t(`plan ${fn.planned_cases ?? '—'} · ${rollbackCount} rollback(s)`, `计划 ${fn.planned_cases ?? '—'} · 棘轮回滚 ${rollbackCount} 次`)
+        : t(`plan ${fn.planned_cases ?? '—'}`, `计划 ${fn.planned_cases ?? '—'}`);
+    return (
+      `<div class="stage-subcard"><div class="stage-subcard-title">${escapeHtml(t('Held-Out Fixed Evaluation', '冻结固定测试集仿真'))}</div>` +
+      `<div style="margin-bottom:6px;"><span class="pill ${statusPillClass(fn.status)}">${escapeHtml(fn.status || '')}</span> ` +
+      `<strong class="mono">${escapeHtml(`${fn.passed_cases ?? 0}/${fn.evaluated_cases ?? 0}`)}</strong> ` +
+      `<span class="muted" style="font-size:12px;">(${escapeHtml(extraMeta)})</span></div>` +
+      (detList.length
+        ? `<div style="display:flex;gap:4px;flex-wrap:wrap;">${detList
+            .slice(0, 12)
+            .map(d => `<span class="pill ${statusPillClass(d.status)} mono">${escapeHtml(d.case_id || '')}: ${escapeHtml(d.status || '')}</span>`)
+            .join('')}</div>`
+        : '') +
+      `</div>`
+    );
+  };
+
+  if (stage.id === 'coder') {
+    const attempts = Array.isArray(detail.compilation_attempts) ? detail.compilation_attempts : [];
+    body = renderCompileAttemptsHtml(attempts);
   } else if (stage.id === 'verify') {
     const verBlocks = [];
-    const renderVerBlock = (label, v) => {
-      if (!v) return '';
-      const cov = (v.specification_coverage || {}).status || '—';
-      const props = (v.property_results || []).slice(0, 14);
-      const ces = v.counterexamples || [];
-      const warns = (v.warnings || []).slice(0, 6);
-      return (
-        `<div class="stage-subcard">` +
-        `<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px;">` +
-        `<strong>${escapeHtml(label)}</strong>` +
-        `<div style="display:flex;gap:5px;flex-wrap:wrap;">` +
-        `<span class="pill ${statusPillClass(v.status)}">${escapeHtml(v.status || '')}</span>` +
-        (v.tool ? `<span class="pill mono">${escapeHtml(v.tool)}${v.engine ? ' / ' + escapeHtml(v.engine) : ''}</span>` : '') +
-        (v.total_properties != null ? `<span class="pill">${escapeHtml(`${v.passed_properties || 0}/${v.total_properties} props`)}</span>` : '') +
-        `<span class="pill">${escapeHtml(cov)}</span>` +
-        `</div></div>` +
-        (v.reason ? `<div class="muted" style="font-size:12px;margin-bottom:6px;">${escapeHtml(v.reason)}</div>` : '') +
-        (props.length
-          ? `<div style="max-height:160px;overflow:auto;margin-bottom:6px;"><table class="clean-table"><thead><tr><th>ID</th><th>${escapeHtml(t('Status', '状态'))}</th><th>Expression</th></tr></thead><tbody>` +
-            props
-              .map(
-                p =>
-                  `<tr><td class="mono">${escapeHtml(p.id || '')}</td><td><span class="pill ${statusPillClass(p.status)}">${escapeHtml(p.status || '')}</span></td><td class="mono" style="font-size:11px;">${escapeHtml(p.expression || '')}</td></tr>`
-              )
-              .join('') +
-            `</tbody></table></div>`
-          : '') +
-        (ces.length
-          ? `<div style="margin-top:6px;"><div class="stage-subcard-title">${escapeHtml(t('Counterexample Witness', '反例轨迹'))}: ${escapeHtml(ces[0].property || '')}</div>` +
-            `<div style="max-height:160px;overflow:auto;"><table class="clean-table"><thead><tr><th>Step</th><th>Inputs</th><th>Observed</th><th>Internal State</th></tr></thead><tbody>` +
-            (ces[0].trace || [])
-              .slice(0, 8)
-              .map(
-                st =>
-                  `<tr><td class="mono">${escapeHtml(String(st.step ?? ''))}</td><td class="mono" style="font-size:11px;">${escapeHtml(JSON.stringify(st.inputs || {}))}</td><td class="mono" style="font-size:11px;">${escapeHtml(JSON.stringify(st.observed || {}))}</td><td class="mono" style="font-size:11px;">${escapeHtml(JSON.stringify(st.internal_state || {}))}</td></tr>`
-              )
-              .join('') +
-            `</tbody></table></div></div>`
-          : '') +
-        (warns.length
-          ? `<div class="muted" style="font-size:11.5px;margin-top:4px;">${warns.map(w => `• ${escapeHtml(w)}`).join('<br>')}</div>`
-          : '') +
-        `</div>`
-      );
-    };
-    if (detail.fullflow_formal) verBlocks.push(renderVerBlock(t('Full-Flow Formal Verification (Coupled Observer)', '全流程形式验证（耦合规约模型）'), detail.fullflow_formal));
-    if (detail.in_harness) verBlocks.push(renderVerBlock(t('In-Harness Verification (CEGAR Gate)', '生成期形式验证（CEGAR 门禁）'), detail.in_harness));
+    if (detail.fullflow_formal) verBlocks.push(renderVerBlockHtml(t('Full-Flow Formal Verification (Coupled Observer)', '全流程形式验证（耦合规约模型）'), detail.fullflow_formal));
+    if (detail.in_harness) verBlocks.push(renderVerBlockHtml(t('In-Harness Verification (CEGAR Gate)', '生成期形式验证（CEGAR 门禁）'), detail.in_harness));
     body = verBlocks.length
       ? `<div class="stage-rich-grid">${verBlocks.join('')}</div>`
       : `<div class="muted" style="font-size:12px;">${escapeHtml(t('Formal ST->SMV verification not run for this record.', '该记录未执行 ST->SMV 形式验证。'))}</div>`;
@@ -1663,7 +1693,6 @@ function renderStageDetailHtml(stage, trace) {
     body = casesHtml + rejHtml;
   } else if (stage.id === 'ratchet') {
     const stEval = detail.selftest_evaluation;
-    const fn = detail.functional;
     const cards = [];
     if (stEval) {
       cards.push(
@@ -1672,21 +1701,60 @@ function renderStageDetailHtml(stage, trace) {
           `<strong class="mono">${escapeHtml(`${stEval.passed_cases ?? 0}/${stEval.evaluated_cases ?? 0}`)}</strong></div></div>`
       );
     }
-    if (fn && (fn.evaluated_cases || fn.status)) {
-      const detList = Array.isArray(fn.details) ? fn.details : [];
-      cards.push(
-        `<div class="stage-subcard"><div class="stage-subcard-title">${escapeHtml(t('Held-Out Fixed Evaluation', '冻结固定测试集仿真'))}</div>` +
-          `<div style="margin-bottom:6px;"><span class="pill ${statusPillClass(fn.status)}">${escapeHtml(fn.status || '')}</span> ` +
-          `<strong class="mono">${escapeHtml(`${fn.passed_cases ?? 0}/${fn.evaluated_cases ?? 0}`)}</strong> ` +
-          `<span class="muted" style="font-size:12px;">(${escapeHtml(t(`plan ${fn.planned_cases ?? '—'} · ${metrics.rollback_count || 0} rollback(s)`, `计划 ${fn.planned_cases ?? '—'} · 棘轮回滚 ${metrics.rollback_count || 0} 次`))})</span></div>` +
-          (detList.length
-            ? `<div style="display:flex;gap:4px;flex-wrap:wrap;">${detList
-                .slice(0, 12)
-                .map(d => `<span class="pill ${statusPillClass(d.status)} mono">${escapeHtml(d.case_id || '')}: ${escapeHtml(d.status || '')}</span>`)
-                .join('')}</div>`
-            : '') +
-          `</div>`
-      );
+    const fnCard = renderFunctionalCardHtml(detail.functional, metrics.rollback_count || 0);
+    if (fnCard) cards.push(fnCard);
+    body = cards.length ? `<div class="stage-rich-grid">${cards.join('')}</div>` : '';
+  } else if (stage.id === 'context') {
+    const tools = Array.isArray(detail.mcp_tools) ? detail.mcp_tools : [];
+    const promptPrev = detail.prompt_preview || '';
+    body =
+      `<div class="stage-rich-grid">` +
+      `<div class="stage-subcard"><div class="stage-subcard-title">${escapeHtml(t('Task & MCP Tool Surface', '任务规约与 MCP 工具面'))}</div>` +
+      (detail.task_title ? `<div style="font-weight:600;margin-bottom:6px;">${escapeHtml(detail.task_title)}</div>` : '') +
+      (tools.length ? `<div style="display:flex;gap:5px;flex-wrap:wrap;">${tools.map(n => `<span class="pill mono">${escapeHtml(n)}</span>`).join('')}</div>` : '') +
+      `</div>` +
+      (promptPrev
+        ? `<div class="stage-subcard"><div class="stage-subcard-title">${escapeHtml(t('Prompt Excerpt', '提示词摘要'))}</div>` +
+          `<pre class="mono" style="margin:0;font-size:11px;max-height:140px;overflow:auto;white-space:pre-wrap;">${escapeHtml(promptPrev)}</pre></div>`
+        : '') +
+      `</div>`;
+  } else if (stage.id === 'tool_loop') {
+    const tcalls = Array.isArray(detail.tool_calls) ? detail.tool_calls : [];
+    const reasons = Array.isArray(detail.reasoning_steps) ? detail.reasoning_steps : [];
+    const tcHtml = tcalls.length
+      ? `<div class="stage-subcard"><div class="stage-subcard-title">${escapeHtml(t('MCP & Tool Call Sequence', 'MCP 工具调用轨迹'))}</div>` +
+        `<div style="display:flex;flex-direction:column;gap:5px;">` +
+        tcalls
+          .slice(0, 12)
+          .map(
+            (c, i) =>
+              `<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:12px;">` +
+              `<span class="mono">${i + 1}. ${escapeHtml((c.server ? c.server + '/' : '') + (c.tool || ''))}</span>` +
+              `<span class="pill ${c.status === 'failed' || c.has_error ? 'pill--fail' : 'pill--pass'}">${escapeHtml(c.status || 'completed')}</span>` +
+              `</div>`
+          )
+          .join('') +
+        `</div></div>`
+      : '';
+    const rsnHtml = reasons.length
+      ? `<div class="stage-subcard"><div class="stage-subcard-title">${escapeHtml(t('Model Reasoning Trace (Excerpt)', '模型推理摘要'))}</div>` +
+        reasons.slice(0, 3).map(r => `<div class="muted" style="font-size:11.5px;margin-bottom:5px;">• ${escapeHtml(r)}</div>`).join('') +
+        `</div>`
+      : '';
+    const cards = [tcHtml, rsnHtml].filter(Boolean);
+    body = cards.length ? `<div class="stage-rich-grid">${cards.join('')}</div>` : '';
+  } else if (stage.id === 'compile_sim') {
+    const attempts = Array.isArray(detail.compilation_attempts) ? detail.compilation_attempts : [];
+    const verAttempts = Array.isArray(detail.attempts) ? detail.attempts : [];
+    body =
+      renderCompileAttemptsHtml(attempts) +
+      (verAttempts.length ? `<div style="margin-top:8px;">${renderVerBlockHtml(t('In-Loop Verify Gate', '循环内形式预检'), verAttempts[verAttempts.length - 1])}</div>` : '');
+  } else if (stage.id === 'final') {
+    const cards = [];
+    const fnCard = renderFunctionalCardHtml(detail.functional, null);
+    if (fnCard) cards.push(fnCard);
+    if (detail.fullflow_formal) {
+      cards.push(renderVerBlockHtml(t('Full-Flow Formal Verification (Coupled Observer)', '全流程形式验证（耦合规约模型）'), detail.fullflow_formal));
     }
     body = cards.length ? `<div class="stage-rich-grid">${cards.join('')}</div>` : '';
   }
@@ -1727,7 +1795,9 @@ function renderRunTrace(trace) {
         ? `STAR (${stages.length}-Stage)`
         : trace.framework_kind === 'fullflow'
           ? 'Fullflow Eval'
-          : `Baseline (${trace.framework})`;
+          : trace.framework === 'codex_cli'
+            ? `Codex CLI (${stages.length}-Stage)`
+            : `Baseline (${trace.framework})`;
     const tokStr =
       tok.usage_available && tok.total_tokens != null
         ? `${tok.total_tokens} (in:${tok.input_tokens ?? '—'} out:${tok.output_tokens ?? '—'}${tok.reasoning_tokens != null ? ' rsn:' + tok.reasoning_tokens : ''})`

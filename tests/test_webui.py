@@ -645,18 +645,23 @@ const check = [
         self.assertIn("summaries", data)
         self.assertIn("conditions", data)
         groups = data.get("benchmark_groups", [])
-        self.assertGreaterEqual(len(groups), 4)
+        self.assertGreaterEqual(len(groups), 6)
         by_id = {g["group_id"]: g for g in groups}
+        self.assertEqual(len(groups), len(by_id), "benchmark_groups must not duplicate group_id across summary files")
         self.assertIn("star_deepseek", by_id)
         self.assertIn("star_terra", by_id)
+        self.assertIn("codex_deepseek", by_id)
+        self.assertIn("codex_terra", by_id)
         self.assertIn("six_task_fullflow", by_id)
         self.assertIn("early_pilot_pair", by_id)
-        self.assertEqual(by_id["star_deepseek"]["tier"], "primary")
-        self.assertEqual(by_id["star_deepseek"]["planned_tasks"], 32)
-        self.assertEqual(by_id["star_deepseek"]["completed_tasks"], 32)
-        self.assertFalse(by_id["star_deepseek"]["archived"])
-        self.assertEqual(by_id["star_terra"]["tier"], "primary")
-        self.assertEqual(by_id["star_terra"]["planned_tasks"], 32)
+        for gid in ("star_deepseek", "star_terra", "codex_deepseek", "codex_terra"):
+            self.assertEqual(by_id[gid]["tier"], "primary")
+            self.assertEqual(by_id[gid]["planned_tasks"], 32)
+            self.assertEqual(by_id[gid]["completed_tasks"], 32)
+            self.assertFalse(by_id[gid]["archived"])
+            self.assertEqual(sum(1 for t in by_id[gid]["tasks"] if t.get("trace_run_id")), 32)
+        self.assertEqual(by_id["codex_deepseek"]["source_file"], "results/summary/codex_cli_fullflow_20261114.json")
+        self.assertEqual(by_id["codex_terra"]["source_file"], "results/summary/codex_cli_fullflow_20261114.json")
         self.assertEqual(by_id["six_task_fullflow"]["tier"], "subset")
         self.assertEqual(by_id["six_task_fullflow"]["planned_tasks"], 6)
         self.assertEqual(by_id["six_task_fullflow"]["tasks"][0]["task_id"], "PUB001")
@@ -668,6 +673,10 @@ const check = [
         self.assertEqual(by_id["star_deepseek"]["outcome_counts"]["PARTIAL"], 10)
         self.assertEqual(by_id["star_terra"]["outcome_counts"]["PASS"], 18)
         self.assertEqual(by_id["star_terra"]["outcome_counts"]["PARTIAL"], 6)
+        self.assertEqual(by_id["codex_deepseek"]["outcome_counts"]["PASS"], 15)
+        self.assertEqual(by_id["codex_deepseek"]["outcome_counts"]["PARTIAL"], 5)
+        self.assertEqual(by_id["codex_terra"]["outcome_counts"]["PASS"], 17)
+        self.assertEqual(by_id["codex_terra"]["outcome_counts"]["PARTIAL"], 9)
         self.assertEqual(by_id["six_task_fullflow"]["outcome_counts"]["PASS"], 4)
         self.assertEqual(by_id["six_task_fullflow"]["outcome_counts"]["PARTIAL"], 2)
         ds_by_tid = {t["task_id"]: t for t in by_id["star_deepseek"]["tasks"]}
@@ -677,6 +686,11 @@ const check = [
         self.assertEqual(ds_by_tid["PUB006"]["partial_reason"], "reason2_incomplete_fixed")
         self.assertEqual(ds_by_tid["PUB009"]["status"], "PARTIAL")
         self.assertEqual(ds_by_tid["PUB009"]["partial_reason"], "reason2_unsupported_st")
+        cd_by_tid = {t["task_id"]: t for t in by_id["codex_deepseek"]["tasks"]}
+        self.assertEqual(cd_by_tid["PUB001"]["status"], "PASS")
+        self.assertEqual(cd_by_tid["PUB001"]["raw_status"], "PARTIAL")
+        self.assertEqual(cd_by_tid["PUB001"]["fixed_tests"]["passed"], 7)
+        self.assertEqual(cd_by_tid["PUB001"]["formal"]["status"], "PASS")
         linked = ds_by_tid["PUB001"]["trace_run_id"]
         self.assertIsNotNone(linked)
         st, linked_trace = handle_api_request("GET", "/api/run-trace", {"run": linked}, None, self.settings)
@@ -686,6 +700,24 @@ const check = [
         prop_ids = [p["id"] for p in linked_trace["formal_verification"]["property_results"]]
         self.assertIn("PUB001.P1", prop_ids)
         self.assertFalse(any(pid.startswith("SMV_") for pid in prop_ids))
+
+        codex_linked = cd_by_tid["PUB001"]["trace_run_id"]
+        self.assertIsNotNone(codex_linked)
+        st_cd, codex_trace = handle_api_request("GET", "/api/run-trace", {"run": codex_linked}, None, self.settings)
+        self.assertEqual(st_cd, 200)
+        self.assertEqual(codex_trace["framework"], "codex_cli")
+        self.assertEqual(codex_trace["display_status"], "PASS")
+        self.assertEqual([s["id"] for s in codex_trace["stages"]], ["context", "tool_loop", "compile_sim", "final"])
+        self.assertEqual(codex_trace["stages"][1]["status"], "DONE")
+        self.assertEqual(codex_trace["stages"][3]["status"], "PASS")
+        self.assertGreater(codex_trace["token_summary"]["total_tokens"], 0)
+        self.assertGreater(codex_trace["token_summary"]["reasoning_tokens"], 0)
+        self.assertGreaterEqual(len(codex_trace["timeline"]), 4)
+        self.assertGreaterEqual(len(codex_trace["versions"]), 1)
+        self.assertGreaterEqual(len(codex_trace["waveforms"]), 7)
+        cd_prop_ids = [p["id"] for p in codex_trace["formal_verification"]["property_results"]]
+        self.assertIn("PUB001.P1", cd_prop_ids)
+        self.assertFalse(any(pid.startswith("SMV_") for pid in cd_prop_ids))
 
     def test_handle_api_request_invalid_route(self):
         status, data = handle_api_request("GET", "/api/unknown_route", {}, None, self.settings)
@@ -719,8 +751,9 @@ const check = [
         self.assertEqual(len(trace["waveforms"]), 2)
         self.assertTrue(all(step["match"] for wf in trace["waveforms"] for step in wf["steps"]))
 
+        self.assertFalse(any(r["state"] == "running" and r["source"] != "experiments" for r in runs))
         ff_pub1 = next(
-            (r for r in runs if r["task_id"] == "PUB001" and r["source"] == "fullflow"),
+            (r for r in runs if r["task_id"] == "PUB001" and r["source"] == "fullflow" and r["framework_kind"] == "star"),
             None,
         )
         self.assertIsNotNone(ff_pub1)
@@ -729,6 +762,18 @@ const check = [
         self.assertEqual(st_ff, 200)
         self.assertEqual([s["id"] for s in ff_trace["stages"]], ["planner", "dialect", "coder", "verify", "tester", "ratchet"])
         self.assertGreaterEqual(len(ff_trace["waveforms"]), 1)
+
+        ff_codex = next(
+            (
+                r
+                for r in runs
+                if r["task_id"] == "PUB001" and r["source"] == "fullflow" and r.get("framework") == "codex_cli"
+            ),
+            None,
+        )
+        self.assertIsNotNone(ff_codex)
+        self.assertEqual(ff_codex["state"], "completed")
+        self.assertEqual(ff_codex["display_status"], "PASS")
 
     def test_handle_api_request_runs_supports_live_experiments_and_ratchet_rollback(self):
         root = Path(self.temp.name) / "ws"

@@ -194,10 +194,23 @@ def _build_step_waveforms(
     return waveforms
 
 
-def _resolve_trace_run_id(active_root: Path, evidence_rel: str | None) -> str | None:
-    if not evidence_rel or not isinstance(evidence_rel, str):
+def normalize_evidence_path(raw_path: str | None) -> str | None:
+    if not raw_path or not isinstance(raw_path, str):
         return None
-    cleaned = evidence_rel.strip().replace("\\", "/")
+    cleaned = raw_path.strip().replace("\\", "/")
+    if not cleaned:
+        return None
+    for marker in ("results/raw/", "experiments/", "results/summary/"):
+        idx = cleaned.find(marker)
+        if idx >= 0:
+            return cleaned[idx:]
+    return cleaned.lstrip("/") if re.match(r"^[A-Za-z]:/", cleaned) else cleaned
+
+
+def _resolve_trace_run_id(active_root: Path, evidence_rel: str | None) -> str | None:
+    cleaned = normalize_evidence_path(evidence_rel)
+    if not cleaned:
+        return None
     target = (active_root / cleaned).resolve()
     raw_root = (active_root / "results" / "raw").resolve()
     exp_root = (active_root / "experiments").resolve()
@@ -210,6 +223,79 @@ def _resolve_trace_run_id(active_root: Path, evidence_rel: str | None) -> str | 
     if task_dir.is_dir() and _is_run_workspace(task_dir):
         return task_dir.relative_to(active_root).as_posix()
     return None
+
+
+def _extract_fixed_tests_summary(row: dict[str, Any]) -> dict[str, Any]:
+    ft = row.get("fixed_tests")
+    if isinstance(ft, dict) and ("status" in ft or "passed" in ft or "evaluated" in ft):
+        return ft
+    stages = row.get("stages") or {}
+    func_stage = (stages.get("functional") or {}).get("result") or {}
+    func = (
+        func_stage.get("functional")
+        if isinstance(func_stage.get("functional"), dict)
+        else (row.get("functional") if isinstance(row.get("functional"), dict) else {})
+    )
+    planned = row.get("planned_cases") if row.get("planned_cases") is not None else func.get("planned_cases")
+    if not func and func_stage:
+        return {
+            "status": str(func_stage.get("status") or ("NOT_RUN" if not row.get("compiled") else "UNKNOWN")),
+            "passed": int(func_stage.get("passed_cases") or 0),
+            "evaluated": int(func_stage.get("evaluated_cases") or 0),
+            "planned": int(planned or 0),
+        }
+    return {
+        "status": str(func.get("status") or func_stage.get("status") or "NOT_RUN"),
+        "passed": int(func.get("passed_cases") or 0),
+        "evaluated": int(func.get("evaluated_cases") or 0),
+        "planned": int(planned or 0),
+    }
+
+
+def _extract_formal_summary(row: dict[str, Any]) -> dict[str, Any]:
+    fm = row.get("formal")
+    if isinstance(fm, dict) and "status" in fm:
+        return fm
+    stages = row.get("stages") or {}
+    formal_stage = (stages.get("formal") or {}).get("result") or {}
+    verif = row.get("verification") if isinstance(row.get("verification"), dict) else {}
+    src = formal_stage if formal_stage.get("status") else verif
+    if not src:
+        return {"status": "NOT_RUN", "full_specification_verified": None}
+    return {
+        "status": str(src.get("status") or "NOT_RUN"),
+        "full_specification_verified": src.get("full_specification_verified"),
+    }
+
+
+def normalize_benchmark_task_row(active_root: Path, row: dict[str, Any], group_id: str | None = None) -> dict[str, Any]:
+    """Normalize a summary or matrix task record into the canonical WebUI benchmark row shape."""
+    tid = str(row.get("task_id") or "")
+    ev_rel = normalize_evidence_path(row.get("evidence") or row.get("matrix_evidence"))
+    if not ev_rel and group_id and tid:
+        candidate = active_root / "results" / "raw" / "codex_matrix_resume_20261114" / group_id / tid / "fullflow_result.json"
+        if candidate.is_file():
+            ev_rel = candidate.relative_to(active_root).as_posix()
+
+    llm_calls = row.get("llm_calls")
+    if llm_calls is None:
+        llm_calls = row.get("source_llm_calls") if row.get("source_llm_calls") is not None else row.get("new_llm_calls")
+
+    normalized = {
+        "task_id": tid,
+        "difficulty": row.get("difficulty") or "",
+        "status": row.get("status") or "UNKNOWN",
+        "compiled": row.get("compiled"),
+        "generation_status": row.get("generation_status"),
+        "fixed_tests": _extract_fixed_tests_summary(row),
+        "formal": _extract_formal_summary(row),
+        "llm_calls": llm_calls,
+        "elapsed_seconds": row.get("elapsed_seconds"),
+        "evidence": ev_rel,
+    }
+    enriched = _apply_showcase_task_outcome(normalized)
+    enriched["trace_run_id"] = _resolve_trace_run_id(active_root, ev_rel)
+    return enriched
 
 
 def _apply_showcase_task_outcome(row: dict[str, Any]) -> dict[str, Any]:
@@ -283,29 +369,68 @@ def _compute_difficulty_breakdown(tasks: list[dict[str, Any]]) -> dict[str, dict
     return buckets
 
 
+_GROUP_ORDER = {
+    "star_deepseek": 0,
+    "star_terra": 1,
+    "codex_deepseek": 2,
+    "codex_terra": 3,
+    "six_task_fullflow": 10,
+    "codex_cli_pilot": 11,
+    "early_pilot_pair": 20,
+}
+_TIER_ORDER = {"primary": 0, "subset": 1, "archived_pilot": 2}
+
+
+def _driver_display_label(driver: str) -> str:
+    low = (driver or "").strip().lower()
+    if low in ("codex_cli", "codex"):
+        return "Codex CLI"
+    if low == "star":
+        return "STAR"
+    return driver.upper() or "Run"
+
+
 def _build_benchmark_groups(active_root: Path, summaries: dict[str, Any]) -> dict[str, Any]:
     groups: list[dict[str, Any]] = []
+    seen_group_ids: set[str] = set()
     interpretations: list[str] = []
 
-    for stem, payload in sorted(summaries.items()):
+    # Load dedicated cohort summaries before composite snapshots so clean cohort files take precedence.
+    ordered_items = sorted(
+        summaries.items(),
+        key=lambda kv: (1 if "snapshot" in kv[0] else 0, kv[0]),
+    )
+
+    for stem, payload in ordered_items:
         if not isinstance(payload, dict) or not isinstance(payload.get("groups"), list):
             continue
         if payload.get("interpretation"):
-            interpretations.append(str(payload["interpretation"]))
+            interp = payload["interpretation"]
+            if isinstance(interp, list):
+                interpretations.extend(str(x) for x in interp if x)
+            else:
+                interpretations.append(str(interp))
         for raw_g in payload["groups"]:
             if not isinstance(raw_g, dict):
                 continue
-            tasks_out = []
-            for t_row in raw_g.get("tasks") or []:
-                if not isinstance(t_row, dict):
-                    continue
-                enriched = _apply_showcase_task_outcome(t_row)
-                enriched["trace_run_id"] = _resolve_trace_run_id(active_root, t_row.get("evidence"))
-                tasks_out.append(enriched)
             gid = str(raw_g.get("group_id") or stem)
+            if gid in seen_group_ids:
+                continue
+            seen_group_ids.add(gid)
+            tasks_out = [
+                normalize_benchmark_task_row(active_root, t_row, group_id=gid)
+                for t_row in (raw_g.get("tasks") or [])
+                if isinstance(t_row, dict)
+            ]
             driver = str(raw_g.get("driver") or "")
+            driver_label = _driver_display_label(driver)
             model = str(raw_g.get("model") or "")
             cond = str(raw_g.get("condition") or "")
+            formal_counts = raw_g.get("formal_status_counts") or {}
+            if not formal_counts and tasks_out:
+                for row in tasks_out:
+                    fst = str((row.get("formal") or {}).get("status") or "UNKNOWN")
+                    formal_counts[fst] = formal_counts.get(fst, 0) + 1
             groups.append(
                 {
                     "group_id": gid,
@@ -313,8 +438,8 @@ def _build_benchmark_groups(active_root: Path, summaries: dict[str, Any]) -> dic
                     "date": str(payload.get("date") or ""),
                     "tier": "primary",
                     "archived": False,
-                    "title_en": f"{driver.upper() or 'Run'} · {model}" + (f" ({cond})" if cond else ""),
-                    "title_zh": f"{driver.upper() or '评测'} · {model}" + (f" ({cond})" if cond else ""),
+                    "title_en": f"{driver_label} · {model}" + (f" ({cond})" if cond else ""),
+                    "title_zh": f"{driver_label} · {model}" + (f" ({cond})" if cond else ""),
                     "driver": driver,
                     "model": model,
                     "condition": cond,
@@ -322,7 +447,7 @@ def _build_benchmark_groups(active_root: Path, summaries: dict[str, Any]) -> dic
                     "planned_tasks": int(raw_g.get("planned_tasks") or len(tasks_out)),
                     "compiled_tasks": int(raw_g.get("compiled_tasks") or 0),
                     "fixed_cases": raw_g.get("fixed_cases") or {},
-                    "formal_status_counts": raw_g.get("formal_status_counts") or {},
+                    "formal_status_counts": formal_counts,
                     "outcome_counts": _count_outcomes(tasks_out, "status"),
                     "raw_outcome_counts": raw_g.get("outcome_counts") or _count_outcomes(tasks_out, "raw_status"),
                     "difficulty_breakdown": _compute_difficulty_breakdown(tasks_out),
@@ -508,10 +633,12 @@ def _build_benchmark_groups(active_root: Path, summaries: dict[str, Any]) -> dic
             }
         )
 
+    groups.sort(key=lambda g: (_TIER_ORDER.get(g.get("tier", ""), 99), _GROUP_ORDER.get(g.get("group_id", ""), 99)))
+    unique_interps = list(dict.fromkeys(interpretations))
     return {
         "benchmark_groups": groups,
         "interpretation": (
-            (interpretations[0] + " ") if interpretations else ""
+            (unique_interps[0] + " ") if unique_interps else ""
         )
         + "Display status classifies compiled + 100% planned fixed tests PASS + coupled SMV checks PASS as PASS; PARTIAL strictly retains Reason 2 (UNSUPPORTED_ST or incomplete fixed-test execution). Raw archive statuses remain preserved on disk.",
     }

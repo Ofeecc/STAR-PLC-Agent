@@ -186,8 +186,82 @@ def _latest_mtime(ws: Path) -> float:
     return best
 
 
-def _extract_token_summary(model_calls: list[dict[str, Any]], result: dict | None, ws: Path) -> dict[str, Any]:
-    completed = [e for e in model_calls if e.get("event") == "request_completed"]
+def _read_run_telemetry(ws: Path) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
+    """Load model_calls, execution events, and optional Codex CLI events from ws."""
+    model_calls = _read_jsonl_safe(ws / "model_calls.jsonl")
+    if not model_calls:
+        model_calls = _read_jsonl_safe(ws / "api_transport" / "model_calls.jsonl")
+    exec_events = _read_jsonl_safe(ws / "execution.jsonl")
+    codex_events = _read_jsonl_safe(ws / "events.jsonl")
+    return model_calls, exec_events, codex_events
+
+
+def _summarize_codex_events(codex_events: list[dict[str, Any]]) -> dict[str, Any]:
+    """Extract turn count, completed tool/command calls, reasoning excerpts, and turn usage from Codex events.jsonl."""
+    turns_started = 0
+    turns_completed = 0
+    turns_failed = 0
+    tool_calls: list[dict[str, Any]] = []
+    reasoning_steps: list[str] = []
+    turn_usage: list[dict[str, Any]] = []
+    for ev in codex_events:
+        etype = ev.get("type")
+        if etype == "turn.started":
+            turns_started += 1
+        elif etype == "turn.completed":
+            turns_completed += 1
+            if isinstance(ev.get("usage"), dict):
+                turn_usage.append(ev["usage"])
+        elif etype == "turn.failed":
+            turns_failed += 1
+        elif etype == "item.completed" and isinstance(ev.get("item"), dict):
+            item = ev["item"]
+            itype = item.get("type")
+            if itype == "mcp_tool_call":
+                tool_calls.append(
+                    {
+                        "kind": "mcp",
+                        "server": item.get("server") or "",
+                        "tool": item.get("tool") or "unknown",
+                        "status": item.get("status") or "completed",
+                        "has_error": bool(item.get("error")),
+                        "error_preview": str(item.get("error") or "")[:240] if item.get("error") else "",
+                    }
+                )
+            elif itype == "command_execution":
+                tool_calls.append(
+                    {
+                        "kind": "command",
+                        "server": "shell",
+                        "tool": str(item.get("command") or "command")[:80],
+                        "status": item.get("status") or ("completed" if item.get("exit_code") == 0 else "failed"),
+                        "has_error": bool(item.get("exit_code") not in (None, 0)),
+                        "error_preview": str(item.get("aggregated_output") or "")[:200]
+                        if item.get("exit_code") not in (None, 0)
+                        else "",
+                    }
+                )
+            elif itype == "reasoning" and item.get("text"):
+                txt = str(item["text"]).strip()
+                if txt:
+                    reasoning_steps.append(txt[:420] + ("..." if len(txt) > 420 else ""))
+    return {
+        "turns": max(turns_completed + turns_failed, turns_started),
+        "turns_completed": turns_completed,
+        "turns_failed": turns_failed,
+        "tool_calls": tool_calls,
+        "reasoning_steps": reasoning_steps[:8],
+        "turn_usage": turn_usage,
+    }
+
+
+def _extract_token_summary(
+    model_calls: list[dict[str, Any]],
+    result: dict | None,
+    ws: Path,
+    codex_events: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    completed = [e for e in model_calls if e.get("event") in ("request_completed", "request_finished")]
     started = [e for e in model_calls if e.get("event") == "request_started"]
     reused = [e for e in model_calls if e.get("event") == "request_reused"]
 
@@ -202,10 +276,31 @@ def _extract_token_summary(model_calls: list[dict[str, Any]], result: dict | Non
             resp = _read_json_safe(resp_path)
             if isinstance(resp, dict) and isinstance(resp.get("usage"), dict):
                 usage_records.append(resp["usage"])
+    if not usage_records and codex_events:
+        parsed_ce = _summarize_codex_events(codex_events)
+        usage_records = parsed_ce["turn_usage"]
 
     def _sum_optional(getter: Callable[[dict], int | None]) -> int | None:
         vals = [v for u in usage_records if (v := getter(u)) is not None]
         return sum(vals) if vals else None
+
+    def _get_reasoning_tokens(u: dict[str, Any]) -> int | None:
+        for key in ("output_tokens_details", "completion_tokens_details"):
+            det = u.get(key)
+            if isinstance(det, dict) and det.get("reasoning_tokens") is not None:
+                return det["reasoning_tokens"]
+        if u.get("reasoning_output_tokens") is not None:
+            return u["reasoning_output_tokens"]
+        return None
+
+    def _get_total_tokens(u: dict[str, Any]) -> int | None:
+        if u.get("total_tokens") is not None:
+            return u["total_tokens"]
+        inp = u.get("input_tokens") if u.get("input_tokens") is not None else u.get("prompt_tokens")
+        out = u.get("output_tokens") if u.get("output_tokens") is not None else u.get("completion_tokens")
+        if inp is not None and out is not None:
+            return int(inp) + int(out)
+        return None
 
     elapsed_vals = [
         float(e["elapsed_seconds"]) for e in completed if isinstance(e.get("elapsed_seconds"), (int, float))
@@ -221,15 +316,19 @@ def _extract_token_summary(model_calls: list[dict[str, Any]], result: dict | Non
         "output_tokens": _sum_optional(
             lambda u: u.get("output_tokens") if u.get("output_tokens") is not None else u.get("completion_tokens")
         ),
-        "reasoning_tokens": _sum_optional(lambda u: (u.get("completion_tokens_details") or {}).get("reasoning_tokens")),
+        "reasoning_tokens": _sum_optional(_get_reasoning_tokens),
         "cached_tokens": _sum_optional(
             lambda u: (
                 (u.get("input_tokens_details") or {}).get("cached_tokens")
                 if (u.get("input_tokens_details") or {}).get("cached_tokens") is not None
-                else (u.get("prompt_tokens_details") or {}).get("cached_tokens")
+                else (
+                    (u.get("prompt_tokens_details") or {}).get("cached_tokens")
+                    if (u.get("prompt_tokens_details") or {}).get("cached_tokens") is not None
+                    else u.get("cached_input_tokens")
+                )
             )
         ),
-        "total_tokens": _sum_optional(lambda u: u.get("total_tokens")),
+        "total_tokens": _sum_optional(_get_total_tokens),
         "llm_elapsed_seconds": round(sum(elapsed_vals), 3) if elapsed_vals else None,
     }
 
@@ -252,7 +351,10 @@ def _version_sort_key(path: Path) -> tuple[int, int, str]:
 def _extract_versions(ws: Path, framework_kind: str, *, include_diffs: bool = True) -> list[dict[str, Any]]:
     raw_entries: list[tuple[str, str, str, dict[str, Any], bool]] = []
     if framework_kind == "baseline":
-        for p in sorted((ws / "trusted").glob("compile_*/candidate.json")):
+        compile_cand_paths = sorted((ws / "trusted").glob("compile_*/candidate.json")) + sorted(
+            (ws / "compiler_records").glob("compile_*/candidate.json")
+        )
+        for p in compile_cand_paths:
             cand = _read_json_safe(p)
             if isinstance(cand, dict) and ("declaration" in cand or "implementation" in cand):
                 comp_res = _read_json_safe(p.parent / "compile_result.json")
@@ -285,6 +387,10 @@ def _extract_versions(ws: Path, framework_kind: str, *, include_diffs: bool = Tr
                 raw_entries.append((p.stem, label, stage, cand, False))
 
     final_cand = _read_json_safe(ws / "final_candidate.json")
+    if not isinstance(final_cand, dict) and ws.name == "generation":
+        parent_cand = _read_json_safe(ws.parent / "candidate.json")
+        if isinstance(parent_cand, dict) and ("declaration" in parent_cand or "implementation" in parent_cand):
+            final_cand = parent_cand
     final_sha = digest(final_cand) if isinstance(final_cand, dict) else None
 
     if isinstance(final_cand, dict):
@@ -343,25 +449,33 @@ def _extract_versions(ws: Path, framework_kind: str, *, include_diffs: bool = Tr
 def _compile_attempts_from_ws(ws: Path, result: dict | None, framework_kind: str) -> list[dict[str, Any]]:
     if result and isinstance(result.get("compilation_attempts"), list) and result["compilation_attempts"]:
         return result["compilation_attempts"]
-    pattern = (
-        "trusted/compile_*/compile_result.json" if framework_kind == "baseline" else "compile_*/compile_result.json"
+    patterns = (
+        ("trusted/compile_*/compile_result.json", "compiler_records/compile_*/compile_result.json")
+        if framework_kind == "baseline"
+        else ("compile_*/compile_result.json",)
     )
     out = []
-    for p in sorted(ws.glob(pattern)):
-        data = _read_json_safe(p)
-        if isinstance(data, dict):
-            out.append(data)
+    for pattern in patterns:
+        for p in sorted(ws.glob(pattern)):
+            data = _read_json_safe(p)
+            if isinstance(data, dict):
+                out.append(data)
     return out
 
 
 def _sim_attempts_from_ws(ws: Path, framework_kind: str) -> list[dict[str, Any]]:
-    pattern = "trusted/sim_*/simulation_result.json" if framework_kind == "baseline" else "sim_*/simulation_result.json"
+    patterns = (
+        ("trusted/sim_*/simulation_result.json", "compiler_records/sim_*/simulation_result.json")
+        if framework_kind == "baseline"
+        else ("sim_*/simulation_result.json",)
+    )
     out = []
-    for p in sorted(ws.glob(pattern)):
-        data = _read_json_safe(p)
-        if isinstance(data, dict):
-            data["_dir"] = p.parent.name
-            out.append(data)
+    for pattern in patterns:
+        for p in sorted(ws.glob(pattern)):
+            data = _read_json_safe(p)
+            if isinstance(data, dict):
+                data["_dir"] = p.parent.name
+                out.append(data)
     return out
 
 
@@ -468,7 +582,8 @@ def _compact_verification_payload(ver: dict[str, Any] | None) -> dict[str, Any] 
 
 def _collect_verify_attempts(ws: Path) -> list[dict[str, Any]]:
     attempts = []
-    for vdir in sorted(ws.glob("verify_*")):
+    vdirs = list(sorted(ws.glob("verify_*"))) + list(sorted((ws / "compiler_records").glob("verify_*")))
+    for vdir in vdirs:
         if not vdir.is_dir():
             continue
         vres = _read_json_safe(vdir / "verification_result.json")
@@ -814,81 +929,187 @@ def _build_fullflow_stages(ws: Path, ff: dict[str, Any] | None) -> list[dict[str
     ]
 
 
-def _build_baseline_stages(ws: Path, result: dict | None) -> list[dict[str, Any]]:
-    is_live = result is None
+def _build_baseline_stages(
+    ws: Path,
+    result: dict | None,
+    *,
+    is_live: bool = False,
+    model_calls: list[dict[str, Any]] | None = None,
+    parent_ctx: dict[str, Any] | None = None,
+    codex_events: list[dict[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
+    parent_ctx = parent_ctx or _load_parent_fullflow_context(ws)
+    ff = parent_ctx.get("fullflow")
     turns = sorted(ws.glob("turn_*"))
     tool_files = sorted(ws.glob("turn_*/tool_*.json"))
+    ce_info = _summarize_codex_events(codex_events or [])
     compile_attempts = _compile_attempts_from_ws(ws, result, "baseline")
+    if not compile_attempts and isinstance(parent_ctx.get("compile"), dict):
+        compile_attempts = [parent_ctx["compile"]]
     sim_attempts = _sim_attempts_from_ws(ws, "baseline")
-    func = (result or {}).get("functional") or {}
-    run_status = (result or {}).get("status")
+    verify_attempts = _collect_verify_attempts(ws)
 
-    context_done = (ws / "task.json").exists() or (ws / "agent" / "prompt.txt").exists()
-    tool_status = "DONE" if (not is_live and (turns or tool_files)) else ("RUNNING" if is_live and turns else "PENDING")
-    compile_ok = any(a.get("success") for a in compile_attempts)
+    parent_func_res = parent_ctx.get("functional") or {}
+    parent_func = parent_func_res.get("functional") if isinstance(parent_func_res.get("functional"), dict) else None
+    result_func = (result or {}).get("functional") or {}
+    func = (
+        parent_func
+        if parent_func and parent_func.get("evaluated_cases")
+        else (result_func if result_func.get("evaluated_cases") else (parent_func or result_func))
+    )
+    parent_formal = parent_ctx.get("formal") or ((ff or {}).get("formal"))
+    parent_comp = _compact_verification_payload(parent_formal)
+    formal_st = (parent_comp or {}).get("status")
+
+    run_status = (
+        ff.get("status")
+        if isinstance(ff, dict) and ff.get("status")
+        else (result or {}).get("status")
+    )
+
+    task_obj = _read_json_safe(ws / "task.json") or _read_json_safe(ws / "agent" / "task.json") or {}
+    prompt_file = ws / "agent" / "prompt.txt"
+    prompt_preview = ""
+    if prompt_file.is_file():
+        try:
+            prompt_preview = prompt_file.read_text(encoding="utf-8", errors="replace")[:900]
+        except Exception:
+            prompt_preview = ""
+    context_done = bool(task_obj or prompt_preview)
+
+    req_finished = len(
+        [e for e in (model_calls or []) if e.get("event") in ("request_completed", "request_finished")]
+    )
+    llm_count = (
+        (result or {}).get("llm_calls")
+        or ((ff or {}).get("source_llm_calls") if isinstance(ff, dict) else None)
+        or req_finished
+    )
+    turn_count = len(turns) if turns else ce_info["turns"]
+    tool_count = len(tool_files) if tool_files else len(ce_info["tool_calls"])
+    has_loop_evidence = bool(turns or tool_files or ce_info["turns"] or ce_info["tool_calls"] or llm_count)
+    tool_status = (
+        "DONE"
+        if (not is_live and (has_loop_evidence or result is not None))
+        else ("RUNNING" if is_live and has_loop_evidence else ("FAIL" if ce_info["turns_failed"] else "PENDING"))
+    )
+
+    compile_ok = any(a.get("success") for a in compile_attempts) or (
+        isinstance(ff, dict) and bool(ff.get("compiled"))
+    )
     gate_status = (
         "DONE"
         if compile_ok
         else (
-            "FAIL" if compile_attempts and not is_live else ("RUNNING" if is_live and compile_attempts else "PENDING")
+            "FAIL"
+            if (compile_attempts or (ff and ff.get("compiled") is False)) and not is_live
+            else ("RUNNING" if is_live and compile_attempts else "PENDING")
         )
     )
-    final_status = (
-        run_status
-        if run_status in ("PASS", "UNVERIFIED")
-        else ("FAIL" if run_status in ("TEST_FAIL", "COMPILE_FAIL", "TOOL_ERROR", "TIMEOUT") else "PENDING")
-    )
 
+    display_outcome, partial_reason = resolve_showcase_outcome(
+        run_status,
+        compiled=compile_ok,
+        fixed_status=func.get("status") or parent_func_res.get("status"),
+        formal_status=formal_st,
+        fixed_evaluated=func.get("evaluated_cases"),
+        fixed_planned=func.get("planned_cases") or (ff.get("planned_cases") if isinstance(ff, dict) else None),
+    )
+    if display_outcome == "PASS":
+        final_status = "PASS"
+    elif run_status in ("PARTIAL", "UNVERIFIED", "TIMEOUT", "TOOL_ERROR"):
+        final_status = run_status
+    elif run_status in ("TEST_FAIL", "COMPILE_FAIL", "FAIL"):
+        final_status = "FAIL"
+    else:
+        final_status = "PENDING"
+
+    planned_cases = func.get("planned_cases") or (ff.get("planned_cases") if isinstance(ff, dict) else 0) or 0
     return [
         {
             "id": "context",
             "label_en": "1. Task & MCP Context",
             "label_zh": "1. 规约与 MCP 上下文",
             "status": "DONE" if context_done else "PENDING",
-            "summary_en": "Visible spec & trusted tool bindings",
-            "summary_zh": "可见规约与受控编译仿真工具绑定",
-            "metrics": {},
-            "detail": {},
+            "summary_en": str(task_obj.get("title") or "Visible spec & trusted MCP tool bindings"),
+            "summary_zh": str(task_obj.get("title") or "可见规约与受控编译仿真工具绑定"),
+            "metrics": {"task_id": task_obj.get("id"), "has_prompt": bool(prompt_preview)},
+            "detail": {
+                "task_title": task_obj.get("title"),
+                "prompt_preview": prompt_preview,
+                "mcp_tools": ["compile_st", "simulate_st", "verify_st"],
+            },
         },
         {
             "id": "tool_loop",
             "label_en": "2. Tool-Use Loop",
             "label_zh": "2. 多轮工具调用循环",
             "status": tool_status,
-            "summary_en": f"{len(turns)} turn(s), {len(tool_files)} tool call(s)",
-            "summary_zh": f"{len(turns)} 轮对话，{len(tool_files)} 次工具调用",
-            "metrics": {"turns": len(turns), "tool_calls": len(tool_files)},
-            "detail": {},
+            "summary_en": f"{turn_count} turn(s), {tool_count} tool call(s)"
+            + (f", {llm_count} LLM req(s)" if llm_count else ""),
+            "summary_zh": f"{turn_count} 轮会话，{tool_count} 次工具调用"
+            + (f"，{llm_count} 次请求" if llm_count else ""),
+            "metrics": {"turns": turn_count, "tool_calls": tool_count, "llm_calls": llm_count},
+            "detail": {
+                "tool_calls": ce_info["tool_calls"],
+                "reasoning_steps": ce_info["reasoning_steps"],
+            },
         },
         {
             "id": "compile_sim",
             "label_en": "3. Compiler & Sim Gate",
             "label_zh": "3. 受控编译/仿真门禁",
             "status": gate_status,
-            "summary_en": f"{len(compile_attempts)} compile(s), {len(sim_attempts)} sim(s)",
-            "summary_zh": f"编译 {len(compile_attempts)} 次，仿真 {len(sim_attempts)} 次",
-            "metrics": {"compile_attempts": len(compile_attempts), "sim_attempts": len(sim_attempts)},
-            "detail": {"compilation_attempts": compile_attempts},
+            "summary_en": f"{len(compile_attempts)} compile(s), {len(sim_attempts)} sim(s), {len(verify_attempts)} verify",
+            "summary_zh": f"编译 {len(compile_attempts)} 次，仿真 {len(sim_attempts)} 次，形式预检 {len(verify_attempts)} 次",
+            "metrics": {
+                "compile_attempts": len(compile_attempts),
+                "sim_attempts": len(sim_attempts),
+                "verify_attempts": len(verify_attempts),
+            },
+            "detail": {
+                "compilation_attempts": compile_attempts,
+                "sim_attempts": sim_attempts,
+                "attempts": verify_attempts,
+            },
         },
         {
             "id": "final",
             "label_en": "4. Final Held-Out Eval",
             "label_zh": "4. 最终冻结评测",
             "status": final_status,
-            "summary_en": f"{func.get('passed_cases', 0)}/{func.get('evaluated_cases', 0)} fixed tests"
-            if func.get("evaluated_cases")
-            else (run_status or "Pending"),
-            "summary_zh": f"冻结测试 {func.get('passed_cases', 0)}/{func.get('evaluated_cases', 0)} 通过"
-            if func.get("evaluated_cases")
-            else (run_status or "等待"),
-            "metrics": {"passed_cases": func.get("passed_cases"), "evaluated_cases": func.get("evaluated_cases")},
-            "detail": {"functional": func},
+            "summary_en": (
+                f"{func.get('passed_cases', 0)}/{func.get('evaluated_cases', 0)} fixed (plan {planned_cases})"
+                + (f" · Formal: {formal_st}" if formal_st else "")
+                if func.get("evaluated_cases") or formal_st
+                else (run_status or "Pending")
+            ),
+            "summary_zh": (
+                f"冻结测试 {func.get('passed_cases', 0)}/{func.get('evaluated_cases', 0)} 通过（计划 {planned_cases}）"
+                + (f" · 形式 {formal_st}" if formal_st else "")
+                if func.get("evaluated_cases") or formal_st
+                else (run_status or "等待")
+            ),
+            "metrics": {
+                "passed_cases": func.get("passed_cases"),
+                "evaluated_cases": func.get("evaluated_cases"),
+                "planned_cases": planned_cases,
+                "formal_status": formal_st,
+                "partial_reason": partial_reason,
+            },
+            "detail": {
+                "functional": func,
+                "fullflow_formal": parent_comp,
+            },
         },
     ]
 
 
 def _build_timeline(
-    ws: Path, model_calls: list[dict[str, Any]], exec_events: list[dict[str, Any]]
+    ws: Path,
+    model_calls: list[dict[str, Any]],
+    exec_events: list[dict[str, Any]],
+    codex_events: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
     timeline: list[dict[str, Any]] = []
     for idx, ev in enumerate(model_calls):
@@ -900,13 +1121,13 @@ def _build_timeline(
                 "utc": ev.get("utc") or "",
                 "source": "model",
                 "event": kind,
-                "actor": ev.get("call_dir") or "llm",
+                "actor": ev.get("call_dir") or f"req_{ev.get('request_number')}" if ev.get("request_number") is not None else "llm",
                 "model": ev.get("reported_model") or ev.get("model"),
                 "elapsed_seconds": ev.get("elapsed_seconds"),
-                "total_tokens": usage.get("total_tokens"),
+                "total_tokens": usage.get("total_tokens") or ev.get("accounted_tokens"),
                 "status": "REUSED"
                 if kind == "request_reused"
-                else ("DONE" if kind == "request_completed" else "STARTED"),
+                else ("DONE" if kind in ("request_completed", "request_finished") else ("FAIL" if kind == "request_rejected" else "STARTED")),
                 "detail": {
                     k: v
                     for k, v in ev.items()
@@ -927,18 +1148,34 @@ def _build_timeline(
                 "detail": {k: v for k, v in ev.items() if k not in ("utc", "event", "status", "functional")},
             }
         )
-    for idx, tfile in enumerate(sorted(ws.glob("turn_*/tool_*.json"))):
+    base_seq = len(model_calls) + len(exec_events)
+    tool_files = sorted(ws.glob("turn_*/tool_*.json"))
+    for idx, tfile in enumerate(tool_files):
         tool_data = _read_json_safe(tfile)
         if isinstance(tool_data, dict):
             timeline.append(
                 {
-                    "seq": len(model_calls) + len(exec_events) + idx,
+                    "seq": base_seq + idx,
                     "utc": "",
                     "source": "tool",
                     "event": f"tool_call:{tool_data.get('name', 'unknown')}",
                     "actor": tfile.parent.name,
                     "status": "DONE",
                     "detail": {"name": tool_data.get("name"), "call_id": tool_data.get("call_id")},
+                }
+            )
+    if not tool_files and codex_events:
+        ce_info = _summarize_codex_events(codex_events)
+        for idx, tc in enumerate(ce_info["tool_calls"]):
+            timeline.append(
+                {
+                    "seq": base_seq + idx,
+                    "utc": "",
+                    "source": "tool",
+                    "event": f"mcp:{tc['tool']}" if tc["kind"] == "mcp" else "command_execution",
+                    "actor": tc.get("server") or "codex_cli",
+                    "status": "FAIL" if tc.get("status") == "failed" or tc.get("has_error") else "DONE",
+                    "detail": {"tool": tc["tool"], "error": tc.get("error_preview")} if tc.get("error_preview") else {"tool": tc["tool"]},
                 }
             )
     timeline.sort(key=lambda item: (item["utc"] == "", item["utc"], item["seq"]))
@@ -1065,12 +1302,23 @@ def _extract_waveforms(
     return [], {"kind": "none", "provenance": "No recorded simulation trace in workspace", "execution_verified": False}
 
 
+def _is_superseded_codex_retry(raw_root: Path, rel_parts: tuple[str, ...]) -> bool:
+    if len(rel_parts) >= 2 and rel_parts[0].startswith("four_group_") and rel_parts[1].startswith("codex_"):
+        if re.search(r"_v\d+$", rel_parts[1]):
+            return True
+        if any(raw_root.glob("codex_matrix_*")):
+            return True
+    return False
+
+
 def _resolve_run_source(ws: Path, root: Path) -> str:
     raw_root = (root / "results" / "raw").resolve()
     resolved = ws.resolve()
     if resolved.is_relative_to(raw_root):
         rel_parts = resolved.relative_to(raw_root).parts
-        if rel_parts and rel_parts[0].startswith(("four_group_", "batch_", "six_task_")):
+        if _is_superseded_codex_retry(raw_root, rel_parts):
+            return "pilot"
+        if rel_parts and rel_parts[0].startswith(("codex_matrix_", "four_group_", "batch_", "six_task_")):
             return "fullflow"
         return "pilot"
     return "experiments"
@@ -1082,20 +1330,26 @@ def _summarize_run(ws: Path, root: Path, source: str) -> dict[str, Any]:
     ff = parent_ctx.get("fullflow")
     effective_result = result if isinstance(result, dict) else (ff if (ws / "fullflow_result.json").is_file() else None)
     runtime_cfg = _read_json_safe(ws / "runtime_config.json")
-    model_calls = _read_jsonl_safe(ws / "model_calls.jsonl")
-    exec_events = _read_jsonl_safe(ws / "execution.jsonl")
+    model_calls, exec_events, codex_events = _read_run_telemetry(ws)
     framework_kind = _detect_framework_kind(ws, effective_result, runtime_cfg)
     task_id = _infer_task_id(ws, effective_result)
     condition, campaign, group = _infer_condition_and_campaign(ws, root, source, effective_result, runtime_cfg)
     versions = _extract_versions(ws, framework_kind, include_diffs=False)
+    is_live = (effective_result is None) and (source == "experiments")
     if framework_kind == "star":
         stages = _build_star_stages(ws, result, runtime_cfg, model_calls, exec_events, versions, parent_ctx=parent_ctx)
     elif framework_kind == "fullflow":
         stages = _build_fullflow_stages(ws, ff)
     else:
-        stages = _build_baseline_stages(ws, result)
+        stages = _build_baseline_stages(
+            ws,
+            result,
+            is_live=is_live,
+            model_calls=model_calls,
+            parent_ctx=parent_ctx,
+            codex_events=codex_events,
+        )
 
-    is_live = effective_result is None
     active_stage = next((s["id"] for s in stages if s["status"] == "RUNNING"), None)
     if not active_stage:
         done_stages = [s["id"] for s in stages if s["status"] in ("DONE", "PASS", "FAIL", "UNVERIFIED", "COUNTEREXAMPLE")]
@@ -1108,23 +1362,23 @@ def _summarize_run(ws: Path, root: Path, source: str) -> dict[str, Any]:
     if not model_name and model_calls:
         model_name = model_calls[0].get("model")
 
-    tokens = _extract_token_summary(model_calls, effective_result, ws)
+    tokens = _extract_token_summary(model_calls, effective_result, ws, codex_events=codex_events)
     parent_func = (parent_ctx.get("functional") or {}).get("functional") or {}
     func = parent_func if parent_func.get("evaluated_cases") else ((effective_result or {}).get("functional") or {})
     llm_calls = (effective_result or {}).get("llm_calls")
     if llm_calls is None and isinstance(ff, dict):
-        llm_calls = ff.get("new_llm_calls") if ff.get("new_llm_calls") else ff.get("source_llm_calls")
+        llm_calls = ff.get("source_llm_calls") if ff.get("source_llm_calls") is not None else ff.get("new_llm_calls")
     formal_res = parent_ctx.get("formal") or ((ff or {}).get("formal")) or (effective_result or {}).get("verification")
     overall_status = (
         ff.get("status")
         if isinstance(ff, dict) and ff.get("status")
-        else (effective_result or {}).get("status") or "RUNNING"
+        else ((effective_result or {}).get("status") or ("RUNNING" if is_live else "INCOMPLETE"))
     )
     overall_reason = (
         (ff.get("reason") or ff.get("formal_detail") or ff.get("functional_detail"))
         if isinstance(ff, dict) and ff.get("status") and ff.get("status") != "PASS"
         else None
-    ) or (effective_result or {}).get("reason") or ("Active live execution" if is_live else "")
+    ) or (effective_result or {}).get("reason") or ("Active live execution" if is_live else "Incomplete archived workspace")
     final_comp = (
         (effective_result or {}).get("final_compiled")
         if (effective_result or {}).get("final_compiled") is not None
@@ -1139,12 +1393,13 @@ def _summarize_run(ws: Path, root: Path, source: str) -> dict[str, Any]:
         fixed_evaluated=func.get("evaluated_cases"),
         fixed_planned=func.get("planned_cases") or (ff.get("planned_cases") if isinstance(ff, dict) else None),
     )
+    run_state = "running" if is_live else ("completed" if effective_result is not None else "incomplete")
     return {
         "run_id": ws.relative_to(root).as_posix(),
         "source": source,
         "group": group,
         "is_archived_pilot": source == "pilot",
-        "state": "running" if is_live else "completed",
+        "state": run_state,
         "condition": condition,
         "campaign": campaign,
         "task_id": task_id,
@@ -1200,20 +1455,24 @@ def list_runs(root: Path) -> list[dict[str, Any]]:
 
     raw_dir = root / "results" / "raw"
     if raw_dir.is_dir():
-        for batch in sorted(raw_dir.glob("four_group_*")):
-            if not batch.is_dir():
-                continue
-            for group_dir in sorted(batch.iterdir()):
-                if not group_dir.is_dir() or group_dir.name in ("invocations", "evaluation_time_normalization"):
+        for pattern in ("codex_matrix_*", "four_group_*"):
+            for batch in sorted(raw_dir.glob(pattern)):
+                if not batch.is_dir():
                     continue
-                for task_dir in sorted(group_dir.iterdir()):
-                    if not task_dir.is_dir() or task_dir.name == "invocations":
+                for group_dir in sorted(batch.iterdir()):
+                    if (
+                        not group_dir.is_dir()
+                        or group_dir.name in ("invocations", "evaluation_time_normalization", "runner_snapshot")
+                        or group_dir.name.startswith("matrix_runner_")
+                    ):
                         continue
-                    gen_dir = task_dir / "generation"
-                    if _is_run_workspace(gen_dir):
-                        _add_run(gen_dir, "fullflow")
-                    elif (task_dir / "fullflow_result.json").is_file():
-                        _add_run(task_dir, "fullflow")
+                    for task_dir in sorted(group_dir.iterdir()):
+                        if not task_dir.is_dir() or task_dir.name == "invocations":
+                            continue
+                        gen_dir = task_dir / "generation"
+                        ws_target = gen_dir if _is_run_workspace(gen_dir) else (task_dir if (task_dir / "fullflow_result.json").is_file() else None)
+                        if ws_target is not None:
+                            _add_run(ws_target, _resolve_run_source(ws_target, root))
 
         for pattern in ("batch_*", "six_task_*"):
             for batch in sorted(raw_dir.glob(pattern)):
@@ -1258,21 +1517,28 @@ def inspect_run_trace(
     ff = parent_ctx.get("fullflow")
     effective_result = result if isinstance(result, dict) else (ff if (ws / "fullflow_result.json").is_file() else None)
     runtime_cfg = _read_json_safe(ws / "runtime_config.json")
-    model_calls = _read_jsonl_safe(ws / "model_calls.jsonl")
-    exec_events = _read_jsonl_safe(ws / "execution.jsonl")
+    model_calls, exec_events, codex_events = _read_run_telemetry(ws)
     framework_kind = _detect_framework_kind(ws, effective_result, runtime_cfg)
     task_id = _infer_task_id(ws, effective_result)
     source = _resolve_run_source(ws, root)
     condition, campaign, group = _infer_condition_and_campaign(ws, root, source, effective_result, runtime_cfg)
     versions = _extract_versions(ws, framework_kind, include_diffs=True)
+    is_live = (effective_result is None) and (source == "experiments")
     if framework_kind == "star":
         stages = _build_star_stages(ws, result, runtime_cfg, model_calls, exec_events, versions, parent_ctx=parent_ctx)
     elif framework_kind == "fullflow":
         stages = _build_fullflow_stages(ws, ff)
     else:
-        stages = _build_baseline_stages(ws, result)
-    timeline = _build_timeline(ws, model_calls, exec_events)
-    tokens = _extract_token_summary(model_calls, effective_result, ws)
+        stages = _build_baseline_stages(
+            ws,
+            result,
+            is_live=is_live,
+            model_calls=model_calls,
+            parent_ctx=parent_ctx,
+            codex_events=codex_events,
+        )
+    timeline = _build_timeline(ws, model_calls, exec_events, codex_events=codex_events)
+    tokens = _extract_token_summary(model_calls, effective_result, ws, codex_events=codex_events)
     eval_task = _read_json_safe(ws / "evaluation_task.json")
     local_task = _read_json_safe(ws / "task.json")
     task = (
@@ -1303,7 +1569,7 @@ def inspect_run_trace(
     )
     if isinstance(task, dict):
         for st in stages:
-            if st.get("id") == "verify" and isinstance(st.get("detail"), dict):
+            if st.get("id") in ("verify", "final") and isinstance(st.get("detail"), dict):
                 det = st["detail"]
                 if det.get("fullflow_formal"):
                     det["fullflow_formal"] = _enrich_verification_ids(det["fullflow_formal"], task)
@@ -1315,13 +1581,13 @@ def inspect_run_trace(
     overall_status = (
         ff.get("status")
         if isinstance(ff, dict) and ff.get("status")
-        else (effective_result or {}).get("status") or "RUNNING"
+        else ((effective_result or {}).get("status") or ("RUNNING" if is_live else "INCOMPLETE"))
     )
     overall_reason = (
         (ff.get("reason") or ff.get("formal_detail") or ff.get("functional_detail"))
         if isinstance(ff, dict) and ff.get("status") and ff.get("status") != "PASS"
         else None
-    ) or (effective_result or {}).get("reason") or ("Active live execution" if effective_result is None else "")
+    ) or (effective_result or {}).get("reason") or ("Active live execution" if is_live else "Incomplete archived workspace")
     parent_func = (parent_ctx.get("functional") or {}).get("functional") or {}
     func_res = parent_func if parent_func.get("evaluated_cases") else ((effective_result or {}).get("functional") or {})
     final_comp = (
@@ -1342,7 +1608,7 @@ def inspect_run_trace(
         "source": source,
         "group": group,
         "is_archived_pilot": source == "pilot",
-        "state": "running" if effective_result is None else "completed",
+        "state": "running" if is_live else ("completed" if effective_result is not None else "incomplete"),
         "condition": condition,
         "campaign": campaign,
         "task_id": task_id,
