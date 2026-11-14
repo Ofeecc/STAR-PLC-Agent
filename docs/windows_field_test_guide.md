@@ -109,7 +109,7 @@ uv run plc-agent test-reference --task-id PUB017 --backend codesys --out-dir "$r
 
 ### 1. 运行前预检与预算对齐
 1. **核对 `campaign.json` 与 `model_capabilities.json`**：
-   - 当前冻结题库哈希为 `7bc7244455bfc41481a8a9246be52cde8e6a1acee7ae7fcb767d02fa5c326dd4`。若本机 `results/summary/campaign.json` 为旧题库残留，先归档旧批次再执行 `uv run plc-agent prepare`。
+   - 当前冻结题库哈希为 `b4b9ff871b09d72f0eadb9ea798e181a515a9d23de710877408cda5760aada98`（已完成全部 32 题人工审阅）。若本机 `results/summary/campaign.json` 为旧题库残留，先归档旧批次再执行 `uv run plc-agent prepare`。
    - `plc-agent run` 会读取本地 `results/summary/model_capabilities.json`（未随主线提交）。若缺失且本机无已有记录，在获 API 授权后先执行探针（将对已配置模型发起工具冒烟请求）：
      ```powershell
      uv run plc-agent --allow-model-api probe-models --tool-smoke
@@ -180,11 +180,10 @@ uv run plc-agent web --port 8765
 ```
 启动后在 Windows 浏览器中打开：**`http://127.0.0.1:8765`**
 
-### 核心功能区：
-1. **题库规约审查 (Dataset Explorer)**：查看 20 道公开题 + 12 道自建题的接口变量与 LTL 语义。
-2. **时序波形比对 (Waveform Comparator)**：直观对比期望输出与 CODESYS 仿真实际输出的逻辑电平波形，自动红标首次分歧拍（`first_bad_step`）。
-3. **Agent 决策链回放 (Trace Playback)**：查看大模型在各个修复轮次中的思考、编译报错诊断与候选代码收敛过程。
-4. **沙盒实时试跑 (Sandbox Verifier)**：在网页端直接修改 ST 代码并一键提交后台 CODESYS 编译与仿真。
+### 核心功能区（极简白底黑字视图，默认英文并支持右上角实时切换中文）：
+1. **数据集与规约 (`Dataset & Specs`)**：浏览已完成人工审阅的 32 题接口契约、双语符号词表、高亮 LTL 公式浮窗与固定/随机扫描测试。
+2. **动态工作流与评测看板 (`Workflow & Benchmark`)**：支持对 `experiments/` 实时运行记录 2 秒自动轮询跟踪及历史试跑回放（STAR v2 五阶段与基线工具循环），查看阶段细节、候选源码行级 Diff、调用时间线、落盘真实仿真波形及实验条件矩阵。
+3. **编译仿真与波形实验台 (`Sandbox & Waveform Lab`)**：同屏集成 ST 源码编辑（一键载入骨架、人工参考 ST 或轨迹候选）、CODESYS 编译诊断、NuSMV 包导出与逐周期输入/预期/实测信号偏差波形对比。
 
 ---
 

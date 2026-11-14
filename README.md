@@ -1,12 +1,12 @@
 # PLC Structured Text Coding Agent (STAR v2)
 
-This project implements **STAR v2** (Specification-Targeted Agentic Refinement) and an auditable baseline harness for generating, compiling, repairing, and preparing formal-verification materials for IEC 61131-3 Structured Text (ST) in industrial PLC environments (CODESYS). The frozen dataset contains all 20 instructor-supplied public tasks and 12 independently constructed self-built tasks (**32 tasks**, **294 LTL properties**, **276 fixed test cases**, **2,994 scan steps**; `dataset_sha256: 7bc7244455bfc41481a8a9246be52cde8e6a1acee7ae7fcb767d02fa5c326dd4`). Every task includes normative specification contracts, discrete scan semantics, formal LTL temporal properties, and fixed expected functional traces.
+This project implements **STAR v2** (Specification-Targeted Agentic Refinement) and an auditable baseline harness for generating, compiling, repairing, and preparing formal-verification materials for IEC 61131-3 Structured Text (ST) in industrial PLC environments (CODESYS). The frozen dataset contains all 20 instructor-supplied public tasks and 12 independently constructed self-built tasks (**32 tasks**, **294 LTL properties**, **276 fixed test cases**, **2,994 scan steps**; `dataset_sha256: b4b9ff871b09d72f0eadb9ea798e181a515a9d23de710877408cda5760aada98`). Every task includes normative specification contracts, discrete scan semantics, formal LTL temporal properties, and fixed expected functional traces.
 
 The implementation strictly separates generated-code compilation, compiler infrastructure failures, and functional/formal verification. Compilation success is accepted only from matching CODESYS rebuild evidence, never a process exit code alone. Independent Python scan contracts (`ScanContract`) validate expected sequences across all 32 tasks; they are distinct from real PLC execution.
 
-The local review WebUI covers all 32 tasks with Chinese review notes, bilingual property explanations, waveform comparison, and a persistent Chinese/English toggle. Use [Chinese review](http://127.0.0.1:8765/?scope=all&lang=zh) or [English presentation](http://127.0.0.1:8765/?scope=all&lang=en) after starting `uv run plc-agent web`. See [docs/README.md](docs/README.md) for active guides, design specs, and archived milestone logs (including [双语审核界面说明](docs/archive/全题库双语审核界面_20261111.md), [模板库与Token配置建议](docs/archive/模板库与Token配置建议_20261111.md), [2026-11-11 更新记录](docs/archive/更新记录_20261111.md), [规约规范化与逐题定义](docs/archive/规约规范化_20261111.md), and [2026-11-12 全量审计汇总](docs/archive/规约与模型全量审计汇总_20261112.md)). Review translations do not modify benchmark inputs or constitute human approval.
+The local review and trace WebUI covers all 32 human-reviewed tasks with three focused views (**Dataset & Specs**, **Workflow & Benchmark**, and **Sandbox & Waveform Lab**), defaulting to English with a persistent English/Chinese toggle. Use [English UI](http://127.0.0.1:8765/?lang=en) or [Chinese UI](http://127.0.0.1:8765/?lang=zh) after starting `uv run plc-agent web`. See [docs/README.md](docs/README.md) for active guides, design specs, and archived milestone logs (including [双语审核界面说明](docs/archive/全题库双语审核界面_20261111.md), [模板库与Token配置建议](docs/archive/模板库与Token配置建议_20261111.md), [2026-11-11 更新记录](docs/archive/更新记录_20261111.md), [规约规范化与逐题定义](docs/archive/规约规范化_20261111.md), and [2026-11-12 全量审计汇总](docs/archive/规约与模型全量审计汇总_20261112.md)).
 
-All 32 composite scan predicates use normalized executable transition definitions, segregated input/observed/reference namespaces, explicit comparison policies, and explicit non-Zeno timing premises (`results/summary/specification_normalization_20261112.json`). The 294 LTL properties and `models/*.smv` reference models (`configs/smv_verification_status.json`) are specification and explicit reference-model artifacts — **not completed formal proofs of agent-generated ST**. Human review of Chinese audit notes remains pending, candidate ST-to-SMV translation remains `UNVERIFIED`, and historical pilot runs retain their original task hashes.
+All 32 composite scan predicates use normalized executable transition definitions, segregated input/observed/reference namespaces, explicit comparison policies, and explicit non-Zeno timing premises (`results/summary/specification_normalization_20261112.json`). Human review of all 32 normalized specifications and bilingual review notes is complete (`NORMALIZED_HUMAN_REVIEWED` / `HUMAN_REVIEWED`). The 294 LTL properties and `models/*.smv` reference models (`configs/smv_verification_status.json`) validate reference abstractions — **candidate ST-to-SMV formal verification remains `UNVERIFIED`**, and historical pilot runs retain their original task hashes.
 
 ## STAR v2 Architecture
 
@@ -62,11 +62,11 @@ All operational tasks are unified under the `plc-agent` CLI:
   ```
   Validates Python version (>=3.11), required dependencies, compiler paths, and API readiness.
 
-- **Auto-Test Workbench & Waveform Inspector WebUI**:
+- **Workflow & Waveform Inspector WebUI**:
   ```bash
   uv run plc-agent web
   ```
-  Launches the interactive WebUI workbench at `http://127.0.0.1:8765` featuring real-time oscilloscope waveform inspection, multi-pass candidate diffing, and single-click differential test execution.
+  Launches the minimalist English-default (EN/ZH toggle) WebUI at `http://127.0.0.1:8765`, combining bilingual task & LTL spec exploration, live/replayed 5-stage STAR v2 & baseline workflow telemetry with version diffs, benchmark matrix views, and a same-screen ST compiler/simulation & step-by-step waveform comparator.
 
 - **Seed-Deterministic Differential Random Testing**:
   ```bash

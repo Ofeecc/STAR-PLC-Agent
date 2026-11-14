@@ -1,12 +1,12 @@
 {
-  "description": "六题规范化审核材料；仍待人工确认，不是形式证明。",
+  "description": "六题规范化审核材料；已完成人工审阅，不构成形式证明或候选 ST 验证。",
   "tasks": [
     {
       "id": "PUB001",
       "title_zh": "自动灌装线控制",
       "translation_zh": "生产线依次完成瓶子的清洗、灌装、旋盖和包装。bottleSensor 检测到瓶子后启动清洗泵并持续工作；操作员按 cleaningConfirmButton 确认清洗完成，启动灌装阀；按 fillingConfirmButton 确认灌装完成，启动旋盖机；按 cappingConfirmButton 确认旋盖完成，启动包装机；按 packingConfirmButton 确认包装完成，点亮完成指示灯。取走瓶子后按 finishedButton，复位指示灯，准备下一轮。",
       "assumptions_zh": "确认按钮采用电平；每扫描最多推进一个阶段；只响应当前阶段的确认；取瓶复位仅作用于完成阶段；复位后若有瓶信号仍为真，下一拍重新开始。",
-      "coverage_zh": "T1：完整周期与完成保持（10步）。\nT2：乱序确认不能跨阶段（6步）。",
+      "coverage_zh": "T1：完整周期与完成保持（10步）。\nT2：乱序确认不能跨阶段（6步）。\nPUB001.T3：多拍保持与连续两瓶循环（16步）。",
       "review_points_zh": "建议补充：完成后有瓶信号持续为真的连续两轮测试；全部确认持续为真的逐拍完整轨迹。",
       "properties_zh": {
         "P1": {
@@ -51,7 +51,7 @@
         },
         "P9": {
           "formula": "G((phase=5 & finishedButton) -> (!Completion_Light & X(phase=0)))",
-          "description": "完成阶段确认取瓶时，本拍关闭完成灯，下拍回到空闲阶段。",
+          "description": "第 5 步收到完成按钮时必须全关五个输出（含严禁同时启泵）并退回 phase=0。",
           "review": "若瓶信号仍为真，重新启动发生在再下一次空闲扫描。"
         },
         "P10": {
@@ -59,10 +59,15 @@
           "description": "从清洗阶段开始，若今后每个活动阶段最终都得到相应确认，则最终会亮完成灯。",
           "review": "这是带环境条件的进度要求；操作员永不确认时不要求自动完成。F 不代表限定几拍内。"
         },
+        "P11": {
+          "formula": "G(((phase=0 & !bottleSensor) -> (!Pump_Motor & !Filling_Valve & !Capping_Machine & !Packing_Machine & !Completion_Light & X(phase=0))) & ((phase=1 & !cleaningConfirmButton) -> (Pump_Motor & !Filling_Valve & !Capping_Machine & !Packing_Machine & !Completion_Light & X(phase=1))) & ((phase=2 & !fillingConfirmButton) -> (!Pump_Motor & Filling_Valve & !Capping_Machine & !Packing_Machine & !Completion_Light & X(phase=2))) & ((phase=3 & !cappingConfirmButton) -> (!Pump_Motor & !Filling_Valve & Capping_Machine & !Packing_Machine & !Completion_Light & X(phase=3))) & ((phase=4 & !packingConfirmButton) -> (!Pump_Motor & !Filling_Valve & !Capping_Machine & Packing_Machine & !Completion_Light & X(phase=4))) & ((phase=5 & finishedButton) -> (!Pump_Motor & !Filling_Valve & !Capping_Machine & !Packing_Machine & !Completion_Light & X(phase=0))))",
+          "description": "空闲态无感应时五输出全关且保持 phase=0；第 1..4 步未收到对应确认信号时仅保持当前单执行器并停留原阶段。",
+          "review": "补齐独立 LTL 对阶段 0 空闲全关与阶段 1..4 等待保持的欠约束。"
+        },
         "PUB001.V2.COMPLETE": {
           "formula": "G(CompleteBehaviorV2)",
           "description": "每拍将独立参考转移的期望结果与候选实际输出逐项比较；转移、初值、数值比较和不约束字段均有固定定义。",
-          "review": "这是已定义的扫描谓词；仍待人工合理性审核，不代表已完成ST模型转换或无限时序证明。"
+          "review": "这是已定义并完成人工审阅的扫描谓词；不代表已完成 ST 模型转换或无限时序证明。"
         }
       },
       "interface_zh": {
@@ -88,23 +93,69 @@
           "name": "乱序确认不能跨阶段",
           "purpose": "乱序确认不能跨阶段",
           "source_sha256": "1878bbef2fd785646e52367f5ecf56681a5ec1c68e8adb7e463c19d3cce962b9"
+        },
+        "PUB001.T3": {
+          "name": "多拍保持与连续两瓶循环",
+          "purpose": "覆盖填充/旋盖/包装中间保持拍、按钮长按同拍边沿及第二瓶完整周期（16步）。",
+          "source_sha256": "e82518013e9974304da93581493f2e58608a10519083224753c810d4d577cf2d"
+        },
+        "PUB001.R22.filling_hold": {
+          "name": "灌装阶段无完成确认时仍应保持阀门开启",
+          "purpose": "灌装阶段无完成确认时仍应保持阀门开启",
+          "source_sha256": "e80768e3382a4c9151f15340f98875579fb4af596f7f807590f2d5d9bac59448"
+        },
+        "PUB001.R22.dwell_0": {
+          "name": "原流程各稳定状态连续保持：T1",
+          "purpose": "原流程各稳定状态连续保持：T1",
+          "source_sha256": "6568ac3946df03d9e8ebbd5413f4a001e6adf1d8607a173ef1f3aa9e7aa90557"
+        },
+        "PUB001.R22.dwell_1": {
+          "name": "原流程各稳定状态连续保持：T2",
+          "purpose": "原流程各稳定状态连续保持：T2",
+          "source_sha256": "f1830715cf8de9d0ad2dc3e369297dca3d6501858f2cd3ac796af33f5ec1f3a1"
+        },
+        "PUB001.T4": {
+          "name": "多周期连续重启与 finishedButton/bottleSensor 同高隔离",
+          "purpose": "验证完成阶段按下 finishedButton 且 bottleSensor 已为真时当拍先回 IDLE 全关、不跳入清洗，下一空闲拍立即重新启动第二轮清洗循环，且阶段错位确认信号被忽略。",
+          "source_sha256": "8636931d3b1189d8b8ee7f70e83d105e26c3a9e6b26c8d83306672fbdc131cee"
         }
       },
-      "source_task_sha256": "eff8438f4d1a95e200e4ba2b8b172d41f0471ef4819e41138a7c6ecd68c04ac6",
-      "review_status": "PENDING_HUMAN_REVIEW",
+      "source_task_sha256": "5653ef8d0ece5dcc881b09e282d5552cc5730f4b61e9665837620dccc3fe5429",
+      "review_status": "HUMAN_REVIEWED",
       "material_origin": "GROUP_TRANSLATION_AND_REVIEW_NOT_TEACHER_SPEC",
       "source_kind": "public",
       "title_en": "Automated Filling Line Control",
-      "complete_behavior_zh": "令(Sref[k+1], E[k])=T_PUB001(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\n参考阶段q初值0。事件按q选bottleSensor、cleaningConfirmButton、fillingConfirmButton、cappingConfirmButton、packingConfirmButton、finishedButton；选中事件真则qAfter=(q+1)%6，否则qAfter=q。五个期望输出依次为qAfter=1、2、3、4、5，每拍只选择旧q的一个分支。"
+      "complete_behavior_zh": "令(Sref[k+1], E[k])=T_PUB001(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\n参考阶段q初值0。事件按q选bottleSensor、cleaningConfirmButton、fillingConfirmButton、cappingConfirmButton、packingConfirmButton、finishedButton；选中事件真则qAfter=(q+1)%6，否则qAfter=q。五个期望输出依次为qAfter=1、2、3、4、5，每拍只选择旧q的一个分支。",
+      "aliases_zh": {
+        "phase": {
+          "label_zh": "当前流水线阶段 (0..5)",
+          "description_zh": "输入驱动参考前态 Spre.phase（0空闲/1清洗/2灌装/3旋盖/4包装/5完成）；X(phase=...) 为下拍参考阶段 Spost.phase。",
+          "persistence_note_zh": "参考阶段状态：每拍仅根据当前 stage 与确认按钮至多前进一步。"
+        },
+        "oneHotOutputs": {
+          "label_zh": "五输出互斥约束",
+          "description_zh": "Pump_Motor、Filling_Valve、Capping_Machine、Packing_Machine、Completion_Light 五个输出至多同时为 TRUE 一个（允许全 FALSE）。"
+        },
+        "phase0_idle": {
+          "label_zh": "空闲阶段谓词",
+          "description_zh": "表示当前扫描前阶段为空闲 phase=0（IDLE）。",
+          "persistence_note_zh": "阶段前态条件：扫描开始时 phase=0。"
+        }
+      }
     },
     {
       "id": "PUB003",
       "title_zh": "带滞回的报警处理",
       "translation_zh": "Value > hiLevel 时触发高报警；Value < hiLevel-hystWindow 时解除高报警。Value < loLevel 时触发低报警；Value > loLevel+hystWindow 时解除低报警。loLevel >= hiLevel 时输出 error=TRUE、status=16#8001，并退出；hystWindow >= hiLevel-loLevel 时输出 error=TRUE、status=16#8002。滞回用于避免参数轻微波动引发报警反复切换。",
-      "assumptions_zh": "等于阈值时保持报警；无效配置保留报警输出；8001优先于8002；合法配置恢复时清除错误；负滞回宽度排除在输入域之外。",
-      "coverage_zh": "T1：高低滞回严格边界（9步）。\nT2：错误优先、报警保持与恢复（4步）。\nV2_data_contract_boundaries：独立计算的数据边界回归（6步）。",
+      "assumptions_zh": "等于阈值时保持报警；无效配置保留报警输出；8001优先于8002；合法配置恢复时清除错误；负滞回宽度排除在输入域之外。 所有输入与差值运算按 IEEE binary32 (REAL) 舍入。",
+      "coverage_zh": "T1：高低滞回严格边界（9步）。\nT2：错误优先、报警保持与恢复（4步）。\nV2_data_contract_boundaries：独立计算的数据边界回归（6步）。\nPUB003.T3：报警中配置越界、零回差与非整 real32 边界（7步）。",
       "review_points_zh": "建议补充：合法动态修改阈值的组合、宽度为零的完整循环；明确负宽度是排除还是报错。",
       "properties_zh": {
+        "P_init": {
+          "formula": "init",
+          "description": "首次调用前，hiAlarm、loAlarm、error 均为 FALSE 且 status=0。",
+          "review": "检查实例初始值。"
+        },
         "P1": {
           "formula": "G(badRange -> (error & status=16#8001 & sameAlarms))",
           "description": "上下限非法时，置 error，status=16#8001，两个报警保持原值。",
@@ -126,12 +177,12 @@
           "review": "等于高阈值不由本条触发。"
         },
         "P5": {
-          "formula": "G((valid & Value<hiLevel-hystWindow) -> !hiAlarm)",
+          "formula": "G((valid & Value<HighRelease) -> !hiAlarm)",
           "description": "配置合法且 Value 严格小于高阈值减滞回宽度时，高报警为假。",
           "review": "等于释放边界时保持旧值。"
         },
         "P6": {
-          "formula": "G((valid & hiLevel-hystWindow<=Value & Value<=hiLevel) -> (hiAlarm=hiPrev))",
+          "formula": "G((valid & HighRelease<=Value & Value<=hiLevel) -> (hiAlarm=hiPrev))",
           "description": "配置合法且 Value 在高报警滞回闭区间内时，高报警等于上拍值。",
           "review": "两个端点都包含；分别用原来亮与原来灭检查。"
         },
@@ -141,19 +192,19 @@
           "review": "等于低阈值不由本条触发。"
         },
         "P8": {
-          "formula": "G((valid & Value>loLevel+hystWindow) -> !loAlarm)",
+          "formula": "G((valid & Value>LowRelease) -> !loAlarm)",
           "description": "配置合法且 Value 严格大于低阈值加滞回宽度时，低报警为假。",
           "review": "等于释放边界时保持旧值。"
         },
         "P9": {
-          "formula": "G((valid & loLevel<=Value & Value<=loLevel+hystWindow) -> (loAlarm=loPrev))",
+          "formula": "G((valid & loLevel<=Value & Value<=LowRelease) -> (loAlarm=loPrev))",
           "description": "配置合法且 Value 在低报警滞回闭区间内时，低报警等于上拍值。",
           "review": "两个端点都包含；检查高低报警互不错误覆盖。"
         },
         "PUB003.V2.COMPLETE": {
           "formula": "G(CompleteBehaviorV2)",
           "description": "每拍将独立参考转移的期望结果与候选实际输出逐项比较；转移、初值、数值比较和不约束字段均有固定定义。",
-          "review": "这是已定义的扫描谓词；仍待人工合理性审核，不代表已完成ST模型转换或无限时序证明。"
+          "review": "这是已定义并完成人工审阅的扫描谓词；不代表已完成 ST 模型转换或无限时序证明。"
         }
       },
       "interface_zh": {
@@ -181,23 +232,84 @@
           "name": "独立计算的数据边界回归",
           "purpose": "独立计算的数据边界回归",
           "source_sha256": "15dd491b7c2ab021b2892a3dc74d15c5af173b1f2afefd778a0ee517f90da72f"
+        },
+        "PUB003.T3": {
+          "name": "报警中配置越界、零回差与非整 real32 边界",
+          "purpose": "验证 loAlarm=TRUE 时遇 8001/8002 保持原报警、hystWindow=0 严格大于及 binary32 小数阈值（7步）。",
+          "source_sha256": "e3645c068ad9e54f457035315276dc069e1caeea43691fab1c2c8e294a2a49df"
+        },
+        "PUB003.R22.invalid_low": {
+          "name": "低报警已置位后进入非法配置，应保留低报警",
+          "purpose": "低报警已置位后进入非法配置，应保留低报警",
+          "source_sha256": "d1fa309ab7d51c061c5467ef5aa639f329b1256c4fe548617157068a23d3c7d0"
+        },
+        "PUB003.R22.real_boundaries": {
+          "name": "REAL迟滞阈值相等保持及两侧变化",
+          "purpose": "REAL迟滞阈值相等保持及两侧变化",
+          "source_sha256": "2f601175cc4ee37bfcd097e9e5ff3acf3afbac610903c2287964130ffcd7e317"
+        },
+        "PUB003.T4": {
+          "name": "负工程量程滞回边界与单拍跨区跳转",
+          "purpose": "在负阈值区间 [-50.0, -10.0]（hystWindow=5.0，HighRelease=-15.0，LowRelease=-45.0）验证高低报警置位、释放端点保持及直接跨区反转。",
+          "source_sha256": "164461cf33ea7c72de4168b469757cfcddc4a03d8c7bf53ec64c00dc2b7c6c3f"
+        },
+        "PUB003.T5": {
+          "name": "配置错误码优先级切换（8002->8001）与错误期间报警冻结恢复",
+          "purpose": "验证 hiAlarm 置位后先触发滞回窗口错误（16#8002）再叠加区间非法（优先上报 16#8001）时始终冻结历史报警，恢复合法滞回区仍保持直到跌破 HighRelease 才清零。",
+          "source_sha256": "8b4f264c1ff83b44008fba0a0ed4c6e0c98b420067e91d49dd32774e7436a077"
         }
       },
-      "source_task_sha256": "c4250e6e530d7a21c6b0b881690a0f0fd69b25229c14e4400025291185fb08db",
-      "review_status": "PENDING_HUMAN_REVIEW",
+      "source_task_sha256": "74fd99392cda1be4499b3cd9b3de99286aa6750d8b4674b8448997da5fa25f4e",
+      "review_status": "HUMAN_REVIEWED",
       "material_origin": "GROUP_TRANSLATION_AND_REVIEW_NOT_TEACHER_SPEC",
       "source_kind": "public",
       "title_en": "Alarm Handling",
-      "complete_behavior_zh": "令(Sref[k+1], E[k])=T_PUB003(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\n四个REAL参数先按IEEE binary32舍入且有限，hystWindow>=0。lo>=hi时报8001，否则width>=real32(hi-lo)时报8002；错误时参考高低报警保持。有效时高报警由value>hi置真、value<real32(hi-width)置假、其余保持；低报警由value<lo置真、value>real32(lo+width)置假、其余保持。初值均FALSE。"
+      "complete_behavior_zh": "令(Sref[k+1], E[k])=T_PUB003(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\n四个REAL参数先按IEEE binary32舍入且有限，hystWindow>=0。lo>=hi时报8001，否则width>=real32(hi-lo)时报8002；错误时参考高低报警保持。有效时高报警由value>hi置真、value<real32(hi-width)置假、其余保持；低报警由value<lo置真、value>real32(lo+width)置假、其余保持。初值均FALSE。",
+      "aliases_zh": {
+        "badRange": {
+          "label_zh": "非法上下限区间",
+          "description_zh": "loLevel >= hiLevel 时为 TRUE，触发报警冻结并置错误码 16#8001。"
+        },
+        "badWindow": {
+          "label_zh": "非法滞回窗口",
+          "description_zh": "上下限区间有效但 real32(I.hystWindow) >= Span 时为 TRUE，触发报警冻结并置错误码 16#8002。"
+        },
+        "valid": {
+          "label_zh": "参数合法谓词",
+          "description_zh": "满足 !badRange & !badWindow & hystWindow >= 0。"
+        },
+        "sameAlarms": {
+          "label_zh": "报警输出维持上拍",
+          "description_zh": "hiAlarm = hiPrev 且 loAlarm = loPrev（即与上一拍实测报警输出保持一致）。",
+          "persistence_note_zh": "依赖 O[k-1] 上拍实测输出 hiPrev / loPrev，非法参数拍不改写输出。"
+        },
+        "HighRelease": {
+          "label_zh": "高报警释放阈值",
+          "description_zh": "高报警清零释放边界：real32(real32(I.hiLevel) - real32(I.hystWindow))。"
+        },
+        "LowRelease": {
+          "label_zh": "低报警释放阈值",
+          "description_zh": "低报警清零释放边界：real32(real32(I.loLevel) + real32(I.hystWindow))。"
+        },
+        "Span": {
+          "label_zh": "量程上下限差值",
+          "description_zh": "高低限阈值跨度：real32(real32(I.hiLevel) - real32(I.loLevel))。"
+        }
+      }
     },
     {
       "id": "PUB009",
       "title_zh": "移动平均计算",
       "translation_zh": "编写功能块，计算连续数据的移动算术平均值，新数据替代最旧数据后重新计算。cyclicExecution=TRUE 时每扫描采集一次；trigger 每次上升沿触发一次采样；reset=TRUE 时重置计算。窗口长度必须为1至100，成功状态为16#0000，越界错误状态为16#8200。",
-      "assumptions_zh": "窗口未满时按实际样本数计算；有效窗口变化清空历史；有效窗口下复位优先于采样；非法窗口保持历史与输出；复位和非法输入期间也更新触发边沿记忆。",
-      "coverage_zh": "T1：周期预热、滑动替换与复位优先（6步）。\nT2：边沿、长按、窗口变化及非法范围（9步）。\nV2_data_contract_boundaries：独立计算的数据边界回归（7步）。",
+      "assumptions_zh": "窗口未满时按实际样本数计算；有效窗口变化清空历史；有效窗口下复位优先于采样；非法窗口保持历史与输出；复位和非法输入期间也更新触发边沿记忆。 T2 与 LREAL 精度已对齐（abs<=1e-5, rel<=1e-5）；P6 假定第 0 拍前 previousTrigger=FALSE。",
+      "coverage_zh": "T1：周期预热、滑动替换与复位优先（6步）。\nT2：边沿、长按、窗口变化及非法范围（9步）。\nV2_data_contract_boundaries：独立计算的数据边界回归（7步）。\nPUB009.T3：复位并发非法窗长、窗长缩扩与满100窗滑动（109步）。",
       "review_points_zh": "建议补充：合法最大窗口100的填满及第101次替换；大量正负数据的数值误差；复位与非法窗口同时发生的优先级。",
       "properties_zh": {
+        "P_init": {
+          "formula": "init",
+          "description": "首次调用前，average=0.0、windowSizeReached=FALSE、error=FALSE 且 status=0。",
+          "review": "检查实例初始值。"
+        },
         "P1": {
           "formula": "G(!valid -> (error & status=16#8200 & unchangedMean))",
           "description": "窗口无效时，置 error，status=16#8200，平均值和窗口满标志保持原值。",
@@ -236,7 +348,7 @@
         "PUB009.V2.COMPLETE": {
           "formula": "G(CompleteBehaviorV2)",
           "description": "每拍将独立参考转移的期望结果与候选实际输出逐项比较；转移、初值、数值比较和不约束字段均有固定定义。",
-          "review": "这是已定义的扫描谓词；仍待人工合理性审核，不代表已完成ST模型转换或无限时序证明。"
+          "review": "这是已定义并完成人工审阅的扫描谓词；不代表已完成 ST 模型转换或无限时序证明。"
         }
       },
       "interface_zh": {
@@ -259,29 +371,98 @@
         "T2": {
           "name": "边沿、长按、窗口变化及非法范围",
           "purpose": "边沿、长按、窗口变化及非法范围",
-          "source_sha256": "e4f4e7e50559dd921320d84331a1354fd0f080b15c59bca132e3c9f2a1fbb510"
+          "source_sha256": "b3e58642ef20c76707a422869b0dfd043c876699c289e6339bca95386f7bcc97"
         },
         "V2_data_contract_boundaries": {
           "name": "独立计算的数据边界回归",
           "purpose": "独立计算的数据边界回归",
           "source_sha256": "0e702fe3f046e3642ca79e47084b1e6c66c299c185ce3fbf2281a543fef9f32e"
+        },
+        "PUB009.T3": {
+          "name": "复位并发非法窗长、窗长缩扩与满100窗滑动",
+          "purpose": "验证 reset&windowSize=0 优先判非法、负数窗长、2->0->3 变更及连续 101 拍满 100 窗口滑动（109步）。",
+          "source_sha256": "e58ab0eaafcff1e26f7c0a70d1441912c3b290c141f6ca6adea2351b38a84da7"
+        },
+        "PUB009.R22.window_100": {
+          "name": "合法最大窗口100必须被接受",
+          "purpose": "合法最大窗口100必须被接受",
+          "source_sha256": "793c9baa528ef918c8e86ddb3e54a0871621cda69f5a580784b1af46385ed863"
+        },
+        "PUB009.R22.window100_True": {
+          "name": "最大窗口填满、替换与双向变窗",
+          "purpose": "最大窗口填满、替换与双向变窗",
+          "source_sha256": "25294cd51901952d3094fb3765156cffe57effb0db8f455a9e5796974217008e"
+        },
+        "PUB009.R22.window100_False": {
+          "name": "最大窗口填满、替换与双向变窗",
+          "purpose": "最大窗口填满、替换与双向变窗",
+          "source_sha256": "e89168dd6cae7f3660ff70dd803140738bc0d0770998300faa5aa490017b9501"
         }
       },
-      "source_task_sha256": "a1fee144140ff072e55c61bb1914c3a46fcbdafbd1b59bd06eb0090cfd90473b",
-      "review_status": "PENDING_HUMAN_REVIEW",
+      "source_task_sha256": "6824d7fa9e5fca3d8143dddcf9d785f00e971e5f5f426b7fa44905350ea4f025",
+      "review_status": "HUMAN_REVIEWED",
       "material_origin": "GROUP_TRANSLATION_AND_REVIEW_NOT_TEACHER_SPEC",
       "source_kind": "public",
       "title_en": "Calculate Moving Average",
-      "complete_behavior_zh": "令(Sref[k+1], E[k])=T_PUB009(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\npreviousTrigger初值FALSE且每次调用后=本拍trigger。valid=1<=windowSize<=100；非法时average/reached保持并报8200。有效窗口首次建立或改变、或reset时清空历史；非reset且cyclicExecution或trigger上升沿时追加value并保留最后windowSize项。average=空则0否则sum/n，reached=(n=windowSize)。初始历史空、average=0、reached=FALSE。"
+      "complete_behavior_zh": "令(Sref[k+1], E[k])=T_PUB009(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\npreviousTrigger初值FALSE且每次调用后=本拍trigger。valid=1<=windowSize<=100；非法时average/reached保持并报8200。有效窗口首次建立或改变、或reset时清空历史；非reset且cyclicExecution或trigger上升沿时追加value并保留最后windowSize项。average=空则0否则sum/n，reached=(n=windowSize)。初始历史空、average=0、reached=FALSE。",
+      "aliases_zh": {
+        "valid": {
+          "label_zh": "窗口长度合法 (1..100)",
+          "description_zh": "windowSize 位于闭区间 [1, 100]。"
+        },
+        "triggerRise": {
+          "label_zh": "触发上升沿",
+          "description_zh": "trigger & !previousTrigger（上一拍 trigger 为 FALSE，首拍 previousTrigger=FALSE）。",
+          "persistence_note_zh": "依赖跨拍输入记忆 previousTrigger。"
+        },
+        "accept": {
+          "label_zh": "本拍采样入队允许",
+          "description_zh": "valid & !reset & (cyclicExecution | triggerRise)。"
+        },
+        "history": {
+          "label_zh": "更新前环形样本队列",
+          "description_zh": "进入本拍前保存的至多 windowSize 个已采样输入历史。",
+          "persistence_note_zh": "参考内部队列状态：reset 或 windowChanged 须先清空。"
+        },
+        "historyAfter": {
+          "label_zh": "更新后环形样本队列",
+          "description_zh": "经过 reset/windowChanged 清空及可能的新样本入队（满则丢弃最旧）后的队列内容。",
+          "persistence_note_zh": "参考内部队列后态：决定均值与 length。"
+        },
+        "unchangedMean": {
+          "label_zh": "均值与满窗状态保持不变",
+          "description_zh": "本拍输出的 average 与 windowSizeReached 均等于扫描前存储值（不修改历史缓存输出）。",
+          "persistence_note_zh": "非合法参数或无新采样时必须保持先前输出不变。"
+        },
+        "meanOrZero": {
+          "label_zh": "队列均值或 0.0",
+          "description_zh": "队列非空时取算术均值，队列为空时取 0.0。"
+        },
+        "length": {
+          "label_zh": "有效队列样本数",
+          "description_zh": "historyAfter 中实际包含的样本数量（0..windowSize）。",
+          "persistence_note_zh": "持久队列长度状态。"
+        },
+        "windowChanged": {
+          "label_zh": "窗口配置参数变化",
+          "description_zh": "当前合法 windowSize 与最近一次已配置合法窗口长度不同；触发内部样本缓存清空。",
+          "persistence_note_zh": "窗口变更会清空已存样本并重置 windowSizeReached。"
+        }
+      }
     },
     {
       "id": "PUB010",
       "title_zh": "温度逻辑控制",
       "translation_zh": "编写功能块，读取温度 TemperatureSensorInput，与 SetTemperature 比较；低于设定值开启加热，高于设定值关闭加热。连续加热超过一定时间（取5秒）触发过热保护并关闭加热器；等待一定时间（取3秒）后才能解除保护。提供当前温度、设定温度、加热器及保护状态显示。温度小于0或大于100判为传感器故障，关闭加热器。",
-      "assumptions_zh": "当前评测将原文“超过5秒”解释为>=5秒；等温保持上次热需求；保护后第一个>=3秒观测点解除，允许同拍重新加热；故障不清除已有冷却保护；计时从首次有效调用的零时刻起算。",
-      "coverage_zh": "T1：加热上限、冷却边界及重启（6步）。\nT2：传感器故障、有效端点及等温保持（7步）。\nT3：保护中故障不清冷却（5步）。\nV2_omission_regression：规约遗漏的具体错误行为回归（3步）。",
+      "assumptions_zh": "第 0 拍计时起点为 0（不累加 dt_ms[0]）；传感器故障期间冻结内部热需求 demand 不变；过热保护沿用 >=5s 口径，冷却 >=3s 观测点立即解除，允许同拍重新加热。",
+      "coverage_zh": "T1：加热上限、冷却边界及重启（6步）。\nT2：传感器故障、有效端点及等温保持（7步）。\nT3：保护中故障不清冷却（5步）。\nV2_omission_regression：规约遗漏的具体错误行为回归（3步）。\nPUB010.T4：<5s 中断重计时、3s 释放重叠及 100.0/100.1 边界（11步）。",
       "review_points_zh": "必须审核：>5秒与>=5秒选择；冷却结束是否同拍重启。真实PLC计时采样/容差尚需验收。规约正文仍留有“选定边界”等编辑性文字，应在确认后改成唯一最终规则。",
       "properties_zh": {
+        "P_init": {
+          "formula": "init",
+          "description": "首次调用前，CurrentTemperature=0.0、SetTempDisplay=0.0 且 HeaterStatus/OverheatProtection/HeaterOutput 均为 FALSE。",
+          "review": "检查实例初始值。"
+        },
         "P1": {
           "formula": "G(sensorFault -> !HeaterOutput)",
           "description": "传感器故障时，加热输出必须关闭。",
@@ -322,10 +503,20 @@
           "description": "保护期间若从当前起始终无故障且持续需要加热，则最终会重新开启加热。",
           "review": "假设时间持续前进；这条本身不表达精确3秒，也不能排除提前解除。 本轮公式已规范化，请重新核对含义；量化按绑定长度有限展开。"
         },
+        "P9": {
+          "formula": "G(!sensorFault & !OverheatProtection & !demand -> !HeaterOutput)",
+          "description": "当传感器正常、未处于过热保护且内部热需求为 FALSE 时，禁止开启 HeaterOutput。",
+          "review": "防止等温或超温状态下错误常开加热输出。"
+        },
+        "P10": {
+          "formula": "G(protectPrev & cooldownDone -> !OverheatProtection)",
+          "description": "当上一拍处于过热保护且本拍冷却已满 3 秒（cooldownDone）时，必须立即解除 OverheatProtection。",
+          "review": "防止 3 秒冷却期满后保护永久锁死。"
+        },
         "PUB010.V2.COMPLETE": {
           "formula": "G(CompleteBehaviorV2)",
           "description": "每拍将独立参考转移的期望结果与候选实际输出逐项比较；转移、初值、数值比较和不约束字段均有固定定义。",
-          "review": "这是已定义的扫描谓词；仍待人工合理性审核，不代表已完成ST模型转换或无限时序证明。"
+          "review": "这是已定义并完成人工审阅的扫描谓词；不代表已完成 ST 模型转换或无限时序证明。"
         },
         "PUB010.V2.1": {
           "formula": "G((TemperatureSensorInput>SetTemperature) -> !HeaterOutput)",
@@ -346,7 +537,7 @@
         "T1": {
           "name": "加热上限、冷却边界及重启",
           "purpose": "加热上限、冷却边界及重启",
-          "source_sha256": "50985bee525307aeafda0cabe548e8858cf47c603c50aad002b465b4472a76e8"
+          "source_sha256": "60d3dabc98fe8650c07bcc99973540fe78f215a98ce95ec57aea7770ed4af163"
         },
         "T2": {
           "name": "传感器故障、有效端点及等温保持",
@@ -362,23 +553,69 @@
           "name": "规约遗漏的具体错误行为回归",
           "purpose": "规约遗漏的具体错误行为回归",
           "source_sha256": "1d3c467f627157a579ebe418a3a300f14cadfd2f4fd8d590ab3a445b6b5d8509"
+        },
+        "PUB010.T4": {
+          "name": "<5s 中断重计时、3s 释放重叠及 100.0/100.1 边界",
+          "purpose": "检验达设定温度/故障打断 5s 重计、3s 到期恰逢故障解除与 100.0 vs 100.1 传感器故障判定（11步）。",
+          "source_sha256": "209c994642b4a6fcc80ae239bf1581d0dd54b24392398412ac08efe02658168b"
+        },
+        "PUB010.R22.sensor_boundary": {
+          "name": "100有效而100.1故障、冷却与重新需求",
+          "purpose": "100有效而100.1故障、冷却与重新需求",
+          "source_sha256": "8239f49f01822bdc85b3c2f3617e05748cca5707ead031d68ea5909eb7fbf7bd"
+        },
+        "PUB010.T5": {
+          "name": "升温中断清零过热计时与冷却届满即时复热",
+          "purpose": "验证持续加热 4500ms 后温度超过设定值停止加热会清零过热累计，重新加热须再完整持续 5000ms 才触发 OverheatProtection，随后经 2999ms 仍锁存、满 3000ms 立即复热。",
+          "source_sha256": "969c7159ad442c063780cfd61433d9fcde6128dbb01b5f32cb26f4f6952c92be"
+        },
+        "PUB010.T6": {
+          "name": "相等滞回保持、传感器超限故障冻结需求与过热冷却交互",
+          "purpose": "验证在需求置位后发生过热保护，期间历经传感器故障（-5.0/105.0）不破坏已冻结的 demand，且冷却满 3000ms 后温度回到相等边界 30.0 仍继续按保持需求恢复加热。",
+          "source_sha256": "c1f114152347533ea0a8c78d8916866abc2bc922b05a39ee3612655a3dd23dbc"
         }
       },
-      "source_task_sha256": "bf51ddb7a30adaa2498e3f86ed94739f54fd2ca95a45ebf6f0361683f6b5ddc5",
-      "review_status": "PENDING_HUMAN_REVIEW",
+      "source_task_sha256": "25403f43e6d372fa259922982bcc229e85c9232919c3715b2d094a110906993c",
+      "review_status": "HUMAN_REVIEWED",
       "material_origin": "GROUP_TRANSLATION_AND_REVIEW_NOT_TEACHER_SPEC",
       "source_kind": "public",
       "title_en": "Temperature Logic Control",
-      "complete_behavior_zh": "令(Sref[k+1], E[k])=T_PUB010(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\n时钟由观察dt_ms累加。demand低于设定置真、高于置假、相等保持，初值FALSE。先释放年龄>=3s的旧保护；无旧保护且旧连续加热年龄>=5s则本拍触发保护。heat=传感器0..100有效 & demandAfter & 无保护；首次heat真记录当前时刻，heat假清热起点。显示值取输入；保护输出取保护状态。>=5s是既有评测解释，并非老师额外澄清。"
+      "complete_behavior_zh": "令(Sref[k+1], E[k])=T_PUB010(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\n首拍时钟0、后续按观察dt_ms累加。正常温度0..100下demand低于设定置真、高于置假、相等保持；传感器故障期间冻结demand不变，初值FALSE。先释放年龄>=3s的旧保护；无旧保护且旧连续加热年龄>=5s则本拍触发保护。heat=传感器0..100有效 & demandAfter & 无保护；首次heat真记录当前时刻，heat假清热起点。显示值取输入；保护输出取保护状态。5.0s及以上起保护与既有评测口径一致。",
+      "aliases_zh": {
+        "sensorFault": {
+          "label_zh": "温度传感器超限故障",
+          "description_zh": "TemperatureSensorInput < 0.0 或 > 100.0。"
+        },
+        "demand": {
+          "label_zh": "幽灵滞回加热需求",
+          "description_zh": "传感器有效（0..100）时：低于 SetTemperature 置 TRUE，高于 SetTemperature 清 FALSE，相等保持；sensorFault 期间冻结原需求状态不变！",
+          "persistence_note_zh": "持久滞回需求状态：传感器故障拍绝不因故障温度值翻转，恢复后沿用原需求。"
+        },
+        "heatLimitReached": {
+          "label_zh": "连续加热满 5 秒触发过热保护",
+          "description_zh": "上次未处于过热保护且本拍连续加热已满 >= 5000 ms（首个加热拍计 elapsed=0）。",
+          "persistence_note_zh": "连续加热累计计时状态：停热或故障断开立即清零，满 5s 转入 3s 冷却保护。"
+        },
+        "cooldownDone": {
+          "label_zh": "过热保护 3 秒冷却期届满",
+          "description_zh": "进入过热保护后已持续经过 >= 3000 ms（clk - protection_start >= 3000），本拍解除保护。",
+          "persistence_note_zh": "冷却计时状态：必须独立记录进入过热保护时刻。"
+        }
+      }
     },
     {
       "id": "PUB015",
       "title_zh": "物料配比过程控制",
       "translation_zh": "混合三种物料并经阀D排出。estop=FALSE 时所有设备立即停止。opeMode=FALSE为手动模式，通过按钮上升沿分别切换阀A/B/C/D和搅拌电机启停；例如阀A按钮第一次上升沿启动、第二次上升沿停止。opeMode=TRUE为自动模式：按autoStart后开启A，液位到50cm切换为B，到80cm关闭B。processMode=FALSE时开始搅拌，完成后关闭搅拌并开启D；processMode=TRUE时先开启C，到100cm关闭C并开始搅拌，完成后开启D，流程结束。",
-      "assumptions_zh": "液位采用>=阈值；急停清空状态；模式切换当拍清空并抑制命令；按钮历史每拍更新；自动启动需新上升沿；批次中processMode固定；D保持开启，直到急停或模式复位。",
-      "coverage_zh": "PUB015.T1：手动长按、新边沿与急停（7步）。\nPUB015.T2：等液位边界及搅拌完成（7步）。\nPUB015.T3：跳过阈值及急停取消周期（8步）。\nV2_process_history_regression：模式和历史记忆回归（10步）。",
+      "assumptions_zh": "液位采用>=阈值；急停清空状态；模式切换当拍清空并抑制命令；按钮历史每拍更新；自动启动需新上升沿；批次中processMode固定；D保持开启，直到急停或模式复位。 在 DRAIN 阶段保持 valveDRun=TRUE 至急停、切换手动或新 autoStart 上升沿重启新批次；活动批次内 processMode 固定。",
+      "coverage_zh": "PUB015.T1：手动长按、新边沿与急停（7步）。\nPUB015.T2：等液位边界及搅拌完成（7步）。\nPUB015.T3：跳过阈值及急停取消周期（8步）。\nV2_process_history_regression：模式和历史记忆回归（10步）。\nPUB015.T5：B/C/D/Mix 全手控、同拍超高液位单步推进与排空重起（14步）。",
       "review_points_zh": "必须审核：D保持开启是否符合题意；下一批如何启动；模式切换是否必须取消当前流程。建议逐阶段补急停及恢复、每个手动输出独立双沿。",
       "properties_zh": {
+        "PUB015.P_init": {
+          "formula": "init",
+          "description": "首次调用前，五个执行器输出全关且内部阶段处于 IDLE。",
+          "review": "检查实例初始值。"
+        },
         "PUB015.P1": {
           "formula": "G(!safe -> off)",
           "description": "安全条件不成立时，所有执行器都关闭。",
@@ -409,10 +646,20 @@
           "description": "搅拌完成条件成立时，满足排料阶段输出组合。",
           "review": "停止搅拌并打开D；D是否保持开启、下一批如何开始仍需确认。"
         },
+        "PUB015.P7": {
+          "formula": "G(manual_toggles)",
+          "description": "手动模式无急停与模式切换时，A/B/C/D/Mix 五路输出各自响应对应按钮上升沿独立翻转并保持。",
+          "review": "将原仅测 A 路的独立性质补全至全部五路执行器。"
+        },
+        "PUB015.P8": {
+          "formula": "G((safe & opeMode -> oneActuator) & (modeChanged -> off))",
+          "description": "自动模式下每拍至多单执行器运行；发生模式切换当拍五执行器必须全关。",
+          "review": "补齐自动单执行器互斥与切模式关断约束。"
+        },
         "PUB015.V2.COMPLETE": {
           "formula": "G(CompleteBehaviorV2)",
           "description": "每拍将独立参考转移的期望结果与候选实际输出逐项比较；转移、初值、数值比较和不约束字段均有固定定义。",
-          "review": "这是已定义的扫描谓词；仍待人工合理性审核，不代表已完成ST模型转换或无限时序证明。"
+          "review": "这是已定义并完成人工审阅的扫描谓词；不代表已完成 ST 模型转换或无限时序证明。"
         }
       },
       "interface_zh": {
@@ -453,23 +700,150 @@
           "name": "模式和历史记忆回归",
           "purpose": "模式和历史记忆回归",
           "source_sha256": "c378e249fdfb6f85d604d3d912fee2a54a65a07964bbdb2bdb31f6bb78cd7dfc"
+        },
+        "PUB015.T5": {
+          "name": "B/C/D/Mix 全手控、同拍超高液位单步推进与排空重起",
+          "purpose": "覆盖全部 5 路手控翻转、Mode 2 路径、FILL_A 液位=120 单拍只推一阶、DRAIN 后 autoStart 开新批与急停恢复（13步）。",
+          "source_sha256": "c4c845f532aab7af26376739b6ff313b4c547161bae19156ac387b5ec526be7c"
+        },
+        "PUB015.R22.manual_mix_hold": {
+          "name": "手动搅拌按钮持续按住，不能每拍翻转",
+          "purpose": "手动搅拌按钮持续按住，不能每拍翻转",
+          "source_sha256": "b4f0a32fd984f6c570d73f850b2558bad5f6aea77870d7fbcd47e943d64cb164"
+        },
+        "PUB015.R22.valveAStart": {
+          "name": "手动独立翻转、长按与再次关闭：valveAStart",
+          "purpose": "手动独立翻转、长按与再次关闭：valveAStart",
+          "source_sha256": "40284abf4b15a02ef9f1633c3f0310aa934d7641e732fcdd1097c741cf5a8a05"
+        },
+        "PUB015.R22.valveBStart": {
+          "name": "手动独立翻转、长按与再次关闭：valveBStart",
+          "purpose": "手动独立翻转、长按与再次关闭：valveBStart",
+          "source_sha256": "3d3dbf61edacf597f3a980fe12944472f5f863e5e71b7b64035beb6d38f1fd78"
+        },
+        "PUB015.R22.valveCStart": {
+          "name": "手动独立翻转、长按与再次关闭：valveCStart",
+          "purpose": "手动独立翻转、长按与再次关闭：valveCStart",
+          "source_sha256": "b641d03576e79c4a33b4eb26c833232557f40705f18b3c91f81a279e119eab92"
+        },
+        "PUB015.R22.valveDStart": {
+          "name": "手动独立翻转、长按与再次关闭：valveDStart",
+          "purpose": "手动独立翻转、长按与再次关闭：valveDStart",
+          "source_sha256": "22139649694f0454b7d55527bb087106d3519e4d10a6fb3c128890707dbdd0dd"
+        },
+        "PUB015.R22.mixMotorStart": {
+          "name": "手动独立翻转、长按与再次关闭：mixMotorStart",
+          "purpose": "手动独立翻转、长按与再次关闭：mixMotorStart",
+          "source_sha256": "48866cf575757b6e03239445e626397a64c1baaeb8ce5ce321344e90e821d667"
+        },
+        "PUB015.R22.auto_wait_False": {
+          "name": "配料完整路线、各阶段等待及切换模式后新批次",
+          "purpose": "配料完整路线、各阶段等待及切换模式后新批次",
+          "source_sha256": "084fb5470ca709869525fcbaa87faca14152f9ecccb2b331139d18ca6c3674c1"
+        },
+        "PUB015.R22.auto_wait_True": {
+          "name": "配料完整路线、各阶段等待及切换模式后新批次",
+          "purpose": "配料完整路线、各阶段等待及切换模式后新批次",
+          "source_sha256": "5d7f388f4b1998c14df919dec5e7fdfb9adf8b63ed2f8aede50da1445eda6c37"
         }
       },
-      "source_task_sha256": "4cbcac6cb37a5822224953dbf4018257450202b59b431e8de2bcfb135d38b0b3",
-      "review_status": "PENDING_HUMAN_REVIEW",
+      "source_task_sha256": "fc070c6403bb85b3fa8ad0d47cd08e9fccd0d518ffe6ead664be38c49b81f0ac",
+      "review_status": "HUMAN_REVIEWED",
       "material_origin": "GROUP_TRANSLATION_AND_REVIEW_NOT_TEACHER_SPEC",
       "source_kind": "public",
       "title_en": "Material Proportioning Process Control",
-      "complete_behavior_zh": "令(Sref[k+1], E[k])=T_PUB015(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\n五按钮及autoStart历史初值FALSE、每拍更新。急停优先，其次已建立模式的变化；二者清阶段/五锁存且当拍全关。手动逐项latchAfter=latchBefore XOR buttonRise。自动IDLE遇autoStartRise进A，A液位>=50进B，B>=80按批次processMode进C或MIX，C>=100进MIX，MIX完成进DRAIN；每拍一阶，DRAIN保持至复位条件。五输出对应转移后A/B/C/DRAIN/MIX。批次模式在活动批次内固定。"
+      "complete_behavior_zh": "令(Sref[k+1], E[k])=T_PUB015(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\n五按钮及autoStart历史初值FALSE、每拍更新。急停优先，其次已建立模式的变化；二者清阶段/五锁存且当拍全关。手动逐项latchAfter=latchBefore XOR buttonRise。自动IDLE或DRAIN遇autoStartRise进A（新批次），A液位>=50进B，B>=80按批次processMode进C或MIX，C>=100进MIX，MIX完成进DRAIN；每拍一阶，DRAIN保持valveDRun=TRUE至切换手动、急停或autoStart上升沿重起。五输出对应转移后A/B/C/DRAIN/MIX。批次模式在活动批次(1..4)内固定。",
+      "aliases_zh": {
+        "safe": {
+          "label_zh": "急停安全输入",
+          "description_zh": "I[k].estop = TRUE。"
+        },
+        "off": {
+          "label_zh": "五路执行器全部关闭",
+          "description_zh": "valveARun..mixMotorRun 均 FALSE。"
+        },
+        "toggle": {
+          "label_zh": "手动阀门 A 上升沿触发",
+          "description_zh": "!modeChanged & safe & !opeMode & rising(valveAStart)。"
+        },
+        "changed": {
+          "label_zh": "阀门 A 锁存状态翻转",
+          "description_zh": "valveARun != pre-valveARun。",
+          "persistence_note_zh": "仅在手动模式上升沿翻转并跨拍锁存。"
+        },
+        "held": {
+          "label_zh": "手动保持（无切换/无A沿）",
+          "description_zh": "safe & !opeMode & !rising(valveAStart) & !modeChanged。"
+        },
+        "same": {
+          "label_zh": "阀门 A 保持原锁存状态",
+          "description_zh": "valveARun = pre-valveARun。",
+          "persistence_note_zh": "手动锁存器持久状态。"
+        },
+        "toB": {
+          "label_zh": "加料 A->B 切换条件",
+          "description_zh": "无切模且 safe & opeMode & pre-phase=FILL_A & levelSensor>=50。",
+          "persistence_note_zh": "依赖当前阶段前态 FILL_A。"
+        },
+        "B": {
+          "label_zh": "仅 B 阀运行",
+          "description_zh": "仅 valveBRun=TRUE，其余全 FALSE。"
+        },
+        "toMix": {
+          "label_zh": "加料 B->MIX 切换条件",
+          "description_zh": "无切模且 safe & opeMode & pre-phase=FILL_B & levelSensor>=80 & !latched_batch_mode。",
+          "persistence_note_zh": "使用批次启动时锁存的 batch_mode。"
+        },
+        "Mix": {
+          "label_zh": "仅搅拌电机运行",
+          "description_zh": "仅 mixMotorRun=TRUE，其余全 FALSE。"
+        },
+        "toC": {
+          "label_zh": "加料 B->C 切换条件",
+          "description_zh": "无切模且 safe & opeMode & pre-phase=FILL_B & levelSensor>=80 & latched_batch_mode。",
+          "persistence_note_zh": "使用批次启动时锁存的 batch_mode，而非中途波动的 processMode。"
+        },
+        "C": {
+          "label_zh": "仅 C 阀运行",
+          "description_zh": "仅 valveCRun=TRUE，其余全 FALSE。"
+        },
+        "fromC": {
+          "label_zh": "加料 C->MIX 切换条件",
+          "description_zh": "无切模且 safe & opeMode & pre-phase=FILL_C & levelSensor>=100。"
+        },
+        "mixed": {
+          "label_zh": "搅拌完成转排料条件",
+          "description_zh": "无切模且 safe & opeMode & pre-phase=MIX & mixMotorComplete。"
+        },
+        "Drain": {
+          "label_zh": "仅 D 排料阀运行",
+          "description_zh": "仅 valveDRun=TRUE；在 DRAIN 阶段保持直到切换手动、急停或再次出现 autoStart 上升沿。",
+          "persistence_note_zh": "DRAIN 态持续开阀，只有新 autoStart 沿可同拍重新进 FILL_A。"
+        },
+        "oneActuator": {
+          "label_zh": "五路执行器至多一路为真",
+          "description_zh": "自动模式下 5 个输出至多 1 个 TRUE（手动模式不约束）。"
+        },
+        "manual_toggles": {
+          "label_zh": "五路手动独立沿翻转与保持",
+          "description_zh": "手动安全且未切模时，valveARun/B/C/D/mixMotorRun 各自严格对其按钮上升沿异或翻转，无上升沿保持。",
+          "persistence_note_zh": "依赖五路按钮边沿记忆 prev 与五路输出锁存 latch。"
+        }
+      }
     },
     {
       "id": "PUB016",
       "title_zh": "柔性加工控制",
       "translation_zh": "五个工作站从左至右编号1至5。1号上料，2至4号加工，5号成品输出。每站有到位传感器，电机可使输送带左右运动。1号检测到原料并按station1Start后，按processSequence第一项送往目标站，到位停车；收到该站加工完成信号后读取下一项，并决定输送方向，直到送至5号。processLength规定有效序列长度1至8，从processSequence[1]开始；最后一项必须为5，其余有效项为2至4，调用方负责提供合法序列。",
       "assumptions_zh": "路线批次内固定；启动和完成均按上升沿；到位当拍仅停车，不接受同拍完成；重复站点代表两次加工，需两次新完成沿，无须移动；每拍最多推进一项。",
-      "coverage_zh": "PUB016.T1：路线4→2→5及错误完成信号（8步）。\nPUB016.T2：长度1直达输出站（3步）。\nPUB016.T3：重复站点不能被长按跳过（7步）。\nV2_process_history_regression：重复站点和历史回归（9步）。",
+      "coverage_zh": "PUB016.T1：路线4→2→5及错误完成信号（8步）。\nPUB016.T2：长度1直达输出站（3步）。\nPUB016.T3：重复站点不能被长按跳过（7步）。\nV2_process_history_regression：重复站点和历史回归（9步）。\nPUB016.T4：多拍持续运输中间拍、长度8序列（含3号站）与无料拒启（20步）。",
       "review_points_zh": "建议补充：最大长度8、覆盖3号站的完整路线、连续两批；确认到位与完成同拍是否故意忽略。真实数组绑定仍需PLC运行验收。",
       "properties_zh": {
+        "PUB016.P_init": {
+          "formula": "init",
+          "description": "首次调用前，conveyorLeft/Right 均为 FALSE，初始阶段 IDLE、currentStation=1、sequenceIndex=0。",
+          "review": "检查实例初始值。"
+        },
         "PUB016.P1": {
           "formula": "G(!(left & right))",
           "description": "输送带左转与右转不能同时为真。",
@@ -500,10 +874,15 @@
           "description": "若每次移动最终到位且每次加工最终收到完成信号，则每次启动最终完成。",
           "review": "还依赖合法、固定路线和正确边沿；不能要求没有外部反馈也自动完成。"
         },
+        "PUB016.P7": {
+          "formula": "G(station1Start_rejected -> stop)",
+          "description": "在 IDLE 阶段按下 station1Start 但 sensor1 为 FALSE 时，左右传送带均保持关闭。",
+          "review": "防止工位 1 无料时误启传送带。"
+        },
         "PUB016.V2.COMPLETE": {
           "formula": "G(CompleteBehaviorV2)",
           "description": "每拍将独立参考转移的期望结果与候选实际输出逐项比较；转移、初值、数值比较和不约束字段均有固定定义。",
-          "review": "这是已定义的扫描谓词；仍待人工合理性审核，不代表已完成ST模型转换或无限时序证明。"
+          "review": "这是已定义并完成人工审阅的扫描谓词；不代表已完成 ST 模型转换或无限时序证明。"
         }
       },
       "interface_zh": {
@@ -530,25 +909,111 @@
         "PUB016.T2": {
           "name": "长度1直达输出站",
           "purpose": "长度1直达输出站",
-          "source_sha256": "761d14835bbe22ead0e923371bffa99253f366d642a736525255f489bcab1ec0"
+          "source_sha256": "55f13157cb399bd719c4ce88eda47871e0bebfa901b579ea98ab90645b174af4"
         },
         "PUB016.T3": {
           "name": "重复站点不能被长按跳过",
           "purpose": "重复站点不能被长按跳过",
-          "source_sha256": "fd5e7726fe14e5cd98190a425bcdfc8f5ac70344b366e1e2e0b9e5a70cc23ffb"
+          "source_sha256": "b077af7420ee564e8ef2b009bd6d2402799c30d043d4fe966cfe0fd30fadbee9"
         },
         "V2_process_history_regression": {
           "name": "重复站点和历史回归",
           "purpose": "重复站点和历史回归",
           "source_sha256": "39ca02240f8bf42789129a4177bba49439e32c0d07d1e043f9abcfce71e5e714"
+        },
+        "PUB016.T4": {
+          "name": "多拍持续运输中间拍、长度8序列（含3号站）与无料拒启",
+          "purpose": "检验两站之间无目标传感器时的持续运输输出、8步含倒车路线及 sensor1=FALSE 拒启（20步）。",
+          "source_sha256": "6c0e01c74ffc15e6c466d76b2a11db2d53d96d920c0857c1e2fce6a95bd44f9c"
+        },
+        "PUB016.R22.route8": {
+          "name": "八站路线、双向运输保持、工位等待与第二批次",
+          "purpose": "八站路线、双向运输保持、工位等待与第二批次",
+          "source_sha256": "3eab7ced36f33720794f3133858764f445162757442823cc521867140ad89697"
+        },
+        "PUB016.T5": {
+          "name": "未检到1号位拒绝启动、运行中忽略重触发及第二批次重开",
+          "purpose": "验证 sensor1=FALSE 时 station1Start 上升沿不得开启传送带且后续仍保持 IDLE；真正启动到达并途经再触发 station1Start 亦被忽略，仅在输出站5回闲后下一次合法启动上升沿才可开始第二轮。",
+          "source_sha256": "e22559b2c4449999f429682b3de48c4f75e9d89e23905a7a3ee072be66ef9d05"
+        },
+        "PUB016.T6": {
+          "name": "多组连续同站工序 [2,2,3,3,5] 独立完成边沿等待验证",
+          "purpose": "路线 [2, 2, 3, 3, 5] 连续经过两对同号工位，验证同一工位首次完成后若保持高电平不会跳过第二次等待，须先回落再上升才进入下一工步且同站期间电机保持静止。",
+          "source_sha256": "a7bc12a79baf58ee2e51c461039a83c8a9ca35619b6cc189d0d0f5b1e0841f43"
         }
       },
-      "source_task_sha256": "e909d01139b65bf3f319f255608b67f7fef390c9dfb211a447322672eef22d70",
-      "review_status": "PENDING_HUMAN_REVIEW",
+      "source_task_sha256": "516c31c414902c6c3ab892765873ec37459680c5d31bdf42b609b84a4e92786a",
+      "review_status": "HUMAN_REVIEWED",
       "material_origin": "GROUP_TRANSLATION_AND_REVIEW_NOT_TEACHER_SPEC",
       "source_kind": "public",
       "title_en": "Flexible Processing Control",
-      "complete_behavior_zh": "令(Sref[k+1], E[k])=T_PUB016(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\n活动路线长度1..8，前项为2/3/4且末项5，活动周期内固定。初始IDLE、station=1、index=0。IDLE在station1Start上升沿且sensor1时选择首目标；MOVING到目标后进入WAIT_PROCESS或目标5回IDLE；WAIT_PROCESS仅对应完成新边沿推进index，同站继续等待。输出仅转移后MOVING且未到目标时按target与station方向开启；所有边沿历史逐拍更新。"
+      "complete_behavior_zh": "令(Sref[k+1], E[k])=T_PUB016(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。\n活动路线长度1..8，前项为2/3/4且末项5，活动周期内固定。初始IDLE、station=1、index=0。IDLE在station1Start上升沿且sensor1时选择首目标；MOVING到目标后进入WAIT_PROCESS或目标5回IDLE；WAIT_PROCESS仅对应完成新边沿推进index，同站继续等待。输出仅转移后MOVING且未到目标时按target与station方向开启；所有边沿历史逐拍更新。",
+      "aliases_zh": {
+        "left": {
+          "label_zh": "左行输出 conveyorLeft",
+          "description_zh": "I/O 输出 conveyorLeft。"
+        },
+        "right": {
+          "label_zh": "右行输出 conveyorRight",
+          "description_zh": "I/O 输出 conveyorRight。"
+        },
+        "higher": {
+          "label_zh": "向更高工位号右行",
+          "description_zh": "post-phase=MOVING 且 targetStation > currentStation（未到传感器）。",
+          "persistence_note_zh": "参考移动方向后态。"
+        },
+        "lower": {
+          "label_zh": "向更低工位号左行",
+          "description_zh": "post-phase=MOVING 且 targetStation < currentStation（未到传感器）。",
+          "persistence_note_zh": "参考移动方向后态。"
+        },
+        "arrive": {
+          "label_zh": "小车抵达目标工位传感器",
+          "description_zh": "pre-phase = MOVING 且对应 targetStation 的位置传感器为 TRUE。"
+        },
+        "stop": {
+          "label_zh": "小车左右输出全关",
+          "description_zh": "!conveyorLeft & !conveyorRight。"
+        },
+        "waiting": {
+          "label_zh": "工艺等待且无完成上升沿",
+          "description_zh": "pre-phase = WAIT_PROCESS 且当前无对应工艺完成上升沿。",
+          "persistence_note_zh": "参考阶段与完成边沿记忆。"
+        },
+        "out": {
+          "label_zh": "抵达5号位卸料传感器",
+          "description_zh": "pre-phase=MOVING & targetStation=5 & sensor5。"
+        },
+        "done": {
+          "label_zh": "完成第5工位返回空闲",
+          "description_zh": "到 5 号位后转移至 IDLE 阶段。",
+          "persistence_note_zh": "参考阶段后态 IDLE。"
+        },
+        "moving": {
+          "label_zh": "扫描前处于移动阶段",
+          "description_zh": "pre-phase = MOVING。",
+          "persistence_note_zh": "参考阶段前态。"
+        },
+        "processing": {
+          "label_zh": "扫描前处于工艺等待阶段",
+          "description_zh": "pre-phase = WAIT_PROCESS。",
+          "persistence_note_zh": "参考阶段前态。"
+        },
+        "completion": {
+          "label_zh": "本拍触发匹配的工艺完成沿",
+          "description_zh": "处于对应 WAIT_PROCESS 工位时检测到 processComplete 的有效上升沿。",
+          "persistence_note_zh": "依赖工艺完成输入上拍记忆。"
+        },
+        "started": {
+          "label_zh": "工位1有效上升沿启动",
+          "description_zh": "在 IDLE 前态下 station1Start 上升沿与 sensor1 同时成立并派发。",
+          "persistence_note_zh": "参考当前工位与排队状态机开始推进。"
+        },
+        "station1Start_rejected": {
+          "label_zh": "无料时忽略工位1呼叫",
+          "description_zh": "IDLE 前态下按下 station1Start 但 !sensor1，小车不得启动。"
+        }
+      }
     }
   ]
 }

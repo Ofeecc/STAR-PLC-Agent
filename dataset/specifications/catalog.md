@@ -3,38 +3,38 @@ This document is generated from the task JSON files. It records requirements, pr
 Regenerate after a deliberate dataset revision with `python scripts/build_dataset_docs.py`, then prepare a new campaign when the frozen hash has changed.
 | ID | Origin | Difficulty | Title | LTL properties | Cases | Scan observations |
 | --- | --- | --- | --- | ---: | ---: | ---: |
-| PUB001 | public | easy | Automated Filling Line Control | 11 | 2 | 16 |
-| PUB002 | public | easy | Dual-Word Edge Detection | 7 | 3 | 14 |
-| PUB003 | public | easy | Alarm Handling | 10 | 3 | 19 |
-| PUB004 | public | easy | Jam Pump Debouncing and Runtime Maintenance | 8 | 4 | 25 |
-| PUB005 | public | easy | Weld Gap Alarm and Startup Inhibition | 6 | 2 | 14 |
-| PUB006 | public | easy | Aeration Blower Delayed Start | 6 | 3 | 20 |
-| PUB007 | public | medium | Multi-Pump Switching Control System | 6 | 3 | 10 |
-| PUB008 | public | medium | Analog Batch Processing | 9 | 4 | 5 |
-| PUB009 | public | medium | Calculate Moving Average | 8 | 3 | 22 |
-| PUB010 | public | medium | Temperature Logic Control | 10 | 4 | 21 |
-| PUB011 | public | medium | Automated Production Line Control | 7 | 4 | 19 |
-| PUB012 | public | medium | Slab Thickness Alarm and Fault History | 7 | 3 | 25 |
-| PUB013 | public | medium | Office HVAC Multi-mode Energy-Saving Control | 7 | 3 | 20 |
-| PUB014 | public | medium | IPv4 Parsing with Format and Range Checks | 4 | 3 | 23 |
-| PUB015 | public | hard | Material Proportioning Process Control | 7 | 4 | 32 |
-| PUB016 | public | hard | Flexible Processing Control | 7 | 4 | 27 |
-| PUB017 | public | hard | Recipe Management System | 7 | 3 | 48 |
-| PUB018 | public | hard | FIFO First-In-First-Out Queue | 6 | 3 | 34 |
-| PUB019 | public | hard | Mechanical Arm Control | 10 | 5 | 45 |
-| PUB020 | public | hard | Production Control | 10 | 8 | 75 |
-| SELF001 | self_built | easy | Guarded motor with retained run command | 6 | 2 | 10 |
-| SELF002 | self_built | medium | Reversing jog drive with a neutral scan | 7 | 2 | 10 |
-| SELF003 | self_built | medium | Emergency stop reset with restart inhibition | 9 | 3 | 14 |
-| SELF004 | self_built | medium | Pallet indexing with a latched jam fault | 8 | 2 | 11 |
-| SELF005 | self_built | medium | Three phase signal with externally clocked durations | 8 | 2 | 12 |
-| SELF006 | self_built | easy | Tank filling with hysteresis and sensor inconsistency | 6 | 2 | 10 |
-| SELF007 | self_built | medium | Duty standby alternation with healthy pump fallback | 10 | 3 | 15 |
-| SELF008 | self_built | easy | Consecutive scan qualification with an immediate trip | 6 | 2 | 11 |
-| SELF009 | self_built | easy | Rising edge batch counter with reset sampling | 6 | 2 | 13 |
-| SELF010 | self_built | medium | Latched alarm with acknowledgment and reannunciation | 7 | 3 | 12 |
-| SELF011 | self_built | hard | Single cycle actuator handshakes with one transition per scan | 10 | 2 | 14 |
-| SELF012 | self_built | hard | Bounded automatic fault retries with a recovery dwell | 8 | 3 | 23 |
+| PUB001 | public | easy | Automated Filling Line Control | 12 | 7 | 91 |
+| PUB002 | public | easy | Dual-Word Edge Detection | 8 | 7 | 39 |
+| PUB003 | public | easy | Alarm Handling | 11 | 8 | 49 |
+| PUB004 | public | easy | Jam Pump Debouncing and Runtime Maintenance | 9 | 8 | 55 |
+| PUB005 | public | easy | Weld Gap Alarm and Startup Inhibition | 7 | 7 | 48 |
+| PUB006 | public | easy | Aeration Blower Delayed Start | 7 | 7 | 58 |
+| PUB007 | public | medium | Multi-Pump Switching Control System | 6 | 7 | 30 |
+| PUB008 | public | medium | Analog Batch Processing | 9 | 9 | 12 |
+| PUB009 | public | medium | Calculate Moving Average | 9 | 7 | 455 |
+| PUB010 | public | medium | Temperature Logic Control | 13 | 8 | 54 |
+| PUB011 | public | medium | Automated Production Line Control | 9 | 8 | 82 |
+| PUB012 | public | medium | Slab Thickness Alarm and Fault History | 8 | 8 | 70 |
+| PUB013 | public | medium | Office HVAC Multi-mode Energy-Saving Control | 8 | 12 | 80 |
+| PUB014 | public | medium | IPv4 Parsing with Format and Range Checks | 5 | 8 | 61 |
+| PUB015 | public | hard | Material Proportioning Process Control | 10 | 13 | 127 |
+| PUB016 | public | hard | Flexible Processing Control | 9 | 8 | 160 |
+| PUB017 | public | hard | Recipe Management System | 9 | 8 | 157 |
+| PUB018 | public | hard | FIFO First-In-First-Out Queue | 8 | 9 | 140 |
+| PUB019 | public | hard | Mechanical Arm Control | 12 | 17 | 306 |
+| PUB020 | public | hard | Production Control | 12 | 11 | 156 |
+| SELF001 | self_built | easy | Guarded motor with retained run command | 7 | 7 | 39 |
+| SELF002 | self_built | medium | Reversing jog drive with a neutral scan | 8 | 7 | 44 |
+| SELF003 | self_built | medium | Emergency stop reset with restart inhibition | 10 | 10 | 62 |
+| SELF004 | self_built | medium | Pallet indexing with a latched jam fault | 11 | 9 | 61 |
+| SELF005 | self_built | medium | Three phase signal with externally clocked durations | 11 | 7 | 66 |
+| SELF006 | self_built | easy | Tank filling with hysteresis and sensor inconsistency | 7 | 7 | 39 |
+| SELF007 | self_built | medium | Duty standby alternation with healthy pump fallback | 11 | 9 | 60 |
+| SELF008 | self_built | easy | Consecutive scan qualification with an immediate trip | 7 | 7 | 45 |
+| SELF009 | self_built | easy | Rising edge batch counter with reset sampling | 7 | 7 | 56 |
+| SELF010 | self_built | medium | Latched alarm with acknowledgment and reannunciation | 10 | 8 | 50 |
+| SELF011 | self_built | hard | Single cycle actuator handshakes with one transition per scan | 13 | 12 | 148 |
+| SELF012 | self_built | hard | Bounded automatic fault retries with a recovery dwell | 11 | 9 | 94 |
 
 ## PUB001 Automated Filling Line Control
 
@@ -138,7 +138,8 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 - Confirmation inputs are level sampled. A held confirmation can complete its relevant phase on a later scan, but cannot skip several phases in one scan.
 - finishedButton resets only the completed phase. A bottle still present can start a new cleaning cycle on the following idle scan.
 - For the progress property, future confirmations are ordered and sustained until their matching phase accepts them. Unordered one-scan pulses do not imply completion.
-- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
 
@@ -159,17 +160,18 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 - `Capping_Machine`: O[k].Capping_Machine: independently observed post-scan candidate value (BOOL); never defined as expected output.
 - `Packing_Machine`: O[k].Packing_Machine: independently observed post-scan candidate value (BOOL); never defined as expected output.
 - `Completion_Light`: O[k].Completion_Light: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `phase0_idle`: phase=0
 
 ### LTL properties
 
-**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Human rationality review is completed; candidate verification remains UNVERIFIED.
 
 ### Normalized state, observation and predicate definitions
 
 ```json
 {
   "schema_version": 1,
-  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "status": "NORMALIZED_HUMAN_REVIEWED",
   "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
   "candidate_formal_verification": "UNVERIFIED",
   "initial_observed": {
@@ -190,7 +192,8 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
       "reference": null,
       "phase": 0,
       "previous_mode": null,
-      "clock": 0.0,
+      "clock": 0,
+      "first": true,
       "heat_start": null,
       "protection_start": null,
       "demand": false
@@ -201,16 +204,16 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
     "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('PUB001'); constructed once per independent case, current state is Sref[k].",
     "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
     "module_sha256": {
-      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
-      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
-      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
-      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
-      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "scan_contract.py": "2ebdbeb0bacd3c6154e1add2fd358f1aadc9ac9c9322a9201798065154353f48",
+      "array_contracts.py": "f541ffe0e28c56e84ad737b06aa8c8ee6180b1afda720b7c41cc8fccad2d8ecd",
+      "data_contracts.py": "0792c46b303ce62a0a2180bcf4d7ebfe4838ccfaa18deb331780af1819377b3a",
+      "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
+      "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+    "frozen_sources": "dataset/specifications/normalized_transition_v2"
   },
   "constrained_observed_fields": [
     "Capping_Machine",
@@ -273,7 +276,8 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
     "Confirmation inputs are level sampled. A held confirmation can complete its relevant phase on a later scan, but cannot skip several phases in one scan.",
     "finishedButton resets only the completed phase. A bottle still present can start a new cleaning cycle on the following idle scan.",
     "For the progress property, future confirmations are ordered and sustained until their matching phase accepts them. Unordered one-scan pulses do not imply completion.",
-    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
   ],
   "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
   "limitations": [
@@ -355,7 +359,7 @@ Completion persists until pickup is confirmed.
 G((phase=5 & finishedButton) -> (!Completion_Light & X(phase=0)))
 ```
 
-Pickup confirmation rearms the line.
+On finishedButton during completion, clear Completion_Light and return to IDLE.
 
 **P10**
 
@@ -364,6 +368,14 @@ G((phase=1 & G((phase=1) -> F(cleaningConfirmButton)) & G((phase=2) -> F(filling
 ```
 
 Conditional progress: from cleaning, if every active phase eventually receives its matching confirmation, completion eventually occurs.
+
+**P11**
+
+```text
+G(((phase=0 & !bottleSensor) -> (!Pump_Motor & !Filling_Valve & !Capping_Machine & !Packing_Machine & !Completion_Light & X(phase=0))) & ((phase=1 & !cleaningConfirmButton) -> (Pump_Motor & !Filling_Valve & !Capping_Machine & !Packing_Machine & !Completion_Light & X(phase=1))) & ((phase=2 & !fillingConfirmButton) -> (!Pump_Motor & Filling_Valve & !Capping_Machine & !Packing_Machine & !Completion_Light & X(phase=2))) & ((phase=3 & !cappingConfirmButton) -> (!Pump_Motor & !Filling_Valve & Capping_Machine & !Packing_Machine & !Completion_Light & X(phase=3))) & ((phase=4 & !packingConfirmButton) -> (!Pump_Motor & !Filling_Valve & !Capping_Machine & Packing_Machine & !Completion_Light & X(phase=4))) & ((phase=5 & finishedButton) -> (!Pump_Motor & !Filling_Valve & !Capping_Machine & !Packing_Machine & !Completion_Light & X(phase=0))))
+```
+
+Closes the unconfirmed phase-hold and finish-clearing obligations left implicit by P3..P9.
 
 **PUB001.V2.COMPLETE**
 
@@ -379,6 +391,11 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 | --- | --- | ---: |
 | T1 | Full bottle cycle and stable completion | 10 |
 | T2 | Out-of-order confirmations cannot skip phases | 6 |
+| PUB001.T3 | PUB001.T3 | 16 |
+| PUB001.R22.filling_hold | 灌装阶段无完成确认时仍应保持阀门开启 | 5 |
+| PUB001.R22.dwell_0 | 原流程各稳定状态连续保持：T1 | 30 |
+| PUB001.R22.dwell_1 | 原流程各稳定状态连续保持：T2 | 14 |
+| PUB001.T4 | Two-cycle restart isolation: finishedButton resets to idle even while bottleSensor is held high, then next idle scan restarts Cycle 2. | 10 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -469,7 +486,8 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 
 - The previous DWORD is initialized to DWORD#0. Therefore nonzero bits on the first scan count as rising edges.
 - Bitwise complement is restricted to 32 bits; counts range from 0 through 32.
-- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
 
@@ -550,17 +568,18 @@ prev初值DWORD#0。rise=value & (~prev & 0xFFFFFFFF)，fall=prev & (~value & 0x
 - `noOfRisingBits`: O[k].noOfRisingBits: independently observed post-scan candidate value (USINT); never defined as expected output.
 - `hasFallingEdges`: O[k].hasFallingEdges: independently observed post-scan candidate value (BOOL); never defined as expected output.
 - `noOfFallingBits`: O[k].noOfFallingBits: independently observed post-scan candidate value (USINT); never defined as expected output.
+- `init`: At the separate pre-invocation initial observation before scan k=0: O_init.hasChanged=false, O_init.hasRisingEdges=false, O_init.risingBits=0, O_init.noOfRisingBits=0, O_init.hasFallingEdges=false, O_init.fallingBits=0, O_init.noOfFallingBits=0.
 
 ### LTL properties
 
-**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Human rationality review is completed; candidate verification remains UNVERIFIED.
 
 ### Normalized state, observation and predicate definitions
 
 ```json
 {
   "schema_version": 1,
-  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "status": "NORMALIZED_HUMAN_REVIEWED",
   "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
   "candidate_formal_verification": "UNVERIFIED",
   "initial_observed": {
@@ -672,7 +691,8 @@ prev初值DWORD#0。rise=value & (~prev & 0xFFFFFFFF)，fall=prev & (~value & 0x
       "reference": null,
       "phase": 0,
       "previous_mode": null,
-      "clock": 0.0,
+      "clock": 0,
+      "first": true,
       "heat_start": null,
       "protection_start": null,
       "demand": false
@@ -683,16 +703,16 @@ prev初值DWORD#0。rise=value & (~prev & 0xFFFFFFFF)，fall=prev & (~value & 0x
     "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('PUB002'); constructed once per independent case, current state is Sref[k].",
     "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
     "module_sha256": {
-      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
-      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
-      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
-      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
-      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "scan_contract.py": "2ebdbeb0bacd3c6154e1add2fd358f1aadc9ac9c9322a9201798065154353f48",
+      "array_contracts.py": "f541ffe0e28c56e84ad737b06aa8c8ee6180b1afda720b7c41cc8fccad2d8ecd",
+      "data_contracts.py": "0792c46b303ce62a0a2180bcf4d7ebfe4838ccfaa18deb331780af1819377b3a",
+      "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
+      "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+    "frozen_sources": "dataset/specifications/normalized_transition_v2"
   },
   "constrained_observed_fields": [
     "fallingBits",
@@ -748,7 +768,8 @@ prev初值DWORD#0。rise=value & (~prev & 0xFFFFFFFF)，fall=prev & (~value & 0x
   "assumptions": [
     "The previous DWORD is initialized to DWORD#0. Therefore nonzero bits on the first scan count as rising edges.",
     "Bitwise complement is restricted to 32 bits; counts range from 0 through 32.",
-    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
   ],
   "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
   "limitations": [
@@ -759,6 +780,14 @@ prev初值DWORD#0。rise=value & (~prev & 0xFFFFFFFF)，fall=prev & (~value & 0x
   "rules_zh": "prev初值DWORD#0。rise=value & (~prev & 0xFFFFFFFF)，fall=prev & (~value & 0xFFFFFFFF)。两个掩码、popcount、掩码非零标志和value!=prev标志分别与实际七个输出比较；prevAfter=value，每次调用更新一次。"
 }
 ```
+
+**P_init**
+
+```text
+init
+```
+
+Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
 
 **P1**
 
@@ -823,6 +852,10 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 | T1 | No change, mixed edges, full width and bit 31 | 10 |
 | T2 | First nonzero invocation is compared with initialized zero | 2 |
 | V2_data_contract_boundaries | Independently calculated edge/history/parser boundary regression | 2 |
+| PUB002.T3 | PUB002.T3 | 6 |
+| PUB002.R22.isolated_bits | 第2位与第4位独立变化、混合沿后保持 | 8 |
+| PUB002.T4 | 16-bit half-word swaps and full 32-bit complementary bit flips with consecutive zero-edge hold. | 6 |
+| PUB002.T5 | All-ones saturation followed by checkerboard parity inversions (0xAAAAAAAA <-> 0x55555555) and clear. | 5 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -917,13 +950,15 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 - Threshold comparisons are strict as written. Equality with trigger or release thresholds retains the previous alarm value.
 - Invalid configuration returns early, preserving alarm outputs. error and status are recalculated each scan; valid configuration clears them.
 - loLevel>=hiLevel takes priority over the hysteresis-width error. hystWindow is assumed nonnegative; negative values are outside the defined input domain.
-- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 - Floating-point inputs and intermediate reference arithmetic are finite. Existing fixed traces retain their declared absolute tolerance; claims do not extend to arbitrary magnitudes without a separately specified numeric error policy.
+- All REAL inputs (value, loLevel, hiLevel, hystWindow) and reference threshold arithmetic (real32(hi-lo), real32(hi-width), real32(lo+width)) use IEEE 754 binary32 (REAL) rounding.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
 
 - `badRange`: loLevel >= hiLevel
-- `badWindow`: hystWindow >= hiLevel-loLevel
+- `badWindow`: real32(I.hystWindow)>=Span
 - `valid`: !badRange & !badWindow & hystWindow>=0
 - `hiPrev`: {"kind": "previous_observed_output", "source": "O[k-1].hiAlarm", "initial": false, "update": "After comparing scan k, store ACTUAL O[k].hiAlarm; never write into reference state."}
 - `loPrev`: {"kind": "previous_observed_output", "source": "O[k-1].loAlarm", "initial": false, "update": "After comparing scan k, store ACTUAL O[k].loAlarm; never write into reference state."}
@@ -939,17 +974,22 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 - `loAlarm`: O[k].loAlarm: independently observed post-scan candidate value (BOOL); never defined as expected output.
 - `error`: O[k].error: independently observed post-scan candidate value (BOOL); never defined as expected output.
 - `status`: O[k].status: independently observed post-scan candidate value (WORD); never defined as expected output.
+- `init`: At the separate pre-invocation initial observation before scan k=0: O_init.hiAlarm=false, O_init.loAlarm=false, O_init.error=false, O_init.status=0.
+- `HighRelease`: real32(real32(I.hiLevel)-real32(I.hystWindow))
+- `LowRelease`: real32(real32(I.loLevel)+real32(I.hystWindow))
+- `Span`: real32(real32(I.hiLevel)-real32(I.loLevel))
+- `real32`: IEEE754 binary32 rounding to nearest ties-to-even; finite declared domain. All REAL input symbols denote binary32 sampled values.
 
 ### LTL properties
 
-**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Human rationality review is completed; candidate verification remains UNVERIFIED.
 
 ### Normalized state, observation and predicate definitions
 
 ```json
 {
   "schema_version": 1,
-  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "status": "NORMALIZED_HUMAN_REVIEWED",
   "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
   "candidate_formal_verification": "UNVERIFIED",
   "initial_observed": {
@@ -1058,7 +1098,8 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
       "reference": null,
       "phase": 0,
       "previous_mode": null,
-      "clock": 0.0,
+      "clock": 0,
+      "first": true,
       "heat_start": null,
       "protection_start": null,
       "demand": false
@@ -1069,16 +1110,16 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
     "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('PUB003'); constructed once per independent case, current state is Sref[k].",
     "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
     "module_sha256": {
-      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
-      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
-      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
-      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
-      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "scan_contract.py": "2ebdbeb0bacd3c6154e1add2fd358f1aadc9ac9c9322a9201798065154353f48",
+      "array_contracts.py": "f541ffe0e28c56e84ad737b06aa8c8ee6180b1afda720b7c41cc8fccad2d8ecd",
+      "data_contracts.py": "0792c46b303ce62a0a2180bcf4d7ebfe4838ccfaa18deb331780af1819377b3a",
+      "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
+      "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+    "frozen_sources": "dataset/specifications/normalized_transition_v2"
   },
   "constrained_observed_fields": [
     "error",
@@ -1138,8 +1179,10 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
     "Threshold comparisons are strict as written. Equality with trigger or release thresholds retains the previous alarm value.",
     "Invalid configuration returns early, preserving alarm outputs. error and status are recalculated each scan; valid configuration clears them.",
     "loLevel>=hiLevel takes priority over the hysteresis-width error. hystWindow is assumed nonnegative; negative values are outside the defined input domain.",
-    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
-    "Floating-point inputs and intermediate reference arithmetic are finite. Existing fixed traces retain their declared absolute tolerance; claims do not extend to arbitrary magnitudes without a separately specified numeric error policy."
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "Floating-point inputs and intermediate reference arithmetic are finite. Existing fixed traces retain their declared absolute tolerance; claims do not extend to arbitrary magnitudes without a separately specified numeric error policy.",
+    "All REAL inputs (value, loLevel, hiLevel, hystWindow) and reference threshold arithmetic (real32(hi-lo), real32(hi-width), real32(lo+width)) use IEEE 754 binary32 (REAL) rounding.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
   ],
   "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
   "limitations": [
@@ -1150,6 +1193,14 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
   "rules_zh": "四个REAL参数先按IEEE binary32舍入且有限，hystWindow>=0。lo>=hi时报8001，否则width>=real32(hi-lo)时报8002；错误时参考高低报警保持。有效时高报警由value>hi置真、value<real32(hi-width)置假、其余保持；低报警由value<lo置真、value>real32(lo+width)置假、其余保持。初值均FALSE。"
 }
 ```
+
+**P_init**
+
+```text
+init
+```
+
+Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
 
 **P1**
 
@@ -1186,7 +1237,7 @@ A high excursion activates the high alarm.
 **P5**
 
 ```text
-G((valid & Value<hiLevel-hystWindow) -> !hiAlarm)
+G((valid & Value<HighRelease) -> !hiAlarm)
 ```
 
 Below the strict release boundary, high alarm clears.
@@ -1194,7 +1245,7 @@ Below the strict release boundary, high alarm clears.
 **P6**
 
 ```text
-G((valid & hiLevel-hystWindow<=Value & Value<=hiLevel) -> (hiAlarm=hiPrev))
+G((valid & HighRelease<=Value & Value<=hiLevel) -> (hiAlarm=hiPrev))
 ```
 
 The high hysteresis band retains history.
@@ -1210,7 +1261,7 @@ A low excursion activates the low alarm.
 **P8**
 
 ```text
-G((valid & Value>loLevel+hystWindow) -> !loAlarm)
+G((valid & Value>LowRelease) -> !loAlarm)
 ```
 
 Above the strict low release boundary, low alarm clears.
@@ -1218,7 +1269,7 @@ Above the strict low release boundary, low alarm clears.
 **P9**
 
 ```text
-G((valid & loLevel<=Value & Value<=loLevel+hystWindow) -> (loAlarm=loPrev))
+G((valid & loLevel<=Value & Value<=LowRelease) -> (loAlarm=loPrev))
 ```
 
 The low hysteresis band retains history.
@@ -1238,6 +1289,11 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 | T1 | Strict high and low hysteresis boundaries | 9 |
 | T2 | Configuration priority, output retention and recovery | 4 |
 | V2_data_contract_boundaries | Independently calculated edge/history/parser boundary regression | 6 |
+| PUB003.T3 | PUB003.T3 | 7 |
+| PUB003.R22.invalid_low | 低报警已置位后进入非法配置，应保留低报警 | 2 |
+| PUB003.R22.real_boundaries | REAL迟滞阈值相等保持及两侧变化 | 8 |
+| PUB003.T4 | Negative engineering thresholds with hysteresis retention boundaries and direct hi-to-lo jump. | 8 |
+| PUB003.T5 | Error priority transition (16#8002 -> 16#8001), hysteresis alarm retention through config errors, and valid release. | 5 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -1332,8 +1388,10 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 - An E-stop resets debounce validity as well as incomplete timing, so re-enabling requires a full new qualification.
 - At each invocation, add the supplied CycleTime to the LTIME accumulator iff the end-of-scan VFD_RUN is TRUE. Do not use TIME for the 500-hour accumulator.
 - PUMP_MAINT_DUE is a level comparison accumulated runtime>=500h and has no reset input. Its threshold case is specified but is not a short practical runtime test.
-- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 - DebounceTime is a strictly positive constant throughout each test case. Dynamic changes are outside this benchmark domain. Time must advance for eventual-start properties.
+- On timed benchmark tests, CycleTime equals the step dt_ms. Both DebounceTime and CycleTime use exact integer nanoseconds within unsigned 32-bit IEC TIME bounds (<=4294967295 ms), whereas PUMP_RUNTIME_ACC uses 64-bit LTIME (0..2^63-1 ns). Scan k=0 initializes the debounce clock at 0 ms but adds CycleTime to PUMP_RUNTIME_ACC if end-of-scan VFD_RUN is TRUE.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
 
@@ -1343,7 +1401,7 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 - `accNext`: O[k].PUMP_RUNTIME_ACC, actual post-scan LTIME; never reference accumulator.
 - `interface names`: Identically named sampled input or end-of-scan output.
 - `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_PUB004(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
-物理采样时钟首拍0、以后累加dt_ms。permit=VISCOSITY_OK & PASTE_E_STOP_NC；首次permit真时记录起点，假时清起点，run=permit且年龄>=固定正DebounceTime。acc初值0；accAfter=accBefore+(run?CycleTime:0)，CycleTime先解释为纳秒；maint=accAfter>=500h。累计域0..2^63-1纳秒。
+物理采样时钟首拍0、以后累加dt_ms；CycleTime与采样周期dt_ms一致，首拍运行工时按CycleTime语义计入。permit=VISCOSITY_OK & PASTE_E_STOP_NC；首次permit真时记录起点，假时清起点，run=permit且年龄>=固定正DebounceTime。acc初值0；accAfter=accBefore+(run?CycleTime:0)，CycleTime先解释为纳秒；maint=accAfter>=500h。累计域0..2^63-1纳秒。
 - `TimeTick`: Boolean: floor(t[k]/1ms)>floor(t[k-1]/1ms), with t[0]=0, TimeTick[0]=FALSE, t[k]=sum(dt_ms[1..k]). G(F(TimeTick)) states unbounded physical time progress; merely positive dt is insufficient.
 - `VISCOSITY_OK`: I[k].VISCOSITY_OK: sampled input (BOOL).
 - `PASTE_E_STOP_NC`: I[k].PASTE_E_STOP_NC: sampled input (BOOL).
@@ -1352,17 +1410,18 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 - `VFD_RUN`: O[k].VFD_RUN: independently observed post-scan candidate value (BOOL); never defined as expected output.
 - `PUMP_MAINT_DUE`: O[k].PUMP_MAINT_DUE: independently observed post-scan candidate value (BOOL); never defined as expected output.
 - `PUMP_RUNTIME_ACC`: O[k].PUMP_RUNTIME_ACC: independently observed post-scan candidate value (LTIME); never defined as expected output.
+- `init`: At the separate pre-invocation initial observation before scan k=0: O_init.VFD_RUN=false, O_init.PUMP_MAINT_DUE=false, O_init.PUMP_RUNTIME_ACC="LTIME#0ns".
 
 ### LTL properties
 
-**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Human rationality review is completed; candidate verification remains UNVERIFIED.
 
 ### Normalized state, observation and predicate definitions
 
 ```json
 {
   "schema_version": 1,
-  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "status": "NORMALIZED_HUMAN_REVIEWED",
   "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
   "candidate_formal_verification": "UNVERIFIED",
   "initial_observed": {
@@ -1403,7 +1462,8 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
       "reference": null,
       "phase": 0,
       "previous_mode": null,
-      "clock": 0.0,
+      "clock": 0,
+      "first": true,
       "heat_start": null,
       "protection_start": null,
       "demand": false
@@ -1414,16 +1474,16 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
     "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('PUB004'); constructed once per independent case, current state is Sref[k].",
     "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
     "module_sha256": {
-      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
-      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
-      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
-      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
-      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "scan_contract.py": "2ebdbeb0bacd3c6154e1add2fd358f1aadc9ac9c9322a9201798065154353f48",
+      "array_contracts.py": "f541ffe0e28c56e84ad737b06aa8c8ee6180b1afda720b7c41cc8fccad2d8ecd",
+      "data_contracts.py": "0792c46b303ce62a0a2180bcf4d7ebfe4838ccfaa18deb331780af1819377b3a",
+      "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
+      "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+    "frozen_sources": "dataset/specifications/normalized_transition_v2"
   },
   "constrained_observed_fields": [
     "PUMP_MAINT_DUE",
@@ -1491,8 +1551,10 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
     "An E-stop resets debounce validity as well as incomplete timing, so re-enabling requires a full new qualification.",
     "At each invocation, add the supplied CycleTime to the LTIME accumulator iff the end-of-scan VFD_RUN is TRUE. Do not use TIME for the 500-hour accumulator.",
     "PUMP_MAINT_DUE is a level comparison accumulated runtime>=500h and has no reset input. Its threshold case is specified but is not a short practical runtime test.",
-    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
-    "DebounceTime is a strictly positive constant throughout each test case. Dynamic changes are outside this benchmark domain. Time must advance for eventual-start properties."
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "DebounceTime is a strictly positive constant throughout each test case. Dynamic changes are outside this benchmark domain. Time must advance for eventual-start properties.",
+    "On timed benchmark tests, CycleTime equals the step dt_ms. Both DebounceTime and CycleTime use exact integer nanoseconds within unsigned 32-bit IEC TIME bounds (<=4294967295 ms), whereas PUMP_RUNTIME_ACC uses 64-bit LTIME (0..2^63-1 ns). Scan k=0 initializes the debounce clock at 0 ms but adds CycleTime to PUMP_RUNTIME_ACC if end-of-scan VFD_RUN is TRUE.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
   ],
   "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
   "limitations": [
@@ -1500,9 +1562,17 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
     "Focused legacy LTL predicates still require backend lowering; normalization is not model-checker acceptance.",
     "Finite matching cannot establish liveness or validate runtime provenance."
   ],
-  "rules_zh": "物理采样时钟首拍0、以后累加dt_ms。permit=VISCOSITY_OK & PASTE_E_STOP_NC；首次permit真时记录起点，假时清起点，run=permit且年龄>=固定正DebounceTime。acc初值0；accAfter=accBefore+(run?CycleTime:0)，CycleTime先解释为纳秒；maint=accAfter>=500h。累计域0..2^63-1纳秒。"
+  "rules_zh": "物理采样时钟首拍0、以后累加dt_ms；CycleTime与采样周期dt_ms一致，首拍运行工时按CycleTime语义计入。permit=VISCOSITY_OK & PASTE_E_STOP_NC；首次permit真时记录起点，假时清起点，run=permit且年龄>=固定正DebounceTime。acc初值0；accAfter=accBefore+(run?CycleTime:0)，CycleTime先解释为纳秒；maint=accAfter>=500h。累计域0..2^63-1纳秒。"
 }
 ```
+
+**P_init**
+
+```text
+init
+```
+
+Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
 
 **P1**
 
@@ -1576,6 +1646,10 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 | T2 | E-stop clears incomplete debounce and completed permission | 7 |
 | T3 | Long-duration maintenance arithmetic boundary | 4 |
 | V2_permit_loss_at_deadline | Permission loss at the exact deadline wins; recovery starts a fresh full interval, even after a long gap. | 5 |
+| PUB004.T5 | PUB004.T5 | 8 |
+| PUB004.R22.interrupted_delay | 启动延时中断后重新计时、运行后急停恢复 | 9 |
+| PUB004.R22.maintenance_edge | 累计500小时前1ms、恰好到期及维护提示后重启 | 6 |
+| PUB004.T6 | Multi-CycleTime runtime accumulation after debounce, permit loss retention, and fresh requalification. | 7 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -1665,8 +1739,9 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 - Weld_Soft_Start_Active reports startup inhibition even during E-stop. E-stop overrides the alert and resets gap timing but does not restart power-up inhibition.
 - At exactly 5 seconds startup inhibition clears. That scan is the first eligible gap sample, with gap elapsed zero; there is no credited debounce time during inhibition.
 - DebounceTime is positive. Alert clears and debounce resets immediately on raw gap FALSE or E-stop.
-- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 - DebounceTime is a strictly positive constant throughout each test case. Dynamic changes are outside this benchmark domain. Time must advance for eventual-start properties.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
 
@@ -1681,17 +1756,18 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 - `DebounceTime`: I[k].DebounceTime: sampled input (TIME).
 - `Operator_Alert`: O[k].Operator_Alert: independently observed post-scan candidate value (BOOL); never defined as expected output.
 - `Weld_Soft_Start_Active`: O[k].Weld_Soft_Start_Active: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `init`: At the separate pre-invocation initial observation before scan k=0: O_init.Operator_Alert=false, O_init.Weld_Soft_Start_Active=true.
 
 ### LTL properties
 
-**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Human rationality review is completed; candidate verification remains UNVERIFIED.
 
 ### Normalized state, observation and predicate definitions
 
 ```json
 {
   "schema_version": 1,
-  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "status": "NORMALIZED_HUMAN_REVIEWED",
   "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
   "candidate_formal_verification": "UNVERIFIED",
   "initial_observed": {
@@ -1731,7 +1807,8 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
       "reference": null,
       "phase": 0,
       "previous_mode": null,
-      "clock": 0.0,
+      "clock": 0,
+      "first": true,
       "heat_start": null,
       "protection_start": null,
       "demand": false
@@ -1742,16 +1819,16 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
     "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('PUB005'); constructed once per independent case, current state is Sref[k].",
     "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
     "module_sha256": {
-      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
-      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
-      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
-      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
-      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "scan_contract.py": "2ebdbeb0bacd3c6154e1add2fd358f1aadc9ac9c9322a9201798065154353f48",
+      "array_contracts.py": "f541ffe0e28c56e84ad737b06aa8c8ee6180b1afda720b7c41cc8fccad2d8ecd",
+      "data_contracts.py": "0792c46b303ce62a0a2180bcf4d7ebfe4838ccfaa18deb331780af1819377b3a",
+      "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
+      "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+    "frozen_sources": "dataset/specifications/normalized_transition_v2"
   },
   "constrained_observed_fields": [
     "Operator_Alert",
@@ -1810,8 +1887,9 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
     "Weld_Soft_Start_Active reports startup inhibition even during E-stop. E-stop overrides the alert and resets gap timing but does not restart power-up inhibition.",
     "At exactly 5 seconds startup inhibition clears. That scan is the first eligible gap sample, with gap elapsed zero; there is no credited debounce time during inhibition.",
     "DebounceTime is positive. Alert clears and debounce resets immediately on raw gap FALSE or E-stop.",
-    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
-    "DebounceTime is a strictly positive constant throughout each test case. Dynamic changes are outside this benchmark domain. Time must advance for eventual-start properties."
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "DebounceTime is a strictly positive constant throughout each test case. Dynamic changes are outside this benchmark domain. Time must advance for eventual-start properties.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
   ],
   "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
   "limitations": [
@@ -1822,6 +1900,14 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
   "rules_zh": "首拍时钟0；startup=clock<5s，急停不重启此时钟。gapPermit=!startup & Gap_Exceeded & Weld_E_Stop_NC；首次gapPermit真年龄0，假清起点；alarm=gapPermit且年龄>=固定正DebounceTime。两个期望输出为alarm、startup。"
 }
 ```
+
+**P_init**
+
+```text
+init
+```
+
+Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
 
 **P1**
 
@@ -1877,6 +1963,11 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 | --- | --- | ---: |
 | T1 | Initialization excludes gap timing and debounce starts at 5s | 6 |
 | T2 | E-stop suppresses startup and normal alerts without restarting inhibition | 8 |
+| PUB005.T3 | PUB005.T3 | 10 |
+| PUB005.R22.gap_reset | 去抖未完成时信号中断，恢复后必须重新计时 | 6 |
+| PUB005.T4 | Exact 5000ms startup exit does not count pre-exit gap duration; full DebounceTime starts at exit scan. | 5 |
+| PUB005.T5 | Minimum positive 1ms debounce after 5s startup and immediate E-stop alert clearing with fresh requalification. | 6 |
+| PUB005.T6 | Normal gap flicker clearing at 5000ms+ resets debounce while never retriggering Weld_Soft_Start_Active. | 7 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -1960,7 +2051,8 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 - Start delay elapsed is zero at the first sample of DO_LOW & AERATION_E_STOP_NC; run becomes TRUE at elapsed>=5s.
 - Count increments on the same invocation that changes end-of-scan BLOWER_RUN from FALSE to TRUE.
 - Tests stay below UINT overflow; overflow behavior is outside the specified operating domain.
-- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
 
@@ -1976,17 +2068,18 @@ permit=DO_LOW & AERATION_E_STOP_NC；首次真年龄0，假清计时；run=permi
 - `AERATION_E_STOP_NC`: I[k].AERATION_E_STOP_NC: sampled input (BOOL).
 - `BLOWER_RUN`: O[k].BLOWER_RUN: independently observed post-scan candidate value (BOOL); never defined as expected output.
 - `AERATION_BLOWER_CYCLE_COUNT`: O[k].AERATION_BLOWER_CYCLE_COUNT: independently observed post-scan candidate value (UINT); never defined as expected output.
+- `init`: At the separate pre-invocation initial observation before scan k=0: O_init.BLOWER_RUN=false, O_init.AERATION_BLOWER_CYCLE_COUNT=0.
 
 ### LTL properties
 
-**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Human rationality review is completed; candidate verification remains UNVERIFIED.
 
 ### Normalized state, observation and predicate definitions
 
 ```json
 {
   "schema_version": 1,
-  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "status": "NORMALIZED_HUMAN_REVIEWED",
   "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
   "candidate_formal_verification": "UNVERIFIED",
   "initial_observed": {
@@ -2026,7 +2119,8 @@ permit=DO_LOW & AERATION_E_STOP_NC；首次真年龄0，假清计时；run=permi
       "reference": null,
       "phase": 0,
       "previous_mode": null,
-      "clock": 0.0,
+      "clock": 0,
+      "first": true,
       "heat_start": null,
       "protection_start": null,
       "demand": false
@@ -2037,16 +2131,16 @@ permit=DO_LOW & AERATION_E_STOP_NC；首次真年龄0，假清计时；run=permi
     "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('PUB006'); constructed once per independent case, current state is Sref[k].",
     "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
     "module_sha256": {
-      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
-      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
-      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
-      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
-      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "scan_contract.py": "2ebdbeb0bacd3c6154e1add2fd358f1aadc9ac9c9322a9201798065154353f48",
+      "array_contracts.py": "f541ffe0e28c56e84ad737b06aa8c8ee6180b1afda720b7c41cc8fccad2d8ecd",
+      "data_contracts.py": "0792c46b303ce62a0a2180bcf4d7ebfe4838ccfaa18deb331780af1819377b3a",
+      "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
+      "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+    "frozen_sources": "dataset/specifications/normalized_transition_v2"
   },
   "constrained_observed_fields": [
     "AERATION_BLOWER_CYCLE_COUNT",
@@ -2117,7 +2211,8 @@ permit=DO_LOW & AERATION_E_STOP_NC；首次真年龄0，假清计时；run=permi
     "Start delay elapsed is zero at the first sample of DO_LOW & AERATION_E_STOP_NC; run becomes TRUE at elapsed>=5s.",
     "Count increments on the same invocation that changes end-of-scan BLOWER_RUN from FALSE to TRUE.",
     "Tests stay below UINT overflow; overflow behavior is outside the specified operating domain.",
-    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
   ],
   "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
   "limitations": [
@@ -2128,6 +2223,14 @@ permit=DO_LOW & AERATION_E_STOP_NC；首次真年龄0，假清计时；run=permi
   "rules_zh": "permit=DO_LOW & AERATION_E_STOP_NC；首次真年龄0，假清计时；run=permit且年龄>=5s。countAfter=countBefore+int(run & !refRunBefore)，初始count=0/refRun=FALSE；每拍更新refRun。计数域0..65535，越界输入历史不在评测域。"
 }
 ```
+
+**P_init**
+
+```text
+init
+```
+
+Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
 
 **P1**
 
@@ -2184,6 +2287,10 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 | T1 | Exact delay threshold, sustained operation and second counted start | 8 |
 | T2 | Emergency stop discards partial and completed delay | 7 |
 | V2_permit_loss_at_deadline | Permission loss at the exact deadline wins; recovery starts a fresh full interval, even after a long gap. | 5 |
+| PUB006.T3 | PUB006.T3 | 12 |
+| PUB006.R22.interrupted_delay | 启动延时中断后重新计时、运行后急停恢复 | 9 |
+| PUB006.T4 | Exact 4999ms hold without start followed by DO_LOW drop resets 5s delay; E-stop drop keeps count unchanged. | 7 |
+| PUB006.T5 | Three consecutive start-run-stop cycles increment cycle count cleanly without recounting during sustained run. | 10 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -2254,7 +2361,6 @@ In an industrial water supply system, there are 5 pumps, each of which can be co
 
 ```json
 {
-  "running": false,
   "pumpGroup[].RunComd": false
 }
 ```
@@ -2274,8 +2380,9 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 - A start command selects the running set from current mode/configuration; commands are retained while neither button is TRUE. There is no automatic selection change until another start.
 - Equal priorities are resolved by lower array index first. Selection is ignored in automatic mode.
 - The caller initializes every RunComd FALSE before creating the first operational scan. Only RunComd may be written.
-- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 - V2 confirms the existing evaluation policy: start is level-sensitive and reselects each TRUE invocation; without start, mode/selection/priority changes do not reselect. Automatic top-three applies to selection events, not unconditionally to every automatic invocation.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Data types
 
@@ -2306,7 +2413,7 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 
 ### Atomic propositions and monitor predicates
 
-- `top3`: The three indices with highest priority, lower index winning a tie.
+- `top3`: Deprecated alias for automatic top-3 selection; active P3 uses expanded TopThree1..TopThree5.
 - `runPrev[i]`: The pre-scan RunComd value of pump i.
 - `readOnlyPreserved`: All five priority and selection values equal their sampled values.
 - `runs[i]`: Post-scan pumpGroup[i].RunComd, for i=1..5.
@@ -2326,14 +2433,14 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 
 ### LTL properties
 
-**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Human rationality review is completed; candidate verification remains UNVERIFIED.
 
 ### Normalized state, observation and predicate definitions
 
 ```json
 {
   "schema_version": 1,
-  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "status": "NORMALIZED_HUMAN_REVIEWED",
   "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
   "candidate_formal_verification": "UNVERIFIED",
   "initial_observed": {},
@@ -2353,7 +2460,8 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
       "reference": null,
       "phase": 0,
       "previous_mode": null,
-      "clock": 0.0,
+      "clock": 0,
+      "first": true,
       "heat_start": null,
       "protection_start": null,
       "demand": false
@@ -2364,16 +2472,16 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
     "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('PUB007'); constructed once per independent case, current state is Sref[k].",
     "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
     "module_sha256": {
-      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
-      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
-      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
-      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
-      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "scan_contract.py": "2ebdbeb0bacd3c6154e1add2fd358f1aadc9ac9c9322a9201798065154353f48",
+      "array_contracts.py": "f541ffe0e28c56e84ad737b06aa8c8ee6180b1afda720b7c41cc8fccad2d8ecd",
+      "data_contracts.py": "0792c46b303ce62a0a2180bcf4d7ebfe4838ccfaa18deb331780af1819377b3a",
+      "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
+      "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+    "frozen_sources": "dataset/specifications/normalized_transition_v2"
   },
   "constrained_observed_fields": [
     "pumpGroup"
@@ -2418,8 +2526,9 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
     "A start command selects the running set from current mode/configuration; commands are retained while neither button is TRUE. There is no automatic selection change until another start.",
     "Equal priorities are resolved by lower array index first. Selection is ignored in automatic mode.",
     "The caller initializes every RunComd FALSE before creating the first operational scan. Only RunComd may be written.",
-    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
-    "V2 confirms the existing evaluation policy: start is level-sensitive and reselects each TRUE invocation; without start, mode/selection/priority changes do not reselect. Automatic top-three applies to selection events, not unconditionally to every automatic invocation."
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "V2 confirms the existing evaluation policy: start is level-sensitive and reselects each TRUE invocation; without start, mode/selection/priority changes do not reselect. Automatic top-three applies to selection events, not unconditionally to every automatic invocation.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
   ],
   "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
   "limitations": [
@@ -2486,6 +2595,10 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 | T1 | Manual latching, read-only fields and simultaneous stop/start | 3 |
 | T2 | Automatic top-three selection and deterministic ties | 3 |
 | V2_pump_reselection_history | Ties, changed priorities without start, reselection and simultaneous stop/start. | 4 |
+| PUB007.T3 | PUB007.T3 | 5 |
+| PUB007.R22.selection | 手动选择变化、保持与模式切换 | 7 |
+| PUB007.T4 | Negative/tied priorities with lower-index tie-break in auto mode (ignoring selection), plus zero/subset manual selections. | 4 |
+| PUB007.T5 | Changing priorities, selections, and mode while !stop & !start holds existing runs until next start pulse. | 4 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -2580,9 +2693,11 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 - Invalid measuringMode has priority over invalid hiLIM/loLIM. Limit validation applies to enabled channels in every mode.
 - Scaling extrapolates outside nominal raw range; no saturation is specified.
 - Test metadata array_lower_bounds defines the physical array indices used by the caller. JSON arrays are ordered storage values, not IEC index literals. The caller satisfies count bounds.
-- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 - Floating-point inputs and intermediate reference arithmetic are finite. Existing fixed traces retain their declared absolute tolerance; claims do not extend to arbitrary magnitudes without a separately specified numeric error policy.
 - V2 array extension: successful channel outputValue is compared with abs_tol=1e-5 and rel_tol=2e-6. Read-only and skipped/error-preserved fields are exact. This explicitly supersedes uniform absolute tolerance for this task only; both agents receive this policy.
+- Read-only channel fields (enable, hiLIM, loLIM, bipolar, measuringMode) and skipped/disabled/error channel outputValue retain exact caller-sampled binary values; numeric tolerance (abs<=1e-5 or rel<=2e-6) applies only to successfully converted outputValue.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Data types
 
@@ -2659,14 +2774,14 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 
 ### LTL properties
 
-**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Human rationality review is completed; candidate verification remains UNVERIFIED.
 
 ### Normalized state, observation and predicate definitions
 
 ```json
 {
   "schema_version": 1,
-  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "status": "NORMALIZED_HUMAN_REVIEWED",
   "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
   "candidate_formal_verification": "UNVERIFIED",
   "initial_observed": {},
@@ -2686,7 +2801,8 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
       "reference": null,
       "phase": 0,
       "previous_mode": null,
-      "clock": 0.0,
+      "clock": 0,
+      "first": true,
       "heat_start": null,
       "protection_start": null,
       "demand": false
@@ -2697,16 +2813,16 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
     "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('PUB008'); constructed once per independent case, current state is Sref[k].",
     "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
     "module_sha256": {
-      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
-      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
-      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
-      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
-      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "scan_contract.py": "2ebdbeb0bacd3c6154e1add2fd358f1aadc9ac9c9322a9201798065154353f48",
+      "array_contracts.py": "f541ffe0e28c56e84ad737b06aa8c8ee6180b1afda720b7c41cc8fccad2d8ecd",
+      "data_contracts.py": "0792c46b303ce62a0a2180bcf4d7ebfe4838ccfaa18deb331780af1819377b3a",
+      "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
+      "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+    "frozen_sources": "dataset/specifications/normalized_transition_v2"
   },
   "constrained_observed_fields": [
     "analogValues",
@@ -2838,9 +2954,11 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
     "Invalid measuringMode has priority over invalid hiLIM/loLIM. Limit validation applies to enabled channels in every mode.",
     "Scaling extrapolates outside nominal raw range; no saturation is specified.",
     "Test metadata array_lower_bounds defines the physical array indices used by the caller. JSON arrays are ordered storage values, not IEC index literals. The caller satisfies count bounds.",
-    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
     "Floating-point inputs and intermediate reference arithmetic are finite. Existing fixed traces retain their declared absolute tolerance; claims do not extend to arbitrary magnitudes without a separately specified numeric error policy.",
-    "V2 array extension: successful channel outputValue is compared with abs_tol=1e-5 and rel_tol=2e-6. Read-only and skipped/error-preserved fields are exact. This explicitly supersedes uniform absolute tolerance for this task only; both agents receive this policy."
+    "V2 array extension: successful channel outputValue is compared with abs_tol=1e-5 and rel_tol=2e-6. Read-only and skipped/error-preserved fields are exact. This explicitly supersedes uniform absolute tolerance for this task only; both agents receive this policy.",
+    "Read-only channel fields (enable, hiLIM, loLIM, bipolar, measuringMode) and skipped/disabled/error channel outputValue retain exact caller-sampled binary values; numeric tolerance (abs<=1e-5 or rel<=2e-6) applies only to successfully converted outputValue.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
   ],
   "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
   "limitations": [
@@ -2932,6 +3050,11 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 | T2 | Disabled channel, invalid mode priority, invalid limits and count truncation | 1 |
 | T3 | count zero preserves every value and negative raw extrapolates | 2 |
 | V2_unequal_arrays_wide_arithmetic | Unequal lengths and distinct lower bounds; preserve skipped channel; avoid INT intermediate overflow. | 1 |
+| PUB008.T4 | PUB008.T4 | 2 |
+| PUB008.R22.length_4_2 | 独立下界、不同长度与未处理字段保持 | 1 |
+| PUB008.R22.length_2_4 | 独立下界、不同长度与未处理字段保持 | 1 |
+| PUB008.T5 | Multi-step error-priority retention: disabled, out-of-count, invalid mode over invalid limits, and zero-span. | 2 |
+| PUB008.T6 | Negative engineering ranges, bipolar saturation extrapolation below -27648, and temperature modes 1/2. | 1 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -3035,8 +3158,10 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 - Changing a valid windowSize clears history before any same-scan accepted sample. Invalid window sets error/status and does not accept or change history.
 - An invalid-window scan preserves average/windowSizeReached. Returning to a valid window clears error/status. Trigger edge history is updated on every invocation, including reset and invalid-window scans.
 - cyclicExecution accepts exactly one sample per scan and ignores the trigger. windowSizeReached becomes TRUE once the accepted sample count reaches windowSize.
-- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 - Floating-point inputs and intermediate reference arithmetic are finite. Existing fixed traces retain their declared absolute tolerance; claims do not extend to arbitrary magnitudes without a separately specified numeric error policy.
+- LREAL average comparisons allow up to abs<=1e-5 (and matching relative precision on T2). P6 initializes previousTrigger=FALSE prior to scan k=0.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
 
@@ -3062,17 +3187,18 @@ previousTrigger初值FALSE且每次调用后=本拍trigger。valid=1<=windowSize
 - `windowSizeReached`: O[k].windowSizeReached: independently observed post-scan candidate value (BOOL); never defined as expected output.
 - `error`: O[k].error: independently observed post-scan candidate value (BOOL); never defined as expected output.
 - `status`: O[k].status: independently observed post-scan candidate value (WORD); never defined as expected output.
+- `init`: At the separate pre-invocation initial observation before scan k=0: O_init.average=0.0, O_init.windowSizeReached=false, O_init.error=false, O_init.status=0.
 
 ### LTL properties
 
-**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Human rationality review is completed; candidate verification remains UNVERIFIED.
 
 ### Normalized state, observation and predicate definitions
 
 ```json
 {
   "schema_version": 1,
-  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "status": "NORMALIZED_HUMAN_REVIEWED",
   "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
   "candidate_formal_verification": "UNVERIFIED",
   "initial_observed": {
@@ -3181,7 +3307,8 @@ previousTrigger初值FALSE且每次调用后=本拍trigger。valid=1<=windowSize
       "reference": null,
       "phase": 0,
       "previous_mode": null,
-      "clock": 0.0,
+      "clock": 0,
+      "first": true,
       "heat_start": null,
       "protection_start": null,
       "demand": false
@@ -3192,16 +3319,16 @@ previousTrigger初值FALSE且每次调用后=本拍trigger。valid=1<=windowSize
     "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('PUB009'); constructed once per independent case, current state is Sref[k].",
     "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
     "module_sha256": {
-      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
-      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
-      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
-      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
-      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "scan_contract.py": "2ebdbeb0bacd3c6154e1add2fd358f1aadc9ac9c9322a9201798065154353f48",
+      "array_contracts.py": "f541ffe0e28c56e84ad737b06aa8c8ee6180b1afda720b7c41cc8fccad2d8ecd",
+      "data_contracts.py": "0792c46b303ce62a0a2180bcf4d7ebfe4838ccfaa18deb331780af1819377b3a",
+      "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
+      "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+    "frozen_sources": "dataset/specifications/normalized_transition_v2"
   },
   "constrained_observed_fields": [
     "average",
@@ -3257,8 +3384,10 @@ previousTrigger初值FALSE且每次调用后=本拍trigger。valid=1<=windowSize
     "Changing a valid windowSize clears history before any same-scan accepted sample. Invalid window sets error/status and does not accept or change history.",
     "An invalid-window scan preserves average/windowSizeReached. Returning to a valid window clears error/status. Trigger edge history is updated on every invocation, including reset and invalid-window scans.",
     "cyclicExecution accepts exactly one sample per scan and ignores the trigger. windowSizeReached becomes TRUE once the accepted sample count reaches windowSize.",
-    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
-    "Floating-point inputs and intermediate reference arithmetic are finite. Existing fixed traces retain their declared absolute tolerance; claims do not extend to arbitrary magnitudes without a separately specified numeric error policy."
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "Floating-point inputs and intermediate reference arithmetic are finite. Existing fixed traces retain their declared absolute tolerance; claims do not extend to arbitrary magnitudes without a separately specified numeric error policy.",
+    "LREAL average comparisons allow up to abs<=1e-5 (and matching relative precision on T2). P6 initializes previousTrigger=FALSE prior to scan k=0.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
   ],
   "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
   "limitations": [
@@ -3269,6 +3398,14 @@ previousTrigger初值FALSE且每次调用后=本拍trigger。valid=1<=windowSize
   "rules_zh": "previousTrigger初值FALSE且每次调用后=本拍trigger。valid=1<=windowSize<=100；非法时average/reached保持并报8200。有效窗口首次建立或改变、或reset时清空历史；非reset且cyclicExecution或trigger上升沿时追加value并保留最后windowSize项。average=空则0否则sum/n，reached=(n=windowSize)。初始历史空、average=0、reached=FALSE。"
 }
 ```
+
+**P_init**
+
+```text
+init
+```
+
+Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
 
 **P1**
 
@@ -3341,6 +3478,10 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 | T1 | Cyclic warm-up, sliding replacement and reset priority | 6 |
 | T2 | Rising edge only, held trigger, window change and invalid bounds | 9 |
 | V2_data_contract_boundaries | Independently calculated edge/history/parser boundary regression | 7 |
+| PUB009.T3 | PUB009.T3 | 109 |
+| PUB009.R22.window_100 | 合法最大窗口100必须被接受 | 1 |
+| PUB009.R22.window100_True | 最大窗口填满、替换与双向变窗 | 109 |
+| PUB009.R22.window100_False | 最大窗口填满、替换与双向变窗 | 214 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -3418,7 +3559,9 @@ Write a function block FB to implement a temperature control logic. The program 
   "OverheatProtection": false,
   "heatDemand": false,
   "heatElapsed_ms": 0,
-  "cooldownElapsed_ms": 0
+  "cooldownElapsed_ms": 0,
+  "CurrentTemperature": 0.0,
+  "SetTempDisplay": 0.0
 }
 ```
 
@@ -3438,20 +3581,22 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 - Protection is latched for at least 3s from its trip. At elapsed>=3s it may clear and heat can restart in the same scan if the sensor is valid and demand remains.
 - A sensor fault immediately turns heat off and resets continuous-heating time. It does not clear or restart an already active cooldown.
 - The display outputs mirror their corresponding sampled temperature and setpoint even during a fault. HeaterStatus equals HeaterOutput. Inputs are held stable between timed samples.
-- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 - V2 evaluation decision: retain the existing >=5s trip threshold as an explicit benchmark interpretation of the source more-than wording; cooldown MUST clear at the first observed elapsed>=3s, though a sensor fault or absent demand still prevents heating. No spontaneous protection is allowed. This benchmark interpretation is not claimed to be instructor clarification.
 - Floating-point inputs and intermediate reference arithmetic are finite. Existing fixed traces retain their declared absolute tolerance; claims do not extend to arbitrary magnitudes without a separately specified numeric error policy.
+- Scan k=0 initializes the internal elapsed-time clock at 0 ms (ignoring dt_ms[0]); subsequent scans advance by dt_ms[k]. During sensorFault (TemperatureSensorInput < 0 or > 100), the internal retained heat demand freezes at its prior state.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
 
 - `sensorFault`: TemperatureSensorInput<0 OR TemperatureSensorInput>100
-- `demand`: Ghost retained demand; set below setpoint, clear above, retain at equality.
+- `demand`: Ghost retained demand; when 0<=TemperatureSensorInput<=100, set below SetTemperature, clear above SetTemperature, retain at equality; frozen during sensorFault; initial FALSE.
 - `heatLimitReached`: Continuous energized time has reached 5s, with first energized scan at elapsed zero.
-- `cooldownDone`: At least 3s has elapsed since protection trip.
+- `cooldownDone`: When OverheatProtection was previously active, at least 3s has elapsed since its trip timestamp at the current scan clock (clock - protection_start >= 3s).
 - `protectPrev`: {"kind": "previous_observed_output", "source": "O[k-1].OverheatProtection", "initial": false, "update": "After comparing scan k, store ACTUAL O[k].OverheatProtection; never write into reference state."}
 - `interface names`: Identically named sampled input or observed output.
 - `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_PUB010(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
-时钟由观察dt_ms累加。demand低于设定置真、高于置假、相等保持，初值FALSE。先释放年龄>=3s的旧保护；无旧保护且旧连续加热年龄>=5s则本拍触发保护。heat=传感器0..100有效 & demandAfter & 无保护；首次heat真记录当前时刻，heat假清热起点。显示值取输入；保护输出取保护状态。>=5s是既有评测解释，并非老师额外澄清。
+首拍时钟0、后续按观察dt_ms累加。正常温度0..100下demand低于设定置真、高于置假、相等保持；传感器故障期间冻结demand不变，初值FALSE。先释放年龄>=3s的旧保护；无旧保护且旧连续加热年龄>=5s则本拍触发保护。heat=传感器0..100有效 & demandAfter & 无保护；首次heat真记录当前时刻，heat假清热起点。显示值取输入；保护输出取保护状态。5.0s及以上起保护与既有评测口径一致。
 - `TimeTick`: Boolean: floor(t[k]/1ms)>floor(t[k-1]/1ms), with t[0]=0, TimeTick[0]=FALSE, t[k]=sum(dt_ms[1..k]). G(F(TimeTick)) states unbounded physical time progress; merely positive dt is insufficient.
 - `TemperatureSensorInput`: I[k].TemperatureSensorInput: sampled input (REAL).
 - `SetTemperature`: I[k].SetTemperature: sampled input (REAL).
@@ -3460,23 +3605,26 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
 - `HeaterStatus`: O[k].HeaterStatus: independently observed post-scan candidate value (BOOL); never defined as expected output.
 - `OverheatProtection`: O[k].OverheatProtection: independently observed post-scan candidate value (BOOL); never defined as expected output.
 - `HeaterOutput`: O[k].HeaterOutput: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `init`: At the separate pre-invocation initial observation before scan k=0: O_init.CurrentTemperature=0.0, O_init.SetTempDisplay=0.0, O_init.HeaterStatus=false, O_init.OverheatProtection=false, O_init.HeaterOutput=false.
 
 ### LTL properties
 
-**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Human rationality review is completed; candidate verification remains UNVERIFIED.
 
 ### Normalized state, observation and predicate definitions
 
 ```json
 {
   "schema_version": 1,
-  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "status": "NORMALIZED_HUMAN_REVIEWED",
   "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
   "candidate_formal_verification": "UNVERIFIED",
   "initial_observed": {
     "HeaterOutput": false,
     "HeaterStatus": false,
-    "OverheatProtection": false
+    "OverheatProtection": false,
+    "CurrentTemperature": 0.0,
+    "SetTempDisplay": 0.0
   },
   "reference_state_initial": {
     "class": "ScanContract",
@@ -3489,7 +3637,8 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
       "reference": null,
       "phase": 0,
       "previous_mode": null,
-      "clock": 0.0,
+      "clock": 0,
+      "first": true,
       "heat_start": null,
       "protection_start": null,
       "demand": false
@@ -3500,16 +3649,16 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
     "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('PUB010'); constructed once per independent case, current state is Sref[k].",
     "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
     "module_sha256": {
-      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
-      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
-      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
-      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
-      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "scan_contract.py": "2ebdbeb0bacd3c6154e1add2fd358f1aadc9ac9c9322a9201798065154353f48",
+      "array_contracts.py": "f541ffe0e28c56e84ad737b06aa8c8ee6180b1afda720b7c41cc8fccad2d8ecd",
+      "data_contracts.py": "0792c46b303ce62a0a2180bcf4d7ebfe4838ccfaa18deb331780af1819377b3a",
+      "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
+      "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+    "frozen_sources": "dataset/specifications/normalized_transition_v2"
   },
   "constrained_observed_fields": [
     "CurrentTemperature",
@@ -3566,9 +3715,11 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
     "Protection is latched for at least 3s from its trip. At elapsed>=3s it may clear and heat can restart in the same scan if the sensor is valid and demand remains.",
     "A sensor fault immediately turns heat off and resets continuous-heating time. It does not clear or restart an already active cooldown.",
     "The display outputs mirror their corresponding sampled temperature and setpoint even during a fault. HeaterStatus equals HeaterOutput. Inputs are held stable between timed samples.",
-    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
     "V2 evaluation decision: retain the existing >=5s trip threshold as an explicit benchmark interpretation of the source more-than wording; cooldown MUST clear at the first observed elapsed>=3s, though a sensor fault or absent demand still prevents heating. No spontaneous protection is allowed. This benchmark interpretation is not claimed to be instructor clarification.",
-    "Floating-point inputs and intermediate reference arithmetic are finite. Existing fixed traces retain their declared absolute tolerance; claims do not extend to arbitrary magnitudes without a separately specified numeric error policy."
+    "Floating-point inputs and intermediate reference arithmetic are finite. Existing fixed traces retain their declared absolute tolerance; claims do not extend to arbitrary magnitudes without a separately specified numeric error policy.",
+    "Scan k=0 initializes the internal elapsed-time clock at 0 ms (ignoring dt_ms[0]); subsequent scans advance by dt_ms[k]. During sensorFault (TemperatureSensorInput < 0 or > 100), the internal retained heat demand freezes at its prior state.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
   ],
   "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
   "limitations": [
@@ -3576,9 +3727,17 @@ At scan k, inputs I[k] are sampled once, q[k] is pre-scan retained state, output
     "Focused legacy LTL predicates still require backend lowering; normalization is not model-checker acceptance.",
     "Finite matching cannot establish liveness or validate runtime provenance."
   ],
-  "rules_zh": "时钟由观察dt_ms累加。demand低于设定置真、高于置假、相等保持，初值FALSE。先释放年龄>=3s的旧保护；无旧保护且旧连续加热年龄>=5s则本拍触发保护。heat=传感器0..100有效 & demandAfter & 无保护；首次heat真记录当前时刻，heat假清热起点。显示值取输入；保护输出取保护状态。>=5s是既有评测解释，并非老师额外澄清。"
+  "rules_zh": "首拍时钟0、后续按观察dt_ms累加。正常温度0..100下demand低于设定置真、高于置假、相等保持；传感器故障期间冻结demand不变，初值FALSE。先释放年龄>=3s的旧保护；无旧保护且旧连续加热年龄>=5s则本拍触发保护。heat=传感器0..100有效 & demandAfter & 无保护；首次heat真记录当前时刻，heat假清热起点。显示值取输入；保护输出取保护状态。5.0s及以上起保护与既有评测口径一致。"
 }
 ```
+
+**P_init**
+
+```text
+init
+```
+
+Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
 
 **P1**
 
@@ -3644,6 +3803,22 @@ Protection cannot clear before its cooldown expires.
 
 With advancing time and persistent valid demand, heating resumes after finite cooldown. Explicit non-Zeno environment premise: physical elapsed time crosses infinitely many 1ms boundaries.
 
+**P9**
+
+```text
+G(!sensorFault & !OverheatProtection & !demand -> !HeaterOutput)
+```
+
+Prevents constant-ON or false heating when temperature is at or above setpoint.
+
+**P10**
+
+```text
+G(protectPrev & cooldownDone -> !OverheatProtection)
+```
+
+Prevents permanent latch-up beyond 3s cooldown.
+
 **PUB010.V2.COMPLETE**
 
 ```text
@@ -3668,6 +3843,10 @@ Explicit correction of a demonstrated omission.
 | T2 | Sensor faults, valid endpoint values and equality retention | 7 |
 | T3 | Fault during protection cannot clear the cooldown | 5 |
 | V2_omission_regression | Reject the concrete wrong behavior documented in the 2026-11-06 specification review. | 3 |
+| PUB010.T4 | PUB010.T4 | 11 |
+| PUB010.R22.sensor_boundary | 100有效而100.1故障、冷却与重新需求 | 8 |
+| PUB010.T5 | Interrupted heating resets 5000ms limit; full 5000ms after reset triggers OverheatProtection and 3000ms cooldown. | 8 |
+| PUB010.T6 | Equality retains demand across sensorFault interruption while cooldown still elapses on physical clock. | 6 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -3770,7 +3949,8 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - Buttons are level signals accepted only in their corresponding station wait. One phase transition is accepted per call.
 - Entering manual mode clears automatic state and completion; return to automatic waits for A.
 - Only one product is presented; station sensors are not contradictory.
-- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
 
@@ -3797,17 +3977,23 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - `MotorForward`: O[k].MotorForward: independently observed post-scan candidate value (BOOL); never defined as expected output.
 - `MotorReverse`: O[k].MotorReverse: independently observed post-scan candidate value (BOOL); never defined as expected output.
 - `CompletionLight`: O[k].CompletionLight: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `init`: At the separate pre-invocation initial observation before scan k=0: Spre.phase="WAIT_A", O_init.MotorForward=false, O_init.MotorReverse=false, O_init.CompletionLight=false.
+- `phase_wait`: post-phase is WAIT_A, WAIT_B, or WAIT_C
+- `phase_move`: post-phase is MOVE_AB or MOVE_BC
+- `wait_phase`: post-phase is WAIT_A, WAIT_B, or WAIT_C
+- `move_phase`: post-phase is MOVE_AB or MOVE_BC
+- `done_phase`: post-phase is DONE
 
 ### LTL properties
 
-**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Human rationality review is completed; candidate verification remains UNVERIFIED.
 
 ### Normalized state, observation and predicate definitions
 
 ```json
 {
   "schema_version": 1,
-  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "status": "NORMALIZED_HUMAN_REVIEWED",
   "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
   "candidate_formal_verification": "UNVERIFIED",
   "initial_observed": {
@@ -3826,7 +4012,8 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
       "reference": null,
       "phase": 0,
       "previous_mode": null,
-      "clock": 0.0,
+      "clock": 0,
+      "first": true,
       "heat_start": null,
       "protection_start": null,
       "demand": false
@@ -3837,16 +4024,16 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
     "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('PUB011'); constructed once per independent case, current state is Sref[k].",
     "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
     "module_sha256": {
-      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
-      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
-      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
-      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
-      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "scan_contract.py": "2ebdbeb0bacd3c6154e1add2fd358f1aadc9ac9c9322a9201798065154353f48",
+      "array_contracts.py": "f541ffe0e28c56e84ad737b06aa8c8ee6180b1afda720b7c41cc8fccad2d8ecd",
+      "data_contracts.py": "0792c46b303ce62a0a2180bcf4d7ebfe4838ccfaa18deb331780af1819377b3a",
+      "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
+      "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+    "frozen_sources": "dataset/specifications/normalized_transition_v2"
   },
   "constrained_observed_fields": [
     "CompletionLight",
@@ -3906,7 +4093,8 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
     "Buttons are level signals accepted only in their corresponding station wait. One phase transition is accepted per call.",
     "Entering manual mode clears automatic state and completion; return to automatic waits for A.",
     "Only one product is presented; station sensors are not contradictory.",
-    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
   ],
   "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
   "limitations": [
@@ -3917,6 +4105,14 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
   "rules_zh": "参考阶段WAIT_A/MOVE_AB/WAIT_B/MOVE_BC/WAIT_C/DONE初始WAIT_A；按SensorA&ButtonA、SensorB、SensorB&ButtonB、SensorC、SensorC&ButtonC、!SensorC分别推进一阶。手动清参考阶段，正反转分别为ForwardButton&!ReverseButton及反向对称式，灯灭；自动仅移动阶段正转、不反转，DONE且SensorC时灯亮。"
 }
 ```
+
+**PUB011.P_init**
+
+```text
+init
+```
+
+Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
 
 **PUB011.P1** Interlock
 
@@ -3966,6 +4162,14 @@ G(auto & removed -> !light)
 
 Removal clears completion.
 
+**PUB011.P7**
+
+```text
+G(auto -> ((move_phase -> (fwd & !rev & !light)) & (wait_phase -> (!fwd & !rev & !light)) & (done_phase -> (!fwd & !rev & light))))
+```
+
+Prevents degenerate implementations that leave MotorForward FALSE in MOVE_* or mirror SensorC in DONE.
+
 **PUB011.V2.COMPLETE**
 
 ```text
@@ -3978,10 +4182,14 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 
 | Case | Purpose | Steps |
 | --- | --- | ---: |
-| PUB011.T1 | Neutral, forward, reverse, conflicting commands. | 4 |
+| PUB011.T1 | Neutral, forward, reverse, conflicting commands. | 3 |
 | PUB011.T2 | Station waits, retained movement, completion and removal. | 10 |
 | PUB011.T3 | Out-of-order confirmations cannot start the route. | 2 |
-| V2_omission_regression | Reject the concrete wrong behavior documented in the 2026-11-06 specification review. | 3 |
+| PUB011.R22.bc_hold | B到C运输未到站的中间拍，电机应持续运行 | 7 |
+| PUB011.T4 | PUB011.T4 | 12 |
+| PUB011.R22.dwell_0 | 原流程各稳定状态连续保持：manual | 12 |
+| PUB011.R22.dwell_1 | 原流程各稳定状态连续保持：cycle | 30 |
+| PUB011.R22.dwell_2 | 原流程各稳定状态连续保持：wrong_button | 6 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -4085,7 +4293,9 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - Invalid input cancels the hold immediately.
 - Positive CycleTime is added on every current qualifying call, including a normal first invocation.
 - UINT/LTIME overflow is outside these bounded cases and requires a separate policy.
-- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- On timed benchmark tests, CycleTime equals dt_ms and uses exact integer nanoseconds within 32-bit unsigned TIME bounds. FaultTimestamp is a 32-bit signed DINT (-2147483648..2147483647).
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
 
@@ -4095,12 +4305,12 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - `rise`: valid AND fault AND NOT previous(valid AND fault)
 - `record`: count=pre-count+1; history[0]=FaultTimestamp; history[j]=pre-history[j-1] for j=1..4
 - `same_stats`: count and history equal pre-scan values
-- `hold`: trigger age<500ms with no intervening signal loss
+- `hold`: Internal hold timer active (<500ms since last valid rising fault edge) while THICKNESS_SIGNAL_VALID is TRUE.
 - `normal`: valid AND NOT fault AND CUTTING_RUN
 - `add`: runtime=pre-runtime+CycleTime
 - `same_time`: runtime=pre-runtime
 - `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_PUB012(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
-validFault=VALID & FAULT，其新上升沿count加1，历史=[FaultTimestamp]+旧历史前4项，并记录hold起点。无效清hold；alarm=valid & (fault或hold年龄<500ms)。valid & !fault & CUTTING_RUN时runtime加CycleTime，否则保持。初始count/runtime=0、历史五个0、previousValidFault=FALSE。计数/累计不得溢出。
+validFault=VALID & FAULT，其新上升沿count加1，历史=[FaultTimestamp]+旧历史前4项，并记录hold起点。无效清hold；alarm=valid & (fault或hold年龄<500ms)。valid & !fault & CUTTING_RUN时runtime加CycleTime（约定与dt_ms一致），否则保持。初始count/runtime=0、历史五个0、previousValidFault=FALSE。计数/累计不得溢出，FaultTimestamp为DINT。
 - `THICKNESS_FAULT`: I[k].THICKNESS_FAULT: sampled input (BOOL).
 - `THICKNESS_SIGNAL_VALID`: I[k].THICKNESS_SIGNAL_VALID: sampled input (BOOL).
 - `CUTTING_RUN`: I[k].CUTTING_RUN: sampled input (BOOL).
@@ -4113,17 +4323,19 @@ validFault=VALID & FAULT，其新上升沿count加1，历史=[FaultTimestamp]+�
 - `count`: O[k].Slab_Fault_Counter
 - `history`: O[k].Slab_Fault_History
 - `runtime`: O[k].Slab_Runtime_Accumulator
+- `timing`: Internal hold start Sref.timed_contract.since records the most recent valid THICKNESS_FAULT rising-edge timestamp; a fresh rising edge during an active 500ms hold restarts the 500ms timer. Invalid input clears hold immediately.
+- `init`: At the separate pre-invocation initial observation before scan k=0: O_init.THICKNESS_ALARM=false, O_init.Slab_Fault_Counter=0, O_init.Slab_Runtime_Accumulator="LTIME#0ns", O_init.Slab_Fault_History=[0, 0, 0, 0, 0].
 
 ### LTL properties
 
-**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Human rationality review is completed; candidate verification remains UNVERIFIED.
 
 ### Normalized state, observation and predicate definitions
 
 ```json
 {
   "schema_version": 1,
-  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "status": "NORMALIZED_HUMAN_REVIEWED",
   "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
   "candidate_formal_verification": "UNVERIFIED",
   "initial_observed": {
@@ -4171,7 +4383,8 @@ validFault=VALID & FAULT，其新上升沿count加1，历史=[FaultTimestamp]+�
       "reference": null,
       "phase": 0,
       "previous_mode": null,
-      "clock": 0.0,
+      "clock": 0,
+      "first": true,
       "heat_start": null,
       "protection_start": null,
       "demand": false
@@ -4182,16 +4395,16 @@ validFault=VALID & FAULT，其新上升沿count加1，历史=[FaultTimestamp]+�
     "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('PUB012'); constructed once per independent case, current state is Sref[k].",
     "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
     "module_sha256": {
-      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
-      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
-      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
-      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
-      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "scan_contract.py": "2ebdbeb0bacd3c6154e1add2fd358f1aadc9ac9c9322a9201798065154353f48",
+      "array_contracts.py": "f541ffe0e28c56e84ad737b06aa8c8ee6180b1afda720b7c41cc8fccad2d8ecd",
+      "data_contracts.py": "0792c46b303ce62a0a2180bcf4d7ebfe4838ccfaa18deb331780af1819377b3a",
+      "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
+      "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+    "frozen_sources": "dataset/specifications/normalized_transition_v2"
   },
   "constrained_observed_fields": [
     "Slab_Fault_Counter",
@@ -4253,7 +4466,9 @@ validFault=VALID & FAULT，其新上升沿count加1，历史=[FaultTimestamp]+�
     "Invalid input cancels the hold immediately.",
     "Positive CycleTime is added on every current qualifying call, including a normal first invocation.",
     "UINT/LTIME overflow is outside these bounded cases and requires a separate policy.",
-    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "On timed benchmark tests, CycleTime equals dt_ms and uses exact integer nanoseconds within 32-bit unsigned TIME bounds. FaultTimestamp is a 32-bit signed DINT (-2147483648..2147483647).",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
   ],
   "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
   "limitations": [
@@ -4261,9 +4476,17 @@ validFault=VALID & FAULT，其新上升沿count加1，历史=[FaultTimestamp]+�
     "Focused legacy LTL predicates still require backend lowering; normalization is not model-checker acceptance.",
     "Finite matching cannot establish liveness or validate runtime provenance."
   ],
-  "rules_zh": "validFault=VALID & FAULT，其新上升沿count加1，历史=[FaultTimestamp]+旧历史前4项，并记录hold起点。无效清hold；alarm=valid & (fault或hold年龄<500ms)。valid & !fault & CUTTING_RUN时runtime加CycleTime，否则保持。初始count/runtime=0、历史五个0、previousValidFault=FALSE。计数/累计不得溢出。"
+  "rules_zh": "validFault=VALID & FAULT，其新上升沿count加1，历史=[FaultTimestamp]+旧历史前4项，并记录hold起点。无效清hold；alarm=valid & (fault或hold年龄<500ms)。valid & !fault & CUTTING_RUN时runtime加CycleTime（约定与dt_ms一致），否则保持。初始count/runtime=0、历史五个0、previousValidFault=FALSE。计数/累计不得溢出，FaultTimestamp为DINT。"
 }
 ```
+
+**PUB012.P_init**
+
+```text
+init
+```
+
+Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
 
 **PUB012.P1** Signal loss
 
@@ -4328,6 +4551,11 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 | PUB012.T1 | Check 500ms release and immediate signal-loss override. | 7 |
 | PUB012.T2 | Six faults retain the five newest timestamps. | 13 |
 | PUB012.T3 | Only valid fault-free running accumulates. | 5 |
+| PUB012.T4 | PUB012.T4 | 11 |
+| PUB012.R22.retrigger | 持续故障仅计一次、保持内重触发、信号恢复仍故障 | 11 |
+| PUB012.T5 | Seven valid rising fault edges push oldest timestamps out of the 5-entry Slab_Fault_History shift window. | 14 |
+| PUB012.T6 | Invalid signal suppresses alarm, count, timestamp and runtime accumulation; normal running cut accumulates time. | 5 |
+| PUB012.T7 | Sustained high fault counts only once; 499ms/500ms hold window boundary releases alarm cleanly. | 4 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -4415,7 +4643,8 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - Outputs are initialized before the first call, which calculates adjustment immediately.
 - The timer starts at elapsed zero on the first non-Night occupied call. Fan starts at the first observation at or after 30s.
 - dt_ms is actual elapsed time since the preceding call; real runtime timer tests must preserve this timing.
-- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
 
@@ -4445,17 +4674,18 @@ mode域0..3；permit=occupied & mode!=3，首次许可年龄0、失去立即清�
 - `mode`: I[k].HVAC_MODE_SELECTOR
 - `occupancy`: I[k].OCCUPANCY_DETECTED
 - `adjust`: O[k].TEMP_SETPOINT_ADJUST
+- `init`: At the separate pre-invocation initial observation before scan k=0: O_init.SUPPLY_FAN_RUN=false, O_init.TEMP_SETPOINT_ADJUST=0.
 
 ### LTL properties
 
-**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Human rationality review is completed; candidate verification remains UNVERIFIED.
 
 ### Normalized state, observation and predicate definitions
 
 ```json
 {
   "schema_version": 1,
-  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "status": "NORMALIZED_HUMAN_REVIEWED",
   "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
   "candidate_formal_verification": "UNVERIFIED",
   "initial_observed": {
@@ -4495,7 +4725,8 @@ mode域0..3；permit=occupied & mode!=3，首次许可年龄0、失去立即清�
       "reference": null,
       "phase": 0,
       "previous_mode": null,
-      "clock": 0.0,
+      "clock": 0,
+      "first": true,
       "heat_start": null,
       "protection_start": null,
       "demand": false
@@ -4506,16 +4737,16 @@ mode域0..3；permit=occupied & mode!=3，首次许可年龄0、失去立即清�
     "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('PUB013'); constructed once per independent case, current state is Sref[k].",
     "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
     "module_sha256": {
-      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
-      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
-      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
-      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
-      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "scan_contract.py": "2ebdbeb0bacd3c6154e1add2fd358f1aadc9ac9c9322a9201798065154353f48",
+      "array_contracts.py": "f541ffe0e28c56e84ad737b06aa8c8ee6180b1afda720b7c41cc8fccad2d8ecd",
+      "data_contracts.py": "0792c46b303ce62a0a2180bcf4d7ebfe4838ccfaa18deb331780af1819377b3a",
+      "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
+      "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+    "frozen_sources": "dataset/specifications/normalized_transition_v2"
   },
   "constrained_observed_fields": [
     "SUPPLY_FAN_RUN",
@@ -4574,7 +4805,8 @@ mode域0..3；permit=occupied & mode!=3，首次许可年龄0、失去立即清�
     "Outputs are initialized before the first call, which calculates adjustment immediately.",
     "The timer starts at elapsed zero on the first non-Night occupied call. Fan starts at the first observation at or after 30s.",
     "dt_ms is actual elapsed time since the preceding call; real runtime timer tests must preserve this timing.",
-    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
   ],
   "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
   "limitations": [
@@ -4585,6 +4817,14 @@ mode域0..3；permit=occupied & mode!=3，首次许可年龄0、失去立即清�
   "rules_zh": "mode域0..3；permit=occupied & mode!=3，首次许可年龄0、失去立即清计时；fan=permit且年龄>=30s。adjust=mode3则4，否则有人则0，否则mode0取节能3/普通2、mode1取1、mode2取4。初始化adjust=0与首次调用计算分开。"
 }
 ```
+
+**PUB013.P_init**
+
+```text
+init
+```
+
+Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
 
 **PUB013.P1** Fan delay
 
@@ -4649,6 +4889,15 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 | PUB013.T1 | Exercise all setback modes and energy saving scope. | 7 |
 | PUB013.T2 | Check delay boundary, loss, full restart, Night override. | 8 |
 | V2_permit_loss_at_deadline | Permission loss at the exact deadline wins; recovery starts a fresh full interval, even after a long gap. | 5 |
+| PUB013.T3 | PUB013.T3 | 24 |
+| PUB013.R22.hvac_mode_reset | 当前参考要求非夜间模式切换不重置持续有人计时；需人审其来源 | 2 |
+| PUB013.R22.matrix_0 | 模式0的占用与节能四组合 | 4 |
+| PUB013.R22.matrix_1 | 模式1的占用与节能四组合 | 4 |
+| PUB013.R22.matrix_2 | 模式2的占用与节能四组合 | 4 |
+| PUB013.R22.matrix_3 | 模式3的占用与节能四组合 | 4 |
+| PUB013.R22.timer_0 | 模式0持续有人、失去占用及重新计时 | 6 |
+| PUB013.R22.timer_1 | 模式1持续有人、失去占用及重新计时 | 6 |
+| PUB013.R22.timer_2 | 模式2持续有人、失去占用及重新计时 | 6 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -4722,8 +4971,9 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 
 - Leading zeros are allowed because the official text requires decimal-digit segments without prohibiting them.
 - Signs, whitespace, hexadecimal notation and embedded nondigits are rejected.
-- Embedded NUL is a PLC string terminator; visible input is constrained to declared STRING capacity.
-- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- Input STRING capacity (<=254 UTF-8 bytes) is checked before truncating at the first NUL byte. Embedded NUL terminates the visible IPv4 text; arbitrary leading zeros are permitted within capacity, and each digit character must be ASCII '0'..'9'.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
 
@@ -4733,20 +4983,21 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - `same_input`: k>=1 AND I[k].ipText=I[k-1].ipText
 - `same_output`: k>=1 AND O[k].ipValue=O[k-1].ipValue
 - `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_PUB014(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
-文本取首NUL之前且容量<=254字节。恰四个非空ASCII数字段，每段按a=10*a+digit递推，任何段>255或非数字即非法。允许前导零。合法期望ipValue=((a*256+b)*256+c)*256+d，否则0；无跨拍状态。
+文本总长<=254字节（先检查容量上限，再按首个NUL截断，支持超过15字符的前导零）。恰四个非空ASCII('0'..'9')数字段，每段按a=10*a+digit递推，任何段>255或非数字即非法。合法期望ipValue=((a*256+b)*256+c)*256+d，否则0；无跨拍状态。
 - `ipText`: I[k].ipText: sampled input (STRING(254)).
 - `ipValue`: O[k].ipValue: independently observed post-scan candidate value (UDINT); never defined as expected output.
+- `init`: At the separate pre-invocation initial observation before scan k=0: O_init.ipValue=0.
 
 ### LTL properties
 
-**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Human rationality review is completed; candidate verification remains UNVERIFIED.
 
 ### Normalized state, observation and predicate definitions
 
 ```json
 {
   "schema_version": 1,
-  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "status": "NORMALIZED_HUMAN_REVIEWED",
   "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
   "candidate_formal_verification": "UNVERIFIED",
   "initial_observed": {
@@ -4852,7 +5103,8 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
       "reference": null,
       "phase": 0,
       "previous_mode": null,
-      "clock": 0.0,
+      "clock": 0,
+      "first": true,
       "heat_start": null,
       "protection_start": null,
       "demand": false
@@ -4863,16 +5115,16 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
     "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('PUB014'); constructed once per independent case, current state is Sref[k].",
     "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
     "module_sha256": {
-      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
-      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
-      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
-      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
-      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "scan_contract.py": "2ebdbeb0bacd3c6154e1add2fd358f1aadc9ac9c9322a9201798065154353f48",
+      "array_contracts.py": "f541ffe0e28c56e84ad737b06aa8c8ee6180b1afda720b7c41cc8fccad2d8ecd",
+      "data_contracts.py": "0792c46b303ce62a0a2180bcf4d7ebfe4838ccfaa18deb331780af1819377b3a",
+      "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
+      "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+    "frozen_sources": "dataset/specifications/normalized_transition_v2"
   },
   "constrained_observed_fields": [
     "ipValue"
@@ -4915,8 +5167,9 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
   "assumptions": [
     "Leading zeros are allowed because the official text requires decimal-digit segments without prohibiting them.",
     "Signs, whitespace, hexadecimal notation and embedded nondigits are rejected.",
-    "Embedded NUL is a PLC string terminator; visible input is constrained to declared STRING capacity.",
-    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+    "Input STRING capacity (<=254 UTF-8 bytes) is checked before truncating at the first NUL byte. Embedded NUL terminates the visible IPv4 text; arbitrary leading zeros are permitted within capacity, and each digit character must be ASCII '0'..'9'.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
   ],
   "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
   "limitations": [
@@ -4924,9 +5177,17 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
     "Focused legacy LTL predicates still require backend lowering; normalization is not model-checker acceptance.",
     "Finite matching cannot establish liveness or validate runtime provenance."
   ],
-  "rules_zh": "文本取首NUL之前且容量<=254字节。恰四个非空ASCII数字段，每段按a=10*a+digit递推，任何段>255或非数字即非法。允许前导零。合法期望ipValue=((a*256+b)*256+c)*256+d，否则0；无跨拍状态。"
+  "rules_zh": "文本总长<=254字节（先检查容量上限，再按首个NUL截断，支持超过15字符的前导零）。恰四个非空ASCII('0'..'9')数字段，每段按a=10*a+digit递推，任何段>255或非数字即非法。合法期望ipValue=((a*256+b)*256+c)*256+d，否则0；无跨拍状态。"
 }
 ```
+
+**PUB014.P_init**
+
+```text
+init
+```
+
+Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
 
 **PUB014.P1** Valid assembly
 
@@ -4967,6 +5228,11 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 | PUB014.T1 | Zero, maximum, byte order and decimal leading zeros. | 5 |
 | PUB014.T2 | Malformed and overflowing segments clear a previous valid result. | 14 |
 | V2_data_contract_boundaries | Independently calculated edge/history/parser boundary regression | 4 |
+| PUB014.T3 | PUB014.T3 | 9 |
+| PUB014.R22.clear_invalid | 合法重复调用及各类非法输入当拍清零 | 11 |
+| PUB014.T4 | First-NUL truncation and ultra-long (>15 char) leading-zero valid IPv4 octets within 254-byte limit. | 4 |
+| PUB014.T5 | Comprehensive syntactic rejections (whitespace, +/- sign, empty octet, 3/5 parts, 256 overflow) interleaved with valid parses. | 10 |
+| PUB014.T6 | Loopback, classful masks, and high-bit (>= 2^31) unsigned 32-bit big-endian packing check. | 4 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -5085,11 +5351,12 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - All manual buttons use rising-edge independent toggles. Edge history updates during emergency stop so held buttons cannot restart outputs on recovery.
 - Emergency stop resets all manual latches and automatic state. A fresh autoStart edge is required to restart.
 - Changing operation mode clears old latches and sequence.
-- autoStart is a rising edge accepted in IDLE; processMode stays fixed during the batch.
+- autoStart is a rising edge accepted in IDLE or DRAIN to start a fresh batch from FILL_A; processMode stays latched for the active batch (phases 1..5).
 - Thresholds are >=50, >=80 and >=100 cm. One logical phase transition occurs per invocation.
-- Valve D stays open after discharge is initiated until emergency stop or mode reset; no drain-complete signal is supplied.
-- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- In DRAIN, valveDRun remains TRUE until emergency stop (estop=FALSE), mode switch to manual (opeMode=FALSE), or a fresh autoStart rising edge starting a new batch.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 - V2 mode-change priority: emergency stop first; then a change of mode after the first invocation clears sequence/latches and suppresses commands for that invocation; edge memories still update. The first invocation establishes the selected mode and executes normally. New commands are accepted on subsequent invocations subject to their edge rules.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
 
@@ -5101,15 +5368,15 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - `same`: valveARun=pre-valveARun
 - `toB`: No mode change this invocation AND (safe AND opeMode AND pre-phase FILL_A AND levelSensor>=50)
 - `B`: valveBRun only
-- `toMix`: No mode change this invocation AND (safe AND opeMode AND pre-phase FILL_B AND levelSensor>=80 AND NOT processMode)
+- `toMix`: No mode change this invocation AND (safe AND opeMode AND pre-phase FILL_B AND levelSensor>=80 AND NOT latched_batch_mode)
 - `Mix`: mixMotorRun only
-- `toC`: No mode change this invocation AND (safe AND opeMode AND pre-phase FILL_B AND levelSensor>=80 AND processMode)
+- `toC`: No mode change this invocation AND (safe AND opeMode AND pre-phase FILL_B AND levelSensor>=80 AND latched_batch_mode)
 - `C`: valveCRun only
 - `fromC`: No mode change this invocation AND (safe AND opeMode AND pre-phase FILL_C AND levelSensor>=100)
 - `mixed`: No mode change this invocation AND (safe AND opeMode AND pre-phase MIX AND mixMotorComplete)
 - `Drain`: valveDRun only
 - `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_PUB015(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
-五按钮及autoStart历史初值FALSE、每拍更新。急停优先，其次已建立模式的变化；二者清阶段/五锁存且当拍全关。手动逐项latchAfter=latchBefore XOR buttonRise。自动IDLE遇autoStartRise进A，A液位>=50进B，B>=80按批次processMode进C或MIX，C>=100进MIX，MIX完成进DRAIN；每拍一阶，DRAIN保持至复位条件。五输出对应转移后A/B/C/DRAIN/MIX。批次模式在活动批次内固定。
+五按钮及autoStart历史初值FALSE、每拍更新。急停优先，其次已建立模式的变化；二者清阶段/五锁存且当拍全关。手动逐项latchAfter=latchBefore XOR buttonRise。自动IDLE或DRAIN遇autoStartRise进A（新批次），A液位>=50进B，B>=80按批次processMode进C或MIX，C>=100进MIX，MIX完成进DRAIN；每拍一阶，DRAIN保持valveDRun=TRUE至切换手动、急停或autoStart上升沿重起。五输出对应转移后A/B/C/DRAIN/MIX。批次模式在活动批次(1..4)内固定。
 - `estop`: I[k].estop: sampled input (BOOL).
 - `opeMode`: I[k].opeMode: sampled input (BOOL).
 - `valveAStart`: I[k].valveAStart: sampled input (BOOL).
@@ -5126,17 +5393,20 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - `valveCRun`: O[k].valveCRun: independently observed post-scan candidate value (BOOL); never defined as expected output.
 - `valveDRun`: O[k].valveDRun: independently observed post-scan candidate value (BOOL); never defined as expected output.
 - `mixMotorRun`: O[k].mixMotorRun: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `oneActuator`: at most one of valveARun, valveBRun, valveCRun, valveDRun, mixMotorRun is TRUE
+- `manual_toggles`: Each of valveARun/B/C/D/mixMotorRun toggles XOR on its own button rising edge and holds otherwise while in Manual without modeChanged.
+- `init`: At the separate pre-invocation initial observation before scan k=0: Spre.phase="IDLE", O_init.valveARun=false, O_init.valveBRun=false, O_init.valveCRun=false, O_init.valveDRun=false, O_init.mixMotorRun=false.
 
 ### LTL properties
 
-**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Human rationality review is completed; candidate verification remains UNVERIFIED.
 
 ### Normalized state, observation and predicate definitions
 
 ```json
 {
   "schema_version": 1,
-  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "status": "NORMALIZED_HUMAN_REVIEWED",
   "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
   "candidate_formal_verification": "UNVERIFIED",
   "initial_observed": {
@@ -5183,7 +5453,8 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
       "reference": null,
       "phase": 0,
       "previous_mode": null,
-      "clock": 0.0,
+      "clock": 0,
+      "first": true,
       "heat_start": null,
       "protection_start": null,
       "demand": false
@@ -5194,16 +5465,16 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
     "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('PUB015'); constructed once per independent case, current state is Sref[k].",
     "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
     "module_sha256": {
-      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
-      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
-      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
-      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
-      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "scan_contract.py": "2ebdbeb0bacd3c6154e1add2fd358f1aadc9ac9c9322a9201798065154353f48",
+      "array_contracts.py": "f541ffe0e28c56e84ad737b06aa8c8ee6180b1afda720b7c41cc8fccad2d8ecd",
+      "data_contracts.py": "0792c46b303ce62a0a2180bcf4d7ebfe4838ccfaa18deb331780af1819377b3a",
+      "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
+      "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+    "frozen_sources": "dataset/specifications/normalized_transition_v2"
   },
   "constrained_observed_fields": [
     "mixMotorRun",
@@ -5265,11 +5536,12 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
     "All manual buttons use rising-edge independent toggles. Edge history updates during emergency stop so held buttons cannot restart outputs on recovery.",
     "Emergency stop resets all manual latches and automatic state. A fresh autoStart edge is required to restart.",
     "Changing operation mode clears old latches and sequence.",
-    "autoStart is a rising edge accepted in IDLE; processMode stays fixed during the batch.",
+    "autoStart is a rising edge accepted in IDLE or DRAIN to start a fresh batch from FILL_A; processMode stays latched for the active batch (phases 1..5).",
     "Thresholds are >=50, >=80 and >=100 cm. One logical phase transition occurs per invocation.",
-    "Valve D stays open after discharge is initiated until emergency stop or mode reset; no drain-complete signal is supplied.",
-    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
-    "V2 mode-change priority: emergency stop first; then a change of mode after the first invocation clears sequence/latches and suppresses commands for that invocation; edge memories still update. The first invocation establishes the selected mode and executes normally. New commands are accepted on subsequent invocations subject to their edge rules."
+    "In DRAIN, valveDRun remains TRUE until emergency stop (estop=FALSE), mode switch to manual (opeMode=FALSE), or a fresh autoStart rising edge starting a new batch.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "V2 mode-change priority: emergency stop first; then a change of mode after the first invocation clears sequence/latches and suppresses commands for that invocation; edge memories still update. The first invocation establishes the selected mode and executes normally. New commands are accepted on subsequent invocations subject to their edge rules.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
   ],
   "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
   "limitations": [
@@ -5277,9 +5549,17 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
     "Focused legacy LTL predicates still require backend lowering; normalization is not model-checker acceptance.",
     "Finite matching cannot establish liveness or validate runtime provenance."
   ],
-  "rules_zh": "五按钮及autoStart历史初值FALSE、每拍更新。急停优先，其次已建立模式的变化；二者清阶段/五锁存且当拍全关。手动逐项latchAfter=latchBefore XOR buttonRise。自动IDLE遇autoStartRise进A，A液位>=50进B，B>=80按批次processMode进C或MIX，C>=100进MIX，MIX完成进DRAIN；每拍一阶，DRAIN保持至复位条件。五输出对应转移后A/B/C/DRAIN/MIX。批次模式在活动批次内固定。"
+  "rules_zh": "五按钮及autoStart历史初值FALSE、每拍更新。急停优先，其次已建立模式的变化；二者清阶段/五锁存且当拍全关。手动逐项latchAfter=latchBefore XOR buttonRise。自动IDLE或DRAIN遇autoStartRise进A（新批次），A液位>=50进B，B>=80按批次processMode进C或MIX，C>=100进MIX，MIX完成进DRAIN；每拍一阶，DRAIN保持valveDRun=TRUE至切换手动、急停或autoStart上升沿重起。五输出对应转移后A/B/C/DRAIN/MIX。批次模式在活动批次(1..4)内固定。"
 }
 ```
+
+**PUB015.P_init**
+
+```text
+init
+```
+
+Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
 
 **PUB015.P1** Emergency
 
@@ -5329,6 +5609,22 @@ G(mixed -> Drain)
 
 Mix completion stops mixing and opens D.
 
+**PUB015.P7**
+
+```text
+G(manual_toggles)
+```
+
+Extends P2 manual coverage from valveA to all five actuators (A, B, C, D, Mix).
+
+**PUB015.P8**
+
+```text
+G((safe & opeMode -> oneActuator) & (modeChanged -> off))
+```
+
+Guarantees single-actuator automatic progression and mode-change isolation.
+
 **PUB015.V2.COMPLETE**
 
 ```text
@@ -5345,6 +5641,15 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 | PUB015.T2 | Equality thresholds and mixing completion. | 7 |
 | PUB015.T3 | Skipped thresholds advance and emergency cancels the active cycle. | 8 |
 | V2_process_history_regression | Mode/edge reset, repeated station or prior-batch retained setpoint regression. | 10 |
+| PUB015.T5 | PUB015.T5 | 14 |
+| PUB015.R22.manual_mix_hold | 手动搅拌按钮持续按住，不能每拍翻转 | 7 |
+| PUB015.R22.valveAStart | 手动独立翻转、长按与再次关闭：valveAStart | 8 |
+| PUB015.R22.valveBStart | 手动独立翻转、长按与再次关闭：valveBStart | 8 |
+| PUB015.R22.valveCStart | 手动独立翻转、长按与再次关闭：valveCStart | 8 |
+| PUB015.R22.valveDStart | 手动独立翻转、长按与再次关闭：valveDStart | 8 |
+| PUB015.R22.mixMotorStart | 手动独立翻转、长按与再次关闭：mixMotorStart | 8 |
+| PUB015.R22.auto_wait_False | 配料完整路线、各阶段等待及切换模式后新批次 | 16 |
+| PUB015.R22.auto_wait_True | 配料完整路线、各阶段等待及切换模式后新批次 | 18 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -5430,7 +5735,8 @@ A bidirectional conveyor follows a bounded sequence that may revisit processing 
   "conveyorRight": false,
   "phase": "IDLE",
   "currentStation": 1,
-  "sequenceIndex": 1
+  "sequenceIndex": 0,
+  "target": 1
 }
 ```
 
@@ -5450,14 +5756,16 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - Destination arrival immediately stops the motor. Completion is accepted only at the current processing wait.
 - Completion signals are rising edges. Consecutive equal stations denote separate processing operations with fresh edges and no conveyor movement.
 - Only one sequence-index advancement occurs per invocation. Station5 arrival returns to idle.
-- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- Station completion edges are ignored unless post-entry phase is WAIT_PROCESS; dropping a station arrival sensor while already in WAIT_PROCESS is outside caller error injection.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
 
 - `left`: conveyorLeft
 - `right`: conveyorRight
-- `higher`: pre-phase MOVING AND targetStation>currentStation AND NOT sensor[targetStation]
-- `lower`: pre-phase MOVING AND targetStation<currentStation AND NOT sensor[targetStation]
+- `higher`: post-phase MOVING AND targetStation>currentStation AND NOT sensor[targetStation]
+- `lower`: post-phase MOVING AND targetStation<currentStation AND NOT sensor[targetStation]
 - `arrive`: pre-phase MOVING AND sensor[targetStation]
 - `stop`: NOT conveyorLeft AND NOT conveyorRight
 - `waiting`: pre-phase WAIT_PROCESS AND no fresh completion edge
@@ -5482,17 +5790,19 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - `processSequence`: I[k].processSequence: sampled input (ARRAY[1..8] OF USINT).
 - `conveyorLeft`: O[k].conveyorLeft: independently observed post-scan candidate value (BOOL); never defined as expected output.
 - `conveyorRight`: O[k].conveyorRight: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `station1Start_rejected`: pre-phase IDLE AND station1Start AND NOT sensor1
+- `init`: At the separate pre-invocation initial observation before scan k=0: Spre.phase="IDLE", O_init.conveyorLeft=false, O_init.conveyorRight=false.
 
 ### LTL properties
 
-**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Human rationality review is completed; candidate verification remains UNVERIFIED.
 
 ### Normalized state, observation and predicate definitions
 
 ```json
 {
   "schema_version": 1,
-  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "status": "NORMALIZED_HUMAN_REVIEWED",
   "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
   "candidate_formal_verification": "UNVERIFIED",
   "initial_observed": {
@@ -5536,7 +5846,8 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
       "reference": null,
       "phase": 0,
       "previous_mode": null,
-      "clock": 0.0,
+      "clock": 0,
+      "first": true,
       "heat_start": null,
       "protection_start": null,
       "demand": false
@@ -5547,16 +5858,16 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
     "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('PUB016'); constructed once per independent case, current state is Sref[k].",
     "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
     "module_sha256": {
-      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
-      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
-      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
-      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
-      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "scan_contract.py": "2ebdbeb0bacd3c6154e1add2fd358f1aadc9ac9c9322a9201798065154353f48",
+      "array_contracts.py": "f541ffe0e28c56e84ad737b06aa8c8ee6180b1afda720b7c41cc8fccad2d8ecd",
+      "data_contracts.py": "0792c46b303ce62a0a2180bcf4d7ebfe4838ccfaa18deb331780af1819377b3a",
+      "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
+      "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+    "frozen_sources": "dataset/specifications/normalized_transition_v2"
   },
   "constrained_observed_fields": [
     "conveyorLeft",
@@ -5617,7 +5928,9 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
     "Destination arrival immediately stops the motor. Completion is accepted only at the current processing wait.",
     "Completion signals are rising edges. Consecutive equal stations denote separate processing operations with fresh edges and no conveyor movement.",
     "Only one sequence-index advancement occurs per invocation. Station5 arrival returns to idle.",
-    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "Station completion edges are ignored unless post-entry phase is WAIT_PROCESS; dropping a station arrival sensor while already in WAIT_PROCESS is outside caller error injection.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
   ],
   "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
   "limitations": [
@@ -5628,6 +5941,14 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
   "rules_zh": "活动路线长度1..8，前项为2/3/4且末项5，活动周期内固定。初始IDLE、station=1、index=0。IDLE在station1Start上升沿且sensor1时选择首目标；MOVING到目标后进入WAIT_PROCESS或目标5回IDLE；WAIT_PROCESS仅对应完成新边沿推进index，同站继续等待。输出仅转移后MOVING且未到目标时按target与station方向开启；所有边沿历史逐拍更新。"
 }
 ```
+
+**PUB016.P_init**
+
+```text
+init
+```
+
+Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
 
 **PUB016.P1** Interlock
 
@@ -5677,6 +5998,14 @@ The final station completes the sequence.
 
 Under the valid fixed-sequence input contract, eventual external feedback permits every started route to complete.
 
+**PUB016.P7**
+
+```text
+G(station1Start_rejected -> stop)
+```
+
+Forbids starting automatic transport without a detected product at station 1.
+
 **PUB016.V2.COMPLETE**
 
 ```text
@@ -5693,6 +6022,10 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 | PUB016.T2 | A one-entry sequence goes directly to output. | 3 |
 | PUB016.T3 | A held completion cannot skip a repeated processing operation. | 7 |
 | V2_process_history_regression | Mode/edge reset, repeated station or prior-batch retained setpoint regression. | 9 |
+| PUB016.T4 | PUB016.T4 | 20 |
+| PUB016.R22.route8 | 八站路线、双向运输保持、工位等待与第二批次 | 92 |
+| PUB016.T5 | station1Start rejected without sensor1 and mid-cycle re-triggers ignored before clean next-batch start. | 9 |
+| PUB016.T6 | Multiple consecutive repeated stations [2, 2, 3, 3, 5] hold stopped until distinct fresh completion rising edges. | 12 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -5874,15 +6207,16 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 
 ### Explicit assumptions
 
-- At most one request rises per call. Requests use rising edges; simultaneous request priority is unspecified by the source.
-- Only positive nonzero IDs are submitted; zero denotes an unused slot.
+- At most one request rising edge may occur per call; simultaneous rising edges across addRecipe, deleteRecipe, modifyRecipe, and queryRecipe are outside the valid domain (rejected with ValueError).
+- Any nonzero INT (-32768..32767, excluding 0) is valid as recipeID (positive or negative); zero denotes an unused slot and addRecipe with recipeID=0 is rejected with ValueError.
 - Success indicators are one-invocation pulses. error/status clear on idle.
 - recipeQueryResult retains the last successful query until another successful query.
-- Deleting a record clears only its recipeID; its other fields become unconstrained.
+- Deleting a record clears its recipeID to 0; its remaining ST_Recipe fields remain unconstrained on the deletion scan (subject to valid ST_Recipe field types and finite values) and preserve sampled caller values on later non-overwriting scans.
 - The caller-owned recipe array is initialized once and persists across steps; do not overwrite it with initial values per scan.
 - Compare REAL values with absolute tolerance 1e-5.
-- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 - Floating-point inputs and intermediate reference arithmetic are finite. Existing fixed traces retain their declared absolute tolerance; claims do not extend to arbitrary magnitudes without a separately specified numeric error policy.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Supporting types
 
@@ -5984,7 +6318,7 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - `e5`: error AND status=16#8005
 - `error`: O[k].error: independently observed post-scan candidate value (BOOL); never defined as expected output.
 - `same`: database equals pre-database
-- `add_ok`: rising(addRecipe) AND positive ID absent AND empty slot exists
+- `add_ok`: rising(addRecipe) AND nonzero INT recipeIn.recipeID absent from pre-database AND empty slot exists
 - `insert`: lowest-index pre-empty slot equals recipeIn; all other slots unchanged
 - `add_success`: recipeAdded AND NOT error AND status=0
 - `query_ok`: rising(queryRecipe) AND matching record exists
@@ -5993,7 +6327,7 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - `clear`: NOT error AND status=0 AND NOT recipeAdded AND NOT recipeDeleted AND NOT recipeModified
 - `unique`: all nonzero IDs are pairwise distinct
 - `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_PUB017(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
-数据库首拍由调用前recipe初始化，之后为跨拍保留存储；非零ID唯一，输入ID正且每拍至多一个请求上升沿。四请求历史初值FALSE、每拍更新。查询缺失8001；新增重复8002优先于满库8003，否则最低空位整体写入；删除缺失8004否则只清ID；修改缺失8005否则整体替换。失败/空闲库保持。三个成功输出是单拍脉冲，成功/空闲error=FALSE/status=0；查询结果仅成功查询时更新，初值零记录。成功删除槽的非ID字段当拍不受约束，此后无覆盖操作时与采样实际值比较保持；不把这些物理表示字段写回参考数据库。
+数据库首拍由调用前recipe初始化，之后为跨拍保留存储；非零ID唯一（允许正/负整数recipeID!=0，新增时严禁recipeID=0且每拍至多一个请求上升沿）。四请求历史初值FALSE、每拍更新。查询缺失8001；新增重复8002优先于满库8003，否则最低空位整体写入；删除缺失8004否则只清ID；修改缺失8005否则整体替换。失败/空闲库保持。三个成功输出是单拍脉冲，成功/空闲error=FALSE/status=0；查询结果仅成功查询时更新，初值零记录。成功删除槽的非ID字段当拍不受约束但须满足ST_Recipe类型与范围，此后无覆盖操作时与采样实际值比较保持；不把这些物理表示字段写回参考数据库。
 - `addRecipe`: I[k].addRecipe: sampled input (BOOL).
 - `deleteRecipe`: I[k].deleteRecipe: sampled input (BOOL).
 - `modifyRecipe`: I[k].modifyRecipe: sampled input (BOOL).
@@ -6005,17 +6339,22 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - `recipeQueryResult`: O[k].recipeQueryResult: independently observed post-scan candidate value (ST_Recipe); never defined as expected output.
 - `status`: O[k].status: independently observed post-scan candidate value (WORD); never defined as expected output.
 - `recipe`: O[k].recipe: independently observed post-scan candidate value (ARRAY[1..10] OF ST_Recipe); never defined as expected output. I[k].recipe denotes separately captured caller value before invocation.
+- `delete_ok`: rising(deleteRecipe) AND matching record exists in pre-database
+- `deleted`: matching slot recipeID=0 AND recipeDeleted AND NOT error AND status=0 AND all other slots preserved
+- `modify_ok`: rising(modifyRecipe) AND matching record exists in pre-database
+- `modified`: matching slot equals recipeIn AND recipeModified AND NOT error AND status=0 AND all other slots preserved
+- `init`: At the separate pre-invocation initial observation before scan k=0: O_init.recipeAdded=false, O_init.recipeDeleted=false, O_init.recipeModified=false, O_init.recipeQueryResult={"recipeID": 0, "ingredientType": 0, "ingredientRatio": 0.0, "productionTemperature": 0.0}, O_init.error=false, O_init.status=0.
 
 ### LTL properties
 
-**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Human rationality review is completed; candidate verification remains UNVERIFIED.
 
 ### Normalized state, observation and predicate definitions
 
 ```json
 {
   "schema_version": 1,
-  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "status": "NORMALIZED_HUMAN_REVIEWED",
   "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
   "candidate_formal_verification": "UNVERIFIED",
   "initial_observed": {
@@ -6131,7 +6470,8 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
       "reference": null,
       "phase": 0,
       "previous_mode": null,
-      "clock": 0.0,
+      "clock": 0,
+      "first": true,
       "heat_start": null,
       "protection_start": null,
       "demand": false
@@ -6142,16 +6482,16 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
     "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('PUB017'); constructed once per independent case, current state is Sref[k].",
     "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
     "module_sha256": {
-      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
-      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
-      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
-      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
-      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "scan_contract.py": "2ebdbeb0bacd3c6154e1add2fd358f1aadc9ac9c9322a9201798065154353f48",
+      "array_contracts.py": "f541ffe0e28c56e84ad737b06aa8c8ee6180b1afda720b7c41cc8fccad2d8ecd",
+      "data_contracts.py": "0792c46b303ce62a0a2180bcf4d7ebfe4838ccfaa18deb331780af1819377b3a",
+      "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
+      "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+    "frozen_sources": "dataset/specifications/normalized_transition_v2"
   },
   "constrained_observed_fields": [
     "error",
@@ -6209,15 +6549,16 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
     "time_progress": "Timed eventuality clauses explicitly require G(F(TimeTick)); TimeTick denotes crossing a new integer-ms boundary. Finite observations cannot establish this premise."
   },
   "assumptions": [
-    "At most one request rises per call. Requests use rising edges; simultaneous request priority is unspecified by the source.",
-    "Only positive nonzero IDs are submitted; zero denotes an unused slot.",
+    "At most one request rising edge may occur per call; simultaneous rising edges across addRecipe, deleteRecipe, modifyRecipe, and queryRecipe are outside the valid domain (rejected with ValueError).",
+    "Any nonzero INT (-32768..32767, excluding 0) is valid as recipeID (positive or negative); zero denotes an unused slot and addRecipe with recipeID=0 is rejected with ValueError.",
     "Success indicators are one-invocation pulses. error/status clear on idle.",
     "recipeQueryResult retains the last successful query until another successful query.",
-    "Deleting a record clears only its recipeID; its other fields become unconstrained.",
+    "Deleting a record clears its recipeID to 0; its remaining ST_Recipe fields remain unconstrained on the deletion scan (subject to valid ST_Recipe field types and finite values) and preserve sampled caller values on later non-overwriting scans.",
     "The caller-owned recipe array is initialized once and persists across steps; do not overwrite it with initial values per scan.",
     "Compare REAL values with absolute tolerance 1e-5.",
-    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
-    "Floating-point inputs and intermediate reference arithmetic are finite. Existing fixed traces retain their declared absolute tolerance; claims do not extend to arbitrary magnitudes without a separately specified numeric error policy."
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "Floating-point inputs and intermediate reference arithmetic are finite. Existing fixed traces retain their declared absolute tolerance; claims do not extend to arbitrary magnitudes without a separately specified numeric error policy.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
   ],
   "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
   "limitations": [
@@ -6225,9 +6566,17 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
     "Focused legacy LTL predicates still require backend lowering; normalization is not model-checker acceptance.",
     "Finite matching cannot establish liveness or validate runtime provenance."
   ],
-  "rules_zh": "数据库首拍由调用前recipe初始化，之后为跨拍保留存储；非零ID唯一，输入ID正且每拍至多一个请求上升沿。四请求历史初值FALSE、每拍更新。查询缺失8001；新增重复8002优先于满库8003，否则最低空位整体写入；删除缺失8004否则只清ID；修改缺失8005否则整体替换。失败/空闲库保持。三个成功输出是单拍脉冲，成功/空闲error=FALSE/status=0；查询结果仅成功查询时更新，初值零记录。成功删除槽的非ID字段当拍不受约束，此后无覆盖操作时与采样实际值比较保持；不把这些物理表示字段写回参考数据库。"
+  "rules_zh": "数据库首拍由调用前recipe初始化，之后为跨拍保留存储；非零ID唯一（允许正/负整数recipeID!=0，新增时严禁recipeID=0且每拍至多一个请求上升沿）。四请求历史初值FALSE、每拍更新。查询缺失8001；新增重复8002优先于满库8003，否则最低空位整体写入；删除缺失8004否则只清ID；修改缺失8005否则整体替换。失败/空闲库保持。三个成功输出是单拍脉冲，成功/空闲error=FALSE/status=0；查询结果仅成功查询时更新，初值零记录。成功删除槽的非ID字段当拍不受约束但须满足ST_Recipe类型与范围，此后无覆盖操作时与采样实际值比较保持；不把这些物理表示字段写回参考数据库。"
 }
 ```
+
+**PUB017.P_init**
+
+```text
+init
+```
+
+Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
 
 **PUB017.P1** Errors
 
@@ -6277,6 +6626,14 @@ G(unique)
 
 All operations preserve ID uniqueness from a valid initial database.
 
+**PUB017.P7**
+
+```text
+G((delete_ok -> deleted) & (modify_ok -> modified) & (idle -> same))
+```
+
+Closes independent LTL coverage of delete, modify, and idle preservation missing in P1..P6.
+
 **PUB017.V2.COMPLETE**
 
 ```text
@@ -6292,6 +6649,11 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 | PUB017.T1 | Add, query, modify, delete and reuse the first empty slot. | 14 |
 | PUB017.T2 | All missing-record errors and duplicate rejection preserve existing record. | 11 |
 | PUB017.T3 | Fill ten slots; duplicate error has priority over full error. | 23 |
+| PUB017.T4 | PUB017.T4 | 9 |
+| PUB017.R22.storage_operations | 满库末槽读回、最小空槽复用、修改其他槽保持与请求长按 | 54 |
+| PUB017.T5 | Negative nonzero recipeID lifecycle (add/query/modify/delete) and failed query retention of previous recipeQueryResult. | 8 |
+| PUB017.T6 | Mid-table and high-slot (slots 8-10) deletion, adjacent slot preservation, and lowest free-slot insertion. | 29 |
+| PUB017.T7 | Level-held requests after rising edges stay idle (no duplicate error, missing error, or repeat pulse). | 9 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -6392,10 +6754,11 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - The official VARIANT interface is preserved. Native CODESYS compatibility and runtime type/array metadata access remain unverified; never silently replace it by a DINT-only interface.
 - Binding A: item DINT, buffer ARRAY[0..1] OF DINT. Binding B: item BOOL, buffer ARRAY[1..3] OF BOOL. Both must run to substantiate genericity.
 - Buffer is initialized and bound once per test; its association and contents are not externally overwritten between calls. item is caller-writable every scan.
-- Enqueue and dequeue are never requested together. Reset may coincide with either and wins.
+- Simultaneous enqueue and dequeue rising edges on a non-reset scan are outside the valid domain (rejected with ValueError); reset=TRUE takes priority over both and updates edge memories.
 - Edge memories update during reset; a request held afterward is not another edge.
 - Reset need not clear buffer values. Unused storage arrangement is unconstrained.
-- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Test bindings
 
@@ -6446,30 +6809,32 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - `e2`: status=16#8002
 - `same`: logical queue equals pre-queue AND item equals sampled item
 - `push`: NOT reset AND rising(enqueue) AND pre-count<capacity
-- `pushed`: post-queue=pre-queue appended with sampled item AND count=pre-count+1 AND status=0
+- `pushed`: post-queue=pre-queue appended with sampled item AND count=pre-count+1 AND status=0 AND item equals sampled item
 - `pop`: NOT reset AND rising(dequeue) AND pre-count>0
 - `popped`: item=pre-front AND post-queue=pre-queue without front AND count=pre-count-1 AND status=0
 - `bounded`: 0<=elementCount<=actual buffer length
 - `idle`: NOT reset AND no request rising edge
 - `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_PUB018(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
-独立逻辑队列Q初始空、enqPrev/deqPrev=FALSE。reset优先QAfter=[]；否则单个enqueue新沿且未满时追加采样item，满报8002；dequeue新沿且非空时返回旧队首并去首，空报8001；其余状态0。elementCount=|QAfter|；仅成功pop改变实际item，其余等于采样item。buffer物理布局不受约束，其正确性由完整可观察出队行为约束。绑定A容量2、B容量3，其余容量由实际buffer元数据固定。
+独立逻辑队列Q初始空、enqPrev/deqPrev=FALSE。非reset下严禁同拍enqueue/dequeue同时上升沿。reset优先QAfter=[]；否则单个enqueue新沿且未满时追加采样item，满报8002；dequeue新沿且非空时返回旧队首并去首，空报8001；其余状态0。elementCount=|QAfter|；仅成功pop改变实际item，其余等于采样item。buffer物理布局不受约束，其正确性由完整可观察出队行为约束。绑定A容量2(DINT)、B容量3(BOOL)，其余正整数容量由实际buffer元数据固定。
 - `enqueue`: I[k].enqueue: sampled input (BOOL).
 - `dequeue`: I[k].dequeue: sampled input (BOOL).
 - `elementCount`: O[k].elementCount: independently observed post-scan candidate value (DINT); never defined as expected output.
 - `status`: O[k].status: independently observed post-scan candidate value (WORD); never defined as expected output.
 - `item`: O[k].item: independently observed post-scan candidate value (VARIANT); never defined as expected output. I[k].item denotes separately captured caller value before invocation.
 - `buffer`: O[k].buffer: independently observed post-scan candidate value (VARIANT); never defined as expected output. I[k].buffer denotes separately captured caller value before invocation.
+- `non_pop_item_preserved`: item equals sampled caller item
+- `init`: At the separate pre-invocation initial observation before scan k=0: O_init.elementCount=0, O_init.status=0.
 
 ### LTL properties
 
-**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Human rationality review is completed; candidate verification remains UNVERIFIED.
 
 ### Normalized state, observation and predicate definitions
 
 ```json
 {
   "schema_version": 1,
-  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "status": "NORMALIZED_HUMAN_REVIEWED",
   "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
   "candidate_formal_verification": "UNVERIFIED",
   "initial_observed": {
@@ -6576,7 +6941,8 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
       "reference": null,
       "phase": 0,
       "previous_mode": null,
-      "clock": 0.0,
+      "clock": 0,
+      "first": true,
       "heat_start": null,
       "protection_start": null,
       "demand": false
@@ -6587,16 +6953,16 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
     "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('PUB018'); constructed once per independent case, current state is Sref[k].",
     "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
     "module_sha256": {
-      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
-      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
-      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
-      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
-      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "scan_contract.py": "2ebdbeb0bacd3c6154e1add2fd358f1aadc9ac9c9322a9201798065154353f48",
+      "array_contracts.py": "f541ffe0e28c56e84ad737b06aa8c8ee6180b1afda720b7c41cc8fccad2d8ecd",
+      "data_contracts.py": "0792c46b303ce62a0a2180bcf4d7ebfe4838ccfaa18deb331780af1819377b3a",
+      "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
+      "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+    "frozen_sources": "dataset/specifications/normalized_transition_v2"
   },
   "constrained_observed_fields": [
     "elementCount",
@@ -6655,10 +7021,11 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
     "The official VARIANT interface is preserved. Native CODESYS compatibility and runtime type/array metadata access remain unverified; never silently replace it by a DINT-only interface.",
     "Binding A: item DINT, buffer ARRAY[0..1] OF DINT. Binding B: item BOOL, buffer ARRAY[1..3] OF BOOL. Both must run to substantiate genericity.",
     "Buffer is initialized and bound once per test; its association and contents are not externally overwritten between calls. item is caller-writable every scan.",
-    "Enqueue and dequeue are never requested together. Reset may coincide with either and wins.",
+    "Simultaneous enqueue and dequeue rising edges on a non-reset scan are outside the valid domain (rejected with ValueError); reset=TRUE takes priority over both and updates edge memories.",
     "Edge memories update during reset; a request held afterward is not another edge.",
     "Reset need not clear buffer values. Unused storage arrangement is unconstrained.",
-    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
   ],
   "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
   "limitations": [
@@ -6666,9 +7033,17 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
     "Focused legacy LTL predicates still require backend lowering; normalization is not model-checker acceptance.",
     "Finite matching cannot establish liveness or validate runtime provenance."
   ],
-  "rules_zh": "独立逻辑队列Q初始空、enqPrev/deqPrev=FALSE。reset优先QAfter=[]；否则单个enqueue新沿且未满时追加采样item，满报8002；dequeue新沿且非空时返回旧队首并去首，空报8001；其余状态0。elementCount=|QAfter|；仅成功pop改变实际item，其余等于采样item。buffer物理布局不受约束，其正确性由完整可观察出队行为约束。绑定A容量2、B容量3，其余容量由实际buffer元数据固定。"
+  "rules_zh": "独立逻辑队列Q初始空、enqPrev/deqPrev=FALSE。非reset下严禁同拍enqueue/dequeue同时上升沿。reset优先QAfter=[]；否则单个enqueue新沿且未满时追加采样item，满报8002；dequeue新沿且非空时返回旧队首并去首，空报8001；其余状态0。elementCount=|QAfter|；仅成功pop改变实际item，其余等于采样item。buffer物理布局不受约束，其正确性由完整可观察出队行为约束。绑定A容量2(DINT)、B容量3(BOOL)，其余正整数容量由实际buffer元数据固定。"
 }
 ```
+
+**PUB018.P_init**
+
+```text
+init
+```
+
+Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
 
 **PUB018.P1** Reset
 
@@ -6710,6 +7085,14 @@ G(idle -> (ok & same))
 
 Held levels do not perform another operation.
 
+**PUB018.P6**
+
+```text
+G((!pop) -> non_pop_item_preserved)
+```
+
+Prevents spurious overwriting of caller item when not popping.
+
 **PUB018.V2.COMPLETE**
 
 ```text
@@ -6725,6 +7108,12 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 | PUB018.T1 | Capacity-two FIFO preserves order through wrap, full and empty rejection. | 17 |
 | PUB018.T2 | Reset coincides with request; held request after reset does not execute. | 8 |
 | PUB018.T3 | Second element type and lower-bound-one buffer. | 9 |
+| PUB018.T4 | PUB018.T4 | 18 |
+| PUB018.R22.capacity1 | 容量1入队、满、出队、回绕及复位后重用 | 11 |
+| PUB018.R22.drain_T1 | 逐项排空并检查末元素：PUB018.T1 | 25 |
+| PUB018.R22.drain_T2 | 逐项排空并检查末元素：PUB018.T2 | 16 |
+| PUB018.R22.drain_T3 | 逐项排空并检查末元素：PUB018.T3 | 17 |
+| PUB018.R22.drain_capacity1 | 逐项排空并检查末元素：PUB018.R22.capacity1 | 19 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -6866,7 +7255,7 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 
 ### Explicit assumptions
 
-- EmergencyStop=FALSE cancels the sequence and outputs; recovery requires a fresh Start edge from a verified top-left pose.
+- EmergencyStop=FALSE cancels the sequence and outputs while retaining non-empty mode selection in arm_mode; changing mode later clears outputs and resets the sequence, and recovery requires a fresh Start rising edge from top-left pose (UpLimitSwitch & LeftLimitSwitch).
 - A Start press is a rising edge. Start edges during an active action are ignored; edge history still updates.
 - No selected mode means all commands off and sequence reset. Changing mode also resets the sequence.
 - Opposing manual commands on an axis or grip pair are both inhibited. Independent non-opposing actions may run together.
@@ -6875,8 +7264,10 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - Single-step completion switches all outputs off; the next action requires a fresh Start edge on a later scan.
 - Continuous completion of left movement wraps to down in the same scan. Single-cycle completion returns to idle.
 - At the start of a new automatic sequence (action 1, not every individual single step), UpLimitSwitch and LeftLimitSwitch must both be TRUE. Grip and release complete on the supplied feedback switches.
-- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 - V2 mode-change priority: emergency stop first; then a change of mode after the first invocation clears sequence/latches and suppresses commands for that invocation; edge memories still update. The first invocation establishes the selected mode and executes normally. New commands are accepted on subsequent invocations subject to their edge rules.
+- The four mode inputs (ManualMode, SingleStepMode, SingleCycleMode, ContinuousMode) are mutually exclusive per scan (<=1 TRUE; >1 rejected with ValueError).
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
 
@@ -6909,7 +7300,7 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - `started`: post-phase DOWN, busy TRUE
 - `ordered`: the next accepted automatic phase follows DOWN, GRIP, UP1, RIGHT, DOWN2, RELEASE, UP2, LEFT
 - `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_PUB019(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
-八动作顺序为下/夹/上/右/下/松/上/左。安全失去或无模式全关复位，其次模式变化当拍全关复位；模式选择互斥。手动六命令分别=本按钮 & !反向按钮 & !本限位。单步完成时全关、保存下一步，新Start沿再启动；首步要求上左到位。单周期末回IDLE；连续末回第一步；自动只在本动作匹配限位时推进一阶，输出按转移后动作并由本限位门控。Start历史每拍更新。
+八动作顺序为下/夹/上/右/下/松/上/左。安全失去或无模式全关复位（急停期间仍记录当前非空模式选择），其次模式变化当拍全关复位；四模式选择互斥不可同拍并发。手动六命令分别=本按钮 & !反向按钮 & !本限位。单步完成时全关、保存下一步，新Start沿再启动；首步要求上左到位。单周期末回IDLE；连续末回第一步；自动只在本动作匹配限位时推进一阶，输出按转移后动作并由本限位门控。Start历史每拍更新。
 - `modeChanged`: Selected mode differs from previous invocation; FALSE for the first invocation.
 - `ManualMode`: I[k].ManualMode: sampled input (BOOL).
 - `SingleStepMode`: I[k].SingleStepMode: sampled input (BOOL).
@@ -6935,17 +7326,20 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - `MoveRight`: O[k].MoveRight: independently observed post-scan candidate value (BOOL); never defined as expected output.
 - `ActivateGrip`: O[k].ActivateGrip: independently observed post-scan candidate value (BOOL); never defined as expected output.
 - `ActivateRelease`: O[k].ActivateRelease: independently observed post-scan candidate value (BOOL); never defined as expected output.
+- `other_manual`: (MoveUp <-> (ManualMode & UpButton & !DownButton & !UpLimitSwitch)) & (MoveLeft <-> (ManualMode & LeftButton & !RightButton & !LeftLimitSwitch)) & (MoveRight <-> (ManualMode & RightButton & !LeftButton & !RightLimitSwitch)) & (ActivateGrip <-> (ManualMode & GripButton & !ReleaseButton & !GripLimitSwitch)) & (ActivateRelease <-> (ManualMode & ReleaseButton & !GripButton & !ReleaseLimitSwitch))
+- `all_auto_steps_valid`: SingleStepMode and SingleCycleMode/ContinuousMode execute each step 1..8 cleanly with matching command & feedback only.
+- `init`: At the separate pre-invocation initial observation before scan k=0: O_init.MoveDown=false, O_init.MoveUp=false, O_init.MoveLeft=false, O_init.MoveRight=false, O_init.ActivateGrip=false, O_init.ActivateRelease=false.
 
 ### LTL properties
 
-**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Human rationality review is completed; candidate verification remains UNVERIFIED.
 
 ### Normalized state, observation and predicate definitions
 
 ```json
 {
   "schema_version": 1,
-  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "status": "NORMALIZED_HUMAN_REVIEWED",
   "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
   "candidate_formal_verification": "UNVERIFIED",
   "initial_observed": {
@@ -6993,7 +7387,8 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
       "reference": null,
       "phase": 0,
       "previous_mode": null,
-      "clock": 0.0,
+      "clock": 0,
+      "first": true,
       "heat_start": null,
       "protection_start": null,
       "demand": false
@@ -7004,16 +7399,16 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
     "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('PUB019'); constructed once per independent case, current state is Sref[k].",
     "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
     "module_sha256": {
-      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
-      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
-      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
-      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
-      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "scan_contract.py": "2ebdbeb0bacd3c6154e1add2fd358f1aadc9ac9c9322a9201798065154353f48",
+      "array_contracts.py": "f541ffe0e28c56e84ad737b06aa8c8ee6180b1afda720b7c41cc8fccad2d8ecd",
+      "data_contracts.py": "0792c46b303ce62a0a2180bcf4d7ebfe4838ccfaa18deb331780af1819377b3a",
+      "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
+      "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+    "frozen_sources": "dataset/specifications/normalized_transition_v2"
   },
   "constrained_observed_fields": [
     "ActivateGrip",
@@ -7089,7 +7484,7 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
     "time_progress": "Timed eventuality clauses explicitly require G(F(TimeTick)); TimeTick denotes crossing a new integer-ms boundary. Finite observations cannot establish this premise."
   },
   "assumptions": [
-    "EmergencyStop=FALSE cancels the sequence and outputs; recovery requires a fresh Start edge from a verified top-left pose.",
+    "EmergencyStop=FALSE cancels the sequence and outputs while retaining non-empty mode selection in arm_mode; changing mode later clears outputs and resets the sequence, and recovery requires a fresh Start rising edge from top-left pose (UpLimitSwitch & LeftLimitSwitch).",
     "A Start press is a rising edge. Start edges during an active action are ignored; edge history still updates.",
     "No selected mode means all commands off and sequence reset. Changing mode also resets the sequence.",
     "Opposing manual commands on an axis or grip pair are both inhibited. Independent non-opposing actions may run together.",
@@ -7098,8 +7493,10 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
     "Single-step completion switches all outputs off; the next action requires a fresh Start edge on a later scan.",
     "Continuous completion of left movement wraps to down in the same scan. Single-cycle completion returns to idle.",
     "At the start of a new automatic sequence (action 1, not every individual single step), UpLimitSwitch and LeftLimitSwitch must both be TRUE. Grip and release complete on the supplied feedback switches.",
-    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
-    "V2 mode-change priority: emergency stop first; then a change of mode after the first invocation clears sequence/latches and suppresses commands for that invocation; edge memories still update. The first invocation establishes the selected mode and executes normally. New commands are accepted on subsequent invocations subject to their edge rules."
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "V2 mode-change priority: emergency stop first; then a change of mode after the first invocation clears sequence/latches and suppresses commands for that invocation; edge memories still update. The first invocation establishes the selected mode and executes normally. New commands are accepted on subsequent invocations subject to their edge rules.",
+    "The four mode inputs (ManualMode, SingleStepMode, SingleCycleMode, ContinuousMode) are mutually exclusive per scan (<=1 TRUE; >1 rejected with ValueError).",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
   ],
   "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
   "limitations": [
@@ -7107,9 +7504,17 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
     "Focused legacy LTL predicates still require backend lowering; normalization is not model-checker acceptance.",
     "Finite matching cannot establish liveness or validate runtime provenance."
   ],
-  "rules_zh": "八动作顺序为下/夹/上/右/下/松/上/左。安全失去或无模式全关复位，其次模式变化当拍全关复位；模式选择互斥。手动六命令分别=本按钮 & !反向按钮 & !本限位。单步完成时全关、保存下一步，新Start沿再启动；首步要求上左到位。单周期末回IDLE；连续末回第一步；自动只在本动作匹配限位时推进一阶，输出按转移后动作并由本限位门控。Start历史每拍更新。"
+  "rules_zh": "八动作顺序为下/夹/上/右/下/松/上/左。安全失去或无模式全关复位（急停期间仍记录当前非空模式选择），其次模式变化当拍全关复位；四模式选择互斥不可同拍并发。手动六命令分别=本按钮 & !反向按钮 & !本限位。单步完成时全关、保存下一步，新Start沿再启动；首步要求上左到位。单周期末回IDLE；连续末回第一步；自动只在本动作匹配限位时推进一阶，输出按转移后动作并由本限位门控。Start历史每拍更新。"
 }
 ```
+
+**PUB019.P_init**
+
+```text
+init
+```
+
+Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
 
 **PUB019.P1** Safety
 
@@ -7183,6 +7588,14 @@ Single-cycle stops; continuous wraps.
 
 With unchanged safe single-cycle mode and eventual matching feedback, every started sequence eventually returns idle.
 
+**PUB019.P10**
+
+```text
+G((safe & !modeChanged & ManualMode -> other_manual) & ((safe & modeChanged) -> off))
+```
+
+Completes manual-mode and mode-change output coverage beyond MoveDown.
+
 **PUB019.V2.COMPLETE**
 
 ```text
@@ -7200,6 +7613,18 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 | PUB019.T3 | All eight actions complete once and wait at top left. | 10 |
 | PUB019.T4 | The eighth completion wraps immediately to the first action. | 10 |
 | PUB019.T5 | Emergency cancels an action; releasing emergency does not auto-restart. | 6 |
+| PUB019.T6 | PUB019.T6 | 25 |
+| PUB019.R22.manual_up | 手动上行按钮在未到上限位时应输出上行 | 1 |
+| PUB019.R22.grip_hold | 单周期夹紧尚未完成时，夹紧命令应持续 | 4 |
+| PUB019.R22.DownButton | 手动动作、保持、到限位停机：DownButton | 6 |
+| PUB019.R22.UpButton | 手动动作、保持、到限位停机：UpButton | 6 |
+| PUB019.R22.LeftButton | 手动动作、保持、到限位停机：LeftButton | 6 |
+| PUB019.R22.RightButton | 手动动作、保持、到限位停机：RightButton | 6 |
+| PUB019.R22.GripButton | 手动动作、保持、到限位停机：GripButton | 6 |
+| PUB019.R22.ReleaseButton | 手动动作、保持、到限位停机：ReleaseButton | 6 |
+| PUB019.R22.SingleStepMode | 完整八动作、各步等待与第二轮：SingleStepMode | 65 |
+| PUB019.R22.SingleCycleMode | 完整八动作、各步等待与第二轮：SingleCycleMode | 65 |
+| PUB019.R22.ContinuousMode | 完整八动作、各步等待与第二轮：ContinuousMode | 65 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -7321,10 +7746,11 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - Mode changes reset the automatic route to WAIT_FEED. Confirmations are levels accepted only in their corresponding processing wait.
 - Arrival has priority; a confirmation already TRUE on the arrival invocation is accepted no earlier than the next invocation.
 - A rejected item remains at the weighing station, with kick TRUE, until SensorWeight becomes FALSE. It then returns to WAIT_FEED.
-- firingTemp updates only for accepted weight and retains the last accepted value otherwise. REAL comparisons use absolute tolerance 1e-5.
+- firingTemp updates only when accepted weight satisfies 100.0 <= real32(weight) <= 200.0 (binary32 rounding applied prior to range test) and retains the last accepted value otherwise. REAL firingTemp comparisons use absolute tolerance 1e-4 to exceed 1 ULP near 550.0.
 - At most one phase transition occurs per invocation. Output arrival sets CompletionLight immediately, removal clears it and resets the route.
-- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 - Floating-point inputs and intermediate reference arithmetic are finite. Existing fixed traces retain their declared absolute tolerance; claims do not extend to arbitrary magnitudes without a separately specified numeric error policy.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
 
@@ -7334,13 +7760,13 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - `mf`: ForwardButton AND NOT ReverseButton
 - `mr`: ReverseButton AND NOT ForwardButton
 - `feed`: pre-phase WAIT_FEED AND SensorFeed
-- `moving`: post-phase MOVE_TO_WASH
+- `moving`: pre-phase is a conveyor movement (MOVE_TO_WASH, MOVE_TO_WEIGHT, MOVE_TO_FIRING, or MOVE_TO_OUTPUT)
 - `arrival`: pre-phase moving AND corresponding destination sensor TRUE
 - `stopped`: NOT MotorForward AND NOT MotorReverse
 - `judged`: auto AND pre-phase WAIT_WEIGHT AND SensorWeight AND weightComplete
-- `valid`: 100<=weight<=200
+- `valid`: 100.0 <= real32(weight) <= 200.0
 - `reject`: kick AND stopped
-- `qualified`: NOT kick AND fwd AND firingTemp=500+(weight-100)*0.5
+- `qualified`: NOT kick AND fwd AND firingTemp=real32(500.0+real32(real32(weight-100.0)*0.5))
 - `output_arrival`: auto AND pre-phase MOVE_TO_OUTPUT AND SensorOutput
 - `light`: CompletionLight
 - `removed`: auto AND pre-phase OUTPUT_DONE AND NOT SensorOutput
@@ -7370,17 +7796,20 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
 - `kick`: O[k].kick: independently observed post-scan candidate value (BOOL); never defined as expected output.
 - `CompletionLight`: O[k].CompletionLight: independently observed post-scan candidate value (BOOL); never defined as expected output.
 - `firingTemp`: O[k].firingTemp: independently observed post-scan candidate value (REAL); never defined as expected output.
+- `post_wait`: post-phase is WAIT_FEED, WAIT_WASH, WAIT_WEIGHT, or WAIT_FIRING
+- `post_move`: post-phase is MOVE_TO_WASH, MOVE_TO_WEIGHT, MOVE_TO_FIRING, or MOVE_TO_OUTPUT
+- `init`: At the separate pre-invocation initial observation before scan k=0: Spre.phase="WAIT_FEED", O_init.MotorForward=false, O_init.MotorReverse=false, O_init.kick=false, O_init.CompletionLight=false, O_init.firingTemp=0.0.
 
 ### LTL properties
 
-**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Human rationality review is completed; candidate verification remains UNVERIFIED.
 
 ### Normalized state, observation and predicate definitions
 
 ```json
 {
   "schema_version": 1,
-  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "status": "NORMALIZED_HUMAN_REVIEWED",
   "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
   "candidate_formal_verification": "UNVERIFIED",
   "initial_observed": {
@@ -7427,7 +7856,8 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
       "reference": null,
       "phase": 0,
       "previous_mode": null,
-      "clock": 0.0,
+      "clock": 0,
+      "first": true,
       "heat_start": null,
       "protection_start": null,
       "demand": false
@@ -7438,16 +7868,16 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
     "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('PUB020'); constructed once per independent case, current state is Sref[k].",
     "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
     "module_sha256": {
-      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
-      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
-      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
-      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
-      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "scan_contract.py": "2ebdbeb0bacd3c6154e1add2fd358f1aadc9ac9c9322a9201798065154353f48",
+      "array_contracts.py": "f541ffe0e28c56e84ad737b06aa8c8ee6180b1afda720b7c41cc8fccad2d8ecd",
+      "data_contracts.py": "0792c46b303ce62a0a2180bcf4d7ebfe4838ccfaa18deb331780af1819377b3a",
+      "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
+      "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+    "frozen_sources": "dataset/specifications/normalized_transition_v2"
   },
   "constrained_observed_fields": [
     "CompletionLight",
@@ -7514,10 +7944,11 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
     "Mode changes reset the automatic route to WAIT_FEED. Confirmations are levels accepted only in their corresponding processing wait.",
     "Arrival has priority; a confirmation already TRUE on the arrival invocation is accepted no earlier than the next invocation.",
     "A rejected item remains at the weighing station, with kick TRUE, until SensorWeight becomes FALSE. It then returns to WAIT_FEED.",
-    "firingTemp updates only for accepted weight and retains the last accepted value otherwise. REAL comparisons use absolute tolerance 1e-5.",
+    "firingTemp updates only when accepted weight satisfies 100.0 <= real32(weight) <= 200.0 (binary32 rounding applied prior to range test) and retains the last accepted value otherwise. REAL firingTemp comparisons use absolute tolerance 1e-4 to exceed 1 ULP near 550.0.",
     "At most one phase transition occurs per invocation. Output arrival sets CompletionLight immediately, removal clears it and resets the route.",
-    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
-    "Floating-point inputs and intermediate reference arithmetic are finite. Existing fixed traces retain their declared absolute tolerance; claims do not extend to arbitrary magnitudes without a separately specified numeric error policy."
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "Floating-point inputs and intermediate reference arithmetic are finite. Existing fixed traces retain their declared absolute tolerance; claims do not extend to arbitrary magnitudes without a separately specified numeric error policy.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
   ],
   "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
   "limitations": [
@@ -7528,6 +7959,14 @@ Inputs I[k] are sampled at invocation; outputs O[k] are observed after the call.
   "rules_zh": "参考阶段WAIT_FEED→MOVE_WASH→WAIT_WASH→MOVE_WEIGHT→WAIT_WEIGHT→REJECT或MOVE_FIRING→WAIT_FIRING→MOVE_OUTPUT→OUTPUT_DONE；每拍按旧阶段只推进一阶。重量100..200含边界合格，合格温度real32(500+real32(real32(weight-100)*0.5))；不合格保持温度并剔除至SensorWeight假。完成取走后回初始。手动清流程、方向按钮互锁、kick/灯关闭、温度保持。自动仅运输阶段正转、不反转；kick对应REJECT、灯对应OUTPUT_DONE。"
 }
 ```
+
+**PUB020.P_init**
+
+```text
+init
+```
+
+Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
 
 **PUB020.P1** Interlock
 
@@ -7601,6 +8040,14 @@ Only the ordered processing route advances qualified products.
 
 With continuing automatic mode, eventual movement/processing feedback and accepted weights, each feed eventually completes.
 
+**PUB020.P10**
+
+```text
+G((!auto -> (!kick & !CompletionLight)) & (auto & post_wait -> stopped) & (auto & post_move -> (fwd & !rev)))
+```
+
+Closes independent LTL coverage of manual/waiting/transport actuator behavior.
+
 **PUB020.V2.COMPLETE**
 
 ```text
@@ -7621,6 +8068,9 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 | PUB020.T6 | Reject just outside the inclusive limits, retain rejection until removal. | 9 |
 | PUB020.T7 | Out-of-order completions do not move an idle product. | 4 |
 | V2_process_history_regression | Mode/edge reset, repeated station or prior-batch retained setpoint regression. | 16 |
+| PUB020.T8 | PUB020.T8 | 14 |
+| PUB020.R22.all_transport | 四段持续运输、加工等待与完整第二批次 | 58 |
+| PUB020.R22.mode_reset | 运输中切手动再切自动、路线复位且温度保持 | 9 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -7643,7 +8093,26 @@ Origin: self_built. Difficulty: easy.
 
 ### Natural language source
 
-Implement a guarded motor latch. Inputs are Start, Stop and GuardClosed. Run initially is FALSE. On every scan, Stop or an open guard forces Run FALSE. Otherwise Start sets Run TRUE; without Start retain Run. If Start remains held while the guard closes, starting on that closing scan is permitted. This is logic for a teaching controller, not a replacement for a safety-rated guard circuit.
+# SELF001: Guarded Motor Latch
+
+## Background
+Teaching controller for a guarded single-motor latch (not a safety-rated circuit).
+
+## Functional Requirements
+1. Inputs: `Start`, `Stop`, and `GuardClosed` (`BOOL`, all level-sensitive).
+2. On every scan, if `Stop = TRUE` or `GuardClosed = FALSE`, force `Run := FALSE`.
+3. Otherwise, if `Start = TRUE`, set `Run := TRUE` (including when `Start` stays TRUE on the scan `GuardClosed` closes).
+4. Otherwise retain the previous `Run` state.
+
+## Interface
+- **Inputs:** `Start: BOOL`, `Stop: BOOL`, `GuardClosed: BOOL`
+- **Outputs:** `Run: BOOL`
+
+## Initial Values
+- `Run=false`
+
+## Timing & Evaluation Conventions
+Signals are sampled every scan (`dt_ms` is unused for logical transitions).
 
 ### Scenario
 
@@ -7678,7 +8147,8 @@ At scan k, sample every input once, read retained pre-state q[k], execute one tr
 ### Explicit assumptions
 
 - Inputs are level-sensitive; no start edge is required.
-- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
 
@@ -7690,17 +8160,18 @@ At scan k, sample every input once, read retained pre-state q[k], execute one tr
 - `qRun`: {"kind": "previous_observed_output", "source": "O[k-1].Run", "initial": false, "update": "After comparing scan k, store ACTUAL O[k].Run; never write into reference state."}
 - `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_SELF001(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
 r初值FALSE；rAfter=GuardClosed & !Stop & (Start | rBefore)；期望Run=rAfter。
+- `init`: At the separate pre-invocation initial observation before scan k=0: O_init.Run=false.
 
 ### LTL properties
 
-**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Human rationality review is completed; candidate verification remains UNVERIFIED.
 
 ### Normalized state, observation and predicate definitions
 
 ```json
 {
   "schema_version": 1,
-  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "status": "NORMALIZED_HUMAN_REVIEWED",
   "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
   "candidate_formal_verification": "UNVERIFIED",
   "initial_observed": {
@@ -7725,7 +8196,8 @@ r初值FALSE；rAfter=GuardClosed & !Stop & (Start | rBefore)；期望Run=rAfter
       },
       "phase": 0,
       "previous_mode": null,
-      "clock": 0.0,
+      "clock": 0,
+      "first": true,
       "heat_start": null,
       "protection_start": null,
       "demand": false
@@ -7736,16 +8208,16 @@ r初值FALSE；rAfter=GuardClosed & !Stop & (Start | rBefore)；期望Run=rAfter
     "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('SELF001'); constructed once per independent case, current state is Sref[k].",
     "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
     "module_sha256": {
-      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
-      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
-      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
-      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
-      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "scan_contract.py": "2ebdbeb0bacd3c6154e1add2fd358f1aadc9ac9c9322a9201798065154353f48",
+      "array_contracts.py": "f541ffe0e28c56e84ad737b06aa8c8ee6180b1afda720b7c41cc8fccad2d8ecd",
+      "data_contracts.py": "0792c46b303ce62a0a2180bcf4d7ebfe4838ccfaa18deb331780af1819377b3a",
+      "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
+      "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+    "frozen_sources": "dataset/specifications/normalized_transition_v2"
   },
   "constrained_observed_fields": [
     "Run"
@@ -7794,7 +8266,8 @@ r初值FALSE；rAfter=GuardClosed & !Stop & (Start | rBefore)；期望Run=rAfter
   },
   "assumptions": [
     "Inputs are level-sensitive; no start edge is required.",
-    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
   ],
   "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
   "limitations": [
@@ -7805,6 +8278,14 @@ r初值FALSE；rAfter=GuardClosed & !Stop & (Start | rBefore)；期望Run=rAfter
   "rules_zh": "r初值FALSE；rAfter=GuardClosed & !Stop & (Start | rBefore)；期望Run=rAfter。"
 }
 ```
+
+**P_init**
+
+```text
+init
+```
+
+Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
 
 **P1**
 
@@ -7860,6 +8341,11 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 | --- | --- | ---: |
 | latch | Initialize, start, hold and stop | 5 |
 | priority | Simultaneous requests and guard recovery | 5 |
+| SELF001.boundary_start_hold | SELF001.boundary_start_hold | 5 |
+| SELF001.R22.normal_changes | 持续启动时停止解除 | 3 |
+| SELF001.R22.tail_Start | 完成主流程后改变并保持 Start | 7 |
+| SELF001.R22.tail_Stop | 完成主流程后改变并保持 Stop | 7 |
+| SELF001.R22.tail_GuardClosed | 完成主流程后改变并保持 GuardClosed | 7 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -7882,7 +8368,26 @@ Origin: self_built. Difficulty: medium.
 
 ### Natural language source
 
-ForwardButton and ReverseButton are jog commands. Stop, both buttons, or neither button gives both outputs FALSE. Exactly one button requests that direction. If the previous scan output commanded the opposite direction, give a neutral scan with both outputs FALSE; a request held into the following scan can then run. At initialization the previous direction is neutral. Never energize Forward and Reverse together.
+# SELF002: Bidirectional Reversing Interlock with One-Scan Stop
+
+## Background
+Forward/reverse motor interlock preventing immediate reversal on consecutive scans.
+
+## Functional Requirements
+1. Inputs: `ForwardButton`, `ReverseButton`, and `Stop` (`BOOL`).
+2. Compute desired direction: `0` (stop) if `Stop = TRUE` or `ForwardButton = ReverseButton`; `+1` if only `ForwardButton = TRUE`; `-1` if only `ReverseButton = TRUE`.
+3. If desired direction is nonzero and opposite to the previous scan's active direction (`-1` vs `+1`), force both outputs FALSE for this one intermediate stop scan (clearing direction memory to `0`).
+4. Otherwise output the desired direction (`Forward := (dir = +1)`, `Reverse := (dir = -1)`) and store it.
+
+## Interface
+- **Inputs:** `ForwardButton: BOOL`, `ReverseButton: BOOL`, `Stop: BOOL`
+- **Outputs:** `Forward: BOOL`, `Reverse: BOOL`
+
+## Initial Values
+- `previous_direction=0`, `Forward=false`, `Reverse=false`
+
+## Timing & Evaluation Conventions
+All inputs are level-sensitive; direction memory initializes to `0` (stopped).
 
 ### Scenario
 
@@ -7919,7 +8424,8 @@ At scan k, sample every input once, read retained pre-state q[k], execute one tr
 
 ### Explicit assumptions
 
-- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
 
@@ -7935,17 +8441,18 @@ At scan k, sample every input once, read retained pre-state q[k], execute one tr
 - `revOnly`: ReverseButton & !ForwardButton & !Stop.
 - `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_SELF002(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
 d初值0；desired在Stop或两方向按钮相等时为0，否则前进1/后退-1。dAfter在desired!=0且dBefore=-desired时为0，否则desired；Forward=(dAfter=1)，Reverse=(dAfter=-1)。
+- `init`: At the separate pre-invocation initial observation before scan k=0: O_init.Forward=false, O_init.Reverse=false.
 
 ### LTL properties
 
-**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Human rationality review is completed; candidate verification remains UNVERIFIED.
 
 ### Normalized state, observation and predicate definitions
 
 ```json
 {
   "schema_version": 1,
-  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "status": "NORMALIZED_HUMAN_REVIEWED",
   "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
   "candidate_formal_verification": "UNVERIFIED",
   "initial_observed": {
@@ -7971,7 +8478,8 @@ d初值0；desired在Stop或两方向按钮相等时为0，否则前进1/后退-
       },
       "phase": 0,
       "previous_mode": null,
-      "clock": 0.0,
+      "clock": 0,
+      "first": true,
       "heat_start": null,
       "protection_start": null,
       "demand": false
@@ -7982,16 +8490,16 @@ d初值0；desired在Stop或两方向按钮相等时为0，否则前进1/后退-
     "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('SELF002'); constructed once per independent case, current state is Sref[k].",
     "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
     "module_sha256": {
-      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
-      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
-      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
-      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
-      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "scan_contract.py": "2ebdbeb0bacd3c6154e1add2fd358f1aadc9ac9c9322a9201798065154353f48",
+      "array_contracts.py": "f541ffe0e28c56e84ad737b06aa8c8ee6180b1afda720b7c41cc8fccad2d8ecd",
+      "data_contracts.py": "0792c46b303ce62a0a2180bcf4d7ebfe4838ccfaa18deb331780af1819377b3a",
+      "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
+      "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+    "frozen_sources": "dataset/specifications/normalized_transition_v2"
   },
   "constrained_observed_fields": [
     "Forward",
@@ -8046,7 +8554,8 @@ d初值0；desired在Stop或两方向按钮相等时为0，否则前进1/后退-
     "time_progress": "Timed eventuality clauses explicitly require G(F(TimeTick)); TimeTick denotes crossing a new integer-ms boundary. Finite observations cannot establish this premise."
   },
   "assumptions": [
-    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
   ],
   "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
   "limitations": [
@@ -8057,6 +8566,14 @@ d初值0；desired在Stop或两方向按钮相等时为0，否则前进1/后退-
   "rules_zh": "d初值0；desired在Stop或两方向按钮相等时为0，否则前进1/后退-1。dAfter在desired!=0且dBefore=-desired时为0，否则desired；Forward=(dAfter=1)，Reverse=(dAfter=-1)。"
 }
 ```
+
+**P_init**
+
+```text
+init
+```
+
+Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
 
 **P1**
 
@@ -8120,6 +8637,11 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 | --- | --- | ---: |
 | reverse | Direct reversal and held reverse request | 6 |
 | ambiguous | Both buttons and Stop override direction | 4 |
+| SELF002.boundary_reverse_memory | SELF002.boundary_reverse_memory | 5 |
+| SELF002.R22.normal_changes | 倒转停止及方向记忆清除 | 5 |
+| SELF002.R22.tail_ForwardButton | 完成主流程后改变并保持 ForwardButton | 8 |
+| SELF002.R22.tail_ReverseButton | 完成主流程后改变并保持 ReverseButton | 8 |
+| SELF002.R22.tail_Stop | 完成主流程后改变并保持 Stop | 8 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -8142,7 +8664,26 @@ Origin: self_built. Difficulty: medium.
 
 ### Natural language source
 
-Run initially is FALSE and ResetRequired initially is TRUE. EStopNC=FALSE immediately forces Run FALSE and sets ResetRequired TRUE. While ResetRequired is TRUE, keep Run FALSE. Clear ResetRequired only when EStopNC is TRUE, Reset is TRUE, Start is FALSE and Stop is FALSE. That clearing scan cannot start the motor. Once reset, Stop stops the motor, Start starts it, otherwise retain Run. Start held during reset must not clear the restart inhibition. This educational logic does not implement a certified emergency-stop chain.
+# SELF003: Safety-Reset Latched Motor Control
+
+## Background
+Motor latch requiring explicit isolated reset after power-up or E-stop loss.
+
+## Functional Requirements
+1. Inputs: `Start`, `Stop`, `EStopNC` (`TRUE` when healthy), and `Reset` (`BOOL`).
+2. If `EStopNC = FALSE`, set `ResetRequired := TRUE` and `Run := FALSE` immediately.
+3. While `ResetRequired = TRUE`, `Run` stays `FALSE`; `ResetRequired` clears to `FALSE` only when `Reset = TRUE AND Start = FALSE AND Stop = FALSE`.
+4. When `ResetRequired = FALSE` and `EStopNC = TRUE`: `Stop = TRUE` clears `Run := FALSE`; else `Start = TRUE` sets `Run := TRUE`; else `Run` retains.
+
+## Interface
+- **Inputs:** `Start: BOOL`, `Stop: BOOL`, `EStopNC: BOOL`, `Reset: BOOL`
+- **Outputs:** `Run: BOOL`, `ResetRequired: BOOL`
+
+## Initial Values
+- `Run=false`, `ResetRequired=true`
+
+## Timing & Evaluation Conventions
+Safety-circuit logic evaluates priority strictly in the order E-stop > ResetRequired > Stop > Start.
 
 ### Scenario
 
@@ -8180,7 +8721,8 @@ At scan k, sample every input once, read retained pre-state q[k], execute one tr
 
 ### Explicit assumptions
 
-- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
 
@@ -8196,17 +8738,18 @@ At scan k, sample every input once, read retained pre-state q[k], execute one tr
 - `validReset`: EStopNC & Reset & !Start & !Stop.
 - `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_SELF003(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
 required初值TRUE、run初值FALSE。按顺序选择首个分支：!EStopNC置required=TRUE/run=FALSE；旧required真时run=FALSE，仅Reset & !Start & !Stop清required；否则Stop清run、否则Start置run，其余保持。两个实际输出分别比较runAfter、requiredAfter。
+- `init`: At the separate pre-invocation initial observation before scan k=0: O_init.Run=false, O_init.ResetRequired=true.
 
 ### LTL properties
 
-**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Human rationality review is completed; candidate verification remains UNVERIFIED.
 
 ### Normalized state, observation and predicate definitions
 
 ```json
 {
   "schema_version": 1,
-  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "status": "NORMALIZED_HUMAN_REVIEWED",
   "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
   "candidate_formal_verification": "UNVERIFIED",
   "initial_observed": {
@@ -8233,7 +8776,8 @@ required初值TRUE、run初值FALSE。按顺序选择首个分支：!EStopNC置r
       },
       "phase": 0,
       "previous_mode": null,
-      "clock": 0.0,
+      "clock": 0,
+      "first": true,
       "heat_start": null,
       "protection_start": null,
       "demand": false
@@ -8244,16 +8788,16 @@ required初值TRUE、run初值FALSE。按顺序选择首个分支：!EStopNC置r
     "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('SELF003'); constructed once per independent case, current state is Sref[k].",
     "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
     "module_sha256": {
-      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
-      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
-      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
-      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
-      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "scan_contract.py": "2ebdbeb0bacd3c6154e1add2fd358f1aadc9ac9c9322a9201798065154353f48",
+      "array_contracts.py": "f541ffe0e28c56e84ad737b06aa8c8ee6180b1afda720b7c41cc8fccad2d8ecd",
+      "data_contracts.py": "0792c46b303ce62a0a2180bcf4d7ebfe4838ccfaa18deb331780af1819377b3a",
+      "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
+      "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+    "frozen_sources": "dataset/specifications/normalized_transition_v2"
   },
   "constrained_observed_fields": [
     "ResetRequired",
@@ -8308,7 +8852,8 @@ required初值TRUE、run初值FALSE。按顺序选择首个分支：!EStopNC置r
     "time_progress": "Timed eventuality clauses explicitly require G(F(TimeTick)); TimeTick denotes crossing a new integer-ms boundary. Finite observations cannot establish this premise."
   },
   "assumptions": [
-    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
   ],
   "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
   "limitations": [
@@ -8319,6 +8864,14 @@ required初值TRUE、run初值FALSE。按顺序选择首个分支：!EStopNC置r
   "rules_zh": "required初值TRUE、run初值FALSE。按顺序选择首个分支：!EStopNC置required=TRUE/run=FALSE；旧required真时run=FALSE，仅Reset & !Start & !Stop清required；否则Stop清run、否则Start置run，其余保持。两个实际输出分别比较runAfter、requiredAfter。"
 }
 ```
+
+**P_init**
+
+```text
+init
+```
+
+Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
 
 **P1**
 
@@ -8399,6 +8952,13 @@ Explicit correction of a demonstrated omission.
 | reset_restart | Power-up inhibition, reset, run and emergency stop | 6 |
 | invalid_reset | Held Start and Stop block reset | 4 |
 | V2_omission_regression | Reject the concrete wrong behavior documented in the 2026-11-06 specification review. | 4 |
+| SELF003.boundary_reset_isolation | SELF003.boundary_reset_isolation | 7 |
+| SELF003.R22.reset_stops_run | 按当前参考，已解除复位要求后单独Reset不停止运行 | 4 |
+| SELF003.R22.normal_changes | 运行中Reset保持、停止后重启 | 5 |
+| SELF003.R22.tail_Start | 完成主流程后改变并保持 Start | 8 |
+| SELF003.R22.tail_Stop | 完成主流程后改变并保持 Stop | 8 |
+| SELF003.R22.tail_EStopNC | 完成主流程后改变并保持 EStopNC | 8 |
+| SELF003.R22.tail_Reset | 完成主流程后改变并保持 Reset | 8 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -8421,7 +8981,25 @@ Origin: self_built. Difficulty: medium.
 
 ### Natural language source
 
-Use states IDLE, MOVING, COMPLETE and FAULT, initially IDLE. Jam forces FAULT from any state; Belt and Complete are FALSE there. With Jam FALSE, Reset returns any state to IDLE. Without Reset, FAULT is latched. Stop aborts a non-fault cycle to IDLE. In IDLE accept Start only if AtExit is FALSE and enter MOVING. In MOVING, AtExit enters COMPLETE. COMPLETE is held until Reset or Stop; Start alone does not clear it. Belt is TRUE only in MOVING, Complete only in COMPLETE and Fault only in FAULT. Execute at most one state transition per scan.
+# SELF004: Transfer Conveyor Cycle with Jam Fault
+
+## Background
+Four-state (`IDLE`, `MOVING`, `COMPLETE`, `FAULT`) transfer conveyor cycle with jam supervision.
+
+## Functional Requirements
+1. Inputs: `Start`, `Stop`, `AtExit`, `Jam`, `Reset` (`BOOL`).
+2. Priority order per scan: (1) `Jam = TRUE` -> `FAULT`; (2) `Reset = TRUE` -> `IDLE`; (3) if already in `FAULT`, remain in `FAULT` until cleared by `Reset` (without `Jam`); (4) `Stop = TRUE` -> `IDLE`; (5) if in `MOVING` and `AtExit = TRUE` -> `COMPLETE`; (6) if in `IDLE`, `Start = TRUE`, and `AtExit = FALSE` -> `MOVING`; (7) otherwise hold state.
+3. Outputs reflect post-transition state: `Belt <-> MOVING`, `Complete <-> COMPLETE`, `Fault <-> FAULT` (at most one active).
+
+## Interface
+- **Inputs:** `Start: BOOL`, `Stop: BOOL`, `AtExit: BOOL`, `Jam: BOOL`, `Reset: BOOL`
+- **Outputs:** `Belt: BOOL`, `Complete: BOOL`, `Fault: BOOL`
+
+## Initial Values
+- `state="IDLE"`, `Belt=false`, `Complete=false`, `Fault=false`
+
+## Timing & Evaluation Conventions
+All signals are level-sensitive; a single scan executes at most one state step.
 
 ### Scenario
 
@@ -8465,7 +9043,8 @@ At scan k, sample every input once, read retained pre-state q[k], execute one tr
 
 ### Explicit assumptions
 
-- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
 
@@ -8484,17 +9063,18 @@ At scan k, sample every input once, read retained pre-state q[k], execute one tr
 - `qFault`: Spre.reference.state.mode=3
 - `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_SELF004(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
 mode初值IDLE。优先Jam→FAULT，其次Reset→IDLE，其次旧FAULT保持，其次Stop→IDLE，其次旧MOVING且AtExit→COMPLETE，其次旧IDLE且Start且!AtExit→MOVING，其余保持。Belt/Complete/Fault分别等价于新mode为MOVING/COMPLETE/FAULT。
+- `init`: At the separate pre-invocation initial observation before scan k=0: Spre.mode=IDLE, O_init.Belt=false, O_init.Complete=false, O_init.Fault=false.
 
 ### LTL properties
 
-**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Human rationality review is completed; candidate verification remains UNVERIFIED.
 
 ### Normalized state, observation and predicate definitions
 
 ```json
 {
   "schema_version": 1,
-  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "status": "NORMALIZED_HUMAN_REVIEWED",
   "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
   "candidate_formal_verification": "UNVERIFIED",
   "initial_observed": {
@@ -8521,7 +9101,8 @@ mode初值IDLE。优先Jam→FAULT，其次Reset→IDLE，其次旧FAULT保持�
       },
       "phase": 0,
       "previous_mode": null,
-      "clock": 0.0,
+      "clock": 0,
+      "first": true,
       "heat_start": null,
       "protection_start": null,
       "demand": false
@@ -8532,16 +9113,16 @@ mode初值IDLE。优先Jam→FAULT，其次Reset→IDLE，其次旧FAULT保持�
     "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('SELF004'); constructed once per independent case, current state is Sref[k].",
     "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
     "module_sha256": {
-      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
-      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
-      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
-      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
-      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "scan_contract.py": "2ebdbeb0bacd3c6154e1add2fd358f1aadc9ac9c9322a9201798065154353f48",
+      "array_contracts.py": "f541ffe0e28c56e84ad737b06aa8c8ee6180b1afda720b7c41cc8fccad2d8ecd",
+      "data_contracts.py": "0792c46b303ce62a0a2180bcf4d7ebfe4838ccfaa18deb331780af1819377b3a",
+      "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
+      "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+    "frozen_sources": "dataset/specifications/normalized_transition_v2"
   },
   "constrained_observed_fields": [
     "Belt",
@@ -8595,7 +9176,8 @@ mode初值IDLE。优先Jam→FAULT，其次Reset→IDLE，其次旧FAULT保持�
     "time_progress": "Timed eventuality clauses explicitly require G(F(TimeTick)); TimeTick denotes crossing a new integer-ms boundary. Finite observations cannot establish this premise."
   },
   "assumptions": [
-    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
   ],
   "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
   "limitations": [
@@ -8606,6 +9188,14 @@ mode初值IDLE。优先Jam→FAULT，其次Reset→IDLE，其次旧FAULT保持�
   "rules_zh": "mode初值IDLE。优先Jam→FAULT，其次Reset→IDLE，其次旧FAULT保持，其次Stop→IDLE，其次旧MOVING且AtExit→COMPLETE，其次旧IDLE且Start且!AtExit→MOVING，其余保持。Belt/Complete/Fault分别等价于新mode为MOVING/COMPLETE/FAULT。"
 }
 ```
+
+**P_init**
+
+```text
+init
+```
+
+Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
 
 **P1**
 
@@ -8663,6 +9253,22 @@ G(Fault -> (G Fault | (Fault U (!Jam & Reset))))
 
 A latched jam remains until a cleared-jam reset, or forever if no such reset occurs; this does not assume eventual reset.
 
+**P8**
+
+```text
+G((!Jam & !Reset & !qFault & Stop -> (!Belt & !Complete & !Fault)) & (qIdle & !Jam & !Reset & (!Start | AtExit) -> (!Belt & !Complete & !Fault)) & (qMoving & !Jam & !Reset & !Stop & !AtExit -> (Belt & !Complete & !Fault)) & (qComplete & !Jam & !Reset & !Stop -> (Complete & !Belt & !Fault)))
+```
+
+Prevents degenerate implementations that refuse to stop or drop MOVING/COMPLETE prematurely.
+
+**P9**
+
+```text
+G(!(Belt & Complete) & (!(Jam | qFault) -> !Fault) & ((qIdle | qFault | Stop | Reset) -> !Complete))
+```
+
+Eliminates remaining false-positive satisfaction paths on P1..P8.
+
 **SELF004.V2.COMPLETE**
 
 ```text
@@ -8677,6 +9283,13 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 | --- | --- | ---: |
 | index | One pallet and retained completion | 5 |
 | jam | Jam priority, retained fault and safe reset | 6 |
+| SELF004.boundary_stop_and_fault | SELF004.boundary_stop_and_fault | 10 |
+| SELF004.R22.tail_Start | 完成主流程后改变并保持 Start | 7 |
+| SELF004.R22.tail_Stop | 完成主流程后改变并保持 Stop | 7 |
+| SELF004.R22.tail_AtExit | 完成主流程后改变并保持 AtExit | 7 |
+| SELF004.R22.tail_Jam | 完成主流程后改变并保持 Jam | 7 |
+| SELF004.R22.tail_Reset | 完成主流程后改变并保持 Reset | 7 |
+| SELF004.R22.priority_recovery | 动作中停止／矛盾信号与恢复 | 5 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -8699,7 +9312,27 @@ Origin: self_built. Difficulty: medium.
 
 ### Natural language source
 
-Phase 0 is RED for 2 Tick=TRUE invocations, phase 1 GREEN for 3, and phase 2 AMBER for 1. At initialization set phase RED and elapsed ticks zero. With Enable FALSE force RED and clear elapsed ticks every scan. With Enable TRUE and Tick FALSE retain phase and elapsed ticks. A TRUE Tick adds one; upon reaching that phase's duration transition RED->GREEN->AMBER->RED and clear elapsed ticks. Output Phase is 0,1,2 and exactly one color describes the post-transition phase. Tick is an enable level per invocation, not a rising-edge detector.
+# SELF005: Three-Phase Cyclic Traffic Light Controller
+
+## Background
+Three-phase traffic signal (`RED=0`, `GREEN=1`, `AMBER=2`) stepping on logical `Tick` pulses.
+
+## Functional Requirements
+1. Inputs: `Enable` and `Tick` (`BOOL`). Phase durations are fixed logical tick thresholds: `RED: 2`, `GREEN: 3`, `AMBER: 1`.
+2. Whenever `Enable = FALSE`, reset phase to `RED (0)` and elapsed tick counter `age := 0`.
+3. When `Enable = TRUE` and `Tick = FALSE`, keep current phase and `age` unchanged.
+4. When `Enable = TRUE` and `Tick = TRUE`, increment `age`; when `age` reaches the current phase threshold (`2`, `3`, `1`), advance `(phase + 1) mod 3` and reset `age := 0`.
+5. Outputs follow post-transition phase: `Phase := phase`, `Red <-> (phase = 0)`, `Green <-> (phase = 1)`, `Amber <-> (phase = 2)`.
+
+## Interface
+- **Inputs:** `Enable: BOOL`, `Tick: BOOL`
+- **Outputs:** `Red: BOOL`, `Green: BOOL`, `Amber: BOOL`, `Phase: USINT`
+
+## Initial Values
+- `phase=0`, `elapsed_ticks=0`, `Red=true`, `Green=false`, `Amber=false`, `Phase=0`
+
+## Timing & Evaluation Conventions
+`Tick` is a logical invocation count (`1` count per scan where `Tick = TRUE`), not physical `dt_ms` time.
 
 ### Scenario
 
@@ -8721,7 +9354,11 @@ A training traffic signal uses a deterministic logical tick, allowing reproducib
 ```json
 {
   "phase": 0,
-  "elapsed_ticks": 0
+  "elapsed_ticks": 0,
+  "Red": true,
+  "Green": false,
+  "Amber": false,
+  "Phase": 0
 }
 ```
 
@@ -8737,7 +9374,8 @@ At scan k, sample every input once, read retained pre-state q[k], execute one tr
 
 - A logical tick is not claimed to be a physical second.
 - No opposite road or pedestrian signal is controlled.
-- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
 
@@ -8755,20 +9393,26 @@ At scan k, sample every input once, read retained pre-state q[k], execute one tr
 - `oneColor`: int(O[k].Red)+int(O[k].Green)+int(O[k].Amber)=1
 - `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_SELF005(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
 phase=0/age=0初值。!Enable时重置0/0；否则Tick时age加1，到当前phase的阈值(2,3,1)则phase=(phase+1)%3且age=0；其他保持。Red/Green/Amber分别等价于新phase=0/1/2，Phase等于新phase。Tick是逻辑调用计数，不是物理时间。
+- `init`: At the separate pre-invocation initial observation before scan k=0: Spre.phase=0, O_init.Red=true, O_init.Green=false, O_init.Amber=false, O_init.Phase=0.
 
 ### LTL properties
 
-**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Human rationality review is completed; candidate verification remains UNVERIFIED.
 
 ### Normalized state, observation and predicate definitions
 
 ```json
 {
   "schema_version": 1,
-  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "status": "NORMALIZED_HUMAN_REVIEWED",
   "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
   "candidate_formal_verification": "UNVERIFIED",
-  "initial_observed": {},
+  "initial_observed": {
+    "Red": true,
+    "Green": false,
+    "Amber": false,
+    "Phase": 0
+  },
   "reference_state_initial": {
     "class": "ScanContract",
     "state": {
@@ -8789,7 +9433,8 @@ phase=0/age=0初值。!Enable时重置0/0；否则Tick时age加1，到当前phas
       },
       "phase": 0,
       "previous_mode": null,
-      "clock": 0.0,
+      "clock": 0,
+      "first": true,
       "heat_start": null,
       "protection_start": null,
       "demand": false
@@ -8800,16 +9445,16 @@ phase=0/age=0初值。!Enable时重置0/0；否则Tick时age加1，到当前phas
     "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('SELF005'); constructed once per independent case, current state is Sref[k].",
     "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
     "module_sha256": {
-      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
-      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
-      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
-      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
-      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "scan_contract.py": "2ebdbeb0bacd3c6154e1add2fd358f1aadc9ac9c9322a9201798065154353f48",
+      "array_contracts.py": "f541ffe0e28c56e84ad737b06aa8c8ee6180b1afda720b7c41cc8fccad2d8ecd",
+      "data_contracts.py": "0792c46b303ce62a0a2180bcf4d7ebfe4838ccfaa18deb331780af1819377b3a",
+      "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
+      "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+    "frozen_sources": "dataset/specifications/normalized_transition_v2"
   },
   "constrained_observed_fields": [
     "Amber",
@@ -8865,7 +9510,8 @@ phase=0/age=0初值。!Enable时重置0/0；否则Tick时age加1，到当前phas
   "assumptions": [
     "A logical tick is not claimed to be a physical second.",
     "No opposite road or pedestrian signal is controlled.",
-    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
   ],
   "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
   "limitations": [
@@ -8876,6 +9522,14 @@ phase=0/age=0初值。!Enable时重置0/0；否则Tick时age加1，到当前phas
   "rules_zh": "phase=0/age=0初值。!Enable时重置0/0；否则Tick时age加1，到当前phase的阈值(2,3,1)则phase=(phase+1)%3且age=0；其他保持。Red/Green/Amber分别等价于新phase=0/1/2，Phase等于新phase。Tick是逻辑调用计数，不是物理时间。"
 }
 ```
+
+**P_init**
+
+```text
+init
+```
+
+Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
 
 **P1**
 
@@ -8888,10 +9542,10 @@ The lamp encoding is one-hot.
 **P2**
 
 ```text
-G(!Enable -> (Red & !Green & !Amber))
+G(!Enable -> (Red & !Green & !Amber & Phase=0))
 ```
 
-Disabled operation is a steady red.
+When Enable is FALSE, immediately force Red (Phase=0) with age reset to 0.
 
 **P3**
 
@@ -8933,6 +9587,22 @@ One amber tick returns red.
 
 Persistent enable plus infinitely many ticks makes every phase recur; finite traces cannot prove this liveness property.
 
+**P8**
+
+```text
+G((Red <-> Phase=0) & (Green <-> Phase=1) & (Amber <-> Phase=2) & (Phase>=0 & Phase<=2))
+```
+
+Previously Phase was left unconstrained except for holding on !Tick.
+
+**P9**
+
+```text
+G((Enable & Tick & !qRedLast & !qGreenLast & !qAmber) -> (Phase = qPhase))
+```
+
+Prevents single-tick skipping through Red (needs 2 ticks) or Green (needs 3 ticks).
+
 **SELF005.V2.COMPLETE**
 
 ```text
@@ -8947,6 +9617,11 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 | --- | --- | ---: |
 | cycle | Full phase duration boundaries and pause | 7 |
 | disable | Disable clears elapsed tick progress | 5 |
+| SELF005.boundary_pause_resume | SELF005.boundary_pause_resume | 10 |
+| SELF005.R22.green_pause | 绿灯阶段暂停Tick应保持颜色 | 4 |
+| SELF005.R22.normal_changes | 完整两轮各相位暂停并保留计龄 | 22 |
+| SELF005.R22.tail_Enable | 完成主流程后改变并保持 Enable | 9 |
+| SELF005.R22.tail_Tick | 完成主流程后改变并保持 Tick | 9 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -8969,7 +9644,26 @@ Origin: self_built. Difficulty: easy.
 
 ### Natural language source
 
-LowWet and HighWet indicate water covering the respective lower and upper switches. HighWet TRUE with LowWet FALSE is inconsistent: SensorFault TRUE and Fill FALSE. SensorFault is combinational and clears when inputs become consistent. Inhibit or HighWet also forces Fill FALSE. Otherwise LowWet FALSE starts Fill; LowWet TRUE and HighWet FALSE retains Fill. Fill initializes FALSE. Clearing Inhibit at a middle level retains the resulting stopped state until water falls below the low switch.
+# SELF006: Tank Hysteresis Fill Controller with Contradiction Detection
+
+## Background
+Tank fill controller using low/high float probes with contradictory sensor fault protection.
+
+## Functional Requirements
+1. Inputs: `LowWet` (`TRUE` when level >= low probe), `HighWet` (`TRUE` when level >= high probe), `Inhibit` (`BOOL`).
+2. `SensorFault := HighWet AND NOT LowWet` (physically impossible probe combination).
+3. If `SensorFault = TRUE` or `Inhibit = TRUE` or `HighWet = TRUE`, force `Fill := FALSE`.
+4. Else if `LowWet = FALSE`, set `Fill := TRUE`; otherwise retain previous `Fill`.
+
+## Interface
+- **Inputs:** `LowWet: BOOL`, `HighWet: BOOL`, `Inhibit: BOOL`
+- **Outputs:** `Fill: BOOL`, `SensorFault: BOOL`
+
+## Initial Values
+- `Fill=false`, `SensorFault=false`
+
+## Timing & Evaluation Conventions
+Both outputs reflect post-evaluation state on every scan.
 
 ### Scenario
 
@@ -8989,7 +9683,8 @@ A refill tank avoids contactor chatter between low and high level switches and d
 
 ```json
 {
-  "Fill": false
+  "Fill": false,
+  "SensorFault": false
 }
 ```
 
@@ -9006,7 +9701,8 @@ At scan k, sample every input once, read retained pre-state q[k], execute one tr
 
 ### Explicit assumptions
 
-- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
 
@@ -9020,21 +9716,23 @@ At scan k, sample every input once, read retained pre-state q[k], execute one tr
 - `middle`: LowWet & !HighWet.
 - `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_SELF006(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
 fill初值FALSE；sensorFault=HighWet & !LowWet。sensorFault或Inhibit或HighWet时fillAfter=FALSE，否则!LowWet时TRUE，其余保持；实际Fill/SensorFault分别比较这两个期望值。
+- `init`: At the separate pre-invocation initial observation before scan k=0: O_init.Fill=false, O_init.SensorFault=false.
 
 ### LTL properties
 
-**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Human rationality review is completed; candidate verification remains UNVERIFIED.
 
 ### Normalized state, observation and predicate definitions
 
 ```json
 {
   "schema_version": 1,
-  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "status": "NORMALIZED_HUMAN_REVIEWED",
   "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
   "candidate_formal_verification": "UNVERIFIED",
   "initial_observed": {
-    "Fill": false
+    "Fill": false,
+    "SensorFault": false
   },
   "reference_state_initial": {
     "class": "ScanContract",
@@ -9055,7 +9753,8 @@ fill初值FALSE；sensorFault=HighWet & !LowWet。sensorFault或Inhibit或HighWe
       },
       "phase": 0,
       "previous_mode": null,
-      "clock": 0.0,
+      "clock": 0,
+      "first": true,
       "heat_start": null,
       "protection_start": null,
       "demand": false
@@ -9066,16 +9765,16 @@ fill初值FALSE；sensorFault=HighWet & !LowWet。sensorFault或Inhibit或HighWe
     "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('SELF006'); constructed once per independent case, current state is Sref[k].",
     "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
     "module_sha256": {
-      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
-      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
-      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
-      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
-      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "scan_contract.py": "2ebdbeb0bacd3c6154e1add2fd358f1aadc9ac9c9322a9201798065154353f48",
+      "array_contracts.py": "f541ffe0e28c56e84ad737b06aa8c8ee6180b1afda720b7c41cc8fccad2d8ecd",
+      "data_contracts.py": "0792c46b303ce62a0a2180bcf4d7ebfe4838ccfaa18deb331780af1819377b3a",
+      "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
+      "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+    "frozen_sources": "dataset/specifications/normalized_transition_v2"
   },
   "constrained_observed_fields": [
     "Fill",
@@ -9124,7 +9823,8 @@ fill初值FALSE；sensorFault=HighWet & !LowWet。sensorFault或Inhibit或HighWe
     "time_progress": "Timed eventuality clauses explicitly require G(F(TimeTick)); TimeTick denotes crossing a new integer-ms boundary. Finite observations cannot establish this premise."
   },
   "assumptions": [
-    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
   ],
   "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
   "limitations": [
@@ -9135,6 +9835,14 @@ fill初值FALSE；sensorFault=HighWet & !LowWet。sensorFault或Inhibit或HighWe
   "rules_zh": "fill初值FALSE；sensorFault=HighWet & !LowWet。sensorFault或Inhibit或HighWet时fillAfter=FALSE，否则!LowWet时TRUE，其余保持；实际Fill/SensorFault分别比较这两个期望值。"
 }
 ```
+
+**P_init**
+
+```text
+init
+```
+
+Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
 
 **P1**
 
@@ -9190,6 +9898,11 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 | --- | --- | ---: |
 | hysteresis | Fill cycle across both switching thresholds | 5 |
 | fault_inhibit | Invalid switch pair and inhibit recovery | 5 |
+| SELF006.boundary_fault_recovery | SELF006.boundary_fault_recovery | 5 |
+| SELF006.R22.tail_LowWet | 完成主流程后改变并保持 LowWet | 7 |
+| SELF006.R22.tail_HighWet | 完成主流程后改变并保持 HighWet | 7 |
+| SELF006.R22.tail_Inhibit | 完成主流程后改变并保持 Inhibit | 7 |
+| SELF006.R22.priority_recovery | 动作中停止／矛盾信号与恢复 | 3 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -9212,7 +9925,26 @@ Origin: self_built. Difficulty: medium.
 
 ### Natural language source
 
-LeadA initializes TRUE. During Demand choose preferred healthy pump, falling back to the other if the preferred pump is faulted. Both faulty means neither runs. Fault changes cause immediate fallback within the episode. Never run both. When Demand falls FALSE, toggle LeadA exactly once if any pump ran during that just-ended continuous demand episode. An all-faulted episode with no running scan does not toggle the lead. Without Demand both pumps are FALSE. LeadA is the retained preference for the current or next episode, not a report of which fallback pump is presently running.
+# SELF007: Duty/Standby Dual-Pump Alternation with Fault Fallback
+
+## Background
+Dual-pump (`PumpA`/`PumpB`) duty/standby alternator balancing wear across served demand episodes.
+
+## Functional Requirements
+1. Inputs: `Demand`, `FaultA`, `FaultB` (`BOOL`). Initial preference `LeadA := TRUE`, episode memory `served := FALSE`, `previous_demand := FALSE`.
+2. When `Demand = FALSE`: both `PumpA := FALSE`, `PumpB := FALSE`; if `previous_demand = TRUE AND served = TRUE`, toggle `LeadA := NOT LeadA`; reset `served := FALSE`.
+3. When `Demand = TRUE`: select the preferred lead pump (`PumpA` if `LeadA`, else `PumpB`) if healthy; otherwise fall back to the healthy standby pump; if both fault, run neither. If either pump runs on this scan, mark `served := TRUE`.
+4. `LeadA` reflects the post-transition preference; `previous_demand` tracks `I[k].Demand` on every scan.
+
+## Interface
+- **Inputs:** `Demand: BOOL`, `FaultA: BOOL`, `FaultB: BOOL`
+- **Outputs:** `PumpA: BOOL`, `PumpB: BOOL`, `LeadA: BOOL`
+
+## Initial Values
+- `LeadA=true`, `previous_demand=false`, `episode_served=false`, `PumpA=false`, `PumpB=false`
+
+## Timing & Evaluation Conventions
+If `Demand` stays FALSE for multiple scans, alternation occurs at most once on the falling edge following a served demand episode.
 
 ### Scenario
 
@@ -9235,7 +9967,9 @@ Two sump pumps share wear by alternating the preferred pump only after a demand 
 {
   "LeadA": true,
   "previous_demand": false,
-  "episode_served": false
+  "episode_served": false,
+  "PumpA": false,
+  "PumpB": false
 }
 ```
 
@@ -9251,7 +9985,8 @@ At scan k, sample every input once, read retained pre-state q[k], execute one tr
 
 ### Explicit assumptions
 
-- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
 
@@ -9266,21 +10001,24 @@ At scan k, sample every input once, read retained pre-state q[k], execute one tr
 - `completedServed`: Spre.reference.state.demand AND NOT I[k].Demand AND Spre.reference.state.served
 - `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_SELF007(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
 leadA=TRUE/served=FALSE/previousDemand=FALSE初值。Demand假时双泵关，仅previousDemand & served时轮换leadA，然后清served；Demand真时由leadA选择无故障主泵，主故障则无故障备用，双故障均关；served累计本需求段任一泵运行。previousDemand每拍=Demand，LeadA比较转移后偏好。
+- `init`: At the separate pre-invocation initial observation before scan k=0: O_init.PumpA=false, O_init.PumpB=false, O_init.LeadA=true.
 
 ### LTL properties
 
-**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Human rationality review is completed; candidate verification remains UNVERIFIED.
 
 ### Normalized state, observation and predicate definitions
 
 ```json
 {
   "schema_version": 1,
-  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "status": "NORMALIZED_HUMAN_REVIEWED",
   "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
   "candidate_formal_verification": "UNVERIFIED",
   "initial_observed": {
-    "LeadA": true
+    "LeadA": true,
+    "PumpA": false,
+    "PumpB": false
   },
   "reference_state_initial": {
     "class": "ScanContract",
@@ -9303,7 +10041,8 @@ leadA=TRUE/served=FALSE/previousDemand=FALSE初值。Demand假时双泵关，仅
       },
       "phase": 0,
       "previous_mode": null,
-      "clock": 0.0,
+      "clock": 0,
+      "first": true,
       "heat_start": null,
       "protection_start": null,
       "demand": false
@@ -9314,16 +10053,16 @@ leadA=TRUE/served=FALSE/previousDemand=FALSE初值。Demand假时双泵关，仅
     "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('SELF007'); constructed once per independent case, current state is Sref[k].",
     "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
     "module_sha256": {
-      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
-      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
-      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
-      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
-      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "scan_contract.py": "2ebdbeb0bacd3c6154e1add2fd358f1aadc9ac9c9322a9201798065154353f48",
+      "array_contracts.py": "f541ffe0e28c56e84ad737b06aa8c8ee6180b1afda720b7c41cc8fccad2d8ecd",
+      "data_contracts.py": "0792c46b303ce62a0a2180bcf4d7ebfe4838ccfaa18deb331780af1819377b3a",
+      "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
+      "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+    "frozen_sources": "dataset/specifications/normalized_transition_v2"
   },
   "constrained_observed_fields": [
     "LeadA",
@@ -9373,7 +10112,8 @@ leadA=TRUE/served=FALSE/previousDemand=FALSE初值。Demand假时双泵关，仅
     "time_progress": "Timed eventuality clauses explicitly require G(F(TimeTick)); TimeTick denotes crossing a new integer-ms boundary. Finite observations cannot establish this premise."
   },
   "assumptions": [
-    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
   ],
   "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
   "limitations": [
@@ -9384,6 +10124,14 @@ leadA=TRUE/served=FALSE/previousDemand=FALSE初值。Demand假时双泵关，仅
   "rules_zh": "leadA=TRUE/served=FALSE/previousDemand=FALSE初值。Demand假时双泵关，仅previousDemand & served时轮换leadA，然后清served；Demand真时由leadA选择无故障主泵，主故障则无故障备用，双故障均关；served累计本需求段任一泵运行。previousDemand每拍=Demand，LeadA比较转移后偏好。"
 }
 ```
+
+**P_init**
+
+```text
+init
+```
+
+Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
 
 **P1**
 
@@ -9472,6 +10220,12 @@ Explicit correction of a demonstrated omission.
 | alternate | Served episodes alternate preference | 7 |
 | fallback | Fault fallback, unserved episode and recovery | 5 |
 | V2_omission_regression | Reject the concrete wrong behavior documented in the 2026-11-06 specification review. | 3 |
+| SELF007.boundary_alternation_edges | SELF007.boundary_alternation_edges | 6 |
+| SELF007.R22.served_loss | 本轮曾经服务，随后双故障，需求结束仍应轮换主泵 | 3 |
+| SELF007.R22.normal_changes | A/B双向回退、曾服务后双故障仍轮换 | 9 |
+| SELF007.R22.tail_Demand | 完成主流程后改变并保持 Demand | 9 |
+| SELF007.R22.tail_FaultA | 完成主流程后改变并保持 FaultA | 9 |
+| SELF007.R22.tail_FaultB | 完成主流程后改变并保持 FaultB | 9 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -9494,7 +10248,25 @@ Origin: self_built. Difficulty: easy.
 
 ### Natural language source
 
-Preset is valid from 1 through 5. Initialize Count=0. If Trip TRUE, Request FALSE, or Preset invalid, clear Count and Ready. Otherwise Count becomes min(previous Count+1, Preset); Ready is TRUE exactly when Count reaches Preset. Count saturates. Changes of Preset take effect immediately using the same rule, so reducing Preset can qualify on that scan. This counts invocations, not elapsed milliseconds.
+# SELF008: Preset-Qualified Delay Counter
+
+## Background
+Sequential delay counter validating integer `Preset` in `1..5` across continuous `Request` scans.
+
+## Functional Requirements
+1. Inputs: `Request`, `Trip` (`BOOL`), `Preset` (`INT`, valid domain `1..5`).
+2. If `Request = FALSE`, `Trip = TRUE`, or `Preset` is outside `1..5`, reset `Count := 0` and set `Ready := FALSE`.
+3. Otherwise increment `Count := min(Count + 1, Preset)` and set `Ready := (Count >= Preset)`.
+
+## Interface
+- **Inputs:** `Request: BOOL`, `Trip: BOOL`, `Preset: USINT`
+- **Outputs:** `Ready: BOOL`, `Count: USINT`
+
+## Initial Values
+- `Count=0`, `Ready=false`
+
+## Timing & Evaluation Conventions
+`Preset` must be an integer (`bool` rejected); each qualifying scan counts as `1`.
 
 ### Scenario
 
@@ -9529,7 +10301,8 @@ At scan k, sample every input once, read retained pre-state q[k], execute one tr
 
 ### Explicit assumptions
 
-- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
 
@@ -9545,17 +10318,18 @@ At scan k, sample every input once, read retained pre-state q[k], execute one tr
 - `nextCount`: min(qCount+1, Preset) as an integer expression.
 - `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_SELF008(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
 count初值0；Preset有效域1..5。!Request或Trip或非法Preset时countAfter=0，否则min(countBefore+1,Preset)；Count比较该值，Ready=有效且countAfter>=Preset。
+- `init`: At the separate pre-invocation initial observation before scan k=0: O_init.Ready=false, O_init.Count=0.
 
 ### LTL properties
 
-**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Human rationality review is completed; candidate verification remains UNVERIFIED.
 
 ### Normalized state, observation and predicate definitions
 
 ```json
 {
   "schema_version": 1,
-  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "status": "NORMALIZED_HUMAN_REVIEWED",
   "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
   "candidate_formal_verification": "UNVERIFIED",
   "initial_observed": {
@@ -9581,7 +10355,8 @@ count初值0；Preset有效域1..5。!Request或Trip或非法Preset时countAfter
       },
       "phase": 0,
       "previous_mode": null,
-      "clock": 0.0,
+      "clock": 0,
+      "first": true,
       "heat_start": null,
       "protection_start": null,
       "demand": false
@@ -9592,16 +10367,16 @@ count初值0；Preset有效域1..5。!Request或Trip或非法Preset时countAfter
     "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('SELF008'); constructed once per independent case, current state is Sref[k].",
     "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
     "module_sha256": {
-      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
-      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
-      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
-      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
-      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "scan_contract.py": "2ebdbeb0bacd3c6154e1add2fd358f1aadc9ac9c9322a9201798065154353f48",
+      "array_contracts.py": "f541ffe0e28c56e84ad737b06aa8c8ee6180b1afda720b7c41cc8fccad2d8ecd",
+      "data_contracts.py": "0792c46b303ce62a0a2180bcf4d7ebfe4838ccfaa18deb331780af1819377b3a",
+      "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
+      "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+    "frozen_sources": "dataset/specifications/normalized_transition_v2"
   },
   "constrained_observed_fields": [
     "Count",
@@ -9650,7 +10425,8 @@ count初值0；Preset有效域1..5。!Request或Trip或非法Preset时countAfter
     "time_progress": "Timed eventuality clauses explicitly require G(F(TimeTick)); TimeTick denotes crossing a new integer-ms boundary. Finite observations cannot establish this premise."
   },
   "assumptions": [
-    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
   ],
   "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
   "limitations": [
@@ -9661,6 +10437,14 @@ count初值0；Preset有效域1..5。!Request或Trip或非法Preset时countAfter
   "rules_zh": "count初值0；Preset有效域1..5。!Request或Trip或非法Preset时countAfter=0，否则min(countBefore+1,Preset)；Count比较该值，Ready=有效且countAfter>=Preset。"
 }
 ```
+
+**P_init**
+
+```text
+init
+```
+
+Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
 
 **P1**
 
@@ -9716,6 +10500,11 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 | --- | --- | ---: |
 | delay | Three scans qualify, hold saturates, trip clears | 6 |
 | bounds | Invalid presets and immediate reduced threshold | 5 |
+| SELF008.boundary_preset_resize | SELF008.boundary_preset_resize | 7 |
+| SELF008.R22.normal_changes | Ready后提高阈值、降低阈值与非法清零 | 5 |
+| SELF008.R22.tail_Request | 完成主流程后改变并保持 Request | 8 |
+| SELF008.R22.tail_Trip | 完成主流程后改变并保持 Trip | 8 |
+| SELF008.boundary_preset_hold_and_zero | Invalid presets (0 and 6) force zero clear, valid recovery counts to Preset=2, and live Preset reduction saturates Count while staying Ready. | 6 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -9738,7 +10527,25 @@ Origin: self_built. Difficulty: easy.
 
 ### Natural language source
 
-Target is valid 1..20. Initialize Count=0 and previous PartPulse FALSE. Error is TRUE exactly when Target is invalid. An invalid Target or Reset clears Count and Complete. Otherwise count only a FALSE-to-TRUE PartPulse transition, then clamp Count to Target. Complete is TRUE when Count reaches Target and remains TRUE until reset or an invalid target; a higher Target can clear it. Every scan, including reset and invalid-target scans, samples PartPulse into its edge memory. A held TRUE pulse after reset therefore cannot cause a phantom count.
+# SELF009: Rising-Edge Batch Part Counter
+
+## Background
+Rising-edge batch counter validating integer `Target` in `1..20`.
+
+## Functional Requirements
+1. Inputs: `PartPulse`, `Reset` (`BOOL`), `Target` (`INT`, valid domain `1..20`). Edge memory `previous_pulse` initializes `FALSE` and updates to `I[k].PartPulse` on EVERY scan (including `Error` or `Reset`).
+2. If `Target` is outside `1..20`, set `Error := TRUE`, `Count := 0`, `Complete := FALSE`.
+3. Else `Error := FALSE`: if `Reset = TRUE`, set `Count := 0` and `Complete := FALSE`; otherwise increment `Count := min(Count + 1, Target)` on `PartPulse` rising edge (`PartPulse AND NOT previous_pulse`) and set `Complete := (Count >= Target)`.
+
+## Interface
+- **Inputs:** `PartPulse: BOOL`, `Reset: BOOL`, `Target: USINT`
+- **Outputs:** `Count: USINT`, `Complete: BOOL`, `Error: BOOL`
+
+## Initial Values
+- `Count=0`, `previous_pulse=false`, `Complete=false`, `Error=false`
+
+## Timing & Evaluation Conventions
+`Target` must be an integer (`bool` rejected). Shrinking `Target` clamps `Count` via `min(..., Target)` and re-evaluates `Complete`.
 
 ### Scenario
 
@@ -9760,7 +10567,9 @@ A packaging batch counts individual sensor edges and prevents a held sensor duri
 ```json
 {
   "Count": 0,
-  "previous_pulse": false
+  "previous_pulse": false,
+  "Complete": false,
+  "Error": false
 }
 ```
 
@@ -9775,7 +10584,8 @@ At scan k, sample every input once, read retained pre-state q[k], execute one tr
 
 ### Explicit assumptions
 
-- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
 
@@ -9793,21 +10603,24 @@ At scan k, sample every input once, read retained pre-state q[k], execute one tr
 - `countAfterEdge`: min(qCount + (1 if rise else 0), Target).
 - `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_SELF009(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
 count=0/pulsePrev=FALSE初值。invalid=Target不在1..20；invalid或Reset时countAfter=0，否则min(countBefore+int(PartPulse & !pulsePrev),Target)。Complete=!invalid & !Reset & countAfter>=Target，Error=invalid；pulsePrev每拍更新为PartPulse。
+- `init`: At the separate pre-invocation initial observation before scan k=0: O_init.Count=0, O_init.Complete=false, O_init.Error=false.
 
 ### LTL properties
 
-**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Human rationality review is completed; candidate verification remains UNVERIFIED.
 
 ### Normalized state, observation and predicate definitions
 
 ```json
 {
   "schema_version": 1,
-  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "status": "NORMALIZED_HUMAN_REVIEWED",
   "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
   "candidate_formal_verification": "UNVERIFIED",
   "initial_observed": {
-    "Count": 0
+    "Count": 0,
+    "Complete": false,
+    "Error": false
   },
   "reference_state_initial": {
     "class": "ScanContract",
@@ -9829,7 +10642,8 @@ count=0/pulsePrev=FALSE初值。invalid=Target不在1..20；invalid或Reset时co
       },
       "phase": 0,
       "previous_mode": null,
-      "clock": 0.0,
+      "clock": 0,
+      "first": true,
       "heat_start": null,
       "protection_start": null,
       "demand": false
@@ -9840,16 +10654,16 @@ count=0/pulsePrev=FALSE初值。invalid=Target不在1..20；invalid或Reset时co
     "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('SELF009'); constructed once per independent case, current state is Sref[k].",
     "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
     "module_sha256": {
-      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
-      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
-      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
-      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
-      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "scan_contract.py": "2ebdbeb0bacd3c6154e1add2fd358f1aadc9ac9c9322a9201798065154353f48",
+      "array_contracts.py": "f541ffe0e28c56e84ad737b06aa8c8ee6180b1afda720b7c41cc8fccad2d8ecd",
+      "data_contracts.py": "0792c46b303ce62a0a2180bcf4d7ebfe4838ccfaa18deb331780af1819377b3a",
+      "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
+      "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+    "frozen_sources": "dataset/specifications/normalized_transition_v2"
   },
   "constrained_observed_fields": [
     "Complete",
@@ -9905,7 +10719,8 @@ count=0/pulsePrev=FALSE初值。invalid=Target不在1..20；invalid或Reset时co
     "time_progress": "Timed eventuality clauses explicitly require G(F(TimeTick)); TimeTick denotes crossing a new integer-ms boundary. Finite observations cannot establish this premise."
   },
   "assumptions": [
-    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
   ],
   "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
   "limitations": [
@@ -9916,6 +10731,14 @@ count=0/pulsePrev=FALSE初值。invalid=Target不在1..20；invalid或Reset时co
   "rules_zh": "count=0/pulsePrev=FALSE初值。invalid=Target不在1..20；invalid或Reset时countAfter=0，否则min(countBefore+int(PartPulse & !pulsePrev),Target)。Complete=!invalid & !Reset & countAfter>=Target，Error=invalid；pulsePrev每拍更新为PartPulse。"
 }
 ```
+
+**P_init**
+
+```text
+init
+```
+
+Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
 
 **P1**
 
@@ -9971,6 +10794,11 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 | --- | --- | ---: |
 | edges | Held pulses count once and target saturates | 7 |
 | reset_edge | Reset while pulse is high suppresses phantom count | 6 |
+| SELF009.boundary_target_and_error | SELF009.boundary_target_and_error | 9 |
+| SELF009.R22.target_latch | 计数完成后提高Target，Complete应重新变假 | 6 |
+| SELF009.R22.normal_changes | 动态目标、上限20及非法后高脉冲恢复 | 10 |
+| SELF009.R22.tail_PartPulse | 完成主流程后改变并保持 PartPulse | 9 |
+| SELF009.R22.tail_Reset | 完成主流程后改变并保持 Reset | 9 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -9993,7 +10821,27 @@ Origin: self_built. Difficulty: medium.
 
 ### Natural language source
 
-Initialize Alarm and Acknowledged FALSE and previous Fault FALSE. A Fault sets Alarm. A rising Fault also clears Acknowledged, taking priority over Ack on that scan. While Fault remains TRUE, Ack can set Acknowledged. When Fault is FALSE the alarm remains latched; Ack can acknowledge that retained alarm. Reset clears both values only when Fault is FALSE, taking priority over Ack then. A new Fault rising edge reannunciates even if an old alarm was already latched. Horn equals Alarm AND NOT Acknowledged. Always update the previous Fault sample.
+# SELF010: Latching Alarm Annunciator with Acknowledge and Horn
+
+## Background
+ISA-style latching alarm annunciator with acknowledgment and horn silence logic.
+
+## Functional Requirements
+1. Inputs: `Fault`, `Ack`, `Reset` (`BOOL`). Edge memory `previous_fault` initializes `FALSE` and updates on EVERY scan.
+2. If `Reset = TRUE AND Fault = FALSE`, clear `Alarm := FALSE` and `Acknowledged := FALSE`.
+3. Else if `Fault = TRUE`: set `Alarm := TRUE`; on a new `Fault` rising edge clear `Acknowledged := FALSE`, else if `Ack = TRUE` set `Acknowledged := TRUE`.
+4. Else (`Fault = FALSE` and no valid reset): retain `Alarm`, and if `Alarm = TRUE AND Ack = TRUE` set `Acknowledged := TRUE`.
+5. Set `Horn := Alarm AND NOT Acknowledged` on every scan.
+
+## Interface
+- **Inputs:** `Fault: BOOL`, `Ack: BOOL`, `Reset: BOOL`
+- **Outputs:** `Alarm: BOOL`, `Acknowledged: BOOL`, `Horn: BOOL`
+
+## Initial Values
+- `Alarm=false`, `Acknowledged=false`, `previous_fault=false`, `Horn=false`
+
+## Timing & Evaluation Conventions
+If `Reset = TRUE` while `Fault = TRUE`, reset is ignored and the alarm remains active.
 
 ### Scenario
 
@@ -10016,7 +10864,8 @@ A panel alarm retains the event after a fault clears, silences the horn after ac
 {
   "Alarm": false,
   "Acknowledged": false,
-  "previous_fault": false
+  "previous_fault": false,
+  "Horn": false
 }
 ```
 
@@ -10032,7 +10881,8 @@ At scan k, sample every input once, read retained pre-state q[k], execute one tr
 
 ### Explicit assumptions
 
-- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
 
@@ -10049,22 +10899,24 @@ At scan k, sample every input once, read retained pre-state q[k], execute one tr
 - `qAck`: {"kind": "previous_observed_output", "source": "O[k-1].Acknowledged", "initial": false, "update": "After comparing scan k, store ACTUAL O[k].Acknowledged; never write into reference state."}
 - `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_SELF010(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
 latched/ack/previousFault初值FALSE。Reset & !Fault时清latched/ack；否则Fault时置latched，若Fault新沿清ack、否则Ack置ack；否则旧latched且Ack置ack，其余保持。Alarm=latchedAfter，Acknowledged=ackAfter，Horn=latchedAfter & !ackAfter。previousFault每拍=Fault。
+- `init`: At the separate pre-invocation initial observation before scan k=0: O_init.Alarm=false, O_init.Acknowledged=false, O_init.Horn=false.
 
 ### LTL properties
 
-**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Human rationality review is completed; candidate verification remains UNVERIFIED.
 
 ### Normalized state, observation and predicate definitions
 
 ```json
 {
   "schema_version": 1,
-  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "status": "NORMALIZED_HUMAN_REVIEWED",
   "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
   "candidate_formal_verification": "UNVERIFIED",
   "initial_observed": {
     "Alarm": false,
-    "Acknowledged": false
+    "Acknowledged": false,
+    "Horn": false
   },
   "reference_state_initial": {
     "class": "ScanContract",
@@ -10087,7 +10939,8 @@ latched/ack/previousFault初值FALSE。Reset & !Fault时清latched/ack；否则F
       },
       "phase": 0,
       "previous_mode": null,
-      "clock": 0.0,
+      "clock": 0,
+      "first": true,
       "heat_start": null,
       "protection_start": null,
       "demand": false
@@ -10098,16 +10951,16 @@ latched/ack/previousFault初值FALSE。Reset & !Fault时清latched/ack；否则F
     "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('SELF010'); constructed once per independent case, current state is Sref[k].",
     "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
     "module_sha256": {
-      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
-      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
-      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
-      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
-      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "scan_contract.py": "2ebdbeb0bacd3c6154e1add2fd358f1aadc9ac9c9322a9201798065154353f48",
+      "array_contracts.py": "f541ffe0e28c56e84ad737b06aa8c8ee6180b1afda720b7c41cc8fccad2d8ecd",
+      "data_contracts.py": "0792c46b303ce62a0a2180bcf4d7ebfe4838ccfaa18deb331780af1819377b3a",
+      "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
+      "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+    "frozen_sources": "dataset/specifications/normalized_transition_v2"
   },
   "constrained_observed_fields": [
     "Acknowledged",
@@ -10169,7 +11022,8 @@ latched/ack/previousFault初值FALSE。Reset & !Fault时清latched/ack；否则F
     "time_progress": "Timed eventuality clauses explicitly require G(F(TimeTick)); TimeTick denotes crossing a new integer-ms boundary. Finite observations cannot establish this premise."
   },
   "assumptions": [
-    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
   ],
   "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
   "limitations": [
@@ -10180,6 +11034,14 @@ latched/ack/previousFault初值FALSE。Reset & !Fault时清latched/ack；否则F
   "rules_zh": "latched/ack/previousFault初值FALSE。Reset & !Fault时清latched/ack；否则Fault时置latched，若Fault新沿清ack、否则Ack置ack；否则旧latched且Ack置ack，其余保持。Alarm=latchedAfter，Acknowledged=ackAfter，Horn=latchedAfter & !ackAfter。previousFault每拍=Fault。"
 }
 ```
+
+**P_init**
+
+```text
+init
+```
+
+Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
 
 **P1**
 
@@ -10229,6 +11091,22 @@ G((!rise & !(Reset & !Fault) & Ack & qAlarm) -> Acknowledged)
 
 Acknowledgment silences a retained event.
 
+**P7**
+
+```text
+G(!Fault & !qAlarm -> (!Alarm & !Acknowledged & !Horn))
+```
+
+Forbids spontaneous alarm or pre-acknowledgment on idle scans.
+
+**P8**
+
+```text
+G((qAlarm & !(Reset & !Fault) & !rise & !Ack) -> (Acknowledged <-> qAck))
+```
+
+Preserves acknowledgment retention without requiring CompleteBehaviorV2.
+
 **SELF010.V2.COMPLETE**
 
 ```text
@@ -10244,6 +11122,11 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 | annunciate | Acknowledge, fault clear and new event | 6 |
 | reset_priority | Present fault blocks reset; removed fault reset wins | 3 |
 | V2_omission_regression | Reject the concrete wrong behavior documented in the 2026-11-06 specification review. | 3 |
+| SELF010.boundary_ack_and_horn | SELF010.boundary_ack_and_horn | 7 |
+| SELF010.R22.normal_changes | 故障消失后首次确认、复位与空闲保持 | 7 |
+| SELF010.R22.tail_Fault | 完成主流程后改变并保持 Fault | 8 |
+| SELF010.R22.tail_Ack | 完成主流程后改变并保持 Ack | 8 |
+| SELF010.R22.tail_Reset | 完成主流程后改变并保持 Reset | 8 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -10266,7 +11149,27 @@ Origin: self_built. Difficulty: hard.
 
 ### Natural language source
 
-Use IDLE, EXTEND, CLAMP, RELEASE, RETRACT and DONE states, initially IDLE. Stop or Reset immediately returns IDLE. Start is accepted in IDLE only if RetractDone indicates the home position. Then enter EXTEND; ExtendDone enters CLAMP, ClampDone enters RELEASE, ReleaseDone enters RETRACT, and RetractDone enters DONE. Execute at most one transition per scan, so even all feedbacks TRUE cannot skip a state. DONE holds until Reset or Stop. Each of Extend, Clamp, Release and Retract is TRUE exactly in its corresponding post-transition state. Busy is TRUE in those four action states; Done is TRUE only in DONE. Start during Busy or DONE is ignored.
+# SELF011: Sequential Gripper-Transfer Handshake Cycle
+
+## Background
+Five-stage pick/clamp/release/retract handshake sequence (`IDLE`, `EXTEND`, `CLAMP`, `RELEASE`, `RETRACT`, `DONE`).
+
+## Functional Requirements
+1. Inputs: `Start`, `Stop`, `Reset`, `ExtendDone`, `ClampDone`, `ReleaseDone`, `RetractDone` (`BOOL`).
+2. If `Stop = TRUE` or `Reset = TRUE`, return immediately to `IDLE` and clear all outputs.
+3. Otherwise from `IDLE`: enter `EXTEND` iff `Start = TRUE AND RetractDone = TRUE`.
+4. Advance one step per scan on matching feedback: `EXTEND & ExtendDone -> CLAMP`; `CLAMP & ClampDone -> RELEASE`; `RELEASE & ReleaseDone -> RETRACT`; `RETRACT & RetractDone -> DONE`; `DONE` holds until `Stop`/`Reset`.
+5. Outputs match post-transition phase: `Extend`/`Clamp`/`Release`/`Retract` mirror their named state, `Busy` holds in active steps `1..4`, `Done` holds in `DONE`.
+
+## Interface
+- **Inputs:** `Start: BOOL`, `Stop: BOOL`, `Reset: BOOL`, `ExtendDone: BOOL`, `ClampDone: BOOL`, `ReleaseDone: BOOL`, `RetractDone: BOOL`
+- **Outputs:** `Extend: BOOL`, `Clamp: BOOL`, `Release: BOOL`, `Retract: BOOL`, `Busy: BOOL`, `Done: BOOL`
+
+## Initial Values
+- `state="IDLE"`, `all_commands=false`, `Extend=false`, `Clamp=false`, `Release=false`, `Retract=false`, `Busy=false`, `Done=false`
+
+## Timing & Evaluation Conventions
+At most one transition occurs per scan; all inputs are level-sensitive.
 
 ### Scenario
 
@@ -10295,7 +11198,13 @@ An assembly fixture coordinates an extending slide and a clamp using explicit co
 ```json
 {
   "state": "IDLE",
-  "all_commands": false
+  "all_commands": false,
+  "Extend": false,
+  "Clamp": false,
+  "Release": false,
+  "Retract": false,
+  "Busy": false,
+  "Done": false
 }
 ```
 
@@ -10312,7 +11221,8 @@ At scan k, sample every input once, read retained pre-state q[k], execute one tr
 
 - Completion inputs are handshake states; no mechanical safety certification is implied.
 - No timeout is included; an absent handshake intentionally stalls the current action.
-- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
 
@@ -10340,20 +11250,28 @@ At scan k, sample every input once, read retained pre-state q[k], execute one tr
 - `oneAction`: int(O[k].Extend)+int(O[k].Clamp)+int(O[k].Release)+int(O[k].Retract)<=1
 - `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_SELF011(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
 mode初值IDLE。Stop或Reset优先回IDLE；IDLE且Start & RetractDone进EXTEND；EXTEND/CLAMP/RELEASE/RETRACT仅各自匹配完成信号推进一阶；DONE保持。四动作输出分别等价于转移后对应阶段，Busy等价于阶段1..4，Done等价于阶段5。
+- `init`: At the separate pre-invocation initial observation before scan k=0: Spre.mode=IDLE, O_init.Extend=false, O_init.Clamp=false, O_init.Release=false, O_init.Retract=false, O_init.Busy=false, O_init.Done=false.
 
 ### LTL properties
 
-**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Human rationality review is completed; candidate verification remains UNVERIFIED.
 
 ### Normalized state, observation and predicate definitions
 
 ```json
 {
   "schema_version": 1,
-  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "status": "NORMALIZED_HUMAN_REVIEWED",
   "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
   "candidate_formal_verification": "UNVERIFIED",
-  "initial_observed": {},
+  "initial_observed": {
+    "Extend": false,
+    "Clamp": false,
+    "Release": false,
+    "Retract": false,
+    "Busy": false,
+    "Done": false
+  },
   "reference_state_initial": {
     "class": "ScanContract",
     "state": {
@@ -10373,7 +11291,8 @@ mode初值IDLE。Stop或Reset优先回IDLE；IDLE且Start & RetractDone进EXTEND
       },
       "phase": 0,
       "previous_mode": null,
-      "clock": 0.0,
+      "clock": 0,
+      "first": true,
       "heat_start": null,
       "protection_start": null,
       "demand": false
@@ -10384,16 +11303,16 @@ mode初值IDLE。Stop或Reset优先回IDLE；IDLE且Start & RetractDone进EXTEND
     "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('SELF011'); constructed once per independent case, current state is Sref[k].",
     "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
     "module_sha256": {
-      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
-      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
-      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
-      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
-      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "scan_contract.py": "2ebdbeb0bacd3c6154e1add2fd358f1aadc9ac9c9322a9201798065154353f48",
+      "array_contracts.py": "f541ffe0e28c56e84ad737b06aa8c8ee6180b1afda720b7c41cc8fccad2d8ecd",
+      "data_contracts.py": "0792c46b303ce62a0a2180bcf4d7ebfe4838ccfaa18deb331780af1819377b3a",
+      "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
+      "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+    "frozen_sources": "dataset/specifications/normalized_transition_v2"
   },
   "constrained_observed_fields": [
     "Busy",
@@ -10454,7 +11373,8 @@ mode初值IDLE。Stop或Reset优先回IDLE；IDLE且Start & RetractDone进EXTEND
   "assumptions": [
     "Completion inputs are handshake states; no mechanical safety certification is implied.",
     "No timeout is included; an absent handshake intentionally stalls the current action.",
-    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
   ],
   "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
   "limitations": [
@@ -10465,6 +11385,14 @@ mode初值IDLE。Stop或Reset优先回IDLE；IDLE且Start & RetractDone进EXTEND
   "rules_zh": "mode初值IDLE。Stop或Reset优先回IDLE；IDLE且Start & RetractDone进EXTEND；EXTEND/CLAMP/RELEASE/RETRACT仅各自匹配完成信号推进一阶；DONE保持。四动作输出分别等价于转移后对应阶段，Busy等价于阶段1..4，Done等价于阶段5。"
 }
 ```
+
+**P_init**
+
+```text
+init
+```
+
+Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
 
 **P1**
 
@@ -10538,6 +11466,22 @@ G((normal & qExtend & !ExtendDone) -> Extend)
 
 The fixture waits for an extension handshake rather than assuming completion.
 
+**P10**
+
+```text
+G((Busy <-> (Extend | Clamp | Release | Retract)) & (!(Busy & Done)))
+```
+
+Previously Busy had no positive constraint during active stages.
+
+**P11**
+
+```text
+G(((normal & qIdle & !(Start & RetractDone)) -> (!Busy & !Done)) & ((normal & qClamp & !ClampDone) -> Clamp) & ((normal & qRelease & !ReleaseDone) -> Release) & ((normal & qRetract & !RetractDone) -> Retract))
+```
+
+Completes stage-hold symmetry alongside existing P9 (EXTEND hold).
+
 **SELF011.V2.COMPLETE**
 
 ```text
@@ -10552,6 +11496,16 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 | --- | --- | ---: |
 | handshake | Normal cycle and completion retention | 9 |
 | single_transition | All handshakes cannot skip states; Stop aborts | 5 |
+| SELF011.boundary_all_waits_and_recycle | SELF011.boundary_all_waits_and_recycle | 10 |
+| SELF011.R22.clamp_hold | 夹紧阶段没有完成反馈时应保持动作 | 5 |
+| SELF011.R22.all_waits | 四动作逐阶段等待、完成保持与复位后第二轮 | 42 |
+| SELF011.R22.tail_Start | 完成主流程后改变并保持 Start | 11 |
+| SELF011.R22.tail_Stop | 完成主流程后改变并保持 Stop | 11 |
+| SELF011.R22.tail_Reset | 完成主流程后改变并保持 Reset | 11 |
+| SELF011.R22.tail_ExtendDone | 完成主流程后改变并保持 ExtendDone | 11 |
+| SELF011.R22.tail_ClampDone | 完成主流程后改变并保持 ClampDone | 11 |
+| SELF011.R22.tail_ReleaseDone | 完成主流程后改变并保持 ReleaseDone | 11 |
+| SELF011.R22.tail_RetractDone | 完成主流程后改变并保持 RetractDone | 11 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.
 
@@ -10574,7 +11528,28 @@ Origin: self_built. Difficulty: hard.
 
 ### Natural language source
 
-States are IDLE, RUNNING, WAIT and LOCKED, initially IDLE with Attempts=0. Start in IDLE starts only when Fault FALSE. A Fault while RUNNING immediately switches off Run. If Attempts<2 enter WAIT, else enter LOCKED. WAIT requires two consecutive Fault=FALSE scans before automatically restarting; a TRUE Fault clears the recovery dwell. Each automatic restart increments Attempts once. LOCKED persists despite Start or Stop. A Reset is accepted only when Fault FALSE and Start FALSE; it returns any state to IDLE and clears Attempts. Otherwise Stop aborts a non-locked state to IDLE and clears its dwell, retaining Attempts. Reset acceptance takes priority over Stop. Run is TRUE only in RUNNING and Locked only in LOCKED. Attempts counts automatic restarts, not the initial operator start. No scan may perform more than one transition.
+# SELF012: Fault-Tolerant Retry and Lockout Controller
+
+## Background
+Fault-tolerant motor controller permitting up to 2 automatic restarts after a 2-scan fault-free dwell.
+
+## Functional Requirements
+1. Inputs: `Start`, `Stop`, `Fault`, `Reset` (`BOOL`). Internal state: `mode` (`IDLE`/`RUNNING`/`WAIT`/`LOCKED`), `Attempts` (`0..2`), `free_scans` (`0..2`).
+2. Valid reset (`Reset = TRUE AND Fault = FALSE AND Start = FALSE`) clears `mode := IDLE`, `Attempts := 0`, `free_scans := 0`.
+3. If already `LOCKED`, remain `LOCKED`. Else `Stop = TRUE` forces `mode := IDLE`, `free_scans := 0` while preserving `Attempts` across manual stop/restart.
+4. In `RUNNING`: if `Fault = TRUE`, enter `LOCKED` when `Attempts >= 2`, else enter `WAIT` with `free_scans := 0`.
+5. In `WAIT`: if `Fault = TRUE`, clear `free_scans := 0`; else increment `free_scans`, and when `free_scans >= 2`, increment `Attempts += 1`, clear `free_scans := 0`, and return to `RUNNING`.
+6. In `IDLE`: `Start = TRUE AND Fault = FALSE` enters `RUNNING` (keeping `Attempts`). Outputs match post-transition `mode`: `Run <-> RUNNING`, `Locked <-> LOCKED`, plus `Attempts`.
+
+## Interface
+- **Inputs:** `Start: BOOL`, `Stop: BOOL`, `Fault: BOOL`, `Reset: BOOL`
+- **Outputs:** `Run: BOOL`, `Locked: BOOL`, `Attempts: USINT`
+
+## Initial Values
+- `state="IDLE"`, `Attempts=0`, `recovery_free_scans=0`, `Run=false`, `Locked=false`
+
+## Timing & Evaluation Conventions
+Retries use scan-level fault-free dwell (`free_scans >= 2`); each scan executes one step.
 
 ### Scenario
 
@@ -10598,7 +11573,9 @@ A laboratory feeder allows two automatic retries after a transient process fault
 {
   "state": "IDLE",
   "Attempts": 0,
-  "recovery_free_scans": 0
+  "recovery_free_scans": 0,
+  "Run": false,
+  "Locked": false
 }
 ```
 
@@ -10619,7 +11596,8 @@ At scan k, sample every input once, read retained pre-state q[k], execute one tr
 
 - The fault is an educational process input, not a personnel safety function.
 - Operator stop/start does not restore the automatic retry budget; only accepted Reset does.
-- The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
+- The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.
 
 ### Atomic propositions and monitor predicates
 
@@ -10640,21 +11618,26 @@ At scan k, sample every input once, read retained pre-state q[k], execute one tr
 - `normal`: !validReset & !Stop.
 - `CompleteBehaviorV2`: 令(Sref[k+1], E[k])=T_SELF012(Sref[k], deepCopy(I[k]), dt_ms[k])。T由normalized_specification.transition列出的固定Python源码和初始状态精确定义。CompleteBehaviorV2[k] 当且仅当所有constrained_observed_fields均存在于实际O[k]，且分别满足comparison关系。Sref只由采样输入推进，绝不由O或候选内部变量推进。
 mode=IDLE/attempts=0/free=0初值。优先Reset & !Fault & !Start清全部；其次LOCKED保持；其次Stop回IDLE并清free但保留attempts；RUNNING且Fault转WAIT或已重试2次转LOCKED；WAIT中Fault清free否则加1，free>=2时attempts加1并回RUNNING、free=0；IDLE且Start & !Fault进RUNNING。输出Run/Locked取新mode，Attempts取新attempts。
+- `init`: At the separate pre-invocation initial observation before scan k=0: Spre.mode=IDLE, O_init.Run=false, O_init.Locked=false, O_init.Attempts=0.
+- `qIdle`: Spre.reference.state.mode=0
+- `refAttempts`: Spre.reference.state.attempts
 
 ### LTL properties
 
-**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.
+**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Human rationality review is completed; candidate verification remains UNVERIFIED.
 
 ### Normalized state, observation and predicate definitions
 
 ```json
 {
   "schema_version": 1,
-  "status": "NORMALIZED_PENDING_HUMAN_REVIEW",
+  "status": "NORMALIZED_HUMAN_REVIEWED",
   "language": "LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.",
   "candidate_formal_verification": "UNVERIFIED",
   "initial_observed": {
-    "Attempts": 0
+    "Attempts": 0,
+    "Run": false,
+    "Locked": false
   },
   "reference_state_initial": {
     "class": "ScanContract",
@@ -10677,7 +11660,8 @@ mode=IDLE/attempts=0/free=0初值。优先Reset & !Fault & !Start清全部；其
       },
       "phase": 0,
       "previous_mode": null,
-      "clock": 0.0,
+      "clock": 0,
+      "first": true,
       "heat_start": null,
       "protection_start": null,
       "demand": false
@@ -10688,16 +11672,16 @@ mode=IDLE/attempts=0/free=0初值。优先Reset & !Fault & !Start清全部；其
     "reference_binding": "Persistent plc_agent.scan_contract.ScanContract('SELF012'); constructed once per independent case, current state is Sref[k].",
     "state_update": "Exactly once per scan; mutations of sampled IN_OUT copies are reference effects, not observations.",
     "module_sha256": {
-      "scan_contract.py": "f782c025e7496a84cc6f4e43a9ec1b6cb6e4510c804a52a8f6f4061bb1bf1fb3",
-      "array_contracts.py": "a5d8ae0bbf437fe423bb67657e547b8a0d2539f61a6e90cb4a3121729bf8cd7f",
-      "data_contracts.py": "053d2165860edada4bf1d04878f17a4a6dceec3c922ec7b70134c7e4b5235c16",
-      "timed_contracts.py": "b39de281adebaad528c54a262c689fe70b6e16bcccc4ab600719629d10daa35d",
-      "process_contracts.py": "f831cfcbab4c8f61dacaf135298c6cbca35146539a5ed8e7fef8434aa56699e7",
+      "scan_contract.py": "2ebdbeb0bacd3c6154e1add2fd358f1aadc9ac9c9322a9201798065154353f48",
+      "array_contracts.py": "f541ffe0e28c56e84ad737b06aa8c8ee6180b1afda720b7c41cc8fccad2d8ecd",
+      "data_contracts.py": "0792c46b303ce62a0a2180bcf4d7ebfe4838ccfaa18deb331780af1819377b3a",
+      "timed_contracts.py": "4467a065061a3073051c271fe01aae03c9776b1c81ccb74fb85f972a2bf70e78",
+      "process_contracts.py": "00fb1941d23e87f2daa82fadb16b7df4f3506cd912a85fede22b254a7dbb3ff9",
       "reference.py": "737a4c796e27f3d7d7865b86502cca4f875ed6613d9eb3a245d1815cbffaf1ed",
-      "normalized_spec.py": "78248642d2be65308748471dd0b26e0d0be7710afa93302e97ac49ce5285c20f"
+      "normalized_spec.py": "ab5917a7bd5820ea6c1ee18400fe8fbaf88dbb1d537cbfc32e0347c9ffdf4989"
     },
     "hash_encoding": "UTF-8 without BOM; all line endings normalized to LF before SHA256",
-    "frozen_sources": "dataset/specifications/normalized_transition_v1"
+    "frozen_sources": "dataset/specifications/normalized_transition_v2"
   },
   "constrained_observed_fields": [
     "Attempts",
@@ -10760,7 +11744,8 @@ mode=IDLE/attempts=0/free=0初值。优先Reset & !Fault & !Start清全部；其
   "assumptions": [
     "The fault is an educational process input, not a personnel safety function.",
     "Operator stop/start does not restore the automatic retry budget; only accepted Reset does.",
-    "The specification_contract is normative and supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values.",
+    "The task interface, requirements, assumptions, and normalized LTL definitions (excluding reference-only ground truth) are supplied identically to both frameworks. Output names always denote observed candidate outputs, never precomputed expected values."
   ],
   "domain_policy": "Declared interface types and task assumptions apply. The pinned transition defines numeric/timing domains and rejects unsupported inputs. Reference exceptions are DOMAIN_OR_TOOL_ERROR, never candidate FAIL or PASS. Fairness/time-divergence assumptions concern infinite paths and are not proven by finite observations.",
   "limitations": [
@@ -10771,6 +11756,14 @@ mode=IDLE/attempts=0/free=0初值。优先Reset & !Fault & !Start清全部；其
   "rules_zh": "mode=IDLE/attempts=0/free=0初值。优先Reset & !Fault & !Start清全部；其次LOCKED保持；其次Stop回IDLE并清free但保留attempts；RUNNING且Fault转WAIT或已重试2次转LOCKED；WAIT中Fault清free否则加1，free>=2时attempts加1并回RUNNING、free=0；IDLE且Start & !Fault进RUNNING。输出Run/Locked取新mode，Attempts取新attempts。"
 }
 ```
+
+**P_init**
+
+```text
+init
+```
+
+Applies strictly to the fresh pre-invocation initial instance observation before scan k=0 (INITIAL_INSTANCE scope).
 
 **P1**
 
@@ -10807,18 +11800,18 @@ Lockout requires a safe explicit reset.
 **P5**
 
 ```text
-G((qRunning & Fault & normal & (qAttempts = 2)) -> Locked)
+G((qRunning & Fault & normal & (refAttempts = 2)) -> Locked)
 ```
 
-Failure after the second retry exhausts the budget.
+Lock out on Fault from RUNNING once reference attempts already reached 2 (uses Spre.attempts to stay immune to candidate undercounting).
 
 **P6**
 
 ```text
-G((retryDue & normal) -> (Run & (Attempts = qAttempts + 1)))
+G((retryDue & normal) -> (Run & (Attempts = refAttempts + 1)))
 ```
 
-Only the second consecutive healthy WAIT scan restarts.
+On fault-free retry dwell completion, restart Run and output Attempts = Spre.attempts + 1.
 
 **P7**
 
@@ -10827,6 +11820,22 @@ G((qWait & Fault & normal) -> !Run)
 ```
 
 A fault during recovery clears progress and prevents restart.
+
+**P8**
+
+```text
+G(((qIdle & normal & !(Start & !Fault)) -> (!Run & !Locked & Attempts=refAttempts)) & ((qIdle & normal & Start & !Fault) -> (Run & !Locked & Attempts=refAttempts)) & ((qRunning & !Fault & normal) -> (Run & !Locked & Attempts=refAttempts)))
+```
+
+Eliminates vacuous under-counting and missing IDLE/RUNNING forward constraints.
+
+**P9**
+
+```text
+G(((normal & qWait & !retryDue) -> (!Run & !Locked & Attempts=refAttempts)) & ((!qLocked & !(qRunning & Fault & normal & refAttempts=2)) -> !Locked) & (!(Run & Locked)))
+```
+
+Completes SELF012 independent safety closure.
 
 **SELF012.V2.COMPLETE**
 
@@ -10843,5 +11852,11 @@ Every constrained ACTUAL output satisfies the exact pinned input-driven referenc
 | exhaustion | Two automatic retries then third fault locks | 11 |
 | dwell_interrupt | Fault interrupts healthy dwell; Stop aborts wait | 9 |
 | V2_omission_regression | Reject the concrete wrong behavior documented in the 2026-11-06 specification review. | 3 |
+| SELF012.boundary_stop_preserve_and_reset | SELF012.boundary_stop_preserve_and_reset | 12 |
+| SELF012.R22.normal_changes | 自动重试后Stop再Start保留次数、有效复位优先 | 7 |
+| SELF012.R22.tail_Start | 完成主流程后改变并保持 Start | 13 |
+| SELF012.R22.tail_Stop | 完成主流程后改变并保持 Stop | 13 |
+| SELF012.R22.tail_Fault | 完成主流程后改变并保持 Fault | 13 |
+| SELF012.R22.tail_Reset | 完成主流程后改变并保持 Reset | 13 |
 
 Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.

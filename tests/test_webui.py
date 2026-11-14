@@ -31,7 +31,7 @@ class WebUITests(unittest.TestCase):
             task,review=detail['task'],detail['review']
             self.assertTrue(review['source_matches'])
             self.assertEqual(review['source_task_sha256'],digest(task))
-            self.assertEqual(review['review_status'],'PENDING_HUMAN_REVIEW')
+            self.assertEqual(review['review_status'],'HUMAN_REVIEWED')
             self.assertEqual(detail['agent_view'],agent_view(task))
             self.assertNotIn('translation_zh',detail['agent_view'])
             for field in ('title_zh','translation_zh','assumptions_zh','coverage_zh','review_points_zh'):
@@ -244,11 +244,16 @@ class WebUITests(unittest.TestCase):
             task = detail['task']
             for pin in task.get('interface', []):
                 self.assertIn(pin['name'], glossary, f'{tid}:{pin["name"]}')
+                entry = glossary[pin['name']]
+                self.assertTrue(entry.get('category_en'))
+                self.assertTrue(entry.get('type_en'))
+                self.assertTrue(entry.get('definition_en'))
                 if pin.get('direction') == 'IN_OUT':
                     inout_checked += 1
-                    self.assertEqual(glossary[pin['name']]['category'], 'persistent_inout')
-                    self.assertTrue(glossary[pin['name']]['is_persistent'])
-                    self.assertTrue(glossary[pin['name']]['persistence_warning_zh'])
+                    self.assertEqual(entry['category'], 'persistent_inout')
+                    self.assertTrue(entry['is_persistent'])
+                    self.assertTrue(entry['persistence_warning_zh'])
+                    self.assertTrue(entry.get('persistence_warning_en'))
             for prop in task.get('ltl', []):
                 for tok in re.findall(r'[A-Za-z_][A-Za-z_0-9.]*', prop['formula']):
                     if tok in {'G', 'F', 'X', 'U', 'R', 'V', 'W', 'TRUE', 'FALSE', 'AND', 'OR', 'NOT'} or tok.isdigit():
@@ -264,21 +269,40 @@ class WebUITests(unittest.TestCase):
     def test_render_index_html_contains_titles_and_components(self):
         html = render_index_html()
         self.assertIsInstance(html, str)
-        self.assertIn("CODESYS STAR v2 | Auto-Test & Waveform Agent Trace Inspector", html)
-        self.assertIn("Task & Dataset Explorer", html)
-        self.assertIn("Waveform & Timing Comparator", html)
-        self.assertIn("Agent Trace Playback", html)
-        self.assertIn("Interactive Sandbox & Verifier", html)
+        self.assertIn('<html lang="en">', html)
+        self.assertIn("STAR-PLC v2 | Agent Workflow, Benchmark &amp; Waveform Inspector", html)
+        self.assertIn("Dataset &amp; Specs", html)
+        self.assertIn("Workflow &amp; Benchmark", html)
+        self.assertIn("Sandbox &amp; Waveform Lab", html)
+        # Ensure clean white-on-black theme without blue/purple styling tokens
+        for forbidden_color in ("#38bdf8", "#3b82f6", "#6366f1", "#a855f7", "#8b5cf6", "#c4b5fd", "#93c5fd"):
+            self.assertNotIn(forbidden_color, html)
+        # Fixed header tracks keep EN/ZH toggle zero-shift
+        self.assertIn("grid-template-columns: 1fr auto 1fr", html)
+        self.assertIn("grid-template-columns: repeat(3, 190px)", html)
+        # Concise UI without defensive boilerplate
+        self.assertNotIn("brand-subtitle", html)
+        self.assertNotIn("Candidate SMV: UNVERIFIED", html)
+        self.assertNotIn("not a candidate ST proof", html)
         # Check essential UI controls
-        self.assertIn("task-select", html)
-        self.assertIn("waveform-view", html)
-        self.assertIn("trace-playback", html)
-        self.assertIn("sandbox-editor", html)
-        self.assertIn("spec-popover", html)
-        self.assertIn("overview-smv-box", html)
-        self.assertIn("pilot-card-smv", html)
-        self.assertIn("renderGlossaryPanel", html)
-        self.assertIn("symbol_glossary", html)
+        for req_id in (
+            "task-select",
+            "waveform-view",
+            "trace-playback",
+            "sandbox-editor",
+            "st-highlight-code",
+            "spec-popover",
+            "overview-smv-box",
+            "pilot-card-smv",
+            "run-select",
+            "version-history-panel",
+            "trace-waveform-display",
+            "highlightST",
+            "openTestWaveform",
+            "renderGlossaryPanel",
+            "symbol_glossary",
+        ):
+            self.assertIn(req_id, html)
         self.assertLess(html.index('id="spec-popover"'), html.rindex('<script>'))
 
     def test_app_js_parses_and_renders_all_32_tasks_in_js_runtime(self):
@@ -298,10 +322,17 @@ class WebUITests(unittest.TestCase):
 
         _, tasks_data = handle_api_request("GET", "/api/tasks", {}, None, self.settings)
         _, task_detail = handle_api_request("GET", "/api/task", {"id": "PUB015"}, None, self.settings)
+        _, runs_data = handle_api_request("GET", "/api/runs", {}, None, self.settings)
+        _, exp_data = handle_api_request("GET", "/api/experiments", {}, None, self.settings)
+        pub1_run = next(r for r in runs_data["runs"] if r["task_id"] == "PUB001" and r["status"] == "PASS")
+        _, trace_data = handle_api_request("GET", "/api/run-trace", {"run": pub1_run["run_id"]}, None, self.settings)
         ids = sorted(set(re.findall(r'id="([^"]+)"', html)))
         harness = f"""
 globalThis.TASKS_DATA = {json.dumps(tasks_data)};
 globalThis.TASK_DETAIL = {json.dumps(task_detail)};
+globalThis.RUNS_DATA = {json.dumps(runs_data)};
+globalThis.TRACE_DATA = {json.dumps(trace_data)};
+globalThis.EXP_DATA = {json.dumps(exp_data)};
 const ALL_IDS = {json.dumps(ids)};
 const JS_CODE = {json.dumps(js_code)};
 new Function(JS_CODE);
@@ -312,6 +343,7 @@ globalThis.URLSearchParams = class {{
 }};
 globalThis.URL = class {{
   constructor(u) {{ this.href = u; this.searchParams = new URLSearchParams(); }}
+  toString() {{ return this.href; }}
 }};
 globalThis.elements = {{}};
 globalThis.makeEl = function(id) {{
@@ -327,7 +359,7 @@ globalThis.makeEl = function(id) {{
 ALL_IDS.forEach(id => globalThis.elements[id] = globalThis.makeEl(id));
 globalThis.elements['kind-filter'].value = 'all';
 globalThis.elements['difficulty-filter'].value = 'all';
-globalThis.elements['language-select'].value = 'zh';
+globalThis.elements['language-select'].value = 'en';
 globalThis.location = {{ search: '', href: 'http://127.0.0.1:8765/' }};
 globalThis.history = {{ replaceState() {{}} }};
 globalThis.localStorage = {{ getItem() {{ return null; }}, setItem() {{}} }};
@@ -339,7 +371,7 @@ globalThis.setTimeout = () => 1;
 globalThis.clearTimeout = () => {{}};
 globalThis.document = {{
   body: {{}},
-  documentElement: {{ lang: 'zh-CN' }},
+  documentElement: {{ lang: 'en' }},
   title: '',
   createTreeWalker() {{ return {{ nextNode() {{ return null; }} }}; }},
   getElementById(id) {{ if (!globalThis.elements[id]) globalThis.elements[id] = globalThis.makeEl(id); return globalThis.elements[id]; }},
@@ -351,32 +383,56 @@ globalThis.fetch = async (url) => ({{
   async json() {{
     if (url === '/api/tasks') return globalThis.TASKS_DATA;
     if (url.startsWith('/api/task?')) return globalThis.TASK_DETAIL;
+    if (url === '/api/runs') return globalThis.RUNS_DATA;
+    if (url === '/api/experiments') return globalThis.EXP_DATA;
+    if (url.startsWith('/api/run-trace?')) return globalThis.TRACE_DATA;
     return {{}};
   }}
 }});
 const check = [
   'if (globalThis._domReady) globalThis._domReady();',
+  'if (gLang !== "en") throw new Error("Default gLang must be en, got " + gLang);',
   'gTasks = globalThis.TASKS_DATA.tasks;',
   'gReviews = globalThis.TASKS_DATA.task_review;',
   'gPilotReview = globalThis.TASKS_DATA.pilot_review;',
+  'gCheckerAvail = globalThis.TASKS_DATA.checker_availability;',
+  'renderSystemStatus();',
+  'if (!globalThis.elements["system-status"].innerHTML.includes("NuSMV") || globalThis.elements["system-status"].innerHTML.includes("Offline")) throw new Error("Expected live NuSMV badge, got " + globalThis.elements["system-status"].innerHTML);',
   'renderTaskList(false);',
   'gCurrentTask = globalThis.TASK_DETAIL;',
   'renderTaskDetails(globalThis.TASK_DETAIL);',
   'renderReviewDetails(globalThis.TASK_DETAIL);',
   'populateSandboxTemplate(globalThis.TASK_DETAIL);',
-  'showSpecPopover(globalThis.makeEl(\"anchor\"), \"Spre\", true);',
-  'const popOpen = !globalThis.elements[\"spec-popover\"].hidden && globalThis.elements[\"spec-popover\"].innerHTML.includes(\"Spre\");',
+  'if (!globalThis.elements["st-highlight-code"].innerHTML.includes("st-kw-block") || !globalThis.elements["st-highlight-code"].innerHTML.includes("st-kw-type")) throw new Error("Missing ST syntax highlighting");',
+  'if (!globalThis.elements["tests-container"].innerHTML.includes("wave-table") || !globalThis.elements["tests-container"].innerHTML.includes("openTestWaveform")) throw new Error("Missing inline test signal table or jump button");',
+  'openTestWaveform("T1");',
+  'if (globalThis.elements["waveform-case-select"].value !== "T1" || !globalThis.elements["waveform-display"].innerHTML.includes("wave-table")) throw new Error("openTestWaveform did not select T1");',
+  'if (!globalThis.elements["pilot-grid"].innerHTML.includes("Human reviewed")) throw new Error("Missing English Human reviewed badge");',
+  'if (globalThis.elements["tests-container"].innerHTML.includes("固定测试")) throw new Error("Chinese text leaked in EN mode");',
+  'showSpecPopover(globalThis.makeEl("anchor"), "Spre", true);',
+  'const popEn = globalThis.elements["spec-popover"].innerHTML;',
+  'const popOpen = !globalThis.elements["spec-popover"].hidden && popEn.includes("Spre") && !popEn.includes("中文");',
+  'changeLanguage("zh");',
+  'if (!globalThis.elements["tests-container"].innerHTML.includes("固定测试")) throw new Error("Missing ZH tests label");',
+  'if (!globalThis.elements["pilot-grid"].innerHTML.includes("已完成人工审阅")) throw new Error("Missing ZH human reviewed badge");',
+  'changeLanguage("en");',
+  'gRuns = globalThis.RUNS_DATA.runs;',
+  'gExperiments = globalThis.EXP_DATA;',
+  'gCurrentRunTrace = globalThis.TRACE_DATA;',
+  'renderRunSelect();',
+  'renderRunTrace(globalThis.TRACE_DATA);',
+  'renderBenchmarkPanel();',
+  'if (!globalThis.elements["trace-playback"].innerHTML.includes("1. Planner")) throw new Error("Missing Planner stage");',
+  'if (!globalThis.elements["trace-waveform-display"].innerHTML.includes("Pump_Motor")) throw new Error("Missing trace waveform signal");',
   'hideSpecPopover(true);',
-  'changeLanguage(\"en\");',
-  'changeLanguage(\"zh\");',
-  'const cards = (globalThis.elements[\"pilot-grid\"].innerHTML.match(/pilot-card\"/g)||[]).length;',
-  'const opts = (globalThis.elements[\"task-select\"].innerHTML.match(/<option /g)||[]).length;',
-  'if (cards !== 32 || opts !== 32) throw new Error(\"Expected 32 cards/options, got \" + cards + \"/\" + opts);',
-  'if (!popOpen) throw new Error(\"Popover did not open\");',
-  'if (!globalThis.elements[\"task-overview\"].innerHTML.includes(\"overview-smv-box\")) throw new Error(\"Missing SMV box\");',
-  'if (!globalThis.elements[\"ltl-container\"].innerHTML.includes(\"spec-tok--\")) throw new Error(\"Missing highlighted tokens\");',
-  'if (!globalThis.elements[\"tests-container\"].innerHTML.includes(\"固定测试\")) throw new Error(\"Missing tests container\");',
-  'print(\"JS_DOM_OK\", cards, opts);'
+  'const cards = (globalThis.elements["pilot-grid"].innerHTML.match(/data-task-id="/g)||[]).length;',
+  'const activeCards = (globalThis.elements["pilot-grid"].innerHTML.match(/class="pilot-card active"/g)||[]).length;',
+  'const opts = (globalThis.elements["task-select"].innerHTML.match(/<option /g)||[]).length;',
+  'if (cards !== 32 || activeCards !== 1 || opts !== 32) throw new Error("Expected 32/1/32 cards/active/options, got " + cards + "/" + activeCards + "/" + opts);',
+  'if (!popOpen) throw new Error("Popover did not open cleanly in EN");',
+  'if (!globalThis.elements["task-overview"].innerHTML.includes("overview-smv-box")) throw new Error("Missing SMV box");',
+  'if (!globalThis.elements["ltl-container"].innerHTML.includes("spec-tok--")) throw new Error("Missing highlighted tokens");',
+  'print("JS_DOM_OK", cards, opts);'
 ].join('\\n');
 (0, eval)(JS_CODE + '\\n' + check);
 """
@@ -547,6 +603,136 @@ const check = [
         self.assertEqual(status, 404)
         self.assertIn("error", data)
 
+    def test_handle_api_request_runs_and_run_trace_pilot_evidence(self):
+        status, runs_data = handle_api_request("GET", "/api/runs", {}, None, self.settings)
+        self.assertEqual(status, 200)
+        runs = runs_data.get("runs", [])
+        self.assertGreaterEqual(len(runs), 2)
+        pub1_pass = next(
+            (r for r in runs if r["task_id"] == "PUB001" and r["status"] == "PASS" and r["source"] == "pilot"),
+            None,
+        )
+        self.assertIsNotNone(pub1_pass)
+
+        st, trace = handle_api_request(
+            "GET", "/api/run-trace", {"run": pub1_pass["run_id"]}, None, self.settings
+        )
+        self.assertEqual(st, 200)
+        self.assertEqual(trace["task_id"], "PUB001")
+        self.assertEqual(trace["framework_kind"], "star_v2")
+        self.assertEqual([s["id"] for s in trace["stages"]], ["planner", "dialect", "coder", "tester", "ratchet"])
+        self.assertEqual(trace["stages"][0]["status"], "DONE")
+        self.assertEqual(trace["stages"][4]["status"], "PASS")
+        self.assertGreaterEqual(len(trace["versions"]), 1)
+        self.assertGreaterEqual(len(trace["timeline"]), 6)
+        self.assertGreater(trace["token_summary"]["total_tokens"], 0)
+        self.assertEqual(trace["formal_verification"]["status"], "UNVERIFIED")
+        self.assertEqual(trace["waveform_source"]["kind"], "fixed_evaluation")
+        self.assertEqual(len(trace["waveforms"]), 2)
+        self.assertTrue(all(step["match"] for wf in trace["waveforms"] for step in wf["steps"]))
+
+    def test_handle_api_request_runs_supports_live_experiments_and_ratchet_rollback(self):
+        root = Path(self.temp.name) / "ws"
+        star_run = root / "experiments" / "E3" / "campaign_demo" / "PUB001" / "run_01"
+        star_run.mkdir(parents=True)
+        (star_run / "runtime_config.json").write_text(
+            json.dumps({"condition": "E3", "framework": "self_harness", "model": "demo-model", "utc": "2026-11-14T10:00:00Z"}),
+            encoding="utf-8",
+        )
+        (star_run / "task_view.json").write_text(json.dumps({"id": "PUB001", "title": "Bottling"}), encoding="utf-8")
+        (star_run / "plan.json").write_text(json.dumps({"state_machine": {"states": [{"name": "IDLE", "phase": 0}]}}), encoding="utf-8")
+        (star_run / "dialect_cards.json").write_text(json.dumps([{"id": "ton_timer", "title": "TON"}]), encoding="utf-8")
+        (star_run / "version_00.json").write_text(
+            json.dumps({"declaration": "FUNCTION_BLOCK FB_Task\nVAR_OUTPUT\n x : BOOL;\nEND_VAR", "implementation": "x := TRUE;"}),
+            encoding="utf-8",
+        )
+        (star_run / "version_sim_01.json").write_text(
+            json.dumps({"declaration": "FUNCTION_BLOCK FB_Task\nVAR_OUTPUT\n x : BOOL;\nEND_VAR", "implementation": "x := FALSE;"}),
+            encoding="utf-8",
+        )
+        (star_run / "compile_sim_01").mkdir()
+        (star_run / "compile_sim_01" / "compile_result.json").write_text(
+            json.dumps({"status": "COMPILE_FAIL", "success": False}), encoding="utf-8"
+        )
+        (star_run / "final_candidate.json").write_text(
+            json.dumps({"declaration": "FUNCTION_BLOCK FB_Task\nVAR_OUTPUT\n x : BOOL;\nEND_VAR", "implementation": "x := TRUE;"}),
+            encoding="utf-8",
+        )
+        (star_run / "selftest.json").write_text(json.dumps([{"id": "case_1", "steps": []}]), encoding="utf-8")
+        (star_run / "model_calls.jsonl").write_text(
+            json.dumps({"utc": "2026-11-14T10:00:01Z", "event": "request_started", "call_dir": "llm_planner", "model": "demo-model"}) + "\n"
+            + json.dumps({"utc": "2026-11-14T10:00:05Z", "event": "request_completed", "call_dir": "llm_planner", "elapsed_seconds": 4.0}) + "\n"
+            + json.dumps({"utc": "2026-11-14T10:00:06Z", "event": "request_started", "call_dir": "llm_tester", "model": "demo-model"}) + "\n",
+            encoding="utf-8",
+        )
+        (star_run / "execution.jsonl").write_text(
+            json.dumps({"utc": "2026-11-14T10:00:08Z", "event": "compile_finished", "status": "PASS", "success": True}) + "\n"
+            + '{"utc": "partial_unclosed_line',
+            encoding="utf-8",
+        )
+
+        base_run = root / "experiments" / "E1" / "campaign_demo" / "SELF001" / "run_02"
+        (base_run / "turn_00").mkdir(parents=True)
+        (base_run / "trusted" / "compile_00").mkdir(parents=True)
+        (base_run / "runtime_config.json").write_text(
+            json.dumps({"condition": "E1", "framework": "custom_tool_loop", "model": "demo-model", "utc": "2026-11-14T09:00:00Z"}),
+            encoding="utf-8",
+        )
+        (base_run / "task.json").write_text(json.dumps({"id": "SELF001"}), encoding="utf-8")
+        (base_run / "turn_00" / "tool_01.json").write_text(
+            json.dumps({"call_id": "c1", "name": "compile_st", "arguments": {}, "result": {"status": "PASS"}}), encoding="utf-8"
+        )
+        (base_run / "result.json").write_text(
+            json.dumps({"task_id": "SELF001", "condition": "E1", "framework": "custom_tool_loop", "status": "UNVERIFIED", "final_compiled": True}),
+            encoding="utf-8",
+        )
+
+        st, listed = handle_api_request("GET", "/api/runs", {}, None, self.settings, workspace_root=root)
+        self.assertEqual(st, 200)
+        self.assertEqual(len(listed["runs"]), 2)
+        self.assertEqual(listed["runs"][0]["state"], "running")
+        self.assertEqual(listed["runs"][0]["task_id"], "PUB001")
+
+        st, star_trace = handle_api_request(
+            "GET", "/api/run-trace", {"run": listed["runs"][0]["run_id"]}, None, self.settings, workspace_root=root
+        )
+        self.assertEqual(st, 200)
+        self.assertEqual(star_trace["state"], "running")
+        self.assertIsNone(star_trace["token_summary"]["total_tokens"])
+        tester_stage = next(s for s in star_trace["stages"] if s["id"] == "tester")
+        ratchet_stage = next(s for s in star_trace["stages"] if s["id"] == "ratchet")
+        self.assertEqual(tester_stage["status"], "RUNNING")
+        self.assertEqual(ratchet_stage["metrics"]["rollback_count"], 1)
+        sim_v = next(v for v in star_trace["versions"] if v["id"] == "version_sim_01")
+        self.assertTrue(sim_v["rolled_back"])
+        self.assertTrue(any("-x := TRUE;" in line and "+x := FALSE;" in "\n".join(sim_v["diff_from_prev"]) for line in sim_v["diff_from_prev"]))
+
+        st, base_trace = handle_api_request(
+            "GET", "/api/run-trace", {"run": listed["runs"][1]["run_id"]}, None, self.settings, workspace_root=root
+        )
+        self.assertEqual(st, 200)
+        self.assertEqual(base_trace["framework_kind"], "baseline")
+        self.assertEqual([s["id"] for s in base_trace["stages"]], ["context", "tool_loop", "compile_sim", "final"])
+
+    def test_handle_api_request_run_trace_rejects_traversal_and_missing(self):
+        for bad in ("../configs", "/etc/passwd", "experiments/../../configs", "src/plc_agent"):
+            st, _ = handle_api_request("GET", "/api/run-trace", {"run": bad}, None, self.settings)
+            self.assertIn(st, (400, 403, 404))
+        st_missing, _ = handle_api_request("GET", "/api/run-trace", {}, None, self.settings)
+        self.assertEqual(st_missing, 400)
+
+    def test_handle_api_request_reference_st(self):
+        st, data = handle_api_request("GET", "/api/reference-st", {"id": "SELF001"}, None, self.settings)
+        self.assertEqual(st, 200)
+        self.assertTrue(data["available"])
+        self.assertIn("FUNCTION_BLOCK FB_Task", data["declaration"])
+        self.assertIn("provenance", data)
+        st_404, miss = handle_api_request("GET", "/api/reference-st", {"id": "PUB001"}, None, self.settings)
+        self.assertEqual(st_404, 404)
+        self.assertFalse(miss["available"])
+        st_bad, _ = handle_api_request("GET", "/api/reference-st", {"id": "../secret"}, None, self.settings)
+        self.assertEqual(st_bad, 400)
+
     def test_serve_webui_http_server(self):
         # Start server on ephemeral port (port 0) in a background thread
         stop_event = threading.Event()
@@ -575,7 +761,7 @@ const check = [
             content_type = response.headers.get("Content-Type", "")
             self.assertIn("text/html", content_type)
             body = response.read().decode("utf-8")
-            self.assertIn("CODESYS STAR v2 | Auto-Test & Waveform Agent Trace Inspector", body)
+            self.assertIn("STAR-PLC v2 | Agent Workflow, Benchmark &amp; Waveform Inspector", body)
 
         # 2. Fetch /api/tasks
         api_url = f"http://127.0.0.1:{port}/api/tasks"

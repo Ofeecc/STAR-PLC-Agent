@@ -1,477 +1,1657 @@
+/* STAR-PLC v2 WebUI Controller */
 'use strict';
-let gTasks=[], gReviews=[], gPilotReview=[], gCurrentTask=null, gLastWaveformData=[];
-let gRequestSerial=0, gLastEvaluation=null, gLastExport=null;
-const params=new URLSearchParams(location.search);
-let gLang=params.get('lang');
-if(!['zh','en'].includes(gLang)) {
-  try {gLang=localStorage.getItem('star-plc-language');} catch(_) {}
-}
-if(!['zh','en'].includes(gLang)) gLang='zh';
-const tr=(zh,en)=>gLang==='zh'?zh:en;
-const esc=value=>String(value==null?'':value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const difficulty=value=>({easy:tr('简单','Easy'),medium:tr('中等','Medium'),hard:tr('困难','Hard')})[value]||value;
-const kind=value=>value==='public'?tr('公开题','Public'):tr('自建题','Self-built');
-const reviewFor=id=>gReviews.find(r=>r.id===id);
-const titleFor=task=>gLang==='zh'&&reviewFor(task.id)?reviewFor(task.id).title_zh:task.title;
-const staticPairs=[
- ['CODESYS STAR v2 | 题库审核与实验验证','CODESYS STAR v2 | Auto-Test & Waveform Agent Trace Inspector'],
- ['IEC 61131-3 题库审核与实验证据','IEC 61131-3 TASK REVIEW & EXPERIMENT EVIDENCE'],
- ['📂 题库与规约审核','📂 Task & Dataset Explorer'],['📊 波形与时序对比','📊 Waveform & Timing Comparator'],
- ['🧠 Agent 工作流程','🧠 Agent Trace Playback'],['🧪 编译仿真与验证导出','🧪 Interactive Sandbox & Verifier'],
- ['全题库 · 人工审核','Full Dataset · Human Review'],
- ['32题均可审查；勾选“仅显示本轮六题”可回到原试跑范围。先核对题意，再审补充约定、规约和逐步预期值。','Review all 32 tasks, or filter to the original six-task pilot. Check the requirements, additional assumptions, specifications and expected traces.'],
- ['中文材料为组内整理，均待人工审核。界面中的题库与预期值不代表已通过 Agent 或真实 PLC 测试。','Translations and review notes are group-authored and pending human review. Dataset expectations are not evidence of successful Agent or PLC execution.'],
- ['题目选择与概况','Task Selection & Overview'],['仅显示本轮六题','Original six-task pilot only'],
- ['🔄 刷新','🔄 Refresh'],['正在读取题库…','Loading tasks...'],
- ['在上方选择题目，查看题意、接口、规约和逐步测试。','Select a task above to inspect details, interface pins, specifications, and test cases.'],
- ['接口定义 · 变量与信号','Interface · Variables & Signals'],['规约属性 · 组内编写，待审核','Specifications · Group-authored, Pending Review'],
- ['测试用例 · 组内编写，待审核','Test Cases · Group-authored, Pending Review'],['尚未选择题目。','No task selected.'],
- ['信号波形对比','Signal Waveform Comparator'],['（运行评测后查看波形）','(Run evaluation to view waveforms)'],
- ['⚡ 评测当前代码','⚡ Evaluate Current Task'],
- ['逐步对比输入、预期输出、候选实际输出和 dt_ms。红色表示发现差异；没有运行数据时不推定通过。','Visualizing step-by-step logic signals: comparing input stimuli, expected outputs, candidate observed outputs, and dt_ms intervals. Red blocks indicate first Divergence point where candidate failed.'],
- ['运行候选 ST 后查看实际信号波形。','Select or evaluate a candidate ST to inspect signal waveforms.'],
- ['STAR 流程概览','STAR Pipeline Overview'],['🔄 刷新实验记录','🔄 Refresh Trace Status'],
- ['查看流程结构、方言规则、编译诊断与版本评分；以下流程图是说明，不是实时执行状态。','Inspect the deterministic state graph, dialect cards applied, compiler diagnostic compactions, and ratchet progress.'],
- ['阶段 01','STAGE 01'],['阶段 02','STAGE 02'],['阶段 03','STAGE 03'],['阶段 04','STAGE 04'],['阶段 05','STAGE 05'],
- ['需求与规约分析','Contract Analyzer'],['方言规则','Dialect Cards'],['编译修复循环','Compiler Loop'],['版本择优','Lexicographical Ratchet'],['验证材料导出','Verification Export'],
- ['分析接口、规约约束及初始状态。','Parses interface types, LTL safety constraints, and initial state invariants.'],
- ['提供目标 CODESYS V3.5 的语法、时间字面量及相关规则。','Injects target CODESYS V3.5 syntax rules, TIME literals, and vendor pragmas.'],
- ['无界面编译，记录诊断及行号。','Performs headless build, captures diagnostics, and maps line numbers.'],
- ['在相同自测集上比较版本；此流程图不代表一次真实执行。','Compares versions using the same self-test set; this diagram is not a live execution trace.'],
- ['导出候选 ST 与规约；候选代码的完整模型检查尚未接通。','Exports candidate ST and properties; full candidate model checking is not yet integrated.'],
- ['CODESYS 方言规则示例','CODESYS Dialect Rule Examples'],['规则编号','Rule ID'],['类别','Category'],['IEC 61131-3 标准','IEC 61131-3 Standard'],['CODESYS V3.5 方言要求','CODESYS V3.5 Dialect Requirement'],
- ['时间字面量','Time Literals'],['引用传递变量','In-Out Variables'],['TON/TOF定时器','Ton/Toff Timers'],['数组下标','Array Indices'],
- ['严格时间语法，前缀后无空格；精度依类型。','Strict duration syntax, no space after prefix, microsecond precision'],
- ['按引用传递','passed by reference'],['必须传入可写存储变量，不能传常量。','Requires allocated variable storage, no constants in caller POUs'],
- ['跨扫描保留实例状态，不能每拍创建临时实例。','State persistence across scan cycles; cannot be re-instantiated dynamically'],
- ['可从0或1等下界开始','1-based or 0-based bounds'],['显式数组边界；按声明下界访问。','Explicit'],['边界检查','bounds checking'],
- ['ST 编译仿真与验证导出','IEC Structured Text Sandbox & Verifier'],['加入随机差分测试','Include Random Differential Tests'],
- ['▶ 编译并仿真','▶ Compile & Simulate'],['🛡️ 导出验证材料','🛡️ Export Verification Bundle'],
- ['候选结构化文本（ST）：','CANDIDATE STRUCTURED TEXT (ST):'],['编译与仿真控制台：','COMPILER & SIMULATION CONSOLE:'],
- ['就绪。选择题目并填写完整 ST 后点击“编译并仿真”。','Ready. Select a task or edit Structured Text and press "Compile & Simulate".'],
- ['全部来源','All Sources'],['公开题','Public Tasks'],['自建题','Self-built Tasks'],['全部难度','All Difficulties'],['简单','Easy'],['中等','Medium'],['困难','Hard']
-];
-const staticNodes=[];
-function captureStaticText() {
-  const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
-  let node;
-  while((node=walker.nextNode())) {
-    if(node.parentElement.closest('script,style,code,textarea'))continue;
-    const text=node.textContent.replace(/\s+/g,' ').trim();
-    const pair=staticPairs.find(p=>p.includes(text));
-    if(pair) staticNodes.push({node,pair});
-  }
-}
-function applyStaticLanguage() {
-  staticNodes.forEach(({node,pair})=>{node.textContent=' '+pair[gLang==='zh'?0:1]+' ';});
-  document.documentElement.lang=gLang==='zh'?'zh-CN':'en';
-  document.title=tr('STAR PLC · 题库审核与验证','STAR PLC · Task Review & Verification');
-  document.getElementById('language-select').value=gLang;
-  document.getElementById('task-search').placeholder=tr('搜索题号 / 中英文题名','Search ID or Chinese / English title');
-  document.getElementById('st-source-code').placeholder=tr('输入完整 ST 功能块：FUNCTION_BLOCK FB_Task ... END_FUNCTION_BLOCK','Enter complete ST: FUNCTION_BLOCK FB_Task ... END_FUNCTION_BLOCK');
-}
-function changeLanguage(value) {
-  if(!['zh','en'].includes(value))return;
-  gLang=value;
-  try{localStorage.setItem('star-plc-language',value);}catch(_){}
-  const url=new URL(location.href);url.searchParams.set('lang',value);history.replaceState(null,'',url);
-  hideSpecPopover(true);applyStaticLanguage();renderTaskList(false);
-  if(gCurrentTask){renderTaskDetails(gCurrentTask);renderReviewDetails(gCurrentTask);}
-  updateWaveformCaseSelector();
-  if(gLastEvaluation)renderEvaluation(gLastEvaluation);
-  else if(gLastExport)renderExport(gLastExport);
-  updateStatus();
-}
-function updateStatus(){document.getElementById('system-status').textContent=tr(`题库已载入 · ${gTasks.length}题`,`DATASET READY · ${gTasks.length} TASKS`);}
-async function api(path,body) {
-  const response=await fetch(path,body===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-  const data=await response.json();
-  if(!response.ok)throw new Error(data.error||data.reason||`HTTP ${response.status}`);
-  return data;
-}
-function switchTab(name) {
-  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));
-  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.toggle('active',p.id==='tab-'+name));
-}
-function visibleTasks() {
-  const only=document.getElementById('pilot-only').checked;
-  const ids=new Set(gPilotReview.map(r=>r.id));
-  const query=document.getElementById('task-search').value.trim().toLowerCase();
-  const source=document.getElementById('kind-filter').value;
-  const diff=document.getElementById('difficulty-filter').value;
-  return gTasks.filter(t=>(!only||ids.has(t.id))&&(source==='all'||t.kind===source||(source==='self'&&t.kind==='self_built'))&&(diff==='all'||t.difficulty===diff)&&
-    `${t.id} ${t.title} ${(reviewFor(t.id)||{}).title_zh||''}`.toLowerCase().includes(query));
-}
-function renderTaskList(loadSelected=true) {
-  const tasks=visibleTasks(), select=document.getElementById('task-select');
-  const previous=select.value||new URLSearchParams(location.search).get('task');
-  select.innerHTML=tasks.map(t=>`<option value="${esc(t.id)}">${esc(t.id)} · ${esc(titleFor(t))} · ${esc(difficulty(t.difficulty))}</option>`).join('');
-  select.value=tasks.some(t=>t.id===previous)?previous:(tasks[0]||{}).id||'';
-  document.getElementById('pilot-total').textContent=tr(`${tasks.length}题 · ${tasks.reduce((n,t)=>n+t.tests_count,0)}用例 · ${tasks.reduce((n,t)=>n+t.steps_count,0)}步`,`${tasks.length} tasks · ${tasks.reduce((n,t)=>n+t.tests_count,0)} cases · ${tasks.reduce((n,t)=>n+t.steps_count,0)} steps`);
-  const grid=document.getElementById('pilot-grid');
-  grid.innerHTML=tasks.map(t=>`<button class="pilot-card" data-task="${esc(t.id)}" aria-pressed="${gCurrentTask?.task.id===t.id}"><div class="pilot-card-head"><strong>${esc(t.id)} · ${esc(titleFor(t))}</strong>${renderCardSmvBadges(t.smv_status)}</div><span>${esc(kind(t.kind))} · ${esc(difficulty(t.difficulty))} · ${t.tests_count} ${tr('用例','cases')} / ${t.steps_count} ${tr('步','steps')} · ${t.properties_count} ${tr('属性','properties')}</span><br><span style="color:var(--amber)">${tr('待人工审核','Pending human review')}</span></button>`).join('')||`<p>${tr('没有匹配题目。','No matching tasks.')}</p>`;
-  grid.querySelectorAll('button[data-task]').forEach(b=>b.onclick=()=>onTaskSelected(b.dataset.task));
-  const url=new URL(location.href);url.searchParams.set('scope',document.getElementById('pilot-only').checked?'pilot':'all');history.replaceState(null,'',url);
-  if(select.value && (loadSelected||gCurrentTask?.task.id!==select.value))onTaskSelected(select.value);
-  if(!select.value){gRequestSerial++;gCurrentTask=null;clearTaskDetails();}
-}
-function clearTaskDetails(){
-  ['task-overview','interface-pins-container','ltl-container','tests-container'].forEach(id=>document.getElementById(id).textContent=tr('没有匹配题目。','No matching tasks.'));
-  document.getElementById('review-details-card').hidden=true;
-}
-async function reloadTasks(){
-  try{
-    const data=await api('/api/tasks');gTasks=data.tasks||[];gReviews=data.task_review||[];gPilotReview=data.pilot_review||[];
-    updateStatus();renderTaskList(true);
-  }catch(error){document.getElementById('system-status').textContent=tr('题库加载失败：','Failed to load tasks: ')+error.message;}
-}
-async function onTaskSelected(id){
-  if(!id)return;
-  document.getElementById('task-select').value=id;
-  const serial=++gRequestSerial;
-  const changed=gCurrentTask?.task.id!==id;
-  if(changed){gCurrentTask=null;gLastWaveformData=[];gLastEvaluation=null;gLastExport=null;updateWaveformCaseSelector();}
-  const url=new URL(location.href);url.searchParams.set('task',id);history.replaceState(null,'',url);
-  try{
-    const data=await api('/api/task?id='+encodeURIComponent(id));if(serial!==gRequestSerial)return;
-    gCurrentTask=data;renderTaskDetails(data);renderReviewDetails(data);populateSandboxTemplate(data);
-    document.querySelectorAll('.pilot-card').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.task===id)));
-  }catch(error){if(serial===gRequestSerial)document.getElementById('task-overview').textContent=tr('读取失败：','Load failed: ')+error.message;}
-}
-function currentReview(data){return data.review?.source_matches?data.review:null;}
-function renderReviewDetails(data){
-  const task=data.task, review=currentReview(data), source=task.kind==='public'?tr('老师公开题','Teacher-provided public task'):tr('组内自建题','Group-authored task');
-  const block=(title,text)=>`<section class="review-section"><h3>${esc(title)}</h3><div class="review-text">${esc(text)}</div></section>`;
-  const raw={initial_conditions:task.initial_conditions,scan_semantics:task.scan_semantics,assumptions:task.assumptions,atomic_propositions:task.atomic_propositions,specification_contract:task.specification_contract};
-  document.getElementById('review-details-card').hidden=false;
-  let html=`<p><a href="#interface-pins-container">${tr('查看接口','Interface')}</a> · <a href="#ltl-container">${tr('查看规约','Specifications')}</a> · <a href="#tests-container">${tr('查看逐步测试','Step-by-step tests')}</a></p>`;
-  if(!review)html+=`<p class="review-note">${tr('中文材料缺失或题目内容已变化，旧译文已停用，请重新审核。','Translation missing or stale; previous review text is withheld until rechecked.')}</p>`;
-  html+=block('① '+source+' · '+tr('题意','Requirements'),gLang==='zh'&&review?review.translation_zh:task.requirements);
-  html+=`<p class="spec-hint">${tr('中文为组内翻译；补充约定、规约和预期值由组内编写，均需人工确认。','Translations, additional assumptions, properties and expectations are group-authored and require human review.')}</p>`;
-  html+=`<details class="review-section"><summary>${tr('查看原始英文题目与接口','Original source requirements & interface')}</summary><pre>${esc(task.requirements)}</pre></details>`;
-  html+=block('② '+tr('组内补充约定 · 待认可','Additional assumptions · Pending approval'),gLang==='zh'&&review?review.assumptions_zh:(task.assumptions||[]).join('\n'));
-  html+=block('③ '+tr('当前完整行为关系 · 待审核','Complete behavior relation · Pending review'),gLang==='zh'?(review?.complete_behavior_zh||''):tr('','Interpret the properties together with the scan semantics, initial conditions, declared history bindings and assumptions. The original complete relation is included in the source metadata below; no candidate formal proof is claimed.'));
-  html+=`<details class="review-section"><summary>${tr('展开初值、扫描语义、原子命题与完整规约原文','Initial state, scan semantics, atomic propositions & source contract')}</summary><pre>${esc(JSON.stringify(raw,null,2))}</pre></details>`;
-  html+=block('④ '+tr('现有固定测试覆盖','Current fixed-test scenarios'),gLang==='zh'&&review?review.coverage_zh:data.tests.map(t=>`${t.id}: ${t.purpose||t.name||''} (${t.steps.length} steps)`).join('\n'));
-  html+=`<div class="review-note">${block('⑤ '+tr('重点确认 / 建议补测','Review focus / Further checks'),gLang==='zh'&&review?review.review_points_zh:'Check source agreement, strict/equal boundaries, same-scan priorities, retained history, reset behavior and a positive/negative trace for each property. Test counts do not establish complete coverage.')}</div>`;
-  html+=`<p class="spec-hint">${tr('每个用例使用新实例。未列出的预期输出不表示FALSE；预期值不是实测值。解释性谓词须编码后才能模型检查。','Each case starts with a fresh instance. An omitted expected output is not implicitly FALSE. Expected values are not observations. Interpreted predicates require explicit encoding for model checking.')}</p>`;
-  document.getElementById('review-details').innerHTML=html;
-}
-let gSymbolGlossary={},gPopoverTimer=null,gPopoverPinned=false;
-const SPEC_CAT_ORDER=['input','output','persistent_inout','obs_history','ghost_state','alias'];
-const SPEC_CAT_TEXT={
-  input:{zh:'输入 INPUT',en:'INPUT'},
-  output:{zh:'输出 OUTPUT',en:'OUTPUT'},
-  persistent_inout:{zh:'持久化 IN_OUT',en:'Persistent IN_OUT'},
-  obs_history:{zh:'上拍输出 O[k-1]',en:'Obs History O[k-1]'},
-  ghost_state:{zh:'跨拍参考/幽灵态',en:'Ghost / Ref State'},
-  alias:{zh:'别名 / 原子命题',en:'Alias / AP'}
-};
-function smvTooltip(smv){
-  if(!smv)return '';
-  const base=gLang==='zh'?(smv.badge_text_zh||''):(smv.badge_text_en||'');
-  const note=gLang==='zh'?'仅针对显式 SMV 模型，不证明候选 ST 代码':'Explicit SMV model only; does not verify candidate ST';
-  return `${base} · ${note}`;
-}
-function renderCardSmvBadges(smv){
-  if(!smv)return `<div class="pilot-card-smv"><span class="smv-pill smv-tone-muted">${tr('SMV 未记录','No SMV record')}</span></div>`;
-  const authText=gLang==='zh'?smv.authoring_text_zh:smv.authoring_text_en;
-  const authTone=smv.authored?'cyan':'muted';
-  const verText=gLang==='zh'?smv.badge_text_zh:smv.badge_text_en;
-  const verTone=smv.badge_tone||'muted';
-  return `<div class="pilot-card-smv" title="${esc(smvTooltip(smv))}"><span class="smv-pill smv-tone-${esc(authTone)}">${esc(authText||'SMV')}</span><span class="smv-pill smv-tone-${esc(verTone)}">${esc(verText||'')}</span></div>`;
-}
-function variantLabel(variant){
-  if(gLang==='zh')return ({reference:'参考 SMV',complete:'完备 SMV',mutant:'变异 SMV'})[variant]||variant;
-  return ({reference:'Reference SMV',complete:'Complete SMV',mutant:'Mutant SMV'})[variant]||variant;
-}
-function variantBadgeInfo(variant,vInfo){
-  const eff=vInfo?.effective_status||'UNVERIFIED';
-  if(eff==='STALE')return {tone:'amber',text:tr('模型变更 · 待重验','Stale · Re-verify')};
-  if(eff==='CHECKER_MISSING')return {tone:'amber',text:tr(`缺 ${vInfo.required_tool||'Checker'}`,`Missing ${vInfo.required_tool||'Checker'}`)};
-  if(eff==='TOOL_ERROR'||eff==='TIMEOUT')return {tone:'red',text:eff};
-  if(eff==='MODEL_PROPERTIES_TRUE'){
-    if(variant==='mutant')return {tone:'red',text:tr('变异逃逸 (未捕获)','Mutant escaped')};
-    return {tone:'green',text:tr('属性全真','Properties TRUE')};
-  }
-  if(eff==='COUNTEREXAMPLE'){
-    if(variant==='mutant')return {tone:'green',text:tr('变异已检出 (反例)','Mutant caught')};
-    return {tone:'red',text:tr('出现反例','Counterexample')};
-  }
-  return {tone:'muted',text:eff};
-}
-function renderOverviewSmvBox(task,smv){
-  if(!smv)return `<div class="overview-smv-box"><div class="overview-smv-head"><strong>${tr('显式 SMV 状态','Explicit SMV Status')}</strong><span class="smv-pill smv-tone-muted">${tr('未加载','Unavailable')}</span></div></div>`;
-  const authText=gLang==='zh'?smv.authoring_text_zh:smv.authoring_text_en;
-  const verText=gLang==='zh'?smv.badge_text_zh:smv.badge_text_en;
-  const variants=smv.authored_variants||[];
-  const rows=variants.map(variant=>{
-    const v=smv.models?.[variant];
-    if(!v)return '';
-    const info=variantBadgeInfo(variant,v);
-    const ratio=v.expected_properties!=null?`${v.passed_count??0}/${v.expected_properties}`:'—';
-    const stamp=v.checked_utc?v.checked_utc.slice(0,19).replace('T',' ')+'Z':tr('未执行','Never');
-    const engineMeta=`${v.required_tool||''} · ${ratio}`;
-    const btnTitle=v.checker_missing?tr(`缺失 ${v.required_tool}，点击将记录 CHECKER_MISSING 状态`,`${v.required_tool} missing; clicking records CHECKER_MISSING`):tr('重新运行显式 SMV 验证并持久化结果','Re-run explicit SMV verification and persist result');
-    return `<div class="overview-smv-row"><div><strong>${esc(variantLabel(variant))}</strong> <span class="smv-meta">${esc(engineMeta)} · ${esc(stamp)}</span></div><div style="display:flex;gap:6px;align-items:center"><span class="smv-pill smv-tone-${esc(info.tone)}">${esc(info.text)}</span><button type="button" class="btn btn-secondary" style="padding:3px 9px;font-size:.76rem" data-smv-run="${esc(variant)}" title="${esc(btnTitle)}">${tr('重验','Run')}</button></div></div>`;
-  }).join('');
-  const missingBanner=smv.checker_missing?`<div class="smv-meta" style="color:var(--amber);margin-top:6px">${tr(`环境缺失 ${smv.required_tool}：无法实时重跑，已优先保留哈希匹配的持久化验证记录。`,`${smv.required_tool} not installed: live re-run unavailable; hash-matched persisted records preserved.`)}</div>`:'';
-  const attemptBanner=smv.last_run_attempt?.status==='CHECKER_MISSING'?`<div class="smv-meta" style="color:var(--amber);margin-top:4px">${tr('最近重跑尝试：','Last run attempt: ')}${esc(smv.last_run_attempt.variant||'')} · CHECKER_MISSING (${esc((smv.last_run_attempt.attempted_utc||'').slice(0,19).replace('T',' '))}Z)</div>`:'';
-  return `<div class="overview-smv-box" id="overview-smv-box"><div class="overview-smv-head"><div><strong>${tr('显式 SMV 编写与验证','Explicit SMV Authoring & Verification')}</strong><div class="smv-meta">${tr('范围：仅显式 SMV 参考/完备/变异模型（不证明候选 ST）','Scope: explicit SMV models only (candidate ST not verified)')}</div></div><div class="pilot-card-smv"><span class="smv-pill smv-tone-${smv.authored?'cyan':'muted'}">${esc(authText)}</span><span class="smv-pill smv-tone-${esc(smv.badge_tone||'muted')}">${esc(verText)}</span></div></div>${rows||`<div class="smv-meta">${tr('本题尚无 SMV 模型文件。','No explicit SMV file for this task.')}</div>`}${missingBanner}${attemptBanner}<div class="overview-smv-actions" id="overview-smv-live-status"></div></div>`;
-}
-function lookupGlossarySymbol(token,glossary){
-  if(!glossary||!token)return null;
-  if(glossary[token])return glossary[token];
-  if(token.includes('#')){const base=token.split('#')[0];if(glossary[base])return glossary[base];}
-  if(token.includes('.')){const base=token.split('.')[0];if(glossary[base])return glossary[base];}
-  return null;
-}
-function hideSpecPopover(force=false){
-  if(gPopoverTimer){clearTimeout(gPopoverTimer);gPopoverTimer=null;}
-  if(!force&&gPopoverPinned)return;
-  gPopoverPinned=false;
-  const pop=document.getElementById('spec-popover');
-  if(pop)pop.hidden=true;
-}
-function positionSpecPopover(pop,anchor){
-  const rect=anchor.getBoundingClientRect();
-  const pad=10,maxW=380;
-  pop.hidden=false;
-  const popRect=pop.getBoundingClientRect();
-  const width=Math.min(maxW,popRect.width||340);
-  const height=popRect.height||180;
-  let left=rect.left;
-  if(left+width+pad>window.innerWidth)left=Math.max(pad,window.innerWidth-width-pad);
-  let top=rect.bottom+8;
-  if(top+height+pad>window.innerHeight&&rect.top-height-8>pad)top=rect.top-height-8;
-  else if(top+height+pad>window.innerHeight)top=Math.max(pad,window.innerHeight-height-pad);
-  pop.style.left=`${Math.round(left)}px`;
-  pop.style.top=`${Math.round(top)}px`;
-}
-function showSpecPopover(anchor,symbol,pinned=false){
-  const entry=lookupGlossarySymbol(symbol,gSymbolGlossary);
-  const pop=document.getElementById('spec-popover');
-  if(!entry||!pop)return;
-  if(gPopoverTimer){clearTimeout(gPopoverTimer);gPopoverTimer=null;}
-  if(pinned)gPopoverPinned=true;
-  const catText=SPEC_CAT_TEXT[entry.category]?.zh||entry.category_zh||entry.category;
-  const persistPill=entry.is_persistent?`<span class="spec-tok spec-tok--${esc(entry.category)} is-persistent" style="font-size:.72rem">持久化 / 跨拍重点</span>`:'';
-  const srcHtml=entry.definition_source&&entry.definition_source!==entry.name&&entry.definition_source!==entry.definition_zh?`<div class="spec-popover-code">来源定义 / 绑定：${esc(entry.definition_source)}</div>`:'';
-  const warnHtml=entry.persistence_warning_zh?`<div class="spec-popover-warn">${esc(entry.persistence_warning_zh)}</div>`:'';
-  pop.innerHTML=`<div class="spec-popover-head"><span class="spec-tok spec-tok--${esc(entry.category)}${entry.is_persistent?' is-persistent':''}">${esc(entry.name)}</span><span class="spec-popover-cat">${esc(catText)} · ${esc(entry.type||'')}</span>${persistPill}</div><div class="spec-popover-title">${esc(entry.label_zh||entry.name)}</div><div class="spec-popover-desc">${esc(entry.definition_zh||'')}</div>${srcHtml}${warnHtml}`;
-  positionSpecPopover(pop,anchor);
-}
-function attachPopoverEvents(container){
-  if(!container)return;
-  container.onmouseover=e=>{
-    const pair=e.target.closest('.spec-pair');
-    if(pair){pair.closest('.spec-formula')?.querySelectorAll('.spec-pair').forEach(n=>{if(n.dataset.pair===pair.dataset.pair)n.classList.add('is-match');});}
-    const tok=e.target.closest('.spec-tok[data-symbol]');
-    if(tok&&!gPopoverPinned)showSpecPopover(tok,tok.dataset.symbol,false);
-  };
-  container.onmouseout=e=>{
-    const pair=e.target.closest('.spec-pair');
-    if(pair){pair.closest('.spec-formula')?.querySelectorAll('.spec-pair').forEach(n=>{if(n.dataset.pair===pair.dataset.pair)n.classList.remove('is-match');});}
-    const tok=e.target.closest('.spec-tok[data-symbol]');
-    if(tok&&!gPopoverPinned){
-      if(gPopoverTimer)clearTimeout(gPopoverTimer);
-      gPopoverTimer=setTimeout(()=>hideSpecPopover(false),140);
-    }
-  };
-  container.onfocusin=e=>{
-    const tok=e.target.closest('.spec-tok[data-symbol]');
-    if(tok)showSpecPopover(tok,tok.dataset.symbol,false);
-  };
-  container.onfocusout=e=>{
-    if(!gPopoverPinned&&!e.relatedTarget?.closest?.('#spec-popover'))hideSpecPopover(false);
-  };
-  container.onclick=e=>{
-    const tok=e.target.closest('.spec-tok[data-symbol]');
-    if(!tok)return;
-    e.stopPropagation();
-    const sameOpen=gPopoverPinned&&!document.getElementById('spec-popover')?.hidden&&document.getElementById('spec-popover')?.querySelector('.spec-popover-head .spec-tok')?.textContent===lookupGlossarySymbol(tok.dataset.symbol,gSymbolGlossary)?.name;
-    if(sameOpen)hideSpecPopover(true);
-    else showSpecPopover(tok,tok.dataset.symbol,true);
-  };
-}
-const specPopEl=document.getElementById('spec-popover');
-if(specPopEl){
-  specPopEl.onmouseenter=()=>{if(gPopoverTimer){clearTimeout(gPopoverTimer);gPopoverTimer=null;}};
-  specPopEl.onmouseleave=()=>{if(!gPopoverPinned)hideSpecPopover(false);};
-}
-document.addEventListener('keydown',e=>{if(e.key==='Escape')hideSpecPopover(true);});
-document.addEventListener('click',e=>{if(gPopoverPinned&&!e.target.closest?.('.spec-tok[data-symbol]')&&!e.target.closest?.('#spec-popover'))hideSpecPopover(true);});
-window.addEventListener('scroll',()=>{if(!gPopoverPinned)hideSpecPopover(false);},{passive:true});
 
-// Token-preserving formula presentation; never rewrite or evaluate source formulas.
-function formatSpec(formula,glossary=gSymbolGlossary){
-  const tokens=String(formula).match(/<->|->|<=|>=|!=|previous-input|pre-output|[0-9]+#[A-Fa-f0-9]+|[A-Za-z_][A-Za-z_0-9.]*(?:#[A-Za-z0-9_.]+)?|[0-9]+(?:\.[0-9]+)?|[^\s]/g)||[];
-  const colors=['#fcd34d','#c4b5fd','#6ee7b7','#fda4af','#93c5fd','#fdba74'];
-  let depth=0,serial=0,stack=[],parts=[];
-  tokens.forEach(t=>{
-    if(t==='('){const pair=serial++;stack.push(pair);parts.push(`<span class="spec-pair" data-pair="${pair}" style="color:${colors[depth%colors.length]}">(</span>`);depth++;}
-    else if(t===')'){depth=Math.max(0,depth-1);const pair=stack.length?stack.pop():'unmatched';parts.push(`<span class="spec-pair" data-pair="${pair}" style="color:${colors[depth%colors.length]}">)</span>`);}
-    else if(['->','<->','&','|'].includes(t))parts.push('\n'+'  '.repeat(Math.min(depth,8))+`<span class="spec-op">${esc(t)}</span> `);
-    else if(/^(G|F|X|U|R|V|W|!)$/.test(t))parts.push(`<span class="spec-op">${esc(t)}</span>`);
-    else{
-      const meta=lookupGlossarySymbol(t,glossary);
-      if(meta){
-        parts.push(`<button type="button" class="spec-tok spec-tok--${esc(meta.category)}${meta.is_persistent?' is-persistent':''}" data-symbol="${esc(t)}">${esc(t)}</button>`);
-      }else{
-        parts.push(esc(t));
+let gTasks = [];
+let gReviews = [];
+let gPilotReview = [];
+let gCheckerAvail = null;
+let gCurrentTask = null;
+let gLang = 'en';
+let gWaveforms = [];
+let gRuns = [];
+let gCurrentRunTrace = null;
+let gExperiments = null;
+let gSelectedStageId = null;
+let gSelectedVersionIdx = 0;
+let gVersionViewMode = 'st';
+let gTraceWaveforms = [];
+let gLivePollTimer = null;
+let gCurrentTab = 'explorer';
+let gBootstrapped = false;
+
+const PILOT_IDS = new Set(['PUB001', 'PUB003', 'PUB009', 'PUB010', 'PUB015', 'PUB016']);
+const BRACKET_COLORS = ['#09090b', '#047857', '#b45309', '#991b1b', '#52525b'];
+const RESERVED_TOKENS = new Set(['TRUE', 'FALSE', 'AND', 'OR', 'NOT']);
+const LTL_OPERATORS = new Set(['G', 'F', 'X', 'U', 'R', 'V', 'W']);
+
+const ST_BLOCK_KW = new Set([
+  'FUNCTION_BLOCK',
+  'END_FUNCTION_BLOCK',
+  'PROGRAM',
+  'END_PROGRAM',
+  'FUNCTION',
+  'END_FUNCTION',
+  'TYPE',
+  'END_TYPE',
+  'STRUCT',
+  'END_STRUCT',
+  'VAR_INPUT',
+  'VAR_OUTPUT',
+  'VAR_IN_OUT',
+  'VAR_TEMP',
+  'VAR_GLOBAL',
+  'VAR',
+  'END_VAR',
+  'CONSTANT',
+  'RETAIN',
+  'PERSISTENT',
+]);
+const ST_CTRL_KW = new Set([
+  'IF',
+  'THEN',
+  'ELSIF',
+  'ELSE',
+  'END_IF',
+  'CASE',
+  'OF',
+  'END_CASE',
+  'FOR',
+  'TO',
+  'BY',
+  'DO',
+  'END_FOR',
+  'WHILE',
+  'END_WHILE',
+  'REPEAT',
+  'UNTIL',
+  'END_REPEAT',
+  'EXIT',
+  'RETURN',
+  'CONTINUE',
+  'AND',
+  'OR',
+  'NOT',
+  'XOR',
+  'MOD',
+]);
+const ST_TYPE_KW = new Set([
+  'BOOL',
+  'BYTE',
+  'WORD',
+  'DWORD',
+  'LWORD',
+  'SINT',
+  'USINT',
+  'INT',
+  'UINT',
+  'DINT',
+  'UDINT',
+  'LINT',
+  'ULINT',
+  'REAL',
+  'LREAL',
+  'TIME',
+  'STRING',
+  'WSTRING',
+  'ARRAY',
+  'TON',
+  'TOF',
+  'TP',
+  'CTU',
+  'CTD',
+  'CTUD',
+  'R_TRIG',
+  'F_TRIG',
+  'SR',
+  'RS',
+]);
+
+const I18N = {
+  en: {
+    'doc.title': 'STAR-PLC v2 | Agent Workflow, Benchmark & Waveform Inspector',
+    'app.brandTitle': 'CODESYS STAR v2',
+    'nav.explorer': 'Dataset & Specs',
+    'nav.trace': 'Workflow & Benchmark',
+    'nav.sandbox': 'Sandbox & Waveform Lab',
+    'explorer.title': 'Benchmark Tasks & Specifications',
+    'explorer.interfaceTitle': 'Interface Contract',
+    'explorer.ltlTitle': 'Formal LTL Properties',
+    'explorer.testsTitle': 'Test Cases & Signal Sequences',
+    'filter.kind': 'Dataset Split',
+    'filter.allSplits': 'All (32)',
+    'filter.public': 'Public (20)',
+    'filter.selfBuilt': 'Self-built (12)',
+    'filter.difficulty': 'Difficulty',
+    'filter.allDiff': 'All',
+    'filter.easy': 'Easy',
+    'filter.medium': 'Medium',
+    'filter.hard': 'Hard',
+    'filter.search': 'Search ID / Title',
+    'filter.searchPlaceholder': 'PUB001, timer, pump...',
+    'filter.taskSelect': 'Active Task',
+    'filter.pilotOnly': 'Pilot 6 tasks only',
+    'trace.title': 'Agent Workflow & Execution Replay',
+    'trace.autoPoll': 'Auto-refresh (2s)',
+    'trace.refresh': 'Refresh',
+    'trace.selectRun': 'Run Record',
+    'trace.sendToSandbox': 'Open Candidate in Sandbox Lab',
+    'trace.versionsTitle': 'Candidate Versions & ST Diff',
+    'trace.timelineTitle': 'Execution Event Timeline',
+    'trace.waveformTitle': 'Recorded Execution Waveform',
+    'bench.title': 'Benchmark Condition Matrix',
+    'sandbox.title': 'Compile, Simulation & Waveform Lab',
+    'sandbox.loadSkeleton': 'Load Interface Skeleton',
+    'sandbox.loadReference': 'Load Reference ST',
+    'sandbox.loadRunCandidate': 'Load Run Candidate',
+    'sandbox.includeRandom': 'Include random boundary tests',
+    'sandbox.runEval': 'Compile & Simulate',
+    'sandbox.exportVerify': 'Export NuSMV Bundle',
+    'sandbox.editorLabel': 'Structured Text (ST)',
+    'sandbox.consoleLabel': 'Compiler Diagnostics & Verification Output',
+    'wave.title': 'Timing & Signal Divergence Comparator',
+    'wave.caseSelect': 'Test Case',
+  },
+  zh: {
+    'doc.title': 'STAR-PLC v2 | Agent 动态工作流、评测与波形平台',
+    'app.brandTitle': 'CODESYS STAR v2',
+    'nav.explorer': '数据集与规约',
+    'nav.trace': '工作流与基准评测',
+    'nav.sandbox': '仿真与波形实验台',
+    'explorer.title': '基准任务集与规约',
+    'explorer.interfaceTitle': '接口契约',
+    'explorer.ltlTitle': 'LTL 时序规约',
+    'explorer.testsTitle': '测试用例与信号表',
+    'filter.kind': '数据来源',
+    'filter.allSplits': '全部（32 题）',
+    'filter.public': '公开基准（20 题）',
+    'filter.selfBuilt': '自建扩展（12 题）',
+    'filter.difficulty': '难度分级',
+    'filter.allDiff': '全部难度',
+    'filter.easy': '简单 (Easy)',
+    'filter.medium': '中等 (Medium)',
+    'filter.hard': '困难 (Hard)',
+    'filter.search': '搜索题号 / 名称',
+    'filter.searchPlaceholder': '输入 PUB001、timer、pump...',
+    'filter.taskSelect': '当前任务',
+    'filter.pilotOnly': '仅显示核心试跑 6 题',
+    'trace.title': 'Agent 动态工作流与轨迹回放',
+    'trace.autoPoll': '实时刷新（2s）',
+    'trace.refresh': '刷新',
+    'trace.selectRun': '运行记录',
+    'trace.sendToSandbox': '载入候选代码到实验台',
+    'trace.versionsTitle': '候选版本演进与 ST 高亮 / Diff',
+    'trace.timelineTitle': '模型调用与编译仿真时间线',
+    'trace.waveformTitle': '执行记录波形对比',
+    'bench.title': '基准实验条件矩阵',
+    'sandbox.title': 'ST 编译、仿真与波形实验台',
+    'sandbox.loadSkeleton': '载入接口骨架',
+    'sandbox.loadReference': '加载参考 ST',
+    'sandbox.loadRunCandidate': '加载轨迹候选代码',
+    'sandbox.includeRandom': '附加随机边界测试',
+    'sandbox.runEval': '编译并运行仿真',
+    'sandbox.exportVerify': '导出 NuSMV 验证包',
+    'sandbox.editorLabel': 'Structured Text (ST) 源码',
+    'sandbox.consoleLabel': '编译器诊断与导出输出',
+    'wave.title': '逐周期时序信号与偏差定位表',
+    'wave.caseSelect': '测试用例',
+  },
+};
+
+function t(enText, zhText) {
+  return gLang === 'zh' ? zhText : enText;
+}
+
+function escapeHtml(raw) {
+  return String(raw == null ? '' : raw)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function isBoolLike(v) {
+  return typeof v === 'boolean' || v === 0 || v === 1;
+}
+
+function formatSignalValue(v) {
+  if (v === true) return '1';
+  if (v === false) return '0';
+  if (v === null || v === undefined) return '—';
+  if (typeof v === 'object') return JSON.stringify(v);
+  return String(v);
+}
+
+/* ================= IEC 61131-3 ST Syntax Highlighter ================= */
+function highlightST(source) {
+  const code = String(source || '');
+  const tokRe =
+    /\(\*[\s\S]*?\*\)|\/\/[^\n]*|'(?:\\.|[^'\n])*'|T#[0-9A-Za-z_.]+|TIME#[0-9A-Za-z_.]+|16#[0-9A-Fa-f_]+|2#[01_]+|\b\d+(?:\.\d+)?\b|:=|=>|<=|>=|<>|[A-Za-z_][A-Za-z_0-9]*/gi;
+  let out = '';
+  let lastIdx = 0;
+  let m;
+  while ((m = tokRe.exec(code)) !== null) {
+    if (m.index > lastIdx) {
+      out += escapeHtml(code.slice(lastIdx, m.index));
+    }
+    const tok = m[0];
+    const upper = tok.toUpperCase();
+    if (tok.startsWith('//') || tok.startsWith('(*')) {
+      out += `<span class="st-comment">${escapeHtml(tok)}</span>`;
+    } else if (
+      tok.startsWith("'") ||
+      /^T(?:IME)?#/i.test(tok) ||
+      /^(?:16|2)#/.test(tok) ||
+      /^\d/.test(tok) ||
+      upper === 'TRUE' ||
+      upper === 'FALSE'
+    ) {
+      out += `<span class="st-literal">${escapeHtml(tok)}</span>`;
+    } else if (tok === ':=' || tok === '=>' || tok === '<=' || tok === '>=' || tok === '<>') {
+      out += `<span class="st-op">${escapeHtml(tok)}</span>`;
+    } else if (ST_BLOCK_KW.has(upper)) {
+      out += `<span class="st-kw-block">${escapeHtml(tok)}</span>`;
+    } else if (ST_CTRL_KW.has(upper)) {
+      out += `<span class="st-kw-ctrl">${escapeHtml(tok)}</span>`;
+    } else if (ST_TYPE_KW.has(upper)) {
+      out += `<span class="st-kw-type">${escapeHtml(tok)}</span>`;
+    } else {
+      out += escapeHtml(tok);
+    }
+    lastIdx = tokRe.lastIndex;
+  }
+  if (lastIdx < code.length) {
+    out += escapeHtml(code.slice(lastIdx));
+  }
+  return out;
+}
+
+function syncEditorHighlight() {
+  const ta = document.getElementById('st-source-code');
+  const codeEl = document.getElementById('st-highlight-code');
+  if (!ta || !codeEl) return;
+  const val = ta.value || '';
+  codeEl.innerHTML = highlightST(val.endsWith('\n') ? `${val} ` : val);
+  syncEditorScroll();
+}
+
+function syncEditorScroll() {
+  const ta = document.getElementById('st-source-code');
+  const layer = document.getElementById('st-highlight-layer');
+  if (!ta || !layer) return;
+  layer.scrollTop = ta.scrollTop;
+  layer.scrollLeft = ta.scrollLeft;
+}
+
+function setSandboxCode(val) {
+  const ta = document.getElementById('st-source-code');
+  if (ta) ta.value = val || '';
+  syncEditorHighlight();
+}
+
+/* ================= Static Bilingual Chrome ================= */
+function applyStaticLanguage() {
+  const dict = I18N[gLang] || I18N.en;
+  if (typeof document !== 'undefined') {
+    document.title = dict['doc.title'] || document.title;
+    if (document.documentElement) {
+      document.documentElement.lang = gLang === 'zh' ? 'zh-CN' : 'en';
+    }
+    const nodes = document.querySelectorAll('[data-i18n]');
+    for (let i = 0; i < nodes.length; i += 1) {
+      const el = nodes[i];
+      const key = el.getAttribute('data-i18n');
+      if (key && dict[key] !== undefined) el.textContent = dict[key];
+    }
+    const phNodes = document.querySelectorAll('[data-i18n-placeholder]');
+    for (let j = 0; j < phNodes.length; j += 1) {
+      const el = phNodes[j];
+      const key = el.getAttribute('data-i18n-placeholder');
+      if (key && dict[key] !== undefined) el.setAttribute('placeholder', dict[key]);
+    }
+  }
+}
+
+function changeLanguage(lang) {
+  gLang = lang === 'zh' ? 'zh' : 'en';
+  try {
+    if (typeof localStorage !== 'undefined' && localStorage.setItem) {
+      localStorage.setItem('star_plc_lang', gLang);
+    }
+  } catch (e) {}
+  const sel = document.getElementById('language-select');
+  if (sel) sel.value = gLang;
+  applyStaticLanguage();
+  renderSystemStatus();
+  renderTaskList(false);
+  if (gCurrentTask) {
+    renderTaskDetails(gCurrentTask);
+    renderReviewDetails(gCurrentTask);
+    renderWaveformPanel(
+      gWaveforms,
+      document.getElementById('waveform-case-select'),
+      document.getElementById('waveform-display')
+    );
+  }
+  renderRunSelect();
+  if (gCurrentRunTrace) renderRunTrace(gCurrentRunTrace);
+  renderBenchmarkPanel();
+}
+
+function switchTab(tabName) {
+  const normalized = tabName === 'waveform' ? 'sandbox' : tabName;
+  gCurrentTab = normalized;
+  const panels = document.querySelectorAll('.tab-panel');
+  for (let i = 0; i < panels.length; i += 1) {
+    panels[i].hidden = panels[i].id !== 'tab-' + normalized;
+  }
+  const btns = document.querySelectorAll('.nav-tab');
+  for (let i = 0; i < btns.length; i += 1) {
+    btns[i].classList.toggle('active', btns[i].getAttribute('data-tab') === normalized);
+  }
+  try {
+    const u = new URL(window.location.href);
+    u.searchParams.set('tab', normalized);
+    if (window.history && window.history.replaceState) {
+      window.history.replaceState({}, '', u.toString());
+    }
+  } catch (e) {}
+  if (normalized === 'trace') {
+    refreshWorkflowData(true);
+  }
+  if (normalized === 'sandbox') {
+    syncEditorHighlight();
+  }
+}
+
+function renderSystemStatus() {
+  const box = document.getElementById('system-status');
+  if (!box) return;
+  const parts = [];
+  const activeRuns = (gRuns || []).filter(r => r.state === 'running');
+  if (activeRuns.length > 0) {
+    parts.push(
+      `<span class="pill pill--live"><span class="pulse-dot"></span>${escapeHtml(String(activeRuns.length))} LIVE</span>`
+    );
+  }
+  if (gCheckerAvail) {
+    const hasNusmv = !!gCheckerAvail.nusmv_available;
+    const hasNuxmv = !!gCheckerAvail.nuxmv_available;
+    if (hasNusmv || hasNuxmv || gCheckerAvail.available) {
+      const label = hasNusmv && hasNuxmv ? 'NuSMV / nuXmv' : hasNuxmv ? 'nuXmv' : 'NuSMV';
+      parts.push(`<span class="pill pill--pass">${escapeHtml(label)}</span>`);
+    } else {
+      parts.push(`<span class="pill">${escapeHtml(t('SMV Offline', 'SMV 离线'))}</span>`);
+    }
+  }
+  box.innerHTML = parts.join('');
+}
+
+function smvSummaryBadge(smvStatus) {
+  if (!smvStatus) return `<span class="pill">UNVERIFIED</span>`;
+  const st = smvStatus.verification_status || 'UNVERIFIED';
+  if (st === 'VERIFIED_BOTH' || st === 'VERIFIED_REFERENCE') {
+    return `<span class="pill pill--pass">${escapeHtml(t('SMV Ready', 'SMV 就绪'))}</span>`;
+  }
+  if (st === 'STALE')
+    return `<span class="pill pill--warn">${escapeHtml(t('SMV Stale', 'SMV 过期'))}</span>`;
+  if (st === 'FAILED')
+    return `<span class="pill pill--fail">${escapeHtml(t('SMV Failed', 'SMV 失败'))}</span>`;
+  return `<span class="pill">${escapeHtml(st)}</span>`;
+}
+
+/* ================= Tab 1: Dataset & Specs ================= */
+function renderTaskList(autoSelect) {
+  const kindFilter = (document.getElementById('kind-filter') || {}).value || 'all';
+  const diffFilter = (document.getElementById('difficulty-filter') || {}).value || 'all';
+  const searchVal = ((document.getElementById('task-search') || {}).value || '')
+    .trim()
+    .toLowerCase();
+  const pilotOnly = !!(document.getElementById('pilot-only') || {}).checked;
+
+  const reviewById = {};
+  for (let i = 0; i < (gReviews || []).length; i += 1) {
+    reviewById[gReviews[i].id] = gReviews[i];
+  }
+
+  const filtered = (gTasks || []).filter(item => {
+    if (kindFilter !== 'all' && item.kind !== kindFilter) return false;
+    if (diffFilter !== 'all' && item.difficulty !== diffFilter) return false;
+    if (pilotOnly && !PILOT_IDS.has(item.id)) return false;
+    if (searchVal) {
+      const rev = reviewById[item.id] || {};
+      const hay = `${item.id} ${item.title || ''} ${rev.title_zh || ''}`.toLowerCase();
+      if (!hay.includes(searchVal)) return false;
+    }
+    return true;
+  });
+
+  const totalBadge = document.getElementById('pilot-total');
+  if (totalBadge) {
+    totalBadge.textContent = t(
+      `${filtered.length} / ${gTasks.length} Human Reviewed`,
+      `${filtered.length} / ${gTasks.length} 已完成人工审阅`
+    );
+  }
+
+  const grid = document.getElementById('pilot-grid');
+  const sel = document.getElementById('task-select');
+  const activeId = gCurrentTask && gCurrentTask.task ? gCurrentTask.task.id : '';
+
+  if (grid) {
+    grid.innerHTML = filtered
+      .map(item => {
+        const rev = reviewById[item.id] || {};
+        const title =
+          gLang === 'zh' ? rev.title_zh || item.title || item.id : item.title || item.id;
+        const kindLabel =
+          item.kind === 'self_built' ? t('Self-built', '自建') : t('Public', '公开');
+        const activeCls = item.id === activeId ? ' active' : '';
+        return (
+          `<button type="button" class="pilot-card${activeCls}" data-task-id="${escapeHtml(item.id)}" onclick="selectTask('${escapeHtml(item.id)}')">` +
+          `<div class="pilot-card-top">` +
+          `<span class="pilot-card-id">${escapeHtml(item.id)}</span>` +
+          `<span class="pill pill--pass">${escapeHtml(t('Human reviewed', '已完成人工审阅'))}</span>` +
+          `</div>` +
+          `<div class="pilot-card-title">${escapeHtml(title)}</div>` +
+          `<div class="pilot-card-meta">` +
+          `<span class="pill">${escapeHtml(kindLabel)} · ${escapeHtml(item.difficulty || '')}</span>` +
+          `<span class="pill">${escapeHtml(String(item.tests_count || 0))} ${escapeHtml(t('cases', '用例'))} / ${escapeHtml(String(item.properties_count || 0))} LTL</span>` +
+          `<span class="pilot-card-smv">${smvSummaryBadge(item.smv_status)}</span>` +
+          `</div>` +
+          `</button>`
+        );
+      })
+      .join('');
+  }
+
+  if (sel) {
+    sel.innerHTML = filtered
+      .map(item => {
+        const rev = reviewById[item.id] || {};
+        const title = gLang === 'zh' ? rev.title_zh || item.title : item.title;
+        const selectedAttr = item.id === activeId ? ' selected' : '';
+        return `<option value="${escapeHtml(item.id)}"${selectedAttr}>${escapeHtml(item.id)} — ${escapeHtml(title)}</option>`;
+      })
+      .join('');
+  }
+
+  if (autoSelect && filtered.length > 0 && (!activeId || !filtered.some(x => x.id === activeId))) {
+    selectTask(filtered[0].id);
+  }
+}
+
+async function selectTask(taskId) {
+  if (!taskId) return;
+  try {
+    const resp = await fetch(`/api/task?id=${encodeURIComponent(taskId)}`);
+    if (!resp.ok) return;
+    const detail = await resp.json();
+    gCurrentTask = detail;
+    renderTaskList(false);
+    renderTaskDetails(detail);
+    renderReviewDetails(detail);
+    populateSandboxTemplate(detail);
+    const url = new URL(window.location.href);
+    url.searchParams.set('task', taskId);
+    if (window.history && window.history.replaceState) {
+      window.history.replaceState({}, '', url.toString());
+    }
+  } catch (e) {
+    console.error('Failed to load task:', e);
+  }
+}
+
+function renderSmvModelRow(label, modelInfo, variant) {
+  const info = modelInfo || {};
+  const st = info.status || 'UNVERIFIED';
+  const staleNote = info.stale ? ` (${t('stale', '过期')})` : '';
+  const cls = st === 'PASS' ? 'pill--pass' : st === 'FAIL' ? 'pill--fail' : 'pill--warn';
+  return (
+    `<tr>` +
+    `<td class="mono">${escapeHtml(label)}</td>` +
+    `<td><span class="pill ${cls}">${escapeHtml(st + staleNote)}</span></td>` +
+    `<td class="mono" style="font-size:11px;color:var(--text-secondary);">${escapeHtml((info.model_sha256 || '—').slice(0, 12))}</td>` +
+    `<td><button class="btn btn-sm" type="button" onclick="runSmvCheck('${escapeHtml(variant)}')">${escapeHtml(t('Verify', '重验'))}</button></td>` +
+    `</tr>`
+  );
+}
+
+function renderTaskDetails(detail) {
+  if (!detail || !detail.task) return;
+  const task = detail.task;
+  const review = detail.review || {};
+  const glossary = detail.symbol_glossary || {};
+  const smv = detail.smv_status || {};
+  const titleText = gLang === 'zh' ? review.title_zh || task.title : task.title;
+  const promptText =
+    gLang === 'zh' && review.translation_zh ? review.translation_zh : task.prompt || '';
+
+  const overview = document.getElementById('task-overview');
+  if (overview) {
+    const models = smv.models || {};
+    const stepTotal = (task.tests || []).reduce((a, c) => a + (c.steps || []).length, 0);
+    overview.innerHTML =
+      `<div class="card-head">` +
+      `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">` +
+      `<h2 class="card-title">${escapeHtml(task.id)} — ${escapeHtml(titleText || '')}</h2>` +
+      `<span class="pill pill--pass">${escapeHtml(t('Reviewed', '已审阅'))}</span>` +
+      `<span class="pill">${escapeHtml(task.kind || '')} · ${escapeHtml(task.difficulty || '')}</span>` +
+      `<span class="pill mono">${escapeHtml((detail.task_sha256 || '').slice(0, 10))}</span>` +
+      `</div>` +
+      `<button class="btn btn-primary btn-sm" type="button" onclick="switchTab('sandbox')">${escapeHtml(t('Open in Sandbox Lab', '在实验台运行'))}</button>` +
+      `</div>` +
+      `<div class="overview-grid">` +
+      `<div class="metric-box"><div class="metric-label">${escapeHtml(t('Fixed Cases / Steps', '固定用例 / 步数'))}</div><div class="metric-val">${(task.tests || []).length} / ${stepTotal}</div></div>` +
+      `<div class="metric-box"><div class="metric-label">${escapeHtml(t('Random Boundary Cases', '随机边界用例'))}</div><div class="metric-val">${(detail.random_cases || []).length}</div></div>` +
+      `<div class="metric-box"><div class="metric-label">${escapeHtml(t('LTL Properties', 'LTL 性质'))}</div><div class="metric-val">${(task.ltl || []).length}</div></div>` +
+      `</div>` +
+      `<div class="prompt-box">${escapeHtml(promptText)}</div>` +
+      `<div id="overview-smv-box" class="card-subtle" style="margin-top:12px;">` +
+      `<div class="card-head" style="margin-bottom:6px;">` +
+      `<strong>${escapeHtml(t('Reference SMV Check', '参考模型 SMV 核验'))}</strong>` +
+      `${smvSummaryBadge(smv)}` +
+      `</div>` +
+      `<table class="clean-table"><thead><tr><th>${escapeHtml(t('Model', '模型'))}</th><th>${escapeHtml(t('Status', '状态'))}</th><th>SHA256</th><th>${escapeHtml(t('Action', '操作'))}</th></tr></thead><tbody>` +
+      renderSmvModelRow('reference.smv', models.reference, 'reference') +
+      renderSmvModelRow('complete.smv', models.complete, 'complete') +
+      renderSmvModelRow('mutant.smv', models.mutant, 'mutant') +
+      `</tbody></table>` +
+      `</div>`;
+  }
+
+  const pinsBox = document.getElementById('interface-pins-container');
+  if (pinsBox) {
+    const interfaceZh = review.interface_zh || {};
+    const rows = (task.interface || [])
+      .map(pin => {
+        const entry = glossary[pin.name] || {};
+        const dir = pin.direction || 'INPUT';
+        const isPersistent = dir === 'IN_OUT';
+        const dirCls = isPersistent ? 'pill--persist' : '';
+        const desc =
+          gLang === 'zh'
+            ? interfaceZh[pin.name] || entry.definition_zh || ''
+            : entry.definition_en || pin.description || '';
+        const persistBadge = isPersistent
+          ? `<div style="margin-top:4px;"><span class="pill pill--persist">${escapeHtml(t('VAR_IN_OUT persistent', 'VAR_IN_OUT 跨周期保持'))}</span></div>`
+          : '';
+        return (
+          `<tr>` +
+          `<td class="mono"><strong>${escapeHtml(pin.name)}</strong></td>` +
+          `<td><span class="pill ${dirCls}">${escapeHtml(dir)}</span></td>` +
+          `<td class="mono">${escapeHtml(pin.type || '')}</td>` +
+          `<td>${escapeHtml(desc)}${persistBadge}</td>` +
+          `</tr>`
+        );
+      })
+      .join('');
+    pinsBox.innerHTML =
+      `<table class="clean-table"><thead><tr>` +
+      `<th>${escapeHtml(t('Pin', '变量名'))}</th>` +
+      `<th>${escapeHtml(t('Direction', '方向'))}</th>` +
+      `<th>${escapeHtml(t('Type', '类型'))}</th>` +
+      `<th>${escapeHtml(t('Description', '说明'))}</th>` +
+      `</tr></thead><tbody>${rows}</tbody></table>` +
+      renderGlossaryPanel(glossary, task);
+  }
+
+  const ltlBox = document.getElementById('ltl-container');
+  if (ltlBox) {
+    const propsZh = review.properties_zh || {};
+    ltlBox.innerHTML = (task.ltl || [])
+      .map(prop => {
+        const zhItem = propsZh[prop.id] || {};
+        const desc =
+          gLang === 'zh'
+            ? zhItem.description || prop.description || prop.name || ''
+            : prop.description || prop.name || '';
+        return (
+          `<div class="ltl-item">` +
+          `<div class="ltl-head">` +
+          `<span class="mono" style="font-weight:700;">${escapeHtml(prop.id)}</span>` +
+          `<span class="pill">${escapeHtml(prop.category || 'property')}</span>` +
+          `</div>` +
+          `<div class="spec-code">${formatSpec(prop.formula || '', glossary)}</div>` +
+          (desc
+            ? `<div class="muted" style="margin-top:6px;font-size:12.5px;">${escapeHtml(desc)}</div>`
+            : '') +
+          `</div>`
+        );
+      })
+      .join('');
+  }
+
+  const testsBox = document.getElementById('tests-container');
+  if (testsBox) {
+    const testsZh = review.tests_zh || {};
+    const buildTestCard = (c, isRandom) => {
+      const steps = c.steps || [];
+      const zhEntry = testsZh[c.id] || {};
+      const nameText =
+        gLang === 'zh'
+          ? zhEntry.description_zh || zhEntry.name_zh || c.purpose || c.name || c.id
+          : c.purpose || c.name || c.id;
+      const previewSteps = steps.map((st, idx) => ({
+        step: idx,
+        inputs: st.inputs || {},
+        expected: st.expected || {},
+        observed: null,
+        dt_ms: st.dt_ms,
+        match: null,
+        divergence: null,
+      }));
+      const inlineTable = buildWaveTableHtml(previewSteps);
+      const badgeLabel = isRandom
+        ? `${t('Random', '随机边界')} · ${steps.length} ${t('steps', '步')}`
+        : `${t('Fixed Test', '固定测试')} · ${steps.length} ${t('steps', '步')}`;
+      return (
+        `<div class="ltl-item">` +
+        `<div class="ltl-head">` +
+        `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">` +
+        `<span class="mono" style="font-weight:700;">${escapeHtml(c.id)}</span>` +
+        `<span class="pill ${isRandom ? '' : 'pill--dark'}">${escapeHtml(badgeLabel)}</span>` +
+        `</div>` +
+        `<button type="button" class="btn btn-sm" onclick="openTestWaveform('${escapeHtml(c.id)}')">${escapeHtml(t('Signal Table', '波形详情'))} ↗</button>` +
+        `</div>` +
+        (nameText && nameText !== c.id
+          ? `<div style="font-size:12.5px;font-weight:600;margin-bottom:6px;">${escapeHtml(nameText)}</div>`
+          : '') +
+        `<details class="details-accordion">` +
+        `<summary>${escapeHtml(t(`Expand Signal Table (${steps.length} steps)`, `展开信号时序表（${steps.length} 步）`))}</summary>` +
+        `<div style="margin-top:8px;">${inlineTable}</div>` +
+        `</details>` +
+        `</div>`
+      );
+    };
+
+    const fixedHtml = (task.tests || []).map(c => buildTestCard(c, false)).join('');
+    const randCases = detail.random_cases || [];
+    const randHtml = randCases.length
+      ? `<details class="details-accordion" style="margin-top:10px;"><summary>${escapeHtml(t(`Random Boundary Cases (${randCases.length})`, `随机边界用例（${randCases.length} 组）`))}</summary><div style="margin-top:8px;">` +
+        randCases.map(rc => buildTestCard(rc, true)).join('') +
+        `</div></details>`
+      : '';
+    testsBox.innerHTML = fixedHtml + randHtml;
+  }
+}
+
+function openTestWaveform(caseId) {
+  if (!caseId) return;
+  switchTab('sandbox');
+  const sel = document.getElementById('waveform-case-select');
+  renderWaveformPanel(gWaveforms, sel, document.getElementById('waveform-display'));
+  if (sel) {
+    sel.value = caseId;
+    renderWaveformPanel(gWaveforms, sel, document.getElementById('waveform-display'));
+  }
+  const wfView = document.getElementById('waveform-view');
+  if (wfView && wfView.scrollIntoView) {
+    wfView.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+
+function renderGlossaryPanel(glossary, task) {
+  const entries = Object.keys(glossary || {});
+  if (!entries.length) return '';
+  const rows = entries
+    .slice(0, 18)
+    .map(sym => {
+      const e = glossary[sym] || {};
+      const cat = gLang === 'zh' ? e.category_zh || e.category : e.category_en || e.category;
+      const typ = gLang === 'zh' ? e.type_zh || e.type : e.type_en || e.type;
+      const def =
+        gLang === 'zh'
+          ? e.definition_zh || e.definition_en || ''
+          : e.definition_en || e.definition_zh || '';
+      const cls = e.is_persistent ? 'pill--persist' : '';
+      return (
+        `<tr>` +
+        `<td class="mono"><button type="button" class="spec-tok ${e.is_persistent ? 'spec-tok--persist' : 'spec-tok--symbol'}" onclick="showSpecPopover(this, '${escapeHtml(sym)}', true)">${escapeHtml(sym)}</button></td>` +
+        `<td><span class="pill ${cls}">${escapeHtml(cat || '')}</span></td>` +
+        `<td class="mono" style="font-size:12px;">${escapeHtml(typ || '')}</td>` +
+        `<td>${escapeHtml(def)}</td>` +
+        `</tr>`
+      );
+    })
+    .join('');
+  return (
+    `<details class="details-accordion" style="margin-top:12px;">` +
+    `<summary>${escapeHtml(t(`Symbol Glossary (${entries.length})`, `符号词表（${entries.length}）`))}</summary>` +
+    `<div style="margin-top:8px;overflow-x:auto;">` +
+    `<table class="clean-table"><thead><tr><th>${escapeHtml(t('Symbol', '符号'))}</th><th>${escapeHtml(t('Category', '类别'))}</th><th>${escapeHtml(t('Type', '类型'))}</th><th>${escapeHtml(t('Definition', '解释'))}</th></tr></thead><tbody>${rows}</tbody></table>` +
+    `</div></details>`
+  );
+}
+
+function renderReviewDetails(detail) {
+  const container = document.getElementById('review-details');
+  if (!container || !detail) return;
+  const rev = detail.review || {};
+  const task = detail.task || {};
+  const norm = task.normalized_specification || {};
+
+  if (gLang === 'zh') {
+    const items = [];
+    if (rev.assumptions_zh)
+      items.push(
+        `<div class="card-subtle"><strong>假设与约束：</strong><div>${escapeHtml(rev.assumptions_zh)}</div></div>`
+      );
+    if (rev.coverage_zh)
+      items.push(
+        `<div class="card-subtle"><strong>测试覆盖：</strong><div>${escapeHtml(rev.coverage_zh)}</div></div>`
+      );
+    if (rev.review_points_zh)
+      items.push(
+        `<div class="card-subtle"><strong>复核要点：</strong><div>${escapeHtml(rev.review_points_zh)}</div></div>`
+      );
+    container.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;font-size:12.5px;">${items.join('')}</div>`;
+  } else {
+    const enRules =
+      Array.isArray(norm.rules) && norm.rules.length
+        ? norm.rules
+            .slice(0, 3)
+            .map(r => (typeof r === 'string' ? r : r.id || ''))
+            .filter(Boolean)
+            .join('; ')
+        : 'Single-scan transition contract with explicit timing semantics.';
+    container.innerHTML =
+      `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;font-size:12.5px;">` +
+      `<div class="card-subtle"><strong>Contract Rules</strong><div>${escapeHtml(enRules)}</div></div>` +
+      `<div class="card-subtle"><strong>Timing &amp; Coverage</strong><div>${escapeHtml(norm.timing_unit || 'scan / ms')} · ${(task.tests || []).length} fixed + ${(detail.random_cases || []).length} random cases</div></div>` +
+      `</div>`;
+  }
+}
+
+function formatSpec(formula, glossary) {
+  const text = String(formula || '');
+  const parts = [];
+  const tokenRe = /[A-Za-z_][A-Za-z_0-9.]*|\d+|[()\[\]]|->|<->|==|!=|<=|>=|[&|!<>+\-*/=,;:\s]+/g;
+  let depth = 0;
+  let m;
+  while ((m = tokenRe.exec(text)) !== null) {
+    const tok = m[0];
+    if (/^\s+$/.test(tok)) {
+      parts.push(escapeHtml(tok));
+      continue;
+    }
+    if (tok === '(' || tok === '[') {
+      const col = BRACKET_COLORS[depth % BRACKET_COLORS.length];
+      depth += 1;
+      parts.push(`<span style="color:${col};font-weight:700;">${escapeHtml(tok)}</span>`);
+      continue;
+    }
+    if (tok === ')' || tok === ']') {
+      depth = Math.max(0, depth - 1);
+      const col = BRACKET_COLORS[depth % BRACKET_COLORS.length];
+      parts.push(`<span style="color:${col};font-weight:700;">${escapeHtml(tok)}</span>`);
+      continue;
+    }
+    if (/^\d+$/.test(tok)) {
+      parts.push(`<span class="spec-tok--num">${escapeHtml(tok)}</span>`);
+      continue;
+    }
+    if (!/^[A-Za-z_]/.test(tok)) {
+      parts.push(`<span class="spec-tok--logic">${escapeHtml(tok)}</span>`);
+      continue;
+    }
+    if (LTL_OPERATORS.has(tok)) {
+      parts.push(
+        `<span class="spec-tok spec-tok--ltl" onclick="showSpecPopover(this, '${escapeHtml(tok)}', true)">${escapeHtml(tok)}</span>`
+      );
+      continue;
+    }
+    if (RESERVED_TOKENS.has(tok)) {
+      parts.push(
+        `<span class="spec-tok spec-tok--logic" onclick="showSpecPopover(this, '${escapeHtml(tok)}', true)">${escapeHtml(tok)}</span>`
+      );
+      continue;
+    }
+    const entry = (glossary || {})[tok];
+    let cls = 'spec-tok--symbol';
+    if (entry) {
+      if (entry.is_persistent) cls = 'spec-tok--persist';
+      else if (entry.category === 'input') cls = 'spec-tok--input';
+      else if (entry.category === 'output') cls = 'spec-tok--output';
+      else if (entry.category === 'timer') cls = 'spec-tok--timer';
+    }
+    parts.push(
+      `<span class="spec-tok ${cls}" onclick="showSpecPopover(this, '${escapeHtml(tok)}', true)">${escapeHtml(tok)}</span>`
+    );
+  }
+  return parts.join('');
+}
+
+function showSpecPopover(anchorEl, token, keepOpen) {
+  const pop = document.getElementById('spec-popover');
+  if (!pop || !token) return;
+  const glossary = (gCurrentTask && gCurrentTask.symbol_glossary) || {};
+  const entry = glossary[token] || {};
+  const cat =
+    gLang === 'zh' ? entry.category_zh || entry.category : entry.category_en || entry.category;
+  const typ = gLang === 'zh' ? entry.type_zh || entry.type : entry.type_en || entry.type;
+  const def =
+    gLang === 'zh'
+      ? entry.definition_zh || entry.definition_en || ''
+      : entry.definition_en || entry.definition_zh || '';
+  const warn = gLang === 'zh' ? entry.persistence_warning_zh : entry.persistence_warning_en;
+
+  pop.innerHTML =
+    `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px;">` +
+    `<strong class="mono">${escapeHtml(token)}</strong>` +
+    `<button type="button" class="btn btn-sm" onclick="hideSpecPopover(true)">×</button>` +
+    `</div>` +
+    (cat || typ
+      ? `<div style="margin-bottom:6px;display:flex;gap:6px;flex-wrap:wrap;"><span class="pill ${entry.is_persistent ? 'pill--persist' : ''}">${escapeHtml(cat || 'symbol')}</span>${typ ? `<span class="pill mono">${escapeHtml(typ)}</span>` : ''}</div>`
+      : '') +
+    `<div>${escapeHtml(def || t('Specification symbol.', '规约符号。'))}</div>` +
+    (warn
+      ? `<div class="card-subtle" style="margin-top:8px;border-color:var(--persist-border);background:var(--persist-bg);color:var(--persist-ink);">${escapeHtml(warn)}</div>`
+      : '');
+
+  if (anchorEl && anchorEl.getBoundingClientRect) {
+    const r = anchorEl.getBoundingClientRect();
+    const top = Math.min((window.innerHeight || 800) - 180, (r.bottom || 20) + 6);
+    const left = Math.min((window.innerWidth || 1280) - 395, Math.max(12, r.left || 16));
+    pop.style.top = `${Math.max(12, top)}px`;
+    pop.style.left = `${left}px`;
+  }
+  pop.hidden = false;
+  if (keepOpen) pop.dataset.pinned = '1';
+}
+
+function hideSpecPopover(force) {
+  const pop = document.getElementById('spec-popover');
+  if (!pop) return;
+  if (force || pop.dataset.pinned !== '1') {
+    pop.hidden = true;
+    pop.dataset.pinned = '';
+  }
+}
+
+async function runSmvCheck(variant) {
+  if (!gCurrentTask || !gCurrentTask.task) return;
+  try {
+    const resp = await fetch('/api/check-reference-model', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ task_id: gCurrentTask.task.id, variant: variant || null }),
+    });
+    const data = await resp.json();
+    if (data && data.smv_status) {
+      gCurrentTask.smv_status = data.smv_status;
+      renderTaskDetails(gCurrentTask);
+    }
+  } catch (e) {
+    console.error('SMV check failed:', e);
+  }
+}
+
+/* ================= Shared Waveform Table Builder ================= */
+function buildWaveTableHtml(steps) {
+  if (!steps || !steps.length) {
+    return `<div class="card-subtle muted">${escapeHtml(t('Zero scan steps.', '无扫描步记录。'))}</div>`;
+  }
+  const inputKeys = [];
+  const outputKeys = [];
+  for (let i = 0; i < steps.length; i += 1) {
+    const st = steps[i];
+    Object.keys(st.inputs || {}).forEach(k => {
+      if (!inputKeys.includes(k)) inputKeys.push(k);
+    });
+    Object.keys(st.expected || {}).forEach(k => {
+      if (!outputKeys.includes(k)) outputKeys.push(k);
+    });
+    if (st.observed && typeof st.observed === 'object') {
+      Object.keys(st.observed).forEach(k => {
+        if (!outputKeys.includes(k)) outputKeys.push(k);
+      });
+    }
+  }
+
+  const headerCells = steps
+    .map(s => {
+      const failCls = s.match === false ? 'wave-cell-step-fail' : '';
+      const dt =
+        s.dt_ms != null
+          ? `<div style="font-size:10px;color:var(--text-muted);">${escapeHtml(String(s.dt_ms))}ms</div>`
+          : '';
+      return `<th class="${failCls}">t${s.step}${dt}</th>`;
+    })
+    .join('');
+
+  const buildRow = (label, tag, getter, compareExpected) => {
+    const cells = steps
+      .map(st => {
+        const val = getter(st);
+        const txt = formatSignalValue(val);
+        let cls = '';
+        if (compareExpected) {
+          const exp = compareExpected(st);
+          if (
+            val !== undefined &&
+            val !== null &&
+            st.match === false &&
+            st.divergence &&
+            st.divergence.field === compareExpected.field
+          ) {
+            cls = 'wave-cell-bad';
+          } else if (
+            val !== undefined &&
+            val !== null &&
+            exp !== undefined &&
+            formatSignalValue(val) !== formatSignalValue(exp)
+          ) {
+            cls = 'wave-cell-bad';
+          } else if (isBoolLike(val)) {
+            cls = val === true || val === 1 ? 'wave-cell-hi' : 'wave-cell-lo';
+          }
+        } else if (isBoolLike(val)) {
+          cls = val === true || val === 1 ? 'wave-cell-hi' : 'wave-cell-lo';
+        }
+        return `<td class="${cls}">${escapeHtml(txt)}</td>`;
+      })
+      .join('');
+    return `<tr><td class="wave-sig-col"><span class="pill" style="margin-right:6px;">${escapeHtml(tag)}</span>${escapeHtml(label)}</td>${cells}</tr>`;
+  };
+
+  let bodyRows = '';
+  inputKeys.forEach(k => {
+    bodyRows += buildRow(k, 'IN', st => (st.inputs || {})[k], null);
+  });
+  outputKeys.forEach(k => {
+    bodyRows += buildRow(k, t('EXP', '预期'), st => (st.expected || {})[k], null);
+    const hasObs = steps.some(st => st.observed && st.observed[k] !== undefined);
+    if (hasObs) {
+      const cmp = st => (st.expected || {})[k];
+      cmp.field = k;
+      bodyRows += buildRow(k, t('OBS', '实测'), st => (st.observed || {})[k], cmp);
+    }
+  });
+
+  return `<div class="waveform-scroll"><table class="wave-table"><thead><tr><th class="wave-sig-col">${escapeHtml(t('Signal / Step', '信号 / 扫描步'))}</th>${headerCells}</tr></thead><tbody>${bodyRows}</tbody></table></div>`;
+}
+
+function renderWaveformPanel(waveforms, selectEl, displayEl, emptyMessage) {
+  const list = Array.isArray(waveforms) ? waveforms : [];
+  if (selectEl) {
+    const prev = selectEl.value;
+    selectEl.innerHTML = list
+      .map((wf, idx) => {
+        const badge = wf.passed === true ? 'PASS' : wf.passed === false ? 'FAIL' : 'SPEC';
+        const selAttr = prev
+          ? prev === wf.case_id
+            ? ' selected'
+            : ''
+          : idx === 0
+            ? ' selected'
+            : '';
+        return `<option value="${escapeHtml(wf.case_id || '')}"${selAttr}>${escapeHtml(wf.case_id || '')} [${badge}] — ${escapeHtml(wf.name || wf.case_id || '')}</option>`;
+      })
+      .join('');
+  }
+  if (!displayEl) return;
+  if (!list.length) {
+    displayEl.innerHTML = `<div class="card-subtle muted">${escapeHtml(emptyMessage || t('No waveform data available.', '暂无可展示的时序波形数据。'))}</div>`;
+    return;
+  }
+  const activeId = (selectEl && selectEl.value) || list[0].case_id;
+  const wf = list.find(item => item.case_id === activeId) || list[0];
+  const steps = wf.steps || [];
+  const divs = steps.filter(s => s.divergence);
+  const divBanner = divs.length
+    ? `<div class="card-subtle" style="margin-bottom:10px;border-color:var(--fail-border);background:var(--fail-bg);color:var(--fail-ink);font-size:12.5px;">` +
+      `<strong>${escapeHtml(t('Divergence at step', '偏差定位步'))} #${divs[0].step}:</strong> ` +
+      `<span class="mono">${escapeHtml(divs[0].divergence.field)}</span> ` +
+      `(${escapeHtml(t('expected', '预期'))} <span class="mono">${escapeHtml(formatSignalValue(divs[0].divergence.expected))}</span>, ` +
+      `${escapeHtml(t('observed', '实测'))} <span class="mono">${escapeHtml(formatSignalValue(divs[0].divergence.observed))}</span>)` +
+      `</div>`
+    : '';
+
+  displayEl.innerHTML = divBanner + buildWaveTableHtml(steps);
+}
+
+/* ================= Tab 2: Workflow & Benchmark ================= */
+async function refreshWorkflowData(forceTraceReload) {
+  try {
+    const [runsResp, expResp] = await Promise.all([fetch('/api/runs'), fetch('/api/experiments')]);
+    if (runsResp.ok) {
+      const runsData = await runsResp.json();
+      gRuns = runsData.runs || [];
+      renderSystemStatus();
+      renderRunSelect();
+    }
+    if (expResp.ok) {
+      gExperiments = await expResp.json();
+      renderBenchmarkPanel();
+    }
+    const sel = document.getElementById('run-select');
+    const selectedRun = (sel && sel.value) || (gRuns[0] && gRuns[0].run_id);
+    if (
+      selectedRun &&
+      (forceTraceReload ||
+        !gCurrentRunTrace ||
+        gCurrentRunTrace.run_id === selectedRun ||
+        (gCurrentRunTrace && gCurrentRunTrace.state === 'running'))
+    ) {
+      await loadRunTrace(selectedRun);
+    } else if (!selectedRun) {
+      renderRunTrace(null);
+    }
+    updatePollBadge();
+  } catch (e) {
+    console.error('Workflow refresh error:', e);
+  }
+}
+
+function updatePollBadge() {
+  const badge = document.getElementById('live-poll-badge');
+  const toggle = document.getElementById('live-poll-toggle');
+  if (!badge) return;
+  const activeRuns = (gRuns || []).filter(r => r.state === 'running');
+  if (toggle && !toggle.checked) {
+    badge.className = 'pill';
+    badge.textContent = t('Paused', '已暂停');
+    return;
+  }
+  if (activeRuns.length > 0) {
+    badge.className = 'pill pill--live';
+    badge.innerHTML = `<span class="pulse-dot"></span>${escapeHtml(t(`Live (${activeRuns.length})`, `实时运行 (${activeRuns.length})`))}`;
+  } else {
+    badge.className = 'pill';
+    badge.textContent = t('Watching (2s)', '监听中 (2s)');
+  }
+}
+
+function ensureLivePolling() {
+  if (typeof setInterval !== 'function') return;
+  if (gLivePollTimer && typeof clearInterval === 'function') {
+    clearInterval(gLivePollTimer);
+    gLivePollTimer = null;
+  }
+  gLivePollTimer = setInterval(() => {
+    const toggle = document.getElementById('live-poll-toggle');
+    if (toggle && !toggle.checked) return;
+    const hasLive = (gRuns || []).some(r => r.state === 'running');
+    if (gCurrentTab === 'trace' || hasLive) {
+      refreshWorkflowData(false);
+    }
+  }, 2000);
+}
+
+function renderRunSelect() {
+  const sel = document.getElementById('run-select');
+  if (!sel) return;
+  const prev = sel.value || (gCurrentRunTrace && gCurrentRunTrace.run_id) || '';
+  if (!gRuns.length) {
+    sel.innerHTML = `<option value="">${escapeHtml(t('No runs found', '暂无运行记录'))}</option>`;
+    return;
+  }
+  sel.innerHTML = gRuns
+    .map((r, idx) => {
+      const tag = r.state === 'running' ? '[LIVE]' : r.source === 'pilot' ? '[PILOT]' : '[EXP]';
+      const cond = r.condition ? `${r.condition} · ` : '';
+      const label = `${tag} ${r.task_id} · ${cond}${r.framework} · ${r.status}${r.campaign ? ' (' + r.campaign + ')' : ''}`;
+      const isSelected = prev ? prev === r.run_id : idx === 0;
+      return `<option value="${escapeHtml(r.run_id)}"${isSelected ? ' selected' : ''}>${escapeHtml(label)}</option>`;
+    })
+    .join('');
+}
+
+async function loadRunTrace(runId) {
+  if (!runId) return;
+  try {
+    const resp = await fetch(`/api/run-trace?run=${encodeURIComponent(runId)}`);
+    if (!resp.ok) return;
+    const trace = await resp.json();
+    gCurrentRunTrace = trace;
+    gSelectedVersionIdx = Math.max(0, (trace.versions || []).length - 1);
+    if (!gSelectedStageId || !(trace.stages || []).some(s => s.id === gSelectedStageId)) {
+      const running = (trace.stages || []).find(s => s.status === 'RUNNING');
+      gSelectedStageId =
+        (running && running.id) || (trace.stages && trace.stages[0] && trace.stages[0].id) || null;
+    }
+    renderRunTrace(trace);
+  } catch (e) {
+    console.error('Failed to inspect run trace:', e);
+  }
+}
+
+function statusPillClass(status) {
+  if (status === 'PASS' || status === 'DONE') return 'pill--pass';
+  if (
+    status === 'FAIL' ||
+    status === 'TEST_FAIL' ||
+    status === 'COMPILE_FAIL' ||
+    status === 'TOOL_ERROR' ||
+    status === 'TIMEOUT'
+  )
+    return 'pill--fail';
+  if (status === 'RUNNING') return 'pill--live';
+  if (status === 'UNVERIFIED' || status === 'STALE') return 'pill--warn';
+  return '';
+}
+
+function renderRunTrace(trace) {
+  const sumEl = document.getElementById('trace-summary');
+  const pbEl = document.getElementById('trace-playback');
+  const verEl = document.getElementById('version-history-panel');
+  const tlEl = document.getElementById('trace-timeline-panel');
+  const wfMetaEl = document.getElementById('trace-waveform-meta');
+  const wfSel = document.getElementById('trace-waveform-case-select');
+  const wfDisp = document.getElementById('trace-waveform-display');
+
+  if (!trace) {
+    if (sumEl) sumEl.innerHTML = '';
+    if (pbEl)
+      pbEl.innerHTML = `<div class="card-subtle muted">${escapeHtml(t('No run selected.', '未选择运行记录。'))}</div>`;
+    if (verEl) verEl.innerHTML = '';
+    if (tlEl) tlEl.innerHTML = '';
+    return;
+  }
+
+  const tok = trace.token_summary || {};
+  if (sumEl) {
+    const fwLabel =
+      trace.framework_kind === 'star_v2' ? 'STAR v2 (5-Stage)' : `Baseline (${trace.framework})`;
+    const tokStr =
+      tok.usage_available && tok.total_tokens != null
+        ? `${tok.total_tokens} (in:${tok.input_tokens ?? '—'} out:${tok.output_tokens ?? '—'})`
+        : '—';
+    const elapsedStr =
+      trace.elapsed_seconds != null
+        ? `${Number(trace.elapsed_seconds).toFixed(1)}s`
+        : trace.state === 'running'
+          ? t('Running', '运行中')
+          : '—';
+    sumEl.innerHTML =
+      `<div class="metric-box"><div class="metric-label">${escapeHtml(t('Task / Condition', '任务 / 条件'))}</div><div class="metric-val">${escapeHtml(trace.task_id)}${trace.condition ? ' · ' + escapeHtml(trace.condition) : ''}</div></div>` +
+      `<div class="metric-box"><div class="metric-label">${escapeHtml(t('Architecture', 'Agent 架构'))}</div><div class="metric-val">${escapeHtml(fwLabel)}</div></div>` +
+      `<div class="metric-box"><div class="metric-label">${escapeHtml(t('Status', '状态'))}</div><div class="metric-val"><span class="pill ${statusPillClass(trace.status)}">${trace.state === 'running' ? '<span class="pulse-dot"></span>' : ''}${escapeHtml(trace.status)}</span></div></div>` +
+      `<div class="metric-box"><div class="metric-label">Tokens</div><div class="metric-val" style="font-size:13px;">${escapeHtml(tokStr)}</div></div>` +
+      `<div class="metric-box"><div class="metric-label">${escapeHtml(t('Elapsed', '耗时'))}</div><div class="metric-val">${escapeHtml(elapsedStr)}</div></div>`;
+  }
+
+  if (pbEl) {
+    const stages = trace.stages || [];
+    const nodesHtml = stages
+      .map(st => {
+        const label = gLang === 'zh' ? st.label_zh || st.label_en : st.label_en;
+        const summary = gLang === 'zh' ? st.summary_zh || st.summary_en : st.summary_en;
+        const selCls = st.id === gSelectedStageId ? ' selected' : '';
+        const rollbackPill =
+          st.metrics && st.metrics.rollback_count > 0
+            ? `<span class="pill pill--warn">${escapeHtml(t(`${st.metrics.rollback_count} rollback`, `回滚 ${st.metrics.rollback_count} 次`))}</span>`
+            : '';
+        return (
+          `<button type="button" class="stage-node status-${escapeHtml(st.status)}${selCls}" onclick="selectTraceStage('${escapeHtml(st.id)}')">` +
+          `<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">` +
+          `<strong style="font-size:13px;">${escapeHtml(label)}</strong>` +
+          `<span class="pill ${statusPillClass(st.status)}">${st.status === 'RUNNING' ? '<span class="pulse-dot"></span>' : ''}${escapeHtml(st.status)}</span>` +
+          `</div>` +
+          `<div class="muted" style="font-size:12px;">${escapeHtml(summary || '')}</div>` +
+          (rollbackPill ? `<div>${rollbackPill}</div>` : '') +
+          `</button>`
+        );
+      })
+      .join('');
+
+    const activeStage = stages.find(s => s.id === gSelectedStageId) || stages[0];
+    const stageDetailHtml = activeStage
+      ? `<div class="card-subtle" style="margin-top:10px;">` +
+        `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">` +
+        `<strong>${escapeHtml(gLang === 'zh' ? activeStage.label_zh : activeStage.label_en)}</strong>` +
+        `<span class="pill ${statusPillClass(activeStage.status)}">${escapeHtml(activeStage.status)}</span>` +
+        `</div>` +
+        `<pre class="mono" style="margin:0;font-size:11.5px;max-height:220px;overflow:auto;white-space:pre-wrap;">${escapeHtml(JSON.stringify(activeStage.detail || activeStage.metrics || {}, null, 2))}</pre>` +
+        `</div>`
+      : '';
+
+    pbEl.innerHTML = `<div class="pipeline-rail">${nodesHtml}</div>` + stageDetailHtml;
+  }
+
+  if (verEl) {
+    const versions = trace.versions || [];
+    if (!versions.length) {
+      verEl.innerHTML = `<div class="card-subtle muted">${escapeHtml(t('No candidate versions yet.', '暂无候选版本。'))}</div>`;
+    } else {
+      const idx = Math.min(gSelectedVersionIdx, versions.length - 1);
+      const activeVer = versions[idx];
+      const pills = versions
+        .map((v, i) => {
+          const btnCls = i === idx ? 'btn btn-sm btn-primary' : 'btn btn-sm';
+          const tag = v.rolled_back
+            ? ` [${t('ROLLED BACK', '已回滚')}]`
+            : v.is_final
+              ? ` [${t('FINAL', '最终')}]`
+              : '';
+          return `<button type="button" class="${btnCls}" onclick="selectTraceVersion(${i})">${escapeHtml(v.label + tag)}</button>`;
+        })
+        .join('');
+      const hasDiff = (activeVer.diff_from_prev || []).length > 0;
+      const showDiff = gVersionViewMode === 'diff' && hasDiff;
+      const modeToggle = hasDiff
+        ? `<div style="display:flex;gap:4px;"><button type="button" class="btn btn-sm ${!showDiff ? 'btn-primary' : ''}" onclick="setVersionViewMode('st')">ST</button><button type="button" class="btn btn-sm ${showDiff ? 'btn-primary' : ''}" onclick="setVersionViewMode('diff')">Diff</button></div>`
+        : '';
+      const codeBody = showDiff
+        ? (activeVer.diff_from_prev || [])
+            .map(line => {
+              const cls =
+                line.startsWith('+') && !line.startsWith('+++')
+                  ? 'diff-line diff-add'
+                  : line.startsWith('-') && !line.startsWith('---')
+                    ? 'diff-line diff-del'
+                    : line.startsWith('@@')
+                      ? 'diff-line diff-hdr'
+                      : 'diff-line';
+              const content =
+                (line.startsWith('+') || line.startsWith('-')) &&
+                !line.startsWith('+++') &&
+                !line.startsWith('---')
+                  ? `${escapeHtml(line[0])}${highlightST(line.slice(1))}`
+                  : line.startsWith(' ')
+                    ? ` ${highlightST(line.slice(1))}`
+                    : escapeHtml(line);
+              return `<div class="${cls}">${content}</div>`;
+            })
+            .join('')
+        : `<div class="diff-line" style="white-space:pre-wrap;padding:6px 12px;">${highlightST(activeVer.full_st || '')}</div>`;
+      verEl.innerHTML =
+        `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;">` +
+        `<div style="display:flex;gap:6px;flex-wrap:wrap;">${pills}</div>${modeToggle}` +
+        `</div>` +
+        `<div class="muted" style="font-size:12px;margin-bottom:6px;">` +
+        `<strong class="mono">${escapeHtml(activeVer.id)}</strong> · SHA256: <span class="mono">${escapeHtml((activeVer.sha256 || '').slice(0, 12))}</span>` +
+        `</div>` +
+        `<div class="diff-box">${codeBody}</div>`;
+    }
+  }
+
+  if (tlEl) {
+    const timeline = trace.timeline || [];
+    if (!timeline.length) {
+      tlEl.innerHTML = `<div class="card-subtle muted">${escapeHtml(t('No events logged.', '暂无事件日志。'))}</div>`;
+    } else {
+      const rows = timeline
+        .map(ev => {
+          const lat =
+            ev.elapsed_seconds != null ? `${Number(ev.elapsed_seconds).toFixed(2)}s` : '—';
+          const tokCell = ev.total_tokens != null ? String(ev.total_tokens) : '—';
+          return (
+            `<tr>` +
+            `<td class="mono" style="font-size:11px;white-space:nowrap;">${escapeHtml((ev.utc || '').replace('T', ' ').slice(0, 19) || '—')}</td>` +
+            `<td class="mono" style="font-size:12px;">${escapeHtml(ev.actor || '')}</td>` +
+            `<td class="mono" style="font-size:12px;">${escapeHtml(ev.event || '')}</td>` +
+            `<td><span class="pill ${statusPillClass(ev.status)}">${escapeHtml(ev.status || '')}</span></td>` +
+            `<td class="mono" style="font-size:11.5px;">${escapeHtml(lat)} / ${escapeHtml(tokCell)}</td>` +
+            `</tr>`
+          );
+        })
+        .join('');
+      tlEl.innerHTML =
+        `<div style="max-height:390px;overflow:auto;"><table class="clean-table"><thead><tr>` +
+        `<th>UTC</th><th>${escapeHtml(t('Actor', '节点'))}</th><th>${escapeHtml(t('Event', '事件'))}</th><th>${escapeHtml(t('Status', '状态'))}</th><th>${escapeHtml(t('Time / Tok', '耗时/Token'))}</th>` +
+        `</tr></thead><tbody>${rows}</tbody></table></div>`;
+    }
+  }
+
+  gTraceWaveforms = trace.waveforms || [];
+  if (wfMetaEl) {
+    const ws = trace.waveform_source || {};
+    wfMetaEl.innerHTML =
+      ws.kind && ws.kind !== 'none'
+        ? `<span class="pill ${ws.execution_verified ? 'pill--pass' : 'pill--warn'}">${escapeHtml(ws.kind)} · ${escapeHtml(ws.backend || '')}</span> ` +
+          `<span class="mono muted" style="font-size:12px;">${escapeHtml(ws.trace_relpath || '')}</span>`
+        : `<span class="pill">${escapeHtml(t('No Trace', '暂无波形'))}</span>`;
+  }
+  renderWaveformPanel(
+    gTraceWaveforms,
+    wfSel,
+    wfDisp,
+    t('No simulation trace recorded for this run.', '该运行暂无仿真波形记录。')
+  );
+}
+
+function selectTraceStage(stageId) {
+  gSelectedStageId = stageId;
+  if (gCurrentRunTrace) renderRunTrace(gCurrentRunTrace);
+}
+
+function selectTraceVersion(idx) {
+  gSelectedVersionIdx = idx;
+  if (gCurrentRunTrace) renderRunTrace(gCurrentRunTrace);
+}
+
+function setVersionViewMode(mode) {
+  gVersionViewMode = mode === 'diff' ? 'diff' : 'st';
+  if (gCurrentRunTrace) renderRunTrace(gCurrentRunTrace);
+}
+
+function loadRunCandidateIntoSandbox() {
+  if (!gCurrentRunTrace || !gCurrentRunTrace.versions || !gCurrentRunTrace.versions.length) return;
+  const idx = Math.min(gSelectedVersionIdx, gCurrentRunTrace.versions.length - 1);
+  const ver = gCurrentRunTrace.versions[idx];
+  setSandboxCode(ver.full_st || '');
+  const banner = document.getElementById('sandbox-provenance-banner');
+  if (banner) {
+    banner.hidden = false;
+    banner.innerHTML = `<span class="pill">${escapeHtml(t('Candidate', '候选代码'))}</span> <strong class="mono">${escapeHtml(gCurrentRunTrace.task_id)} / ${escapeHtml(ver.id)}</strong> <span class="mono muted">${escapeHtml(gCurrentRunTrace.run_id)}</span>`;
+  }
+  if (
+    gCurrentRunTrace.task_id &&
+    (!gCurrentTask || gCurrentTask.task.id !== gCurrentRunTrace.task_id)
+  ) {
+    selectTask(gCurrentRunTrace.task_id);
+  }
+  switchTab('sandbox');
+}
+
+function renderBenchmarkPanel() {
+  const box = document.getElementById('benchmark-summary-panel');
+  const statusBadge = document.getElementById('benchmark-status-badge');
+  if (!box) return;
+  const exp = gExperiments || {};
+  const conditions = exp.conditions || [];
+  const metrics = exp.metrics || null;
+  const metricConds = (metrics && metrics.conditions) || {};
+
+  if (statusBadge) {
+    statusBadge.className = metrics ? 'pill pill--pass' : 'pill';
+    statusBadge.textContent = metrics
+      ? t('Campaign Aggregate Ready', '汇总数据已就绪')
+      : t('Pending Full Campaign', '待全量实测汇总');
+  }
+
+  const rows = conditions
+    .map(c => {
+      const m = metricConds[c.id] || {};
+      const runsForCond = (gRuns || []).filter(r => r.condition === c.id);
+      const passStr = m.evaluated
+        ? `${m.passed || 0}/${m.evaluated}`
+        : runsForCond.length
+          ? `${runsForCond.filter(r => r.status === 'PASS').length}/${runsForCond.length} (${t('local', '本地')})`
+          : '—';
+      return (
+        `<tr>` +
+        `<td class="mono"><strong>${escapeHtml(c.id)}</strong></td>` +
+        `<td class="mono">${escapeHtml(c.framework || '')}</td>` +
+        `<td class="mono">${escapeHtml(c.model || '')}</td>` +
+        `<td>${c.ablation ? `<span class="pill pill--warn">${escapeHtml(c.ablation)}</span>` : c.spec_visible === false ? `<span class="pill">No LTL Spec</span>` : `<span class="pill pill--pass">Full Spec</span>`}</td>` +
+        `<td class="mono">${escapeHtml(passStr)}</td>` +
+        `</tr>`
+      );
+    })
+    .join('');
+
+  box.innerHTML = rows
+    ? `<div style="overflow-x:auto;"><table class="clean-table"><thead><tr><th>ID</th><th>${escapeHtml(t('Framework', '框架'))}</th><th>${escapeHtml(t('Model', '模型'))}</th><th>${escapeHtml(t('Config / Ablation', '条件 / 消融'))}</th><th>PASS</th></tr></thead><tbody>${rows}</tbody></table></div>`
+    : `<div class="muted">${escapeHtml(t('No experiment configuration found.', '未找到实验配置文件。'))}</div>`;
+}
+
+/* ================= Tab 3: Sandbox & Waveform Lab ================= */
+function populateSandboxTemplate(detail) {
+  if (!detail || !detail.task) return;
+  const task = detail.task;
+  const badge = document.getElementById('sandbox-task-badge');
+  if (badge) badge.textContent = `${task.id} · ${task.difficulty || ''}`;
+
+  const inputs = [];
+  const outputs = [];
+  const inouts = [];
+  (task.interface || []).forEach(p => {
+    const line = `    ${p.name} : ${p.type || 'BOOL'};`;
+    if (p.direction === 'OUTPUT') outputs.push(line);
+    else if (p.direction === 'IN_OUT') inouts.push(line);
+    else inputs.push(line);
+  });
+
+  const sections = ['FUNCTION_BLOCK FB_Task'];
+  if (inputs.length) sections.push(`VAR_INPUT\n${inputs.join('\n')}\nEND_VAR`);
+  if (outputs.length) sections.push(`VAR_OUTPUT\n${outputs.join('\n')}\nEND_VAR`);
+  if (inouts.length) sections.push(`VAR_IN_OUT\n${inouts.join('\n')}\nEND_VAR`);
+  sections.push('VAR\n    // Internal state or TON timers\nEND_VAR');
+  sections.push('\n// Write IEC 61131-3 ST implementation below\n');
+
+  setSandboxCode(sections.join('\n'));
+
+  const banner = document.getElementById('sandbox-provenance-banner');
+  if (banner) banner.hidden = true;
+
+  const allCases = (task.tests || []).concat(detail.random_cases || []);
+  gWaveforms = allCases.map(c => ({
+    case_id: c.id,
+    name: c.purpose || c.name || c.id,
+    passed: null,
+    steps: (c.steps || []).map((st, idx) => ({
+      step: idx,
+      inputs: st.inputs || {},
+      expected: st.expected || {},
+      observed: null,
+      dt_ms: st.dt_ms,
+      match: null,
+      divergence: null,
+    })),
+  }));
+  renderWaveformPanel(
+    gWaveforms,
+    document.getElementById('waveform-case-select'),
+    document.getElementById('waveform-display')
+  );
+}
+
+async function loadReferenceSt() {
+  if (!gCurrentTask || !gCurrentTask.task) return;
+  const tid = gCurrentTask.task.id;
+  const consoleBox = document.getElementById('sandbox-console');
+  const banner = document.getElementById('sandbox-provenance-banner');
+  try {
+    const resp = await fetch(`/api/reference-st?id=${encodeURIComponent(tid)}`);
+    const data = await resp.json();
+    if (!resp.ok || !data.available) {
+      if (banner) {
+        banner.hidden = false;
+        banner.innerHTML = `<span class="pill pill--warn">${escapeHtml(t('Unavailable', '暂无示例'))}</span> <span class="mono">codesys/examples/${escapeHtml(tid)}.json</span>`;
+      }
+      return;
+    }
+    setSandboxCode(`${(data.declaration || '').trim()}\n\n${(data.implementation || '').trim()}\n`);
+    if (banner) {
+      banner.hidden = false;
+      banner.innerHTML = `<span class="pill">${escapeHtml(t('Reference ST', '参考示例'))}</span> <strong class="mono">${escapeHtml(data.source || '')}</strong>`;
+    }
+    if (consoleBox) {
+      consoleBox.textContent = `Loaded ${data.source || tid}.`;
+    }
+  } catch (e) {
+    console.error('Failed to load reference ST:', e);
+  }
+}
+
+async function runSandboxEvaluate() {
+  if (!gCurrentTask || !gCurrentTask.task) return;
+  const editor = document.getElementById('st-source-code');
+  const consoleBox = document.getElementById('sandbox-console');
+  const incRand = !!(document.getElementById('eval-include-random') || {}).checked;
+  const code = editor ? editor.value : '';
+  if (consoleBox)
+    consoleBox.textContent = t(
+      'Running CODESYS compile & simulation...',
+      '正在调用 CODESYS 编译与仿真...'
+    );
+
+  try {
+    const resp = await fetch('/api/evaluate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        task_id: gCurrentTask.task.id,
+        candidate: code,
+        include_random: incRand,
+      }),
+    });
+    const data = await resp.json();
+    if (resp.status === 503) {
+      if (consoleBox) {
+        consoleBox.textContent = `[HTTP 503 · ${data.status || 'UNVERIFIED'}]\n${data.error || t('CODESYS unavailable.', 'CODESYS 未配置。')}`;
+      }
+      return;
+    }
+    if (consoleBox) {
+      const comp = data.compile || {};
+      const sim = data.simulation || {};
+      const diags = (comp.diagnostics || [])
+        .slice(0, 15)
+        .map(d => `[${d.severity || ''}] ${d.text || ''}`)
+        .join('\n');
+      consoleBox.textContent =
+        `Backend: ${data.execution_kind || 'UNKNOWN'}\n` +
+        `Compile: ${comp.status || 'UNKNOWN'} (success=${comp.success})\n` +
+        (sim.status
+          ? `Simulation: ${sim.status} (${sim.passed_cases || 0}/${sim.evaluated_cases || 0} passed)\n`
+          : '') +
+        (diags ? `\n${diags}` : '');
+    }
+    if (Array.isArray(data.waveform) && data.waveform.length > 0) {
+      gWaveforms = data.waveform;
+      const sel = document.getElementById('waveform-case-select');
+      const firstFail = gWaveforms.find(w => w.passed === false);
+      renderWaveformPanel(gWaveforms, sel, document.getElementById('waveform-display'));
+      if (firstFail && sel) {
+        sel.value = firstFail.case_id;
+        renderWaveformPanel(gWaveforms, sel, document.getElementById('waveform-display'));
       }
     }
-  });return parts.join(' ');
-}
-function renderGlossaryPanel(glossary){
-  const entries=Object.values(glossary||{});
-  const legendItems=SPEC_CAT_ORDER.map(cat=>{
-    const label=gLang==='zh'?SPEC_CAT_TEXT[cat].zh:SPEC_CAT_TEXT[cat].en;
-    const persistClass=(cat==='persistent_inout'||cat==='obs_history'||cat==='ghost_state')?' is-persistent':'';
-    return `<span class="spec-tok spec-tok--${cat}${persistClass}">${esc(label)}</span>`;
-  }).join('');
-  const legendHtml=`<div class="spec-legend" aria-label="Symbol Highlight Legend"><strong>${tr('高亮图例（悬停或点击公式符号查看中文浮窗）：','Highlight Legend (hover/click tokens for Chinese popover):')}</strong>${legendItems}</div>`;
-  if(!entries.length)return legendHtml;
-  const orderMap={persistent_inout:0,obs_history:1,ghost_state:2,input:3,output:4,alias:5};
-  const sorted=[...entries].sort((a,b)=>(orderMap[a.category]??9)-(orderMap[b.category]??9)||a.name.localeCompare(b.name));
-  const persistentCount=sorted.filter(e=>e.is_persistent).length;
-  const aliasCount=sorted.filter(e=>e.category==='alias').length;
-  const rows=sorted.map(e=>`<tr><td><button type="button" class="spec-tok spec-tok--${esc(e.category)}${e.is_persistent?' is-persistent':''}" data-symbol="${esc(e.name)}">${esc(e.name)}</button></td><td>${esc(e.category_zh||e.category)}${e.is_persistent?` <span class="smv-pill smv-tone-amber">${tr('持久化/跨拍','Persistent')}</span>`:''}</td><td><strong>${esc(e.label_zh||e.name)}</strong><div class="spec-hint" style="margin-top:2px">${esc(e.definition_zh||'')}</div>${e.persistence_warning_zh?`<div class="spec-hint" style="color:var(--amber);margin-top:2px">${esc(e.persistence_warning_zh)}</div>`:''}</td></tr>`).join('');
-  return `${legendHtml}<details class="spec-glossary-box"><summary>${tr(`查看全部接口变量、持久化状态 (${persistentCount}) 与规约别名 (${aliasCount}) 清单`,`Inspect interface pins, persistent states (${persistentCount}) & spec aliases (${aliasCount})`)}</summary><div class="review-table-wrap"><table class="data-table"><thead><tr><th>${tr('符号','Symbol')}</th><th>${tr('分类 / 持久性','Category / Persistence')}</th><th>${tr('中文定义与跨拍注意点','Chinese Definition & Persistence Notes')}</th></tr></thead><tbody>${rows}</tbody></table></div></details>`;
-}
-function specReviewGuide(task,smv){
-  const variants=smv?.authored_variants||[];
-  const defaultVariant=variants.includes('reference')?'reference':(variants[0]||'reference');
-  const smvControls=variants.length?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin:6px 0">${variants.map(v=>`<button type="button" class="btn btn-secondary" data-smv-run="${esc(v)}">${tr(`${smv?.required_tool||'SMV'}：检查 ${task.id} (${variantLabel(v)})`,`${smv?.required_tool||'SMV'}: Check ${task.id} (${variantLabel(v)})`)}</button>`).join('')}</div><p class="spec-hint">${tr('仅验证 models/ 中的显式 SMV 模型（EXPLICIT_SMV_MODEL_ONLY），不覆盖未编译候选 ST 代码；校验结果会写入 configs/smv_verification_status.json。','Checks explicit SMV models in models/ only (EXPLICIT_SMV_MODEL_ONLY); candidate ST is NOT verified. Results persist to configs/smv_verification_status.json.')}</p><pre id="reference-model-result" class="spec-source">${smv?.last_run_attempt?.status==='CHECKER_MISSING'?esc(JSON.stringify(smv.last_run_attempt,null,2)):''}</pre>`:`<p class="spec-hint">${tr('本题尚无可执行的SMV编码。','No executable SMV encoding is available for this task.')}</p>`;
-  return `<details class="spec-help" open><summary>${tr('如何审核规约（组内整理，待人工确认）','How to review a specification (group-authored guidance)')}</summary><p>${tr('符号：G 始终；F 最终（无固定期限）；X 下一拍；! 非；& 同时满足；| 或；→ 如果…那么…；↔ 当且仅当；U 直到。同色括号是一对，悬停可定位；点击或悬停彩色变量/别名可查看中文定义与持久化警示。','Symbols: G always; F eventually (no fixed deadline); X next scan; ! not; & and; | or; → implies; ↔ iff; U until. Matching brackets share a color; hover/click highlighted symbols for Chinese definitions and persistence notes.')}</p><p>${tr('逐条核对：①在原题中找依据；②分开前提和结论，确认本拍/下拍；③检查边界、长按、乱序与优先级；④确认 IN_OUT、O[k-1] 与 Spre/q* 参考幽灵态未被候选内部私有变量混淆；⑤找到触发前提的测试，避免空泛通过。','For each property: find source support; separate premise and conclusion; check current/next-scan observations and boundaries; confirm IN_OUT, O[k-1], and Spre/q* ghost states are distinct from candidate internals; ensure tests activate premises.')}</p>${task.id==='PUB001'?`<p>${tr('PUB001：0空闲→1清洗→2灌装→3旋盖→4包装→5完成。phase是扫描前状态，输出在扫描后观测。P3中Pump_Motor是本拍输出，X(phase=1)是下拍开始阶段；确认全真仍只前进一步。','PUB001 phases: 0 idle → 1 clean → 2 fill → 3 cap → 4 pack → 5 complete. phase is pre-scan; outputs are post-scan. In P3, Pump_Motor is the current observed output and X(phase=1) is the next pre-state. All confirmations together still advance only one phase.')}</p>`:''}<p class="spec-hint">${tr('配色与符号高亮均保持原始公式一字不改；显示规约不等于完成候选 ST 形式证明。','Highlighting preserves source formulas verbatim; displaying properties does not prove candidate ST.')}</p>${smvControls}</details>`;
-}
-async function checkSmvModel(taskId,variant){
-  const target=document.getElementById('reference-model-result');
-  const liveBox=document.getElementById('overview-smv-live-status');
-  const btns=[...document.querySelectorAll(`[data-smv-run]`)];
-  btns.forEach(b=>b.disabled=true);
-  if(target)target.textContent=tr(`正在检查 ${taskId} (${variant})…`,`Checking ${taskId} (${variant})…`);
-  if(liveBox)liveBox.innerHTML=`<span class="smv-meta">${tr('执行中…','Running…')}</span>`;
-  try{
-    const resp=await fetch('/api/check-reference-model',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({task_id:taskId,variant})});
-    const payload=await resp.json();
-    if(payload?.smv_status&&gCurrentTask?.task.id===taskId){
-      gCurrentTask.smv_status=payload.smv_status;
-      gTasks=gTasks.map(t=>t.id===taskId?{...t,smv_status:payload.smv_status}:t);
-      renderTaskList(false);
-      renderTaskOverview(gCurrentTask);
-      bindSmvButtons(taskId);
-    }
-    if(target)target.textContent=JSON.stringify(payload,null,2);
-    const afterLive=document.getElementById('overview-smv-live-status');
-    if(afterLive){
-      if(payload?.verification_status==='CHECKER_MISSING')afterLive.innerHTML=`<span class="smv-meta" style="color:var(--amber)">${tr('已持久化 CHECKER_MISSING 记录（HTTP 503）','Persisted CHECKER_MISSING attempt (HTTP 503)')}</span>`;
-      else if(resp.ok)afterLive.innerHTML=`<span class="smv-meta" style="color:var(--green)">${tr(`已重验 ${variant} 并入库`, `Re-verified ${variant} and persisted`)}</span>`;
-      else afterLive.innerHTML=`<span class="smv-meta" style="color:var(--red)">${esc(payload?.error||resp.statusText)}</span>`;
-    }
-  }catch(error){
-    if(target)target.textContent=error.message;
-  }finally{
-    document.querySelectorAll(`[data-smv-run]`).forEach(b=>b.disabled=false);
+  } catch (e) {
+    if (consoleBox) consoleBox.textContent = `Request failed: ${String(e)}`;
   }
 }
-function checkReferenceModel(){
-  if(!gCurrentTask)return;
-  const variants=gCurrentTask.smv_status?.authored_variants||[];
-  const variant=variants.includes('reference')?'reference':(variants[0]||'reference');
-  return checkSmvModel(gCurrentTask.task.id,variant);
-}
-function bindSmvButtons(taskId){
-  document.querySelectorAll('[data-smv-run]').forEach(btn=>{
-    btn.onclick=()=>checkSmvModel(taskId,btn.dataset.smvRun);
-  });
-}
-function renderTaskOverview(data){
-  const task=data.task,review=currentReview(data);
-  document.getElementById('task-overview').innerHTML=`<div class="overview-layout"><div class="overview-main"><p><span class="badge badge-pub">${esc(kind(task.kind))}</span> <span class="badge">${esc(difficulty(task.difficulty))}</span> <strong>${esc(task.id)} · ${esc(gLang==='zh'&&review?review.title_zh:task.title)}</strong></p><p>${data.tests.length} ${tr('固定用例','fixed cases')} · ${data.tests.reduce((n,c)=>n+c.steps.length,0)} ${tr('步','steps')} · ${task.ltl.length} ${tr('条属性','properties')}</p><p class="spec-hint">${tr('安全与错误优先级：详见补充约定及完整行为。','Safety and error priorities: see assumptions and the complete contract.')}</p></div>${renderOverviewSmvBox(task,data.smv_status)}</div>`;
-}
-function testName(test,review){return gLang==='zh'&&review?.tests_zh[test.id]?review.tests_zh[test.id].name:test.purpose||test.name||test.id;}
-function renderTaskDetails(data){
-  hideSpecPopover(true);
-  const task=data.task,review=currentReview(data);
-  gSymbolGlossary=data.symbol_glossary||{};
-  renderTaskOverview(data);
-  const pinsContainer=document.getElementById('interface-pins-container');
-  pinsContainer.innerHTML=`<div class="review-table-wrap"><table class="data-table"><thead><tr>${[tr('变量名','Name'),tr('类型','Type'),tr('方向 / 持久性','Direction / Persistence'),tr('含义','Description')].map(v=>`<th>${v}</th>`).join('')}</tr></thead><tbody>${(task.interface||[]).map(p=>{
-    const meta=gSymbolGlossary[p.name];
-    const cat=meta?.category||(p.direction==='IN_OUT'?'persistent_inout':(p.direction==='OUTPUT'?'output':'input'));
-    const isPersist=Boolean(meta?.is_persistent||p.direction==='IN_OUT');
-    const dirZh=({INPUT:'输入 INPUT',OUTPUT:'输出 OUTPUT',IN_OUT:'输入/输出 IN_OUT（持久化存储）'})[p.direction]||p.direction;
-    const dirLabel=gLang==='zh'?dirZh:(p.direction==='IN_OUT'?'IN_OUT (Persistent Storage)':p.direction);
-    return `<tr><td><button type="button" class="spec-tok spec-tok--${esc(cat)}${isPersist?' is-persistent':''}" data-symbol="${esc(p.name)}">${esc(p.name)}</button></td><td><code>${esc(p.type)}</code></td><td>${esc(dirLabel)}${isPersist?` <span class="smv-pill smv-tone-amber">${tr('持久化','Persistent')}</span>`:''}</td><td>${esc(gLang==='zh'&&review?review.interface_zh[p.name]:p.description||p.comment||'')}</td></tr>`;
-  }).join('')}</tbody></table></div>`;
-  attachPopoverEvents(pinsContainer);
-  const box=document.getElementById('ltl-container');
-  const normalized=task.normalized_specification;
-  const normalizationHtml=normalized?`<p class="spec-hint">${tr('规范化已完成；人工审核待确认。属性条数统计不代表候选 ST 已被形式证明。','Normalized definitions; human review pending. Property count does not mean candidate ST is proved.')} ${esc(normalized.candidate_formal_verification)}</p><details class="review-section"><summary>${tr('查看精确行为定义、辅助状态初值与历史绑定','Exact behavior, reference initialization and history bindings')}</summary><pre class="review-json">${esc(normalized.rules_zh)}</pre><pre class="review-json">${esc(JSON.stringify({observation:normalized.observation,initial_observed:normalized.initial_observed,reference_state_initial:normalized.reference_state_initial,history_bindings:normalized.history_bindings,auxiliary_state_bindings:normalized.auxiliary_state_bindings,finite_conjunctions:normalized.finite_conjunctions,comparison:normalized.comparison,constrained_fields:normalized.constrained_observed_fields,unconstrained_representation:normalized.unconstrained_representation_fields,transition:normalized.transition,limitations:normalized.limitations},null,2))}</pre></details>`:'';
-  box.innerHTML=specReviewGuide(task,data.smv_status)+renderGlossaryPanel(gSymbolGlossary)+normalizationHtml+`<div class="review-table-wrap"><table class="data-table spec-table"><thead><tr><th>${tr('属性','Property')}</th><th>${tr('规约公式 · 括号配色与符号高亮','Formula · Bracket pairs & symbol highlights')}</th><th>${tr('中文含义与审核要点','Meaning & review notes')}</th></tr></thead><tbody>${task.ltl.map(p=>{
-    const item=review?.properties_zh[p.id],matched=item?.formula===p.formula;
-    const meaning=gLang==='zh'?(matched?item.description:tr('译文缺失或公式已变化，请重新审核。','Translation missing or stale.')):p.explanation||p.description||'';
-    return `<tr><td>${esc(p.id)}</td><td><pre class="spec-formula">${formatSpec(p.formula,gSymbolGlossary)}</pre><details><summary>${tr('原始公式','Source formula')}</summary><code class="spec-source">${esc(p.formula)}</code></details></td><td>${esc(meaning)}<p class="spec-hint">${esc(gLang==='zh'&&matched?item.review:tr('','Check premise activation, history binding, boundaries and the complete contract.'))}</p><details><summary>${tr('原英文说明','Original description')}</summary>${esc(p.explanation||p.description||'')}</details></td></tr>`;
-  }).join('')}</tbody></table></div>`;
-  attachPopoverEvents(box);
-  bindSmvButtons(task.id);
-  const fixed=data.tests||[],random=data.random_cases||[];
-  document.getElementById('tests-container').innerHTML=`<p>${tr('固定测试','Fixed tests')}: ${fixed.length} · ${tr('可生成随机差分用例','Available differential random cases')}: ${random.length}</p><table class="data-table"><thead><tr><th>${tr('用例编号','Case ID')}</th><th>${tr('类别','Kind')}</th><th>${tr('步数','Steps')}</th><th>${tr('场景说明','Scenario')}</th></tr></thead><tbody>${[...fixed,...random].map((t,i)=>`<tr><td>${esc(t.id)}</td><td>${i<fixed.length?tr('固定','Fixed'):tr('随机','Random')}</td><td>${t.steps.length}</td><td>${esc(i<fixed.length?testName(t,review):tr('随机差分输入序列','Random differential input sequence'))}</td></tr>`).join('')}</tbody></table><h3>${tr('固定测试 · 逐步输入与预期输出','Fixed tests · Inputs & expected outputs by step')}</h3><p class="spec-hint">${tr('从0编号；dt_ms为距上次调用时间。预期值供审核，不是实测输出。','Zero-based steps; dt_ms is time since the previous call. Expectations are for review, not observed outputs.')}</p>${fixed.map(t=>`<details class="review-section"><summary>${esc(t.id)} · ${esc(testName(t,review))} · ${t.steps.length} ${tr('步','steps')}</summary><div class="review-table-wrap"><table class="data-table"><thead><tr><th>${tr('步','Step')}</th><th>dt_ms</th><th>${tr('输入','Inputs')}</th><th>${tr('预期输出','Expected outputs')}</th></tr></thead><tbody>${t.steps.map((s,i)=>`<tr><td>${i}</td><td>${s.dt_ms==null?tr('未设置','Not set'):esc(s.dt_ms)}</td><td><pre class="review-json">${esc(JSON.stringify(s.inputs,null,2))}</pre></td><td><pre class="review-json">${esc(JSON.stringify(s.expected,null,2))}</pre></td></tr>`).join('')}</tbody></table></div></details>`).join('')}`;
-}
-function populateSandboxTemplate(data){
-  const area=document.getElementById('st-source-code');if(area.value.trim())return;
-  const lines=['FUNCTION_BLOCK FB_Task'];
-  for(const [direction,label] of [['INPUT','VAR_INPUT'],['IN_OUT','VAR_IN_OUT'],['OUTPUT','VAR_OUTPUT']]){
-    const pins=data.task.interface.filter(p=>p.direction===direction);if(!pins.length)continue;
-    lines.push(label,...pins.map(p=>`    ${p.name} : ${p.type};`),'END_VAR');
-  }
-  lines.push('','(* Implementation *)','','END_FUNCTION_BLOCK');area.value=lines.join('\n');
-}
-function renderEvaluation(data){
-  const c=data.compile||{},s=data.simulation||{};
-  document.getElementById('sandbox-console').textContent=`${tr('编译结果','COMPILATION')}: ${c.status} (success=${c.success})\n${tr('诊断原文','Original diagnostics')}:\n${JSON.stringify(c.diagnostics||[],null,2)}\n\n${tr('仿真结果','SIMULATION')}: ${s.status}\n${tr('通过用例','Passed cases')}: ${s.passed_cases||0}/${s.evaluated_cases||0}\n${tr('失败信息','Failures')}:\n${JSON.stringify(s.failures||[],null,2)}\n${tr('证据目录','Evidence directory')}: ${data.evidence_workspace||''}`;
-}
-async function runSandboxEvaluate(){
-  if(!gCurrentTask)return;
-  const taskId=gCurrentTask.task.id;
-  document.getElementById('sandbox-console').textContent=tr('正在编译并仿真…','Compiling and simulating…');
-  try{
-    const data=await api('/api/evaluate',{task_id:taskId,candidate:document.getElementById('st-source-code').value,include_random:document.getElementById('eval-include-random').checked});
-    if(gCurrentTask?.task.id!==taskId)return;
-    gLastEvaluation=data;gLastExport=null;gLastWaveformData=data.waveform||[];renderEvaluation(data);updateWaveformCaseSelector();switchTab('waveform');
-  }catch(error){document.getElementById('sandbox-console').textContent=tr('评测失败：','Evaluation failed: ')+error.message;}
-}
-function waveStatus(w){return w.passed===true?tr('通过','PASS'):w.passed===false?tr('存在差异','DIVERGED'):tr('未验证','UNVERIFIED');}
-function updateWaveformCaseSelector(){
-  const select=document.getElementById('waveform-case-select'),old=select.value;
-  select.innerHTML=gLastWaveformData.map((w,i)=>`<option value="${i}">${esc(w.case_id)} · ${waveStatus(w)} · ${w.steps.length} ${tr('步','steps')}</option>`).join('')||`<option value="">${tr('（暂无实测波形）','(No observed waveform data)')}</option>`;
-  if([...select.options].some(o=>o.value===old))select.value=old;renderActiveWaveform();
-}
-function renderActiveWaveform(){
-  const wave=gLastWaveformData[Number.parseInt(document.getElementById('waveform-case-select').value,10)],display=document.getElementById('waveform-display');
-  if(!wave){display.textContent=tr('暂无实测波形，运行评测后查看。','No observed waveforms. Run an evaluation first.');return;}
-  const steps=wave.steps||[];if(!steps.length){display.textContent=tr('没有步骤。','No steps.');return;}
-  let html=`<p>${esc(wave.case_id)} · ${waveStatus(wave)}</p><div class="waveform-timeline" style="grid-template-columns:180px repeat(${steps.length},minmax(65px,1fr))"><div class="sig-label">${tr('信号 / 步','SIGNAL / STEP')}</div>${steps.map((s,i)=>`<div>#${i}${s.dt_ms==null?'':` +${s.dt_ms}ms`}</div>`).join('')}</div>`;
-  for(const [field,label,keys] of [['inputs',tr('输入','IN'),Object.keys(steps[0].inputs||{})],['expected',tr('预期','EXP'),Object.keys(steps[0].expected||{})],['observed',tr('实测','OBS'),Object.keys(steps[0].expected||{})]]){
-    keys.forEach(k=>{
-      html+=`<div class="waveform-signal" style="grid-template-columns:180px repeat(${steps.length},minmax(65px,1fr))"><div class="sig-label" title="${esc(k)}">${label}: ${esc(k)}</div>`;
-      steps.forEach(s=>{const value=s[field]?.[k],missing=value===undefined;const cls=missing?'unexecuted':field==='observed'&&s.divergence?.field===k?'mismatch':typeof value==='boolean'?(value?'true':'false'):'';html+=`<div class="sig-cell ${cls}">${missing?tr('未执行','unexecuted'):esc(typeof value==='object'?JSON.stringify(value):value)}</div>`;});
-      html+='</div>';
+
+async function runExportVerify() {
+  if (!gCurrentTask || !gCurrentTask.task) return;
+  const editor = document.getElementById('st-source-code');
+  const consoleBox = document.getElementById('sandbox-console');
+  try {
+    const resp = await fetch('/api/export-verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        task_id: gCurrentTask.task.id,
+        candidate: editor ? editor.value : '',
+      }),
     });
-  }display.innerHTML=html;
+    const data = await resp.json();
+    if (consoleBox) {
+      consoleBox.textContent =
+        `Bundle: ${data.bundle_dir || ''}\n\n` +
+        `--- spec.ltl ---\n${data.spec_ltl || ''}\n\n` +
+        `--- verification_manifest.json ---\n${JSON.stringify(data.manifest || {}, null, 2)}`;
+    }
+  } catch (e) {
+    if (consoleBox) consoleBox.textContent = `Export failed: ${String(e)}`;
+  }
 }
-function renderExport(data){document.getElementById('sandbox-console').textContent=`${tr('已导出验证材料（不等于形式验证通过）','Verification bundle exported (not a formal proof)')}\n${tr('目录','Directory')}: ${data.bundle_dir}\n${JSON.stringify(data.manifest,null,2)}\n\n${data.candidate_st||''}\n\n${data.spec_ltl||''}`;}
-async function exportFormalVerify(){
-  if(!gCurrentTask)return;
-  try{const data=await api('/api/export-verify',{task_id:gCurrentTask.task.id,candidate:document.getElementById('st-source-code').value});gLastExport=data;gLastEvaluation=null;renderExport(data);}catch(error){document.getElementById('sandbox-console').textContent=tr('导出失败：','Export failed: ')+error.message;}
+
+async function bootstrapWebUI() {
+  if (gBootstrapped) return;
+  gBootstrapped = true;
+  let initialLang = 'en';
+  try {
+    const u = new URL(window.location.href);
+    const qLang = u.searchParams.get('lang');
+    const saved =
+      typeof localStorage !== 'undefined' && localStorage.getItem
+        ? localStorage.getItem('star_plc_lang')
+        : null;
+    if (qLang === 'zh' || qLang === 'en') initialLang = qLang;
+    else if (saved === 'zh' || saved === 'en') initialLang = saved;
+  } catch (e) {}
+  gLang = initialLang;
+  const langSel = document.getElementById('language-select');
+  if (langSel) {
+    langSel.value = gLang;
+    langSel.addEventListener('change', ev => changeLanguage(ev.target.value));
+  }
+  applyStaticLanguage();
+
+  const wire = (id, ev, fn) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener(ev, fn);
+  };
+  wire('kind-filter', 'change', () => renderTaskList(true));
+  wire('difficulty-filter', 'change', () => renderTaskList(true));
+  wire('task-search', 'input', () => renderTaskList(false));
+  wire('pilot-only', 'change', () => renderTaskList(true));
+  wire('task-select', 'change', ev => selectTask(ev.target.value));
+  wire('st-source-code', 'input', syncEditorHighlight);
+  wire('st-source-code', 'scroll', syncEditorScroll);
+  wire('waveform-case-select', 'change', () => {
+    renderWaveformPanel(
+      gWaveforms,
+      document.getElementById('waveform-case-select'),
+      document.getElementById('waveform-display')
+    );
+  });
+  wire('trace-waveform-case-select', 'change', () => {
+    renderWaveformPanel(
+      gTraceWaveforms,
+      document.getElementById('trace-waveform-case-select'),
+      document.getElementById('trace-waveform-display')
+    );
+  });
+  wire('run-select', 'change', ev => loadRunTrace(ev.target.value));
+  wire('refresh-runs-btn', 'click', () => refreshWorkflowData(true));
+  wire('live-poll-toggle', 'change', () => updatePollBadge());
+  wire('btn-load-skeleton', 'click', () => gCurrentTask && populateSandboxTemplate(gCurrentTask));
+  wire('btn-load-reference', 'click', () => loadReferenceSt());
+  wire('btn-load-run-candidate', 'click', () => loadRunCandidateIntoSandbox());
+  wire('btn-load-run-to-sandbox', 'click', () => loadRunCandidateIntoSandbox());
+
+  if (typeof document !== 'undefined' && document.addEventListener) {
+    document.addEventListener('keydown', ev => {
+      if (ev.key === 'Escape') hideSpecPopover(true);
+    });
+    document.addEventListener('click', ev => {
+      const pop = document.getElementById('spec-popover');
+      if (!pop || pop.hidden) return;
+      if (
+        ev.target &&
+        ev.target.closest &&
+        (ev.target.closest('#spec-popover') || ev.target.closest('.spec-tok'))
+      )
+        return;
+      hideSpecPopover(true);
+    });
+  }
+
+  try {
+    const resp = await fetch('/api/tasks');
+    if (resp.ok) {
+      const data = await resp.json();
+      gTasks = data.tasks || [];
+      gReviews = data.task_review || [];
+      gPilotReview = data.pilot_review || [];
+      gCheckerAvail = data.checker_availability || null;
+      renderSystemStatus();
+      renderTaskList(true);
+    }
+  } catch (e) {
+    console.error('Bootstrap /api/tasks failed:', e);
+  }
+
+  try {
+    const u = new URL(window.location.href);
+    const reqTab = u.searchParams.get('tab');
+    const reqTask = u.searchParams.get('task');
+    if (reqTask) await selectTask(reqTask);
+    if (reqTab) switchTab(reqTab);
+  } catch (e) {}
+
+  ensureLivePolling();
 }
-async function loadTraceDetails(){
-  const target=document.getElementById('trace-summary');
-  try{const data=await api('/api/experiments');target.textContent=tr('本地汇总记录（不代表下方流程图实时执行）：\n','Local summary records (the diagram below is not live execution):\n')+JSON.stringify(data.summaries?.pilot_pair_latest||data.campaign||{status:'NO_CAMPAIGN'},null,2);}catch(error){target.textContent=error.message;}
+
+if (typeof document !== 'undefined' && document.addEventListener) {
+  document.addEventListener('DOMContentLoaded', bootstrapWebUI);
 }
-window.addEventListener('DOMContentLoaded',()=>{
-  captureStaticText();applyStaticLanguage();
-  document.getElementById('pilot-only').checked=params.get('scope')==='pilot';
-  reloadTasks();
-});
+if (typeof window !== 'undefined' && window.addEventListener && window !== document) {
+  window.addEventListener('DOMContentLoaded', bootstrapWebUI);
+}

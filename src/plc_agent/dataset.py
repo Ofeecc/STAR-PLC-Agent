@@ -25,8 +25,8 @@ def validate(tasks):
         if task.get('specification_version','').startswith(('2.1-normalized', '2.2-normalized')):
             from .normalized_spec import check_definition_binding
             normalized=task.get('normalized_specification',{})
-            if normalized.get('status')!='NORMALIZED_PENDING_HUMAN_REVIEW':
-                errors.append(f'{tid}: missing normalized definition/review boundary')
+            if normalized.get('status')!='NORMALIZED_HUMAN_REVIEWED':
+                errors.append(f'{tid}: missing normalized HUMAN_REVIEWED definition boundary')
             if normalized.get('candidate_formal_verification')!='UNVERIFIED':
                 errors.append(f'{tid}: normalization must not certify candidate ST')
             for prop in task.get('ltl',[]):

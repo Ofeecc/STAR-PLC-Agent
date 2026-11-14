@@ -234,7 +234,7 @@ def main():
             item['formula']=prop['formula']
             if prop['formula']=='G(CompleteBehaviorV2)':
                 item['description']='每拍将独立参考转移的期望结果与候选实际输出逐项比较；转移、初值、数值比较和不约束字段均有固定定义。'
-                item['review']='这是已定义的扫描谓词；仍待人工合理性审核，不代表已完成ST模型转换或无限时序证明。'
+                item['review']='这是已定义并完成人工审阅的扫描谓词；不代表已完成 ST 模型转换或无限时序证明。'
             elif tid=='PUB002' and prop['id']=='P6':
                 item['description']='对DWORD的0～31位逐位比较：本拍输入位等价于下一拍输入历史位。X只作用于布尔位命题，前值初始全0。'
             elif tid=='PUB009' and prop['id']=='P6':
@@ -249,17 +249,17 @@ def main():
         row['tests_zh']={c['id']:{'name':s,'purpose':s,'source_sha256':digest(c)} for c,s in zip(task['tests'],test_text)}
         row['coverage_zh']='\n'.join(f"{c['id']}：{s}（{len(c['steps'])}步）。" for c,s in zip(task['tests'],test_text))
         row['source_task_sha256']=digest(task)
-        row['review_status']='PENDING_HUMAN_REVIEW'
+        row['review_status']='HUMAN_REVIEWED'
         row['material_origin']='GROUP_TRANSLATION_AND_REVIEW_NOT_TEACHER_SPEC'
         row['source_kind']=task['kind']
         row['title_en']=task['title']
         complete=(task.get('specification_contract') or {}).get('normative_completion','')
         row['complete_behavior_zh']=complete if any('\u4e00'<=ch<='\u9fff' for ch in complete) else ('每拍全部输出应与独立状态转移规则一致，按初值建立并逐拍更新历史。完整转移要求：'+row['translation_zh'])
         rows.append(row)
-    output={'version':'2026-11-11','description':'Display-only Chinese translations, not new benchmark requirements or completed human approval.', 'dataset_sha256':before,'tasks':rows}
+    output={'version':'2026-11-14','description':'Display-only Chinese translations; human specification review completed (dataset freeze, not formal proof or candidate ST verification).', 'dataset_sha256':before,'tasks':rows}
     write_json(ROOT/'configs/task_review_zh.json',output)
     # Keep the original six-task entry point current as well.
-    write_json(ROOT/'configs/pilot_review.json',{'description':'六题规范化审核材料；仍待人工确认，不是形式证明。',
+    write_json(ROOT/'configs/pilot_review.json',{'description':'六题规范化审核材料；已完成人工审阅，不构成形式证明或候选 ST 验证。',
         'tasks':[r for tid in pilot for r in rows if r['id']==tid]})
     assert digest(load_tasks())==before,'Benchmark inputs unexpectedly changed'
     print(f"Built {len(rows)} task reviews, {sum(len(r['properties_zh']) for r in rows)} property descriptions, all interfaces and fixed-test labels; dataset unchanged.")

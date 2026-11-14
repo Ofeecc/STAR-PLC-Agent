@@ -25,6 +25,7 @@ from .dataset import load_tasks
 from .formal_verify import export_verification_bundle
 from .functional import outputs_equal
 from .random_testing import generate_random_cases
+from .run_trace import inspect_run_trace, list_runs, load_reference_st, resolve_safe_run_dir
 from .smv_status import (
     build_all_smv_statuses,
     build_task_smv_status,
@@ -179,10 +180,12 @@ def handle_api_request(
     backend: Backend | None = None,
     smv_status_path: Path | None = None,
     evidence_root: Path | None = None,
+    workspace_root: Path | None = None,
 ) -> tuple[int, dict]:
     """Dispatch API request to internal handlers and return (status_code, json_dict)."""
     method = method.upper()
     resolved_status_path = smv_status_path or getattr(settings, "smv_status_path", None)
+    active_root = workspace_root or ROOT
 
     def get_query_param(name: str) -> str | None:
         val = query.get(name)
@@ -313,7 +316,7 @@ def handle_api_request(
     # 4. GET /api/experiments
     if method == "GET" and path == "/api/experiments":
         summaries: dict[str, Any] = {}
-        summary_dir = ROOT / "results/summary"
+        summary_dir = active_root / "results/summary"
         if summary_dir.is_dir():
             for f in sorted(summary_dir.glob("*.json")):
                 try:
@@ -322,7 +325,7 @@ def handle_api_request(
                     pass
 
         conditions = []
-        cfg_path = ROOT / "configs/experiments.json"
+        cfg_path = active_root / "configs/experiments.json"
         if cfg_path.is_file():
             try:
                 conditions = read_json(cfg_path).get("conditions", [])
@@ -337,6 +340,29 @@ def handle_api_request(
             "conditions": conditions,
             "summaries": summaries,
         }
+
+    # 4b. GET /api/runs
+    if method == "GET" and path == "/api/runs":
+        runs = list_runs(active_root)
+        return 200, {
+            "runs": runs,
+            "total": len(runs),
+            "active_count": sum(1 for r in runs if r["state"] == "running"),
+        }
+
+    # 4c. GET /api/run-trace?run=...
+    if method == "GET" and path == "/api/run-trace":
+        run_rel = get_query_param("run") or ""
+        ws, code, err_msg = resolve_safe_run_dir(active_root, run_rel)
+        if ws is None:
+            return code, {"error": err_msg}
+        tasks_by_id = {t["id"]: t for t in load_tasks()}
+        return 200, inspect_run_trace(ws, active_root, tasks_by_id, _build_step_waveforms)
+
+    # 4d. GET /api/reference-st?id=...
+    if method == "GET" and path == "/api/reference-st":
+        task_id = get_query_param("id") or ""
+        return load_reference_st(task_id, active_root)
 
     # 5. POST /api/export-verify
     if method == "POST" and path == "/api/export-verify":

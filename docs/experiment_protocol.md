@@ -4,7 +4,7 @@
 > - The sections below preserve the original four-condition (`E1`–`E4`, `smolagents`) design draft. Authoritative current run definitions and execution status live in [`configs/experiments.json`](../configs/experiments.json) (`selection_status: PENDING_REAL_EXECUTION`) and [`configs/runtime.json`](../configs/runtime.json).
 > - **Current conditions (`configs/experiments.json`)**: `E1`/`E2` default to `custom_tool_loop` (`driver: "deepseek_harness"` on `deepseek-v4.1-flash-1017` / `kimi-k3.1-pro`; external CLIs require explicit `--driver codex_cli` or `--driver claude_code`); `E3`/`E4` run `self_harness` (STAR v2); `A1`–`A3` run ablations (`no_planner`, `no_dialect`, `no_selftest`); `S1`–`S2` toggle `spec_visible: false`.
 > - **Budget alignment**: `configs/experiments.json` lists condition metadata `compiler: 3`, `timeout: 900`, `max_llm_calls: 30`, while `plc-agent run` passes shared `Settings` (`configs/runtime.json` defaults: `max_repairs: 2` / 3 compiler attempts, `compiler_timeout: 180`, `llm_timeout: 420`, `task_timeout: 2400`, `reasoning_effort: "medium"`, role output caps `16384`/`24576`/`32768`/`24576`, `context_window_tokens: 131072`, `max_total_tokens: 300000`, `max_llm_calls: 9`). Freeze and log the active budget before paired comparisons.
-> - **Current frozen dataset (v2.2)**: 32 tasks, 294 LTL properties, 276 fixed test cases, 2,994 scan steps (`dataset_sha256: 7bc7244455bfc41481a8a9246be52cde8e6a1acee7ae7fcb767d02fa5c326dd4`). See [windows_field_test_guide.md](windows_field_test_guide.md) for current Windows preflight and paired run instructions.
+> - **Current frozen dataset (v2.2, Human Reviewed)**: 32 tasks, 294 LTL properties, 276 fixed test cases, 2,994 scan steps (`dataset_sha256: b4b9ff871b09d72f0eadb9ea798e181a515a9d23de710877408cda5760aada98`, status `NORMALIZED_HUMAN_REVIEWED` / `HUMAN_REVIEWED`). See [windows_field_test_guide.md](windows_field_test_guide.md) for current Windows preflight and paired run instructions.
 
 ## Objective and Frozen Units
 
@@ -84,4 +84,4 @@ Prompt text, request payloads, model responses, source versions, compile attempt
 - **Task-Level Functional Pass Rate**: Tasks with 100% of cases passed divided by fully evaluated tasks.
 - **Statistical Significance**: McNemar exact test p-values comparing STAR v2 against the baseline, alongside 95% bootstrap confidence intervals.
 - **Formal Verification Export**: Formally verifies LTL specifications using model checkers (`uv run plc-agent export-verify --task-id SELF001`).
-- **Interactive Auto-Test Workbench**: Real-time waveform inspection and manual differential analysis at `http://127.0.0.1:8765` (`uv run plc-agent web`).
+- **Interactive Workflow, Benchmark & Waveform WebUI**: Live/replayed execution pipeline, candidate version diffs, benchmark matrix, and same-screen CODESYS compile/simulation waveform comparator at `http://127.0.0.1:8765` (`uv run plc-agent web`).

@@ -260,7 +260,7 @@ def main():
         if tid=='PUB012':
             t['atomic_propositions'].update(count='O[k].Slab_Fault_Counter',history='O[k].Slab_Fault_History',runtime='O[k].Slab_Runtime_Accumulator')
         t['atomic_propositions']['CompleteBehaviorV2']=relation
-        normalized={'schema_version':1,'status':'NORMALIZED_PENDING_HUMAN_REVIEW',
+        normalized={'schema_version':1,'status':'NORMALIZED_HUMAN_REVIEWED',
             'language':'LTL over typed scan predicates; finite conjunction is a binding-time macro, not native NuSMV syntax.',
             'candidate_formal_verification':'UNVERIFIED','initial_observed':initial,
             'reference_state_initial':plain_state(reference),

@@ -41,18 +41,18 @@ def main():
         catalog.extend(f"- `{name}`: {definition}" for name,definition in t['atomic_propositions'].items())
         catalog.extend(['','### LTL properties',''])
         if 'normalized_specification' in t:
-            catalog.extend(['**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Candidate verification remains UNVERIFIED; human rationality review is pending.','','### Normalized state, observation and predicate definitions','','```json',dump(t['normalized_specification']),'```',''])
+            catalog.extend(['**Normalization is not formal proof.** These are LTL clauses over typed scan predicates. Human rationality review is completed; candidate verification remains UNVERIFIED.','','### Normalized state, observation and predicate definitions','','```json',dump(t['normalized_specification']),'```',''])
         for p in t['ltl']:
             catalog.extend([f"**{p['id']}** {p.get('name','')}".rstrip(),'','```text',p['formula'],'```','',p['explanation'],''])
         catalog.extend(['### Fixed test index','', '| Case | Purpose | Steps |','| --- | --- | ---: |'])
         for c in t['tests']:
-            catalog.append('| '+' | '.join(map(table_escape,[c['id'],c['purpose'],len(c['steps'])]))+' |')
+            catalog.append('| '+' | '.join(map(table_escape,[c['id'],c.get('purpose') or c.get('name', c['id']),len(c['steps'])]))+' |')
         catalog.extend(['','Full step inputs/expectations are in `dataset/test_cases/manual_tests.md` and the task JSON.'])
         manual.extend(['',f"## {t['id']} {t['title']}",'','Scan convention: '+t['scan_semantics'],'','Initial state:','','```json',dump(t['initial_conditions']),'```'])
         if 'test_bindings' in t:
             manual.extend(['','Caller bindings:','','```json',dump(t['test_bindings']),'```'])
         for c in t['tests']:
-            manual.extend(['',f"### {c['id']} {c.get('name','')}".rstrip(),'',c['purpose'],''])
+            manual.extend(['',f"### {c['id']} {c.get('name','')}".rstrip(),'',c.get('purpose') or c.get('name',''),''])
             for key,value in c.items():
                 if key not in ('id','name','purpose','steps'):
                     manual.extend([f"{key}: {value if isinstance(value,str) else dump(value)}",''])
