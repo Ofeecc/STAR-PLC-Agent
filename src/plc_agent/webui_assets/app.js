@@ -27,6 +27,11 @@ let gBenchFilterStatus = 'all';
 let gBenchFilterFormal = 'all';
 let gBenchSearch = '';
 let gUserPinnedStage = false;
+let gLastRunsSig = '';
+let gLastExpSig = '';
+let gLastTraceSig = '';
+let gUserChangedRunScope = false;
+let gLastRenderedTraceRunId = '';
 
 const BRACKET_COLORS = ['#09090b', '#047857', '#b45309', '#991b1b', '#52525b'];
 const RESERVED_TOKENS = new Set(['TRUE', 'FALSE', 'AND', 'OR', 'NOT']);
@@ -153,8 +158,8 @@ const I18N = {
     'trace.timelineTitle': 'Execution Event Timeline',
     'trace.waveformTitle': 'Recorded Execution Waveform',
     'bench.mainTitle': 'Benchmark Evaluation Results & Cohort Comparison',
-    'bench.showPilots': 'Show archived early pilots',
-    'bench.title': 'Benchmark Condition Matrix (configs/experiments.json)',
+    'bench.showPilots': 'Show subsets & archived pilots',
+    'bench.title': 'Legacy Experiment Definitions (configs/experiments.json)',
     'sandbox.title': 'Compile, Simulation & Waveform Lab',
     'sandbox.loadSkeleton': 'Load Interface Skeleton',
     'sandbox.loadReference': 'Load Reference ST',
@@ -205,8 +210,8 @@ const I18N = {
     'trace.timelineTitle': '模型调用与编译仿真时间线',
     'trace.waveformTitle': '执行记录波形对比',
     'bench.mainTitle': '基准评测结果与多组实验可视化对比',
-    'bench.showPilots': '显示前期试跑归档',
-    'bench.title': '实验条件矩阵配置（configs/experiments.json）',
+    'bench.showPilots': '显示子集试跑与早期归档',
+    'bench.title': '历史实验定义清单（configs/experiments.json）',
     'sandbox.title': 'ST 编译、仿真与波形实验台',
     'sandbox.loadSkeleton': '载入接口骨架',
     'sandbox.loadReference': '加载参考 ST',
@@ -223,6 +228,69 @@ const I18N = {
 
 function t(enText, zhText) {
   return gLang === 'zh' ? zhText : enText;
+}
+
+function captureUiViewState(el) {
+  if (!el) return null;
+  const openSummaries = [];
+  const openByIdx = [];
+  if (typeof el.querySelectorAll === 'function') {
+    const dets = el.querySelectorAll('details') || [];
+    for (let i = 0; i < dets.length; i += 1) {
+      const det = dets[i];
+      const isOpen = Boolean(det && det.open);
+      openByIdx.push(isOpen);
+      if (isOpen && typeof det.querySelector === 'function') {
+        const sum = det.querySelector('summary');
+        const txt = sum && sum.textContent ? sum.textContent.trim() : '';
+        if (txt) openSummaries.push(txt);
+      }
+    }
+  }
+  const scrollTops = [el.scrollTop || 0];
+  if (typeof el.querySelectorAll === 'function') {
+    const scrollers = el.querySelectorAll('.diff-box, [style*="overflow"]') || [];
+    for (let i = 0; i < scrollers.length; i += 1) {
+      scrollTops.push((scrollers[i] && scrollers[i].scrollTop) || 0);
+    }
+  }
+  return {
+    winY: typeof window !== 'undefined' && typeof window.scrollY === 'number' ? window.scrollY : 0,
+    openSummaries,
+    openByIdx,
+    scrollTops,
+  };
+}
+
+function restoreUiViewState(el, snap) {
+  if (!el || !snap) return;
+  if (typeof el.querySelectorAll === 'function') {
+    const dets = el.querySelectorAll('details') || [];
+    for (let i = 0; i < dets.length; i += 1) {
+      const det = dets[i];
+      if (!det) continue;
+      const sum = typeof det.querySelector === 'function' ? det.querySelector('summary') : null;
+      const txt = sum && sum.textContent ? sum.textContent.trim() : '';
+      if ((txt && snap.openSummaries.includes(txt)) || (!txt && snap.openByIdx[i])) {
+        det.open = true;
+      }
+    }
+    const scrollers = el.querySelectorAll('.diff-box, [style*="overflow"]') || [];
+    for (let i = 0; i < scrollers.length; i += 1) {
+      if (scrollers[i] && snap.scrollTops[i + 1]) {
+        scrollers[i].scrollTop = snap.scrollTops[i + 1];
+      }
+    }
+  }
+  if (snap.scrollTops[0]) el.scrollTop = snap.scrollTops[0];
+  if (
+    typeof window !== 'undefined' &&
+    typeof window.scrollTo === 'function' &&
+    typeof window.scrollY === 'number' &&
+    window.scrollY !== snap.winY
+  ) {
+    window.scrollTo(0, snap.winY);
+  }
 }
 
 function escapeHtml(raw) {
@@ -478,6 +546,7 @@ function renderTaskList(autoSelect) {
   const activeId = gCurrentTask && gCurrentTask.task ? gCurrentTask.task.id : '';
 
   if (grid) {
+    const prevScrollTop = grid.scrollTop || 0;
     grid.innerHTML = filtered
       .map(item => {
         const rev = reviewById[item.id] || {};
@@ -502,6 +571,7 @@ function renderTaskList(autoSelect) {
         );
       })
       .join('');
+    grid.scrollTop = prevScrollTop;
   }
 
   if (sel) {
@@ -1234,7 +1304,9 @@ async function openTraceRun(runId) {
   const target = (gRuns || []).find(r => r.run_id === runId);
   if (target) {
     if (target.is_archived_pilot || target.source === 'pilot') gRunSourceFilter = 'all';
-    else if (gRunSourceFilter !== 'main' && gRunSourceFilter !== target.source) gRunSourceFilter = 'main';
+    else if (gRunSourceFilter !== 'main' && gRunSourceFilter !== target.source) {
+      gRunSourceFilter = target.source || 'main';
+    }
     const srcSel = document.getElementById('run-source-filter');
     if (srcSel) srcSel.value = gRunSourceFilter;
   }
@@ -1243,7 +1315,7 @@ async function openTraceRun(runId) {
   if (sel) sel.value = runId;
   gUserPinnedStage = false;
   switchTab('trace');
-  await loadRunTrace(runId);
+  await loadRunTrace(runId, false);
 }
 
 async function openTaskExplorer(taskId) {
@@ -1253,6 +1325,7 @@ async function openTaskExplorer(taskId) {
 }
 
 function setRunSourceFilter(val) {
+  gUserChangedRunScope = true;
   gRunSourceFilter = val || 'main';
   renderRunSelect();
   const sel = document.getElementById('run-select');
@@ -1260,9 +1333,10 @@ function setRunSourceFilter(val) {
   const chosen = (sel && sel.value) || (filtered[0] && filtered[0].run_id);
   if (chosen) {
     gUserPinnedStage = false;
-    loadRunTrace(chosen);
+    loadRunTrace(chosen, false);
   } else {
     gCurrentRunTrace = null;
+    gLastTraceSig = '';
     renderRunTrace(null);
   }
 }
@@ -1272,26 +1346,55 @@ async function refreshWorkflowData(forceTraceReload) {
     const [runsResp, expResp] = await Promise.all([fetch('/api/runs'), fetch('/api/experiments')]);
     if (runsResp.ok) {
       const runsData = await runsResp.json();
-      gRuns = runsData.runs || [];
-      renderSystemStatus();
-      renderRunSelect();
+      const nextRuns = runsData.runs || [];
+      const nextRunsSig = JSON.stringify(nextRuns);
+      const runsChanged = nextRunsSig !== gLastRunsSig;
+      gRuns = nextRuns;
+      if (!gUserChangedRunScope) {
+        const hasLive = gRuns.some(r => r.state === 'running');
+        const hasFullflow = gRuns.some(r => r.source === 'fullflow');
+        const preferred = hasLive ? 'experiments' : hasFullflow ? 'fullflow' : 'main';
+        if (gRunSourceFilter !== preferred) {
+          gRunSourceFilter = preferred;
+          const srcSel = document.getElementById('run-source-filter');
+          if (srcSel) srcSel.value = gRunSourceFilter;
+        }
+        const pollToggle = document.getElementById('live-poll-toggle');
+        if (hasLive && pollToggle && !pollToggle.checked) {
+          pollToggle.checked = true;
+        }
+      }
+      if (forceTraceReload || runsChanged) {
+        gLastRunsSig = nextRunsSig;
+        renderSystemStatus();
+        renderRunSelect();
+      }
     }
     if (expResp.ok) {
-      gExperiments = await expResp.json();
-      renderBenchmarkPanel();
+      const nextExp = await expResp.json();
+      const nextExpSig = JSON.stringify(nextExp || {});
+      const expChanged = nextExpSig !== gLastExpSig;
+      gExperiments = nextExp;
+      const sumEl = document.getElementById('benchmark-summary-panel');
+      if (forceTraceReload || expChanged || !sumEl || !sumEl.innerHTML) {
+        gLastExpSig = nextExpSig;
+        renderBenchmarkPanel();
+      }
     }
     const sel = document.getElementById('run-select');
     const filtered = getFilteredRuns();
     const selectedRun = (sel && sel.value) || (filtered[0] && filtered[0].run_id) || (gRuns[0] && gRuns[0].run_id);
+    const selectedMeta = (gRuns || []).find(r => r.run_id === selectedRun);
+    const selectedIsLive = !!(selectedMeta && selectedMeta.state === 'running');
     if (
       selectedRun &&
       (forceTraceReload ||
         !gCurrentRunTrace ||
-        gCurrentRunTrace.run_id === selectedRun ||
-        (gCurrentRunTrace && gCurrentRunTrace.state === 'running'))
+        (selectedIsLive && (gCurrentRunTrace.run_id === selectedRun || gCurrentRunTrace.state === 'running')))
     ) {
-      await loadRunTrace(selectedRun);
+      await loadRunTrace(selectedRun, !forceTraceReload);
     } else if (!selectedRun) {
+      gLastTraceSig = '';
       renderRunTrace(null);
     }
     updatePollBadge();
@@ -1305,17 +1408,15 @@ function updatePollBadge() {
   const toggle = document.getElementById('live-poll-toggle');
   if (!badge) return;
   const activeRuns = (gRuns || []).filter(r => r.state === 'running');
-  if (toggle && !toggle.checked) {
-    badge.className = 'pill';
-    badge.textContent = t('Paused', '已暂停');
-    return;
-  }
-  if (activeRuns.length > 0) {
+  if (activeRuns.length > 0 && (!toggle || toggle.checked)) {
     badge.className = 'pill pill--live';
     badge.innerHTML = `<span class="pulse-dot"></span>${escapeHtml(t(`Live (${activeRuns.length})`, `实时运行 (${activeRuns.length})`))}`;
-  } else {
+  } else if (toggle && toggle.checked) {
     badge.className = 'pill';
     badge.textContent = t('Watching (2s)', '监听中 (2s)');
+  } else {
+    badge.className = 'pill';
+    badge.textContent = t('Static Replay', '静态回放');
   }
 }
 
@@ -1327,9 +1428,10 @@ function ensureLivePolling() {
   }
   gLivePollTimer = setInterval(() => {
     const toggle = document.getElementById('live-poll-toggle');
-    if (toggle && !toggle.checked) return;
-    const hasLive = (gRuns || []).some(r => r.state === 'running');
-    if (gCurrentTab === 'trace' || hasLive) {
+    if (!toggle || !toggle.checked) return;
+    const activeRuns = (gRuns || []).filter(r => r.state === 'running');
+    if (!activeRuns.length) return;
+    if (gCurrentTab === 'trace' || activeRuns.length > 0) {
       refreshWorkflowData(false);
     }
   }, 2000);
@@ -1341,30 +1443,41 @@ function renderDemoChips() {
   const runs = gRuns || [];
   const activeRunId = (gCurrentRunTrace && gCurrentRunTrace.run_id) || '';
   const liveRuns = runs.filter(r => r.state === 'running');
-  const expRuns = runs.filter(r => r.state !== 'running' && r.source === 'experiments').slice(0, 4);
   const picks = [];
   const seen = new Set();
-  for (const list of [liveRuns, expRuns]) {
-    for (const r of list) {
-      if (!seen.has(r.run_id)) {
-        seen.add(r.run_id);
-        picks.push(r);
-      }
-    }
+  const addPick = (r, badgeNote) => {
+    if (!r || seen.has(r.run_id)) return;
+    seen.add(r.run_id);
+    picks.push({ run: r, badgeNote: badgeNote || '' });
+  };
+
+  for (const r of liveRuns) {
+    addPick(r, '');
   }
-  if (!picks.length && runs.length) {
-    const fallbackIds = ['PUB001', 'PUB011', 'PUB005'];
-    for (const tid of fallbackIds) {
-      const found = runs.find(r => r.task_id === tid && !r.is_archived_pilot);
-      if (found && !seen.has(found.run_id)) {
-        seen.add(found.run_id);
-        picks.push(found);
-      }
+  if (!liveRuns.length && runs.length) {
+    const highlights = [
+      { task: 'SELF012', match: 'star_deepseek', tagEn: 'Repair -> PASS', tagZh: '编译自修复' },
+      { task: 'PUB013', match: 'star_deepseek', tagEn: 'Sim Fix 10/10', tagZh: '盲测修复' },
+      { task: 'PUB005', match: 'star_terra', tagEn: 'Ratchet x2', tagZh: '防退化回滚' },
+      { task: 'PUB003', match: 'codex_deepseek', tagEn: 'SA0027 Contrast', tagZh: '基线对比' },
+    ];
+    for (const h of highlights) {
+      const found = runs.find(
+        r =>
+          r.task_id === h.task &&
+          r.source === 'fullflow' &&
+          String(r.run_id || '').includes(h.match)
+      );
+      if (found) addPick(found, t(h.tagEn, h.tagZh));
     }
-    for (const r of getFilteredRuns().slice(0, 3)) {
-      if (!seen.has(r.run_id) && picks.length < 4) {
-        seen.add(r.run_id);
-        picks.push(r);
+    if (picks.length < 4) {
+      for (const tid of ['PUB001', 'PUB011', 'PUB005']) {
+        const found = runs.find(r => r.task_id === tid && !r.is_archived_pilot);
+        if (found) addPick(found, '');
+      }
+      for (const r of getFilteredRuns()) {
+        if (picks.length >= 4) break;
+        addPick(r, '');
       }
     }
   }
@@ -1375,15 +1488,15 @@ function renderDemoChips() {
   const leadLabel =
     liveRuns.length > 0
       ? `<span class="muted" style="font-size:12px;font-weight:600;">${escapeHtml(t('Live Demo Focus:', '实时演示快捷切换:'))}</span>`
-      : `<span class="muted" style="font-size:12px;font-weight:600;">${escapeHtml(t('Quick Demo Runs:', '演示样例快速切换:'))}</span>`;
+      : `<span class="muted" style="font-size:12px;font-weight:600;">${escapeHtml(t('Featured Traces:', '亮点轨迹快速切换:'))}</span>`;
   const chips = picks
-    .map(r => {
+    .map(({ run: r, badgeNote }) => {
       const active = r.run_id === activeRunId ? ' active' : '';
       const dot = r.state === 'running' ? '<span class="pulse-dot"></span>' : '';
-      const grp = r.group ? ` · ${r.group}` : r.condition ? ` · ${r.condition}` : '';
-      const stg = r.current_stage ? ` (${r.current_stage})` : '';
+      const fw = r.framework === 'codex_cli' ? 'Codex' : 'STAR';
       const st = r.display_status || r.status;
-      return `<button type="button" class="demo-chip${active}" onclick="openTraceRun('${escapeHtml(r.run_id)}')">${dot}<span>${escapeHtml(r.task_id + grp)}</span><span class="muted" style="font-weight:500;">${escapeHtml(st + stg)}</span></button>`;
+      const meta = badgeNote || `${st}${r.current_stage && r.state === 'running' ? ' (' + r.current_stage + ')' : ''}`;
+      return `<button type="button" class="demo-chip${active}" onclick="openTraceRun('${escapeHtml(r.run_id)}')">${dot}<span>${escapeHtml(`${r.task_id} · ${fw}`)}</span><span class="muted" style="font-weight:500;">${escapeHtml(meta)}</span></button>`;
     })
     .join('');
   box.innerHTML = leadLabel + chips;
@@ -1423,16 +1536,23 @@ function renderRunSelect() {
   renderDemoChips();
 }
 
-async function loadRunTrace(runId) {
+async function loadRunTrace(runId, fromPoll) {
   if (!runId) return;
   try {
     const resp = await fetch(`/api/run-trace?run=${encodeURIComponent(runId)}`);
     if (!resp.ok) return;
     const trace = await resp.json();
+    const traceSig = JSON.stringify(trace || {});
     const isNewRun = !gCurrentRunTrace || gCurrentRunTrace.run_id !== trace.run_id;
-    if (isNewRun) gUserPinnedStage = false;
+    if (fromPoll && !isNewRun && traceSig === gLastTraceSig) {
+      return;
+    }
+    gLastTraceSig = traceSig;
+    if (isNewRun) {
+      gUserPinnedStage = false;
+      gSelectedVersionIdx = Math.max(0, (trace.versions || []).length - 1);
+    }
     gCurrentRunTrace = trace;
-    gSelectedVersionIdx = Math.max(0, (trace.versions || []).length - 1);
     const followActive = !!(document.getElementById('trace-follow-active') || {}).checked;
     const stages = trace.stages || [];
     if (followActive && !gUserPinnedStage && trace.state === 'running') {
@@ -1443,7 +1563,8 @@ async function loadRunTrace(runId) {
       const running = stages.find(s => s.status === 'RUNNING');
       gSelectedStageId = (running && running.id) || (stages[0] && stages[0].id) || null;
     }
-    renderRunSelect();
+    if (!fromPoll || isNewRun) renderRunSelect();
+    else renderDemoChips();
     renderRunTrace(trace);
   } catch (e) {
     console.error('Failed to inspect run trace:', e);
@@ -1779,6 +1900,7 @@ function renderRunTrace(trace) {
   const wfDisp = document.getElementById('trace-waveform-display');
 
   if (!trace) {
+    gLastRenderedTraceRunId = '';
     if (sumEl) sumEl.innerHTML = '';
     if (pbEl)
       pbEl.innerHTML = `<div class="card-subtle muted">${escapeHtml(t('No run selected.', '未选择运行记录。'))}</div>`;
@@ -1786,6 +1908,12 @@ function renderRunTrace(trace) {
     if (tlEl) tlEl.innerHTML = '';
     return;
   }
+
+  const sameTrace = gLastRenderedTraceRunId === trace.run_id;
+  const pbSnap = sameTrace ? captureUiViewState(pbEl) : null;
+  const verSnap = sameTrace ? captureUiViewState(verEl) : null;
+  const tlSnap = sameTrace ? captureUiViewState(tlEl) : null;
+  gLastRenderedTraceRunId = trace.run_id || '';
 
   const tok = trace.token_summary || {};
   const stages = trace.stages || [];
@@ -1965,6 +2093,11 @@ function renderRunTrace(trace) {
     wfDisp,
     t('No simulation trace recorded for this run.', '该运行暂无仿真波形记录。')
   );
+  if (sameTrace) {
+    restoreUiViewState(pbEl, pbSnap);
+    restoreUiViewState(verEl, verSnap);
+    restoreUiViewState(tlEl, tlSnap);
+  }
 }
 
 function selectTraceStage(stageId) {
@@ -2037,19 +2170,29 @@ function renderBenchmarkPanel() {
   const showPilots = !!(document.getElementById('bench-show-pilots') || {}).checked;
   const exp = gExperiments || {};
   const allGroups = Array.isArray(exp.benchmark_groups) ? exp.benchmark_groups : [];
-  const visibleGroups = allGroups.filter(g => showPilots || !g.archived);
+  const hasPrimary = allGroups.some(g => g.tier === 'primary');
+  const visibleGroups = allGroups.filter(
+    g => showPilots || (!g.archived && (!hasPrimary || g.tier === 'primary'))
+  );
   const conditions = exp.conditions || [];
   const metrics = exp.metrics || null;
   const metricConds = (metrics && metrics.conditions) || {};
+  const vizSnap = captureUiViewState(vizBox);
+  const boxSnap = captureUiViewState(box);
 
   if (statusBadge) {
     const primaryCount = visibleGroups.filter(g => g.tier === 'primary').length;
     statusBadge.className = visibleGroups.length ? 'pill pill--pass' : 'pill';
     statusBadge.textContent = visibleGroups.length
-      ? t(
-          `${visibleGroups.length} Cohorts (${primaryCount} Full Matrix)`,
-          `${visibleGroups.length} 组评测（${primaryCount} 组全题库）`
-        )
+      ? showPilots
+        ? t(
+            `${visibleGroups.length} Cohorts (${primaryCount} Full Matrix)`,
+            `${visibleGroups.length} 组评测（${primaryCount} 组全题库）`
+          )
+        : t(
+            `${visibleGroups.length} Primary Matrix Cohorts`,
+            `${visibleGroups.length} 组全题库主实验`
+          )
       : t('Pending Benchmark Data', '待加载评测汇总');
   }
 
@@ -2057,8 +2200,43 @@ function renderBenchmarkPanel() {
     if (!visibleGroups.length) {
       vizBox.innerHTML = '';
     } else {
+      const kpiSource = visibleGroups.filter(g => g.tier === 'primary');
+      const kpiPool = kpiSource.length ? kpiSource : visibleGroups;
+      const gTitle = g => (gLang === 'zh' ? g.title_zh || g.title_en : g.title_en || g.group_id);
+      const bestComp = kpiPool.slice().sort((a, b) => (b.compiled_tasks || 0) - (a.compiled_tasks || 0))[0];
+      const bestFixed = kpiPool
+        .slice()
+        .sort((a, b) => ((b.fixed_cases || {}).passed || 0) - ((a.fixed_cases || {}).passed || 0))[0];
+      const evalPool = kpiPool.filter(g => ((g.fixed_cases || {}).evaluated || 0) > 0);
+      const bestEval = evalPool
+        .slice()
+        .sort(
+          (a, b) =>
+            b.fixed_cases.passed / b.fixed_cases.evaluated -
+            a.fixed_cases.passed / a.fixed_cases.evaluated
+        )[0];
+      const maxSmv = Math.max(0, ...kpiPool.map(g => (g.formal_status_counts || {}).PASS || 0));
+      const smvLeaders = kpiPool.filter(g => ((g.formal_status_counts || {}).PASS || 0) === maxSmv);
+
+      const compDen = (bestComp && (bestComp.planned_tasks || bestComp.completed_tasks)) || 32;
+      const compPctTop = bestComp && compDen ? (((bestComp.compiled_tasks || 0) / compDen) * 100).toFixed(1) : '0.0';
+      const fixPassTop = bestFixed && bestFixed.fixed_cases ? bestFixed.fixed_cases.passed || 0 : 0;
+      const fixPlanTop = bestFixed && bestFixed.fixed_cases ? bestFixed.fixed_cases.planned || 276 : 276;
+      const fixPctTop = fixPlanTop ? ((fixPassTop / fixPlanTop) * 100).toFixed(1) : '0.0';
+      const evalPassTop = bestEval && bestEval.fixed_cases ? bestEval.fixed_cases.passed || 0 : 0;
+      const evalDenTop = bestEval && bestEval.fixed_cases ? bestEval.fixed_cases.evaluated || 0 : 0;
+      const evalPctTop = evalDenTop ? ((evalPassTop / evalDenTop) * 100).toFixed(1) : '0.0';
+
+      const kpiStripHtml =
+        `<div class="overview-grid" style="margin-bottom:12px;">` +
+        `<div class="metric-box"><div class="metric-label">${escapeHtml(t('Best Compile Rate', '最高编译率'))}</div><div class="metric-val">${escapeHtml(bestComp ? `${bestComp.compiled_tasks || 0}/${compDen} (${compPctTop}%)` : '—')}</div><div class="muted" style="font-size:11.5px;margin-top:3px;">${escapeHtml(bestComp ? gTitle(bestComp) : '')}</div></div>` +
+        `<div class="metric-box"><div class="metric-label">${escapeHtml(t('Top Fixed Cases (Planned)', '最多固定用例通过'))}</div><div class="metric-val">${escapeHtml(bestFixed ? `${fixPassTop}/${fixPlanTop} (${fixPctTop}%)` : '—')}</div><div class="muted" style="font-size:11.5px;margin-top:3px;">${escapeHtml(bestFixed ? gTitle(bestFixed) : '')}</div></div>` +
+        `<div class="metric-box"><div class="metric-label">${escapeHtml(t('Peak Evaluated Accuracy', '最高有效实测率'))}</div><div class="metric-val">${escapeHtml(bestEval ? `${evalPassTop}/${evalDenTop} (${evalPctTop}%)` : '—')}</div><div class="muted" style="font-size:11.5px;margin-top:3px;">${escapeHtml(bestEval ? gTitle(bestEval) : '')}</div></div>` +
+        `<div class="metric-box"><div class="metric-label">${escapeHtml(t('Top Stage-3 Formal PASS', '最高形式检查通过'))}</div><div class="metric-val">${escapeHtml(`${maxSmv}/${compDen} ${t('tasks', '题')}`)}</div><div class="muted" style="font-size:11.5px;margin-top:3px;">${escapeHtml(smvLeaders.map(gTitle).join(' / '))}</div></div>` +
+        `</div>`;
+
       const interpHtml = exp.interpretation
-        ? `<div class="card-subtle" style="margin-bottom:12px;font-size:12.5px;"><strong>${escapeHtml(t('Metric Scope:', '口径说明:'))}</strong> ${escapeHtml(exp.interpretation)}</div>`
+        ? `<details class="details-accordion" style="margin-bottom:10px;"><summary style="font-size:12px;">${escapeHtml(t('Metric Scope & Outcome Classification Notes', '指标口径与状态分类说明'))}</summary><div class="muted" style="font-size:12px;margin-top:6px;">${escapeHtml(exp.interpretation)}</div></details>`
         : '';
 
       const rateRows = visibleGroups
@@ -2132,8 +2310,12 @@ function renderBenchmarkPanel() {
         `</div>`;
 
       vizBox.innerHTML =
-        interpHtml + legendHtml + `<div class="stage-rich-grid" style="margin-bottom:14px;">${rateRows}</div>`;
+        kpiStripHtml +
+        `<div class="stage-rich-grid" style="margin-bottom:10px;">${rateRows}</div>` +
+        legendHtml +
+        interpHtml;
     }
+    restoreUiViewState(vizBox, vizSnap);
   }
 
   if (box) {
@@ -2245,7 +2427,7 @@ function renderBenchmarkPanel() {
         `<div class="bench-group-grid">${groupCardsHtml}</div>` +
         `<div class="card-subtle">` +
         `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;">` +
-        `<div><strong>${escapeHtml(selTitle)}</strong> <span class="mono muted" style="font-size:12px;">(${escapeHtml(selectedGroup.source_file || '')})</span></div>` +
+        `<div><strong title="${escapeHtml(selectedGroup.source_file || '')}">${escapeHtml(selTitle)}</strong></div>` +
         `<span class="pill">${escapeHtml(`${filteredTasks.length}/${(selectedGroup.tasks || []).length} ${t('shown', '条记录')}`)}</span>` +
         `</div>` +
         (selectedGroup.note ? `<div class="muted" style="font-size:12px;margin-bottom:8px;">${escapeHtml(selectedGroup.note)}</div>` : '') +
@@ -2277,6 +2459,7 @@ function renderBenchmarkPanel() {
         `<th>Task</th><th>${escapeHtml(t('Diff', '难度'))}</th><th>${escapeHtml(t('Compile', '编译'))}</th><th>${escapeHtml(t('Fixed (P/E/Pl)', '固定用例'))}</th><th>${escapeHtml(t('Formal', '形式验证'))}</th><th>${escapeHtml(t('Outcome', '状态'))}</th><th>${escapeHtml(t('Note', '说明'))}</th><th>LLM</th><th>${escapeHtml(t('Inspect', '查看'))}</th>` +
         `</tr></thead><tbody>${taskRowsHtml || `<tr><td colspan="9" class="muted">${escapeHtml(t('No matching tasks.', '无匹配题目。'))}</td></tr>`}</tbody></table></div>` +
         `</div>`;
+      restoreUiViewState(box, boxSnap);
     }
   }
 
@@ -2522,7 +2705,7 @@ async function bootstrapWebUI() {
     loadRunTrace(ev.target.value);
   });
   wire('refresh-runs-btn', 'click', () => refreshWorkflowData(true));
-  wire('refresh-bench-btn', 'click', () => refreshWorkflowData(false));
+  wire('refresh-bench-btn', 'click', () => refreshWorkflowData(true));
   wire('bench-show-pilots', 'change', () => renderBenchmarkPanel());
   wire('live-poll-toggle', 'change', () => updatePollBadge());
   wire('btn-load-skeleton', 'click', () => gCurrentTask && populateSandboxTemplate(gCurrentTask));

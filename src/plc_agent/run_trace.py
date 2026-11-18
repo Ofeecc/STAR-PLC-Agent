@@ -6,6 +6,7 @@ import difflib
 import json
 import os
 import re
+from datetime import date
 from pathlib import Path, PurePosixPath
 from typing import Any, Callable
 
@@ -595,6 +596,27 @@ def _collect_verify_attempts(ws: Path) -> list[dict[str, Any]]:
     return attempts
 
 
+def _is_active_live_run(
+    ws: Path,
+    effective_result: dict | None,
+    source: str,
+    campaign: str | None = None,
+) -> bool:
+    """Return True only for fresh in-progress experiment workspaces, not stale past-date archives."""
+    if effective_result is not None or source != "experiments":
+        return False
+    for text in (campaign or "", ws.name):
+        m = re.search(r"(\d{4}-\d{2}-\d{2})", text)
+        if m:
+            try:
+                parsed = date.fromisoformat(m.group(1))
+                if (date.today() - parsed).days > 1:
+                    return False
+            except ValueError:
+                pass
+    return True
+
+
 def _build_star_stages(
     ws: Path,
     result: dict | None,
@@ -603,8 +625,10 @@ def _build_star_stages(
     exec_events: list[dict[str, Any]],
     versions: list[dict[str, Any]],
     parent_ctx: dict[str, Any] | None = None,
+    is_live: bool | None = None,
 ) -> list[dict[str, Any]]:
-    is_live = result is None
+    if is_live is None:
+        is_live = result is None
     parent_ctx = parent_ctx or _load_parent_fullflow_context(ws)
     ablation = (result or runtime_cfg or {}).get("ablation")
     started_calls = {
@@ -1335,9 +1359,11 @@ def _summarize_run(ws: Path, root: Path, source: str) -> dict[str, Any]:
     task_id = _infer_task_id(ws, effective_result)
     condition, campaign, group = _infer_condition_and_campaign(ws, root, source, effective_result, runtime_cfg)
     versions = _extract_versions(ws, framework_kind, include_diffs=False)
-    is_live = (effective_result is None) and (source == "experiments")
+    is_live = _is_active_live_run(ws, effective_result, source, campaign)
     if framework_kind == "star":
-        stages = _build_star_stages(ws, result, runtime_cfg, model_calls, exec_events, versions, parent_ctx=parent_ctx)
+        stages = _build_star_stages(
+            ws, result, runtime_cfg, model_calls, exec_events, versions, parent_ctx=parent_ctx, is_live=is_live
+        )
     elif framework_kind == "fullflow":
         stages = _build_fullflow_stages(ws, ff)
     else:
@@ -1523,9 +1549,11 @@ def inspect_run_trace(
     source = _resolve_run_source(ws, root)
     condition, campaign, group = _infer_condition_and_campaign(ws, root, source, effective_result, runtime_cfg)
     versions = _extract_versions(ws, framework_kind, include_diffs=True)
-    is_live = (effective_result is None) and (source == "experiments")
+    is_live = _is_active_live_run(ws, effective_result, source, campaign)
     if framework_kind == "star":
-        stages = _build_star_stages(ws, result, runtime_cfg, model_calls, exec_events, versions, parent_ctx=parent_ctx)
+        stages = _build_star_stages(
+            ws, result, runtime_cfg, model_calls, exec_events, versions, parent_ctx=parent_ctx, is_live=is_live
+        )
     elif framework_kind == "fullflow":
         stages = _build_fullflow_stages(ws, ff)
     else:
